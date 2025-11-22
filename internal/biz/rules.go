@@ -29,6 +29,34 @@ type RuleGoRepo interface {
 	FindOneRegulation(ctx context.Context, where map[string]interface{}) (*entity.Regulation, error)
 	FindListRegulation(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.Regulation, int64, error)
 	FindAllRegulation(ctx context.Context, where map[string]interface{}) ([]entity.Regulation, error)
+
+	CreateRunLog(ctx context.Context, runLog *entity.RunLog) error
+	UpdateRunLog(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
+	DeleteRunLog(ctx context.Context, where map[string]interface{}) error
+	FindOneRunLog(ctx context.Context, where map[string]interface{}) (*entity.RunLog, error)
+	FindListRunLog(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.RunLog, int64, error)
+	FindAllRunLog(ctx context.Context, where map[string]interface{}) ([]entity.RunLog, error)
+
+	CreateMdWorkflow(ctx context.Context, mdWorkflow *entity.MdWorkflow) error
+	UpdateMdWorkflow(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
+	DeleteMdWorkflow(ctx context.Context, where map[string]interface{}) error
+	FindOneMdWorkflow(ctx context.Context, where map[string]interface{}) (*entity.MdWorkflow, error)
+	FindListMdWorkflow(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.MdWorkflow, int64, error)
+	FindAllMdWorkflow(ctx context.Context, where map[string]interface{}) ([]entity.MdWorkflow, error)
+
+	CreateComponentUseRule(ctx context.Context, componentUseRule *entity.ComponentUseRule) error
+	UpdateComponentUseRule(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
+	DeleteComponentUseRule(ctx context.Context, where map[string]interface{}) error
+	FindOneComponentUseRule(ctx context.Context, where map[string]interface{}) (*entity.ComponentUseRule, error)
+	FindListComponentUseRule(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.ComponentUseRule, int64, error)
+	FindAllComponentUseRule(ctx context.Context, where map[string]interface{}) ([]entity.ComponentUseRule, error)
+
+	CreateComponentRegulation(ctx context.Context, componentRegulation *entity.ComponentRegulation) error
+	UpdateComponentRegulation(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
+	DeleteComponentRegulation(ctx context.Context, where map[string]interface{}) error
+	FindOneComponentRegulation(ctx context.Context, where map[string]interface{}) (*entity.ComponentRegulation, error)
+	FindListComponentRegulation(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.ComponentRegulation, int64, error)
+	FindAllComponentRegulation(ctx context.Context, where map[string]interface{}) ([]entity.ComponentRegulation, error)
 }
 
 // RuleGoUsecase is a RuleGo usecase.
