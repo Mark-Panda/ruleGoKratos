@@ -6,10 +6,15 @@ server:
     addr: 0.0.0.0:9000
     timeout: 1s
 data:
-  database:
-    driver: mysql
-    source: root:root@tcp(127.0.0.1:3306)/test?parseTime=True&loc=Local
   redis:
     addr: 127.0.0.1:6379
     read_timeout: 0.2s
     write_timeout: 0.2s
+  postgres:
+    host: 127.0.0.1
+    port: 5432
+    user: rulego
+    password: rulego
+    dbname: rulego
+    sslmode: disable
+    timezone: Asia/Shanghai

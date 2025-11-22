@@ -26,16 +26,21 @@ message Server {
 }
 
 message Data {
-  message Database {
-    string driver = 1;
-    string source = 2;
-  }
   message Redis {
     string network = 1;
     string addr = 2;
     google.protobuf.Duration read_timeout = 3;
     google.protobuf.Duration write_timeout = 4;
   }
-  Database database = 1;
-  Redis redis = 2;
+  message Postgres {
+    string host = 1;
+    int32 port = 2;
+    string user = 3;
+    string password = 4;
+    string dbname = 5;
+    string sslmode = 6;
+    string timezone = 7;
+  }
+  Redis redis = 1;
+  Postgres postgres = 2;
 }
