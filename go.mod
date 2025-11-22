@@ -7,6 +7,7 @@ toolchain go1.22.6
 require (
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/google/wire v0.6.0
+	github.com/jinzhu/copier v0.4.0
 	github.com/rulego/rulego v0.34.2
 	go.uber.org/automaxprocs v1.5.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157

@@ -30,3 +30,36 @@ func NewRegulation() *Regulation {
 func (r *Regulation) Create(ctx context.Context) error {
 	return db.WithContext(ctx).Create(r).Error
 }
+
+func (r *Regulation) Updates(ctx context.Context, date map[string]interface{}, where map[string]interface{}) error {
+	return db.WithContext(ctx).Model(r).Where(where).Updates(date).Error
+}
+
+func (r *Regulation) Delete(ctx context.Context, where map[string]interface{}) error {
+	return db.WithContext(ctx).Model(r).Where(where).Delete(r).Error
+}
+
+func (r *Regulation) FindOne(ctx context.Context, where map[string]interface{}) (*Regulation, error) {
+	var regulation Regulation
+	err := db.WithContext(ctx).Model(r).Where(where).First(&regulation).Error
+	return &regulation, err
+}
+
+// 分页查询
+func (r *Regulation) FindList(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]Regulation, int64, error) {
+	var regulations []Regulation
+	var count int64
+	db := db.WithContext(ctx).Model(r).Where(where)
+	err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&regulations).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	err = db.Count(&count).Error
+	return regulations, count, err
+}
+
+func (r *Regulation) FindAll(ctx context.Context, where map[string]interface{}) ([]Regulation, error) {
+	var regulations []Regulation
+	err := db.WithContext(ctx).Model(r).Where(where).Find(&regulations).Error
+	return regulations, err
+}
