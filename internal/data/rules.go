@@ -25,26 +25,6 @@ func NewRuleGoRepo(data *Data, logger log.Logger) biz.RuleGoRepo {
 	}
 }
 
-func (r *ruleGoRepo) Save(ctx context.Context, g *biz.RuleGo) (*biz.RuleGo, error) {
-	return g, nil
-}
-
-func (r *ruleGoRepo) Update(ctx context.Context, g *biz.RuleGo) (*biz.RuleGo, error) {
-	return g, nil
-}
-
-func (r *ruleGoRepo) FindByID(context.Context, int64) (*biz.RuleGo, error) {
-	return nil, nil
-}
-
-func (r *ruleGoRepo) ListByHello(context.Context, string) ([]*biz.RuleGo, error) {
-	return nil, nil
-}
-
-func (r *ruleGoRepo) ListAll(context.Context) ([]*biz.RuleGo, error) {
-	return nil, nil
-}
-
 func (r *ruleGoRepo) CreateRegulation(ctx context.Context, regulation *entity.Regulation) error {
 	t := time.Now()
 	info := dao.Regulation{

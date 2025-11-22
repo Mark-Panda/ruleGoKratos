@@ -4,6 +4,7 @@ import (
 	"context"
 
 	v1 "ruleGoKratos/api/rulego/v1"
+	"ruleGoKratos/internal/biz/entity"
 
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
@@ -22,11 +23,12 @@ type RuleGo struct {
 
 // RuleGoRepo is a RuleGo repo.
 type RuleGoRepo interface {
-	Save(context.Context, *RuleGo) (*RuleGo, error)
-	Update(context.Context, *RuleGo) (*RuleGo, error)
-	FindByID(context.Context, int64) (*RuleGo, error)
-	ListByHello(context.Context, string) ([]*RuleGo, error)
-	ListAll(context.Context) ([]*RuleGo, error)
+	CreateRegulation(ctx context.Context, regulation *entity.Regulation) error
+	UpdateRegulation(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
+	DeleteRegulation(ctx context.Context, where map[string]interface{}) error
+	FindOneRegulation(ctx context.Context, where map[string]interface{}) (*entity.Regulation, error)
+	FindListRegulation(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.Regulation, int64, error)
+	FindAllRegulation(ctx context.Context, where map[string]interface{}) ([]entity.Regulation, error)
 }
 
 // RuleGoUsecase is a RuleGo usecase.
@@ -43,6 +45,5 @@ func NewRuleGoUsecase(repo RuleGoRepo, logger log.Logger, ruleEngine *rulego.Rul
 
 // CreateRuleGo creates a RuleGo, and returns the new RuleGo.
 func (uc *RuleGoUsecase) CreateRuleGo(ctx context.Context, g *RuleGo) (*RuleGo, error) {
-	uc.log.WithContext(ctx).Infof("CreateGreeter: %v", g.Hello)
-	return uc.repo.Save(ctx, g)
+	return nil, nil
 }
