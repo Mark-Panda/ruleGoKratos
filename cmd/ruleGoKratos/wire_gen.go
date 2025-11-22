@@ -28,14 +28,22 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 	if err != nil {
 		return nil, nil, err
 	}
-	ruleGoRepo := data.NewRuleGoRepo(dataData, logger)
+	regulationRepo := data.NewRegulationRepo(dataData, logger)
 	ruleGo, err := data.NewRuleEngine(confData)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	ruleGoUsecase := biz.NewRuleGoUsecase(ruleGoRepo, logger, ruleGo)
-	ruleGoService := service.NewRuleGoService(ruleGoUsecase)
+	regulationUsecase := biz.NewRegulationUsecase(regulationRepo, logger, ruleGo)
+	componentRegulationRepo := data.NewComponentRegulationRepo(dataData, logger)
+	componentRegulationUsecase := biz.NewComponentRegulationUsecase(componentRegulationRepo, logger)
+	componentUseRuleRepo := data.NewComponentUseRuleRepo(dataData, logger)
+	componentUseRuleUsecase := biz.NewComponentUseRuleUsecase(componentUseRuleRepo, logger)
+	mdWorkflowRepo := data.NewMdWorkflowRepo(dataData, logger)
+	mdWorkflowUsecase := biz.NewMdWorkflowUsecase(mdWorkflowRepo, logger)
+	runLogRepo := data.NewRunLogRepo(dataData, logger)
+	runLogUsecase := biz.NewRunLogUsecase(runLogRepo, logger)
+	ruleGoService := service.NewRuleGoService(regulationUsecase, componentRegulationUsecase, componentUseRuleUsecase, mdWorkflowUsecase, runLogUsecase)
 	grpcServer := server.NewGRPCServer(confServer, ruleGoService, logger)
 	httpServer := server.NewHTTPServer(confServer, ruleGoService, logger)
 	app := newApp(logger, grpcServer, httpServer)

@@ -13,7 +13,7 @@ import (
 )
 
 // ProviderSet is data providers.
-var ProviderSet = wire.NewSet(NewDB, NewData, NewRuleGoRepo, NewRuleEngine)
+var ProviderSet = wire.NewSet(NewDB, NewData, NewRuleEngine, NewComponentUseRuleRepo, NewComponentRegulationRepo, NewMdWorkflowRepo, NewRunLogRepo, NewRegulationRepo)
 
 var DBClient *gorm.DB
 

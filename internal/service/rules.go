@@ -11,19 +11,19 @@ import (
 type RuleGoService struct {
 	v1.UnimplementedRuleGoServer
 
-	uc *biz.RuleGoUsecase
+	ru  *biz.RegulationUsecase
+	cru *biz.ComponentRegulationUsecase
+	cur *biz.ComponentUseRuleUsecase
+	mwu *biz.MdWorkflowUsecase
+	rlu *biz.RunLogUsecase
 }
 
 // NewRuleGoService new a rulego service.
-func NewRuleGoService(uc *biz.RuleGoUsecase) *RuleGoService {
-	return &RuleGoService{uc: uc}
+func NewRuleGoService(ru *biz.RegulationUsecase, cru *biz.ComponentRegulationUsecase, cur *biz.ComponentUseRuleUsecase, mwu *biz.MdWorkflowUsecase, rlu *biz.RunLogUsecase) *RuleGoService {
+	return &RuleGoService{ru: ru, cru: cru, cur: cur, mwu: mwu, rlu: rlu}
 }
 
 // SayHello implements helloworld.GreeterServer.
 func (s *RuleGoService) SayHello(ctx context.Context, in *v1.HelloRequest) (*v1.HelloReply, error) {
-	g, err := s.uc.CreateRuleGo(ctx, &biz.RuleGo{Hello: in.Name})
-	if err != nil {
-		return nil, err
-	}
-	return &v1.HelloReply{Message: "Hello " + g.Hello}, nil
+	return nil, nil
 }
