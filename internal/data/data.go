@@ -3,6 +3,7 @@ package data
 import (
 	"fmt"
 	"ruleGoKratos/internal/conf"
+	"ruleGoKratos/internal/data/dao"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
@@ -41,6 +42,7 @@ func NewDB(config *conf.Data) (*gorm.DB, error) {
 		return nil, err
 	}
 	DBClient = db
+	dao.Init(db)
 	return db, nil
 }
 
