@@ -29,7 +29,12 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 		return nil, nil, err
 	}
 	ruleGoRepo := data.NewRuleGoRepo(dataData, logger)
-	ruleGoUsecase := biz.NewRuleGoUsecase(ruleGoRepo, logger)
+	ruleGo, err := data.NewRuleEngine(confData)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	ruleGoUsecase := biz.NewRuleGoUsecase(ruleGoRepo, logger, ruleGo)
 	ruleGoService := service.NewRuleGoService(ruleGoUsecase)
 	grpcServer := server.NewGRPCServer(confServer, ruleGoService, logger)
 	httpServer := server.NewHTTPServer(confServer, ruleGoService, logger)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/rulego/rulego"
 )
 
 var (
@@ -30,13 +31,14 @@ type RuleGoRepo interface {
 
 // RuleGoUsecase is a RuleGo usecase.
 type RuleGoUsecase struct {
-	repo RuleGoRepo
-	log  *log.Helper
+	repo       RuleGoRepo
+	log        *log.Helper
+	ruleEngine *rulego.RuleGo
 }
 
 // NewRuleGoUsecase new a RuleGo usecase.
-func NewRuleGoUsecase(repo RuleGoRepo, logger log.Logger) *RuleGoUsecase {
-	return &RuleGoUsecase{repo: repo, log: log.NewHelper(logger)}
+func NewRuleGoUsecase(repo RuleGoRepo, logger log.Logger, ruleEngine *rulego.RuleGo) *RuleGoUsecase {
+	return &RuleGoUsecase{repo: repo, log: log.NewHelper(logger), ruleEngine: ruleEngine}
 }
 
 // CreateRuleGo creates a RuleGo, and returns the new RuleGo.
