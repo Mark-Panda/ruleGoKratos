@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package rulego.v1;
+
+option go_package = "ruleGoKratos/api/rulego/v1;v1";
+
+
+enum ErrorReason {
+  RULEGO_UNSPECIFIED = 0;
+  RULEGO_NOT_FOUND = 1;
+}
