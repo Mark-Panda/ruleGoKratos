@@ -360,3 +360,118 @@ func (s *RegulationUsecase) stopRuleChain(ctx context.Context, chainId string) e
 	}
 	return nil
 }
+
+func (s *RegulationUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRuleChainReq) (*v1.UpsertRuleChainReply, error) {
+	var ruleChain types.RuleChain
+	if in.RuleChain != nil {
+		b, err := in.RuleChain.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(b, &ruleChain.RuleChain); err != nil {
+			return nil, err
+		}
+	}
+	if in.Metadata != nil {
+		b, err := in.Metadata.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(b, &ruleChain.Metadata); err != nil {
+			return nil, err
+		}
+	}
+	// Ensure ID matches
+	ruleChain.RuleChain.ID = in.Id
+
+	ruleChainJson, err := json.Marshal(ruleChain)
+	if err != nil {
+		return nil, err
+	}
+
+	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+		"rule_chain_id": in.Id,
+	})
+
+	if err == nil && regulation != nil {
+		// Update
+		err = s.repo.UpdateRegulation(ctx, map[string]interface{}{
+			"rule_chain_id": in.Id,
+		}, map[string]interface{}{
+			"rule_config": string(ruleChainJson),
+			"name":        ruleChain.RuleChain.Name,
+			"root":        ruleChain.RuleChain.Root,
+			"disabled":    ruleChain.RuleChain.Disabled,
+		})
+	} else {
+		// Create
+		t := time.Now()
+		reg := &entity.Regulation{
+			RuleChainID: in.Id,
+			RuleConfig:  string(ruleChainJson),
+			Name:        ruleChain.RuleChain.Name,
+			Root:        ruleChain.RuleChain.Root,
+			Disabled:    ruleChain.RuleChain.Disabled,
+			CreatedAt:   &t,
+			UpdatedAt:   &t,
+		}
+		err = s.repo.CreateRegulation(ctx, reg)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1.UpsertRuleChainReply{}, nil
+}
+
+func (s *RegulationUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.UpdateRuleChainBaseInfoReq) (*v1.UpdateRuleChainBaseInfoReply, error) {
+	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+		"rule_chain_id": in.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var ruleChain types.RuleChain
+	err = json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update fields
+	if in.Name != "" {
+		ruleChain.RuleChain.Name = in.Name
+	}
+	ruleChain.RuleChain.Root = in.Root
+	if in.AdditionalInfo != nil {
+		additionalInfoBytes, err := in.AdditionalInfo.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		var additionalInfo map[string]interface{}
+		err = json.Unmarshal(additionalInfoBytes, &additionalInfo)
+		if err != nil {
+			return nil, err
+		}
+		ruleChain.RuleChain.AdditionalInfo = additionalInfo
+	}
+
+	// Marshal back to JSON
+	ruleChainJson, err := json.Marshal(ruleChain)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update DB
+	err = s.repo.UpdateRegulation(ctx, map[string]interface{}{
+		"rule_chain_id": in.Id,
+	}, map[string]interface{}{
+		"rule_config": string(ruleChainJson),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1.UpdateRuleChainBaseInfoReply{}, nil
+}

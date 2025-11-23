@@ -24,6 +24,8 @@ const OperationRuleGoExecuteRuleChain = "/rulego.v1.RuleGo/ExecuteRuleChain"
 const OperationRuleGoExecuteRuleChainSync = "/rulego.v1.RuleGo/ExecuteRuleChainSync"
 const OperationRuleGoGetComponents = "/rulego.v1.RuleGo/GetComponents"
 const OperationRuleGoGetRegulationsList = "/rulego.v1.RuleGo/GetRegulationsList"
+const OperationRuleGoUpdateRuleChainBaseInfo = "/rulego.v1.RuleGo/UpdateRuleChainBaseInfo"
+const OperationRuleGoUpsertRuleChain = "/rulego.v1.RuleGo/UpsertRuleChain"
 
 type RuleGoHTTPServer interface {
 	DeployRuleChain(context.Context, *DeployRuleChainReq) (*DeployRuleChainReply, error)
@@ -31,6 +33,8 @@ type RuleGoHTTPServer interface {
 	ExecuteRuleChainSync(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainSyncReply, error)
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
+	UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error)
+	UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error)
 }
 
 func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
@@ -40,6 +44,8 @@ func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r.POST("/api/v1/rules/{id}/notify/{msgType}", _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/execute/{msgType}", _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/operate/{type}", _RuleGo_DeployRuleChain0_HTTP_Handler(srv))
+	r.POST("/api/v1/rules/{id}", _RuleGo_UpsertRuleChain0_HTTP_Handler(srv))
+	r.POST("/api/v1/rules/{id}/base", _RuleGo_UpdateRuleChainBaseInfo0_HTTP_Handler(srv))
 }
 
 func _RuleGo_GetComponents0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
@@ -146,12 +152,58 @@ func _RuleGo_DeployRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.C
 	}
 }
 
+func _RuleGo_UpsertRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpsertRuleChainReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoUpsertRuleChain)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpsertRuleChain(ctx, req.(*UpsertRuleChainReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UpsertRuleChainReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _RuleGo_UpdateRuleChainBaseInfo0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateRuleChainBaseInfoReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoUpdateRuleChainBaseInfo)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateRuleChainBaseInfo(ctx, req.(*UpdateRuleChainBaseInfoReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UpdateRuleChainBaseInfoReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type RuleGoHTTPClient interface {
 	DeployRuleChain(ctx context.Context, req *DeployRuleChainReq, opts ...http.CallOption) (rsp *DeployRuleChainReply, err error)
 	ExecuteRuleChain(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainReply, err error)
 	ExecuteRuleChainSync(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainSyncReply, err error)
 	GetComponents(ctx context.Context, req *GetComponentsReq, opts ...http.CallOption) (rsp *GetComponentsReply, err error)
 	GetRegulationsList(ctx context.Context, req *GetRegulationsListReq, opts ...http.CallOption) (rsp *GetRegulationsListReply, err error)
+	UpdateRuleChainBaseInfo(ctx context.Context, req *UpdateRuleChainBaseInfoReq, opts ...http.CallOption) (rsp *UpdateRuleChainBaseInfoReply, err error)
+	UpsertRuleChain(ctx context.Context, req *UpsertRuleChainReq, opts ...http.CallOption) (rsp *UpsertRuleChainReply, err error)
 }
 
 type RuleGoHTTPClientImpl struct {
@@ -221,6 +273,32 @@ func (c *RuleGoHTTPClientImpl) GetRegulationsList(ctx context.Context, in *GetRe
 	opts = append(opts, http.Operation(OperationRuleGoGetRegulationsList))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *RuleGoHTTPClientImpl) UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRuleChainBaseInfoReq, opts ...http.CallOption) (*UpdateRuleChainBaseInfoReply, error) {
+	var out UpdateRuleChainBaseInfoReply
+	pattern := "/api/v1/rules/{id}/base"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationRuleGoUpdateRuleChainBaseInfo))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *RuleGoHTTPClientImpl) UpsertRuleChain(ctx context.Context, in *UpsertRuleChainReq, opts ...http.CallOption) (*UpsertRuleChainReply, error) {
+	var out UpsertRuleChainReply
+	pattern := "/api/v1/rules/{id}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationRuleGoUpsertRuleChain))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

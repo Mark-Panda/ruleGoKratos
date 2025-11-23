@@ -11,7 +11,6 @@ option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
 // The greeting service definition.
 service RuleGo {
-  
   // 获取所有组件
   rpc GetComponents(GetComponentsReq) returns(GetComponentsReply) {
     option (google.api.http) = {
@@ -49,6 +48,32 @@ service RuleGo {
       body: "*"
     };
   }
+
+  // 新增或修改规则链
+  rpc UpsertRuleChain(UpsertRuleChainReq) returns(UpsertRuleChainReply) {
+    option (google.api.http) = {
+      post: "/api/v1/rules/{id}",
+      body: "*"
+    };
+  }
+
+  // 修改规则链基础信息
+  rpc UpdateRuleChainBaseInfo(UpdateRuleChainBaseInfoReq) returns(UpdateRuleChainBaseInfoReply) {
+    option (google.api.http) = {
+      post: "/api/v1/rules/{id}/base",
+      body: "*"
+    };
+  }
+}
+
+message UpsertRuleChainReq {
+  string id = 1 [(validate.rules).string.min_len = 1];
+  google.protobuf.Struct rule_chain = 2;
+  google.protobuf.Struct metadata = 3;
+}
+
+message UpsertRuleChainReply {
+  
 }
 
 message DeployRuleChainReq {
@@ -98,4 +123,14 @@ message GetRegulationsListReply {
   int32 total = 2;
   int32 page = 3;
   int32 size = 4;
+}
+
+message UpdateRuleChainBaseInfoReq {
+  string id = 1 [(validate.rules).string.min_len = 1];
+  string name = 2;
+  bool root = 3;
+  google.protobuf.Struct additionalInfo = 4;
+}
+
+message UpdateRuleChainBaseInfoReply {
 }

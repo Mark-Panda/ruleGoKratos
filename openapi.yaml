@@ -54,6 +54,56 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetRegulationsListReply'
+    /api/v1/rules/{id}:
+        post:
+            tags:
+                - RuleGo
+            description: 新增或修改规则链
+            operationId: RuleGo_UpsertRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReply'
+    /api/v1/rules/{id}/base:
+        post:
+            tags:
+                - RuleGo
+            description: 修改规则链基础信息
+            operationId: RuleGo_UpdateRuleChainBaseInfo
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateRuleChainBaseInfoReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateRuleChainBaseInfoReply'
     /api/v1/rules/{id}/execute/{msgType}:
         post:
             tags:
@@ -219,5 +269,31 @@ components:
                 size:
                     type: integer
                     format: int32
+        rulego.v1.UpdateRuleChainBaseInfoReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateRuleChainBaseInfoReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                root:
+                    type: boolean
+                additionalInfo:
+                    type: object
+        rulego.v1.UpsertRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.UpsertRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                ruleChain:
+                    type: object
+                metadata:
+                    type: object
 tags:
     - name: RuleGo

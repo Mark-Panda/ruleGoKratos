@@ -35,6 +35,279 @@ var (
 	_ = sort.Sort
 )
 
+// Validate checks the field values on UpsertRuleChainReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpsertRuleChainReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpsertRuleChainReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpsertRuleChainReqMultiError, or nil if none found.
+func (m *UpsertRuleChainReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpsertRuleChainReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if utf8.RuneCountInString(m.GetId()) < 1 {
+		err := UpsertRuleChainReqValidationError{
+			field:  "Id",
+			reason: "value length must be at least 1 runes",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if all {
+		switch v := interface{}(m.GetRuleChain()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpsertRuleChainReqValidationError{
+					field:  "RuleChain",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpsertRuleChainReqValidationError{
+					field:  "RuleChain",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetRuleChain()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UpsertRuleChainReqValidationError{
+				field:  "RuleChain",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if all {
+		switch v := interface{}(m.GetMetadata()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpsertRuleChainReqValidationError{
+					field:  "Metadata",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpsertRuleChainReqValidationError{
+					field:  "Metadata",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetMetadata()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UpsertRuleChainReqValidationError{
+				field:  "Metadata",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return UpsertRuleChainReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpsertRuleChainReqMultiError is an error wrapping multiple validation errors
+// returned by UpsertRuleChainReq.ValidateAll() if the designated constraints
+// aren't met.
+type UpsertRuleChainReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpsertRuleChainReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpsertRuleChainReqMultiError) AllErrors() []error { return m }
+
+// UpsertRuleChainReqValidationError is the validation error returned by
+// UpsertRuleChainReq.Validate if the designated constraints aren't met.
+type UpsertRuleChainReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpsertRuleChainReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpsertRuleChainReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpsertRuleChainReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpsertRuleChainReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpsertRuleChainReqValidationError) ErrorName() string {
+	return "UpsertRuleChainReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpsertRuleChainReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpsertRuleChainReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpsertRuleChainReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpsertRuleChainReqValidationError{}
+
+// Validate checks the field values on UpsertRuleChainReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpsertRuleChainReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpsertRuleChainReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpsertRuleChainReplyMultiError, or nil if none found.
+func (m *UpsertRuleChainReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpsertRuleChainReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if len(errors) > 0 {
+		return UpsertRuleChainReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpsertRuleChainReplyMultiError is an error wrapping multiple validation
+// errors returned by UpsertRuleChainReply.ValidateAll() if the designated
+// constraints aren't met.
+type UpsertRuleChainReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpsertRuleChainReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpsertRuleChainReplyMultiError) AllErrors() []error { return m }
+
+// UpsertRuleChainReplyValidationError is the validation error returned by
+// UpsertRuleChainReply.Validate if the designated constraints aren't met.
+type UpsertRuleChainReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpsertRuleChainReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpsertRuleChainReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpsertRuleChainReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpsertRuleChainReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpsertRuleChainReplyValidationError) ErrorName() string {
+	return "UpsertRuleChainReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpsertRuleChainReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpsertRuleChainReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpsertRuleChainReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpsertRuleChainReplyValidationError{}
+
 // Validate checks the field values on DeployRuleChainReq with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, the first error encountered is returned, or nil if there are no violations.
@@ -1202,3 +1475,252 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = GetRegulationsListReplyValidationError{}
+
+// Validate checks the field values on UpdateRuleChainBaseInfoReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpdateRuleChainBaseInfoReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateRuleChainBaseInfoReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpdateRuleChainBaseInfoReqMultiError, or nil if none found.
+func (m *UpdateRuleChainBaseInfoReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateRuleChainBaseInfoReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if utf8.RuneCountInString(m.GetId()) < 1 {
+		err := UpdateRuleChainBaseInfoReqValidationError{
+			field:  "Id",
+			reason: "value length must be at least 1 runes",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	// no validation rules for Name
+
+	// no validation rules for Root
+
+	if all {
+		switch v := interface{}(m.GetAdditionalInfo()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpdateRuleChainBaseInfoReqValidationError{
+					field:  "AdditionalInfo",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpdateRuleChainBaseInfoReqValidationError{
+					field:  "AdditionalInfo",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetAdditionalInfo()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UpdateRuleChainBaseInfoReqValidationError{
+				field:  "AdditionalInfo",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return UpdateRuleChainBaseInfoReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateRuleChainBaseInfoReqMultiError is an error wrapping multiple
+// validation errors returned by UpdateRuleChainBaseInfoReq.ValidateAll() if
+// the designated constraints aren't met.
+type UpdateRuleChainBaseInfoReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateRuleChainBaseInfoReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateRuleChainBaseInfoReqMultiError) AllErrors() []error { return m }
+
+// UpdateRuleChainBaseInfoReqValidationError is the validation error returned
+// by UpdateRuleChainBaseInfoReq.Validate if the designated constraints aren't met.
+type UpdateRuleChainBaseInfoReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateRuleChainBaseInfoReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateRuleChainBaseInfoReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateRuleChainBaseInfoReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateRuleChainBaseInfoReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateRuleChainBaseInfoReqValidationError) ErrorName() string {
+	return "UpdateRuleChainBaseInfoReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdateRuleChainBaseInfoReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateRuleChainBaseInfoReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateRuleChainBaseInfoReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateRuleChainBaseInfoReqValidationError{}
+
+// Validate checks the field values on UpdateRuleChainBaseInfoReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpdateRuleChainBaseInfoReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateRuleChainBaseInfoReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpdateRuleChainBaseInfoReplyMultiError, or nil if none found.
+func (m *UpdateRuleChainBaseInfoReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateRuleChainBaseInfoReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if len(errors) > 0 {
+		return UpdateRuleChainBaseInfoReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateRuleChainBaseInfoReplyMultiError is an error wrapping multiple
+// validation errors returned by UpdateRuleChainBaseInfoReply.ValidateAll() if
+// the designated constraints aren't met.
+type UpdateRuleChainBaseInfoReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateRuleChainBaseInfoReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateRuleChainBaseInfoReplyMultiError) AllErrors() []error { return m }
+
+// UpdateRuleChainBaseInfoReplyValidationError is the validation error returned
+// by UpdateRuleChainBaseInfoReply.Validate if the designated constraints
+// aren't met.
+type UpdateRuleChainBaseInfoReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateRuleChainBaseInfoReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateRuleChainBaseInfoReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateRuleChainBaseInfoReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateRuleChainBaseInfoReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateRuleChainBaseInfoReplyValidationError) ErrorName() string {
+	return "UpdateRuleChainBaseInfoReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdateRuleChainBaseInfoReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateRuleChainBaseInfoReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateRuleChainBaseInfoReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateRuleChainBaseInfoReplyValidationError{}

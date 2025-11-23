@@ -32,6 +32,10 @@ type RuleGoClient interface {
 	ExecuteRuleChainSync(ctx context.Context, in *ExecuteRuleChainReq, opts ...grpc.CallOption) (*ExecuteRuleChainSyncReply, error)
 	// 部署或者下线规则链
 	DeployRuleChain(ctx context.Context, in *DeployRuleChainReq, opts ...grpc.CallOption) (*DeployRuleChainReply, error)
+	// 新增或修改规则链
+	UpsertRuleChain(ctx context.Context, in *UpsertRuleChainReq, opts ...grpc.CallOption) (*UpsertRuleChainReply, error)
+	// 修改规则链基础信息
+	UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRuleChainBaseInfoReq, opts ...grpc.CallOption) (*UpdateRuleChainBaseInfoReply, error)
 }
 
 type ruleGoClient struct {
@@ -87,6 +91,24 @@ func (c *ruleGoClient) DeployRuleChain(ctx context.Context, in *DeployRuleChainR
 	return out, nil
 }
 
+func (c *ruleGoClient) UpsertRuleChain(ctx context.Context, in *UpsertRuleChainReq, opts ...grpc.CallOption) (*UpsertRuleChainReply, error) {
+	out := new(UpsertRuleChainReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/UpsertRuleChain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ruleGoClient) UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRuleChainBaseInfoReq, opts ...grpc.CallOption) (*UpdateRuleChainBaseInfoReply, error) {
+	out := new(UpdateRuleChainBaseInfoReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/UpdateRuleChainBaseInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RuleGoServer is the server API for RuleGo service.
 // All implementations must embed UnimplementedRuleGoServer
 // for forward compatibility
@@ -101,6 +123,10 @@ type RuleGoServer interface {
 	ExecuteRuleChainSync(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainSyncReply, error)
 	// 部署或者下线规则链
 	DeployRuleChain(context.Context, *DeployRuleChainReq) (*DeployRuleChainReply, error)
+	// 新增或修改规则链
+	UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error)
+	// 修改规则链基础信息
+	UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error)
 	mustEmbedUnimplementedRuleGoServer()
 }
 
@@ -122,6 +148,12 @@ func (UnimplementedRuleGoServer) ExecuteRuleChainSync(context.Context, *ExecuteR
 }
 func (UnimplementedRuleGoServer) DeployRuleChain(context.Context, *DeployRuleChainReq) (*DeployRuleChainReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeployRuleChain not implemented")
+}
+func (UnimplementedRuleGoServer) UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpsertRuleChain not implemented")
+}
+func (UnimplementedRuleGoServer) UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateRuleChainBaseInfo not implemented")
 }
 func (UnimplementedRuleGoServer) mustEmbedUnimplementedRuleGoServer() {}
 
@@ -226,6 +258,42 @@ func _RuleGo_DeployRuleChain_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuleGo_UpsertRuleChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertRuleChainReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).UpsertRuleChain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.RuleGo/UpsertRuleChain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).UpsertRuleChain(ctx, req.(*UpsertRuleChainReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuleGo_UpdateRuleChainBaseInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRuleChainBaseInfoReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).UpdateRuleChainBaseInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.RuleGo/UpdateRuleChainBaseInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).UpdateRuleChainBaseInfo(ctx, req.(*UpdateRuleChainBaseInfoReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RuleGo_ServiceDesc is the grpc.ServiceDesc for RuleGo service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -252,6 +320,14 @@ var RuleGo_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeployRuleChain",
 			Handler:    _RuleGo_DeployRuleChain_Handler,
+		},
+		{
+			MethodName: "UpsertRuleChain",
+			Handler:    _RuleGo_UpsertRuleChain_Handler,
+		},
+		{
+			MethodName: "UpdateRuleChainBaseInfo",
+			Handler:    _RuleGo_UpdateRuleChainBaseInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

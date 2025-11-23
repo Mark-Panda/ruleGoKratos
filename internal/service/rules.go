@@ -43,3 +43,11 @@ func (s *RuleGoService) ExecuteRuleChainSync(ctx context.Context, in *v1.Execute
 func (s *RuleGoService) DeployRuleChain(ctx context.Context, in *v1.DeployRuleChainReq) (*v1.DeployRuleChainReply, error) {
 	return s.ru.DeployRuleChain(ctx, in)
 }
+
+func (s *RuleGoService) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.UpdateRuleChainBaseInfoReq) (*v1.UpdateRuleChainBaseInfoReply, error) {
+	return s.ru.UpdateRuleChainBaseInfo(ctx, in)
+}
+
+func (s *RuleGoService) UpsertRuleChain(ctx context.Context, in *v1.UpsertRuleChainReq) (*v1.UpsertRuleChainReply, error) {
+	return s.ru.UpsertRuleChain(ctx, in)
+}
