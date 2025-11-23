@@ -31,6 +31,10 @@ func (s *RuleGoService) GetRegulationsList(ctx context.Context, in *v1.GetRegula
 	return s.rc.GetRegulationsList(ctx, in)
 }
 
+func (s *RuleGoService) GetRuleChain(ctx context.Context, in *v1.GetRuleChainReq) (*v1.GetRuleChainReply, error) {
+	return s.rc.GetRuleChain(ctx, in)
+}
+
 func (s *RuleGoService) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
 	return s.rc.ExecuteRuleChain(ctx, in)
 }

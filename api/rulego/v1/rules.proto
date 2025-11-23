@@ -25,6 +25,13 @@ service RuleGo {
     };
   }
 
+  // 获取单个规则链
+  rpc GetRuleChain(GetRuleChainReq) returns(GetRuleChainReply) {
+    option (google.api.http) = {
+      get: "/api/v1/rules/{id}"
+    };
+  }
+
   // 异步执行规则链
   rpc ExecuteRuleChain(ExecuteRuleChainReq) returns(ExecuteRuleChainReply) {
     option (google.api.http) = {
@@ -124,6 +131,15 @@ message GetRegulationsListReply {
   int32 total = 2;
   int32 page = 3;
   int32 size = 4;
+}
+
+message GetRuleChainReq {
+  string id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message GetRuleChainReply {
+  google.protobuf.Struct ruleChain = 1;
+  google.protobuf.Struct metadata = 2;
 }
 
 message UpdateRuleChainBaseInfoReq {

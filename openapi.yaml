@@ -55,6 +55,24 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetRegulationsListReply'
     /api/v1/rules/{id}:
+        get:
+            tags:
+                - RuleGo
+            description: 获取单个规则链
+            operationId: RuleGo_GetRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetRuleChainReply'
         post:
             tags:
                 - RuleGo
@@ -83,7 +101,7 @@ paths:
         post:
             tags:
                 - RuleGo
-            description: 修改规则链基础信息
+            description: 保存规则链附加信息
             operationId: RuleGo_UpdateRuleChainBaseInfo
             parameters:
                 - name: id
@@ -269,6 +287,13 @@ components:
                 size:
                     type: integer
                     format: int32
+        rulego.v1.GetRuleChainReply:
+            type: object
+            properties:
+                ruleChain:
+                    type: object
+                metadata:
+                    type: object
         rulego.v1.UpdateRuleChainBaseInfoReply:
             type: object
             properties: {}

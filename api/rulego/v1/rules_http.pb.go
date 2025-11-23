@@ -24,6 +24,7 @@ const OperationRuleGoExecuteRuleChain = "/rulego.v1.RuleGo/ExecuteRuleChain"
 const OperationRuleGoExecuteRuleChainSync = "/rulego.v1.RuleGo/ExecuteRuleChainSync"
 const OperationRuleGoGetComponents = "/rulego.v1.RuleGo/GetComponents"
 const OperationRuleGoGetRegulationsList = "/rulego.v1.RuleGo/GetRegulationsList"
+const OperationRuleGoGetRuleChain = "/rulego.v1.RuleGo/GetRuleChain"
 const OperationRuleGoUpdateRuleChainBaseInfo = "/rulego.v1.RuleGo/UpdateRuleChainBaseInfo"
 const OperationRuleGoUpsertRuleChain = "/rulego.v1.RuleGo/UpsertRuleChain"
 
@@ -33,6 +34,7 @@ type RuleGoHTTPServer interface {
 	ExecuteRuleChainSync(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainSyncReply, error)
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
+	GetRuleChain(context.Context, *GetRuleChainReq) (*GetRuleChainReply, error)
 	UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error)
 	UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error)
 }
@@ -41,6 +43,7 @@ func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r := s.Route("/")
 	r.GET("/api/v1/components", _RuleGo_GetComponents0_HTTP_Handler(srv))
 	r.GET("/api/v1/rules", _RuleGo_GetRegulationsList0_HTTP_Handler(srv))
+	r.GET("/api/v1/rules/{id}", _RuleGo_GetRuleChain0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/notify/{msgType}", _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/execute/{msgType}", _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/operate/{type}", _RuleGo_DeployRuleChain0_HTTP_Handler(srv))
@@ -82,6 +85,28 @@ func _RuleGo_GetRegulationsList0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx htt
 			return err
 		}
 		reply := out.(*GetRegulationsListReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _RuleGo_GetRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetRuleChainReq
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoGetRuleChain)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetRuleChain(ctx, req.(*GetRuleChainReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GetRuleChainReply)
 		return ctx.Result(200, reply)
 	}
 }
@@ -202,6 +227,7 @@ type RuleGoHTTPClient interface {
 	ExecuteRuleChainSync(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainSyncReply, err error)
 	GetComponents(ctx context.Context, req *GetComponentsReq, opts ...http.CallOption) (rsp *GetComponentsReply, err error)
 	GetRegulationsList(ctx context.Context, req *GetRegulationsListReq, opts ...http.CallOption) (rsp *GetRegulationsListReply, err error)
+	GetRuleChain(ctx context.Context, req *GetRuleChainReq, opts ...http.CallOption) (rsp *GetRuleChainReply, err error)
 	UpdateRuleChainBaseInfo(ctx context.Context, req *UpdateRuleChainBaseInfoReq, opts ...http.CallOption) (rsp *UpdateRuleChainBaseInfoReply, err error)
 	UpsertRuleChain(ctx context.Context, req *UpsertRuleChainReq, opts ...http.CallOption) (rsp *UpsertRuleChainReply, err error)
 }
@@ -271,6 +297,19 @@ func (c *RuleGoHTTPClientImpl) GetRegulationsList(ctx context.Context, in *GetRe
 	pattern := "/api/v1/rules"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationRuleGoGetRegulationsList))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *RuleGoHTTPClientImpl) GetRuleChain(ctx context.Context, in *GetRuleChainReq, opts ...http.CallOption) (*GetRuleChainReply, error) {
+	var out GetRuleChainReply
+	pattern := "/api/v1/rules/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationRuleGoGetRuleChain))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {

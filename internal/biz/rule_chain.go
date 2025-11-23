@@ -167,6 +167,35 @@ func (s *RuleChainUsecase) GetRegulationsList(ctx context.Context, in *v1.GetReg
 	return res, nil
 }
 
+func (s *RuleChainUsecase) GetRuleChain(ctx context.Context, in *v1.GetRuleChainReq) (*v1.GetRuleChainReply, error) {
+	ruleChainDB, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
+		"rule_chain_id": in.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ruleChain, err := s.RuleChainDBToRuleChain(ruleChainDB)
+	if err != nil {
+		return nil, err
+	}
+
+	ruleChainPb, err := toStructPb(ruleChain.RuleChain)
+	if err != nil {
+		return nil, err
+	}
+
+	metadataPb, err := toStructPb(ruleChain.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1.GetRuleChainReply{
+		RuleChain: ruleChainPb,
+		Metadata:  metadataPb,
+	}, nil
+}
+
 // RuleChainDBToRuleChain 将数据库中的规则链转换为RuleChain
 func (s *RuleChainUsecase) RuleChainDBToRuleChain(ruleChainDB *entity.RuleChain) (*types.RuleChain, error) {
 	var ruleChain types.RuleChain

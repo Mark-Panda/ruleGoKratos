@@ -26,6 +26,8 @@ type RuleGoClient interface {
 	GetComponents(ctx context.Context, in *GetComponentsReq, opts ...grpc.CallOption) (*GetComponentsReply, error)
 	// 获取所有规则链列表
 	GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...grpc.CallOption) (*GetRegulationsListReply, error)
+	// 获取单个规则链
+	GetRuleChain(ctx context.Context, in *GetRuleChainReq, opts ...grpc.CallOption) (*GetRuleChainReply, error)
 	// 异步执行规则链
 	ExecuteRuleChain(ctx context.Context, in *ExecuteRuleChainReq, opts ...grpc.CallOption) (*ExecuteRuleChainReply, error)
 	// 同步执行规则链
@@ -34,7 +36,7 @@ type RuleGoClient interface {
 	DeployRuleChain(ctx context.Context, in *DeployRuleChainReq, opts ...grpc.CallOption) (*DeployRuleChainReply, error)
 	// 新增或修改规则链
 	UpsertRuleChain(ctx context.Context, in *UpsertRuleChainReq, opts ...grpc.CallOption) (*UpsertRuleChainReply, error)
-	// 修改规则链基础信息
+	// 保存规则链附加信息
 	UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRuleChainBaseInfoReq, opts ...grpc.CallOption) (*UpdateRuleChainBaseInfoReply, error)
 }
 
@@ -58,6 +60,15 @@ func (c *ruleGoClient) GetComponents(ctx context.Context, in *GetComponentsReq, 
 func (c *ruleGoClient) GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...grpc.CallOption) (*GetRegulationsListReply, error) {
 	out := new(GetRegulationsListReply)
 	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/GetRegulationsList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ruleGoClient) GetRuleChain(ctx context.Context, in *GetRuleChainReq, opts ...grpc.CallOption) (*GetRuleChainReply, error) {
+	out := new(GetRuleChainReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/GetRuleChain", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +128,8 @@ type RuleGoServer interface {
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 	// 获取所有规则链列表
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
+	// 获取单个规则链
+	GetRuleChain(context.Context, *GetRuleChainReq) (*GetRuleChainReply, error)
 	// 异步执行规则链
 	ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error)
 	// 同步执行规则链
@@ -125,7 +138,7 @@ type RuleGoServer interface {
 	DeployRuleChain(context.Context, *DeployRuleChainReq) (*DeployRuleChainReply, error)
 	// 新增或修改规则链
 	UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error)
-	// 修改规则链基础信息
+	// 保存规则链附加信息
 	UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error)
 	mustEmbedUnimplementedRuleGoServer()
 }
@@ -139,6 +152,9 @@ func (UnimplementedRuleGoServer) GetComponents(context.Context, *GetComponentsRe
 }
 func (UnimplementedRuleGoServer) GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRegulationsList not implemented")
+}
+func (UnimplementedRuleGoServer) GetRuleChain(context.Context, *GetRuleChainReq) (*GetRuleChainReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRuleChain not implemented")
 }
 func (UnimplementedRuleGoServer) ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteRuleChain not implemented")
@@ -200,6 +216,24 @@ func _RuleGo_GetRegulationsList_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuleGoServer).GetRegulationsList(ctx, req.(*GetRegulationsListReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuleGo_GetRuleChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRuleChainReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).GetRuleChain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.RuleGo/GetRuleChain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).GetRuleChain(ctx, req.(*GetRuleChainReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -308,6 +342,10 @@ var RuleGo_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRegulationsList",
 			Handler:    _RuleGo_GetRegulationsList_Handler,
+		},
+		{
+			MethodName: "GetRuleChain",
+			Handler:    _RuleGo_GetRuleChain_Handler,
 		},
 		{
 			MethodName: "ExecuteRuleChain",
