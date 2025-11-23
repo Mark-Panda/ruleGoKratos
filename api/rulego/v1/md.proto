@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package rulego.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "validate/validate.proto";
+
+option go_package = "ruleGoKratos/api/rulego/v1;v1";
+
+
+// The greeting service definition.
+service MdWorkflow {
+  
+  
+}
