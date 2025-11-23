@@ -188,11 +188,19 @@ paths:
                   required: true
                   schema:
                     type: string
+                - name: debugMode
+                  in: query
+                  schema:
+                    type: boolean
+                - name: msgId
+                  in: query
+                  schema:
+                    type: string
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReq'
+                            type: object
                 required: true
             responses:
                 "200":
@@ -219,11 +227,19 @@ paths:
                   required: true
                   schema:
                     type: string
+                - name: debugMode
+                  in: query
+                  schema:
+                    type: boolean
+                - name: msgId
+                  in: query
+                  schema:
+                    type: string
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReq'
+                            type: object
                 required: true
             responses:
                 "200":
@@ -294,20 +310,6 @@ components:
         rulego.v1.ExecuteRuleChainReply:
             type: object
             properties: {}
-        rulego.v1.ExecuteRuleChainReq:
-            type: object
-            properties:
-                id:
-                    type: string
-                    description: 不能为空
-                msgType:
-                    type: string
-                debugMode:
-                    type: boolean
-                msgId:
-                    type: string
-                data:
-                    type: object
         rulego.v1.ExecuteRuleChainSyncReply:
             type: object
             properties:

@@ -36,7 +36,7 @@ service RuleGo {
   rpc ExecuteRuleChain(ExecuteRuleChainReq) returns(ExecuteRuleChainReply) {
     option (google.api.http) = {
       post: "/api/v1/rules/{id}/notify/{msgType}",
-      body: "*"
+      body: "data"
     };
   }
 
@@ -44,7 +44,7 @@ service RuleGo {
   rpc ExecuteRuleChainSync(ExecuteRuleChainReq) returns(ExecuteRuleChainSyncReply) {
     option (google.api.http) = {
       post: "/api/v1/rules/{id}/execute/{msgType}",
-      body: "*"
+      body: "data"
     };
   }
 

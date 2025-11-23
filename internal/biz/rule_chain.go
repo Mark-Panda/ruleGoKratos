@@ -295,6 +295,9 @@ func (s *RuleChainUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exec
 	if err != nil {
 		return nil, err
 	}
+	if result == "" {
+		return nil, errors.New("result is empty")
+	}
 	structPb, err := toStructPb(result)
 	if err != nil {
 		return nil, err

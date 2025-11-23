@@ -117,7 +117,10 @@ func _RuleGo_GetRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Cont
 func _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in ExecuteRuleChainReq
-		if err := ctx.Bind(&in); err != nil {
+		if err := ctx.Bind(&in.Data); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
 			return err
 		}
 		if err := ctx.BindVars(&in); err != nil {
@@ -139,7 +142,10 @@ func _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.
 func _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in ExecuteRuleChainReq
-		if err := ctx.Bind(&in); err != nil {
+		if err := ctx.Bind(&in.Data); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
 			return err
 		}
 		if err := ctx.BindVars(&in); err != nil {
@@ -298,7 +304,7 @@ func (c *RuleGoHTTPClientImpl) ExecuteRuleChain(ctx context.Context, in *Execute
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationRuleGoExecuteRuleChain))
 	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in.Data, &out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +317,7 @@ func (c *RuleGoHTTPClientImpl) ExecuteRuleChainSync(ctx context.Context, in *Exe
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationRuleGoExecuteRuleChainSync))
 	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in.Data, &out, opts...)
 	if err != nil {
 		return nil, err
 	}
