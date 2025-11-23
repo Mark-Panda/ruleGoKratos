@@ -1,6 +1,7 @@
 package data
 
 import (
+	"encoding/json"
 	"fmt"
 	"ruleGoKratos/internal/conf"
 	_ "ruleGoKratos/internal/data/components"
@@ -90,7 +91,8 @@ func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
 	var err error
 	// 获取所有的规则链信息
 	var regulations []Regulation
-	if err := DBClient.Table("regulation").Where("disabled = ?", false).Find(&regulations).Error; err != nil {
+	if err := DBClient.Table("regulation").Find(&regulations).Error; err != nil {
+		// if err := DBClient.Table("regulation").Where("disabled = ?", false).Find(&regulations).Error; err != nil {
 		return nil, err
 	}
 	componentRegistry := engine.NewCustomComponentRegistry(engine.Registry, new(engine.RuleComponentRegistry))
@@ -112,7 +114,17 @@ func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
 		}
 		if err != nil {
 			// 更新规则配置状态为禁用
-			DBClient.Table("regulation").Where("id = ?", regulation.ID).Update("disabled", true)
+			var ruleChain types.RuleChain
+			json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+			ruleChain.RuleChain.Disabled = true
+			ruleChainJson, err := json.Marshal(ruleChain)
+			if err != nil {
+				return nil, err
+			}
+			DBClient.Table("regulation").Where("id = ?", regulation.ID).Updates(map[string]interface{}{
+				"disabled":    true,
+				"rule_config": string(ruleChainJson),
+			})
 		}
 	}
 	return pool, nil
