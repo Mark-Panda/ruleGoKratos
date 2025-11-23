@@ -69,8 +69,19 @@ paths:
         get:
             tags:
                 - RuleGo
-            description: 获取所有组件
-            operationId: RuleGo_GetComponents
+                - RuleGo
+            summary: 获取所有组件
+            description: |-
+                获取所有可用的组件列表，包括端点、节点和内置组件。
+                注意: 请求 header 中的 uid 字段不能为空
+            operationId: GetComponents
+            parameters:
+                - name: uid
+                  in: header
+                  description: 用户ID，必填字段
+                  required: true
+                  schema:
+                    type: string
             responses:
                 "200":
                     description: OK

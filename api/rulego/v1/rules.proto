@@ -1,3 +1,15 @@
+// Copyright (c) 2024 ruleGoKratos
+//
+// 规则引擎服务定义
+// 提供规则链的创建、更新、删除、部署和执行等核心功能
+//
+// 主要功能包括:
+//   - 规则链管理: 创建、更新、删除规则链
+//   - 规则链部署: 部署或下线规则链
+//   - 规则链执行: 同步和异步执行规则链
+//   - 组件管理: 获取可用组件列表
+//   - 规则链查询: 获取规则链列表和详情
+//
 syntax = "proto3";
 
 package rulego.v1;
@@ -5,165 +17,183 @@ package rulego.v1;
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "validate/validate.proto";
+import "openapi/v3/annotations.proto";
 
 option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
-
 // The greeting service definition.
 service RuleGo {
-  // 获取所有组件
-  rpc GetComponents(GetComponentsReq) returns(GetComponentsReply) {
-    option (google.api.http) = {
-      get: "/api/v1/components"
-    };
-  }
+    // 获取所有组件
+    // 注意: 请求 header 中的 uid 字段不能为空
+    rpc GetComponents(GetComponentsReq) returns (GetComponentsReply) {
+        option (google.api.http) = {
+            get: "/api/v1/components"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "GetComponents"
+            tags: "RuleGo"
+            summary: "获取所有组件"
+            description: "获取所有可用的组件列表，包括端点、节点和内置组件。\n注意: 请求 header 中的 uid 字段不能为空"
+            parameters: [
+                {
+                    parameter: {
+                        name: "uid"
+                        in: "header"
+                        description: "用户ID，必填字段"
+                        required: true
+                        schema: {
+                            schema: {
+                                type: "string"
+                            }
+                        }
+                    }
+                }
+            ]
+        };
+    }
 
-  // 获取所有规则链列表
-  rpc GetRegulationsList(GetRegulationsListReq) returns(GetRegulationsListReply) {
-    option (google.api.http) = {
-      get: "/api/v1/rules"
-    };
-  }
+    // 获取所有规则链列表
+    rpc GetRegulationsList(GetRegulationsListReq) returns (GetRegulationsListReply) {
+        option (google.api.http) = {
+            get: "/api/v1/rules"
+        };
+    }
 
-  // 获取单个规则链
-  rpc GetRuleChain(GetRuleChainReq) returns(GetRuleChainReply) {
-    option (google.api.http) = {
-      get: "/api/v1/rules/{id}"
-    };
-  }
+    // 获取单个规则链
+    rpc GetRuleChain(GetRuleChainReq) returns (GetRuleChainReply) {
+        option (google.api.http) = {
+            get: "/api/v1/rules/{id}"
+        };
+    }
 
-  // 异步执行规则链
-  rpc ExecuteRuleChain(ExecuteRuleChainReq) returns(ExecuteRuleChainReply) {
-    option (google.api.http) = {
-      post: "/api/v1/rules/{id}/notify/{msgType}",
-      body: "data"
-    };
-  }
+    // 异步执行规则链
+    rpc ExecuteRuleChain(ExecuteRuleChainReq) returns (ExecuteRuleChainReply) {
+        option (google.api.http) = {
+            post: "/api/v1/rules/{id}/notify/{msgType}",
+            body: "data"
+        };
+    }
 
-  // 同步执行规则链
-  rpc ExecuteRuleChainSync(ExecuteRuleChainReq) returns(ExecuteRuleChainSyncReply) {
-    option (google.api.http) = {
-      post: "/api/v1/rules/{id}/execute/{msgType}",
-      body: "data"
-    };
-  }
+    // 同步执行规则链
+    rpc ExecuteRuleChainSync(ExecuteRuleChainReq) returns (ExecuteRuleChainSyncReply) {
+        option (google.api.http) = {
+            post: "/api/v1/rules/{id}/execute/{msgType}",
+            body: "data"
+        };
+    }
 
-  // 部署或者下线规则链
-  rpc DeployRuleChain(DeployRuleChainReq) returns(DeployRuleChainReply) {
-    option (google.api.http) = {
-      post: "/api/v1/rules/{id}/operate/{type}",
-      body: "*"
-    };
-  }
+    // 部署或者下线规则链
+    rpc DeployRuleChain(DeployRuleChainReq) returns (DeployRuleChainReply) {
+        option (google.api.http) = {
+            post: "/api/v1/rules/{id}/operate/{type}",
+            body: "*"
+        };
+    }
 
-  // 新增或修改规则链
-  rpc UpsertRuleChain(UpsertRuleChainReq) returns(UpsertRuleChainReply) {
-    option (google.api.http) = {
-      post: "/api/v1/rules/{id}",
-      body: "*"
-    };
-  }
+    // 新增或修改规则链
+    rpc UpsertRuleChain(UpsertRuleChainReq) returns (UpsertRuleChainReply) {
+        option (google.api.http) = {
+            post: "/api/v1/rules/{id}",
+            body: "*"
+        };
+    }
 
-  // 删除规则链
-  rpc DeleteRuleChain(DeleteRuleChainReq) returns(DeleteRuleChainReply) {
-    option (google.api.http) = {
-      delete: "/api/v1/rules/{id}"
-    };
-  }
+    // 删除规则链
+    rpc DeleteRuleChain(DeleteRuleChainReq) returns (DeleteRuleChainReply) {
+        option (google.api.http) = {
+            delete: "/api/v1/rules/{id}"
+        };
+    }
 
-  // 保存规则链附加信息
-  rpc UpdateRuleChainBaseInfo(UpdateRuleChainBaseInfoReq) returns(UpdateRuleChainBaseInfoReply) {
-    option (google.api.http) = {
-      post: "/api/v1/rules/{id}/base",
-      body: "*"
-    };
-  }
-  
+    // 保存规则链附加信息
+    rpc UpdateRuleChainBaseInfo(UpdateRuleChainBaseInfoReq) returns (UpdateRuleChainBaseInfoReply) {
+        option (google.api.http) = {
+            post: "/api/v1/rules/{id}/base",
+            body: "*"
+        };
+    }
 }
 
 message UpsertRuleChainReq {
-  string id = 1 [(validate.rules).string.min_len = 1];
-  google.protobuf.Struct rule_chain = 2;
-  google.protobuf.Struct metadata = 3;
+    string id                         = 1 [(validate.rules).string.min_len = 1];
+    google.protobuf.Struct rule_chain = 2;
+    google.protobuf.Struct metadata   = 3;
 }
 
 message UpsertRuleChainReply {
-  
 }
 
 message DeployRuleChainReq {
-  string id = 1 [(validate.rules).string.min_len = 1];
-  string type = 2 [(validate.rules).string.min_len = 1];
+    string id   = 1 [(validate.rules).string.min_len = 1];
+    string type = 2 [(validate.rules).string.min_len = 1];
 }
 
 message DeployRuleChainReply {
-  
 }
 
 message ExecuteRuleChainReq {
-  // 不能为空
-  string id = 1 [(validate.rules).string.min_len = 1];
-  string msgType = 2 [(validate.rules).string.min_len = 1];
-  bool debugMode = 3;
-  string msgId = 4 [(validate.rules).string.min_len = 1];
-  google.protobuf.Struct data = 5;
+    // 不能为空
+    string id                   = 1 [(validate.rules).string.min_len = 1];
+    string msgType              = 2 [(validate.rules).string.min_len = 1];
+    bool debugMode              = 3;
+    string msgId                = 4 [(validate.rules).string.min_len = 1];
+    google.protobuf.Struct data = 5;
 }
 
 message ExecuteRuleChainReply {
-  
 }
 
 message ExecuteRuleChainSyncReply {
-  google.protobuf.Struct data = 1;
+    google.protobuf.Struct data = 1;
 }
 
 message GetComponentsReq {}
 
 message GetComponentsReply {
-	google.protobuf.ListValue endpoints = 1;
-	google.protobuf.ListValue nodes = 2;
-	google.protobuf.Struct builtins = 3;
+    google.protobuf.ListValue endpoints = 1;
+    google.protobuf.ListValue nodes     = 2;
+    google.protobuf.Struct builtins     = 3;
 }
 
 message GetRegulationsListReq {
-  string page = 1;
-  string size = 2;
-  string keywords = 3;
-  string root = 4;
-  string disabled = 5;
+    string page     = 1;
+    string size     = 2;
+    string keywords = 3;
+    string root     = 4;
+    string disabled = 5;
 }
 
 message GetRegulationsListReply {
-	repeated google.protobuf.Struct items = 1;
-  int32 total = 2;
-  int32 page = 3;
-  int32 size = 4;
+    repeated google.protobuf.Struct items = 1;
+    int32 total                           = 2;
+    int32 page                            = 3;
+    int32 size                            = 4;
 }
 
 message GetRuleChainReq {
-  string id = 1 [(validate.rules).string.min_len = 1];
+    string id = 1 [(validate.rules).string.min_len = 1];
 }
 
 message GetRuleChainReply {
-  google.protobuf.Struct ruleChain = 1;
-  google.protobuf.Struct metadata = 2;
+    google.protobuf.Struct ruleChain = 1;
+    google.protobuf.Struct metadata  = 2;
 }
 
 message UpdateRuleChainBaseInfoReq {
-  string id = 1 [(validate.rules).string.min_len = 1];
-  string name = 2;
-  bool root = 3;
-  bool disabled = 4;
-  bool debugMode = 5;
-  google.protobuf.Struct additionalInfo = 6;
-  google.protobuf.Struct configuration = 7;
+    string id                             = 1 [(validate.rules).string.min_len = 1];
+    string name                           = 2;
+    bool root                             = 3;
+    bool disabled                         = 4;
+    bool debugMode                        = 5;
+    google.protobuf.Struct additionalInfo = 6;
+    google.protobuf.Struct configuration  = 7;
 }
 
 message UpdateRuleChainBaseInfoReply {
 }
 
 message DeleteRuleChainReq {
-  string id = 1 [(validate.rules).string.min_len = 1];
+    string id = 1 [(validate.rules).string.min_len = 1];
 }
 
 message DeleteRuleChainReply {

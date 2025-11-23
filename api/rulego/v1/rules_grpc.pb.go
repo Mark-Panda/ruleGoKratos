@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RuleGoClient interface {
 	// 获取所有组件
+	// 注意: 请求 header 中的 uid 字段不能为空
 	GetComponents(ctx context.Context, in *GetComponentsReq, opts ...grpc.CallOption) (*GetComponentsReply, error)
 	// 获取所有规则链列表
 	GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...grpc.CallOption) (*GetRegulationsListReply, error)
@@ -136,6 +137,7 @@ func (c *ruleGoClient) UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRu
 // for forward compatibility
 type RuleGoServer interface {
 	// 获取所有组件
+	// 注意: 请求 header 中的 uid 字段不能为空
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 	// 获取所有规则链列表
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
