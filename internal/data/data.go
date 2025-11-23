@@ -92,7 +92,6 @@ func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
 	// 获取所有的规则链信息
 	var regulations []Regulation
 	if err := DBClient.Table("regulation").Find(&regulations).Error; err != nil {
-		// if err := DBClient.Table("regulation").Where("disabled = ?", false).Find(&regulations).Error; err != nil {
 		return nil, err
 	}
 	componentRegistry := engine.NewCustomComponentRegistry(engine.Registry, new(engine.RuleComponentRegistry))
@@ -100,10 +99,12 @@ func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
 		// types.WithLogger(logger.Logger),
 		types.WithComponentsRegistry(componentRegistry),
 		types.WithNodePool(node_pool.DefaultNodePool))
-	// ruleConfig.Logger.Printf("init %s data", username)
 	pool := rulego.NewRuleGo()
 	// 加载所有规则链
 	for _, regulation := range regulations {
+		// 更新规则配置状态为禁用
+		var ruleChain types.RuleChain
+		json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
 		// 如果规则链已经存在，重新加载规则配置
 		if ruleEngine, ok := pool.Get(regulation.RuleChainID); ok {
 			fmt.Println("重新加载规则配置", regulation.RuleChainID)
@@ -111,11 +112,17 @@ func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
 		} else {
 			fmt.Println("加载规则链", regulation.RuleChainID)
 			_, err = pool.New(regulation.RuleChainID, []byte(regulation.RuleConfig), rulego.WithConfig(ruleConfig))
+			ruleChain.RuleChain.Disabled = false
+			ruleChainJson, err := json.Marshal(ruleChain)
+			if err != nil {
+				return nil, err
+			}
+			DBClient.Table("regulation").Where("id = ?", regulation.ID).Updates(map[string]interface{}{
+				"disabled":    false,
+				"rule_config": string(ruleChainJson),
+			})
 		}
 		if err != nil {
-			// 更新规则配置状态为禁用
-			var ruleChain types.RuleChain
-			json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
 			ruleChain.RuleChain.Disabled = true
 			ruleChainJson, err := json.Marshal(ruleChain)
 			if err != nil {
