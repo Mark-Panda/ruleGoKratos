@@ -6,6 +6,7 @@ import (
 	"ruleGoKratos/internal/conf"
 	_ "ruleGoKratos/internal/data/components"
 	"ruleGoKratos/internal/data/dao"
+	"time"
 
 	_ "github.com/rulego/rulego-components-ai/ai/action"
 	_ "github.com/rulego/rulego-components-ai/ai/endpoint"
@@ -107,57 +108,82 @@ func NewRuleConfig() *types.Config {
 
 // 初始化规则引擎
 func NewRuleEngine(c *conf.Data, ruleConfig *types.Config) (*rulego.RuleGo, error) {
-	var err error
 	// 获取所有的规则链信息
-	var regulations []Regulation
-	if err := DBClient.Table("regulation").Find(&regulations).Error; err != nil {
+	var ruleChainList []RuleChain
+	if err := DBClient.Table("rule_chain").Where("disabled = ?", false).Find(&ruleChainList).Error; err != nil {
 		return nil, err
 	}
 	pool := rulego.NewRuleGo()
 	// 加载所有规则链
-	for _, regulation := range regulations {
+	for _, item := range ruleChainList {
 		// 更新规则配置状态为禁用
-		var ruleChain types.RuleChain
-		json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+		ruleChain, err := ruleChainDBToRuleChain(&item)
+		if err != nil {
+			return nil, err
+		}
+		ruleChainJson, err := json.Marshal(ruleChain)
+		if err != nil {
+			return nil, err
+		}
 		// 如果规则链已经存在，重新加载规则配置
-		if ruleEngine, ok := pool.Get(regulation.RuleChainID); ok {
-			fmt.Println("重新加载规则配置", regulation.RuleChainID)
-			err = ruleEngine.ReloadSelf([]byte(regulation.RuleConfig))
+		if ruleEngine, ok := pool.Get(item.RuleChainID); ok {
+			fmt.Println("重新加载规则配置", item.RuleChainID)
+			err = ruleEngine.ReloadSelf(ruleChainJson)
 		} else {
-			fmt.Println("加载规则链", regulation.RuleChainID)
-			_, err = pool.New(regulation.RuleChainID, []byte(regulation.RuleConfig), rulego.WithConfig(*ruleConfig))
-			ruleChain.RuleChain.Disabled = false
-			ruleChainJson, err := json.Marshal(ruleChain)
+			fmt.Println("加载规则链", item.RuleChainID)
+			_, err = pool.New(item.RuleChainID, ruleChainJson, rulego.WithConfig(*ruleConfig))
 			if err != nil {
 				return nil, err
 			}
-			DBClient.Table("regulation").Where("id = ?", regulation.ID).Updates(map[string]interface{}{
-				"disabled":    false,
-				"rule_config": string(ruleChainJson),
+			DBClient.Table("rule_chain").Where("id = ?", item.ID).Updates(map[string]interface{}{
+				"disabled": false,
 			})
 		}
 		if err != nil {
-			ruleChain.RuleChain.Disabled = true
-			ruleChainJson, err := json.Marshal(ruleChain)
-			if err != nil {
-				return nil, err
-			}
-			DBClient.Table("regulation").Where("id = ?", regulation.ID).Updates(map[string]interface{}{
-				"disabled":    true,
-				"rule_config": string(ruleChainJson),
+			DBClient.Table("rule_chain").Where("id = ?", item.ID).Updates(map[string]interface{}{
+				"disabled": true,
 			})
 		}
 	}
 	return pool, nil
 }
 
-type Regulation struct {
-	ID          int64  `gorm:"column:id"`
-	UserName    string `gorm:"column:user_name"`
-	Root        bool   `gorm:"column:root"`
-	Disabled    bool   `gorm:"column:disabled"`
-	Name        string `gorm:"column:name"`
-	RuleChainID string `gorm:"column:rule_chain_id"`
-	RuleVersion int    `gorm:"column:rule_version"`
-	RuleConfig  string `gorm:"column:rule_config"`
+// RuleChainDBToRuleChain 将数据库中的规则链转换为RuleChain
+func ruleChainDBToRuleChain(ruleChainDB *RuleChain) (*types.RuleChain, error) {
+	var ruleChain types.RuleChain
+	ruleChainInfo := types.RuleChainBaseInfo{
+		ID:        ruleChainDB.RuleChainID,
+		Name:      ruleChainDB.Name,
+		DebugMode: ruleChainDB.DebugMode,
+		Root:      ruleChainDB.Root,
+		Disabled:  ruleChainDB.Disabled,
+	}
+	additionalInfo := map[string]interface{}{}
+	json.Unmarshal([]byte(ruleChainDB.AdditionalInfo), &additionalInfo)
+	ruleChainInfo.AdditionalInfo = additionalInfo
+	configuration := map[string]interface{}{}
+	json.Unmarshal([]byte(ruleChainDB.Configuration), &configuration)
+	ruleChainInfo.Configuration = configuration
+	ruleChainMetadata := types.RuleMetadata{}
+	json.Unmarshal([]byte(ruleChainDB.Metadata), &ruleChainMetadata)
+	ruleChain.RuleChain = ruleChainInfo
+	ruleChain.Metadata = ruleChainMetadata
+	return &ruleChain, nil
+}
+
+type RuleChain struct {
+	ID             int64      `json:"id"`
+	UserName       string     `json:"userName"`
+	Root           bool       `json:"root"`
+	Disabled       bool       `json:"disabled"`
+	DebugMode      bool       `json:"debugMode"`
+	Name           string     `json:"name"`
+	RuleChainID    string     `json:"ruleChainId"`
+	RuleVersion    int        `json:"ruleVersion"`
+	Configuration  string     `json:"configuration"`
+	Metadata       string     `json:"metadata"`
+	AdditionalInfo string     `json:"additionalInfo"`
+	CreatedAt      *time.Time `json:"createdAt"`
+	UpdatedAt      *time.Time `json:"updatedAt"`
+	DeletedAt      *time.Time `json:"deletedAt"`
 }
