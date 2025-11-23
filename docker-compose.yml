@@ -1,5 +1,4 @@
 services:
-  
   workflow:
     build:
       context: .
@@ -12,8 +11,6 @@ services:
     volumes:
       - ./configs:/data/conf
     environment:
-      # - SERVER_HTTP_ADDR=0.0.0.0:8000
-      # - SERVER_GRPC_ADDR=0.0.0.0:9000
       - DATA_POSTGRES_HOST=postgres-db
       - DATA_POSTGRES_PORT=5432
       - DATA_POSTGRES_USER=rulego
