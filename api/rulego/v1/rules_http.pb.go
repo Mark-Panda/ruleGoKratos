@@ -20,14 +20,17 @@ var _ = binding.EncodeURL
 const _ = http.SupportPackageIsVersion1
 
 const OperationRuleGoGetComponents = "/rulego.v1.RuleGo/GetComponents"
+const OperationRuleGoGetRegulationsList = "/rulego.v1.RuleGo/GetRegulationsList"
 
 type RuleGoHTTPServer interface {
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
+	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
 }
 
 func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r := s.Route("/")
 	r.GET("/api/v1/components", _RuleGo_GetComponents0_HTTP_Handler(srv))
+	r.GET("/api/v1/rules", _RuleGo_GetRegulationsList0_HTTP_Handler(srv))
 }
 
 func _RuleGo_GetComponents0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
@@ -49,8 +52,28 @@ func _RuleGo_GetComponents0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Con
 	}
 }
 
+func _RuleGo_GetRegulationsList0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetRegulationsListReq
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoGetRegulationsList)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetRegulationsList(ctx, req.(*GetRegulationsListReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GetRegulationsListReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type RuleGoHTTPClient interface {
 	GetComponents(ctx context.Context, req *GetComponentsReq, opts ...http.CallOption) (rsp *GetComponentsReply, err error)
+	GetRegulationsList(ctx context.Context, req *GetRegulationsListReq, opts ...http.CallOption) (rsp *GetRegulationsListReply, err error)
 }
 
 type RuleGoHTTPClientImpl struct {
@@ -66,6 +89,19 @@ func (c *RuleGoHTTPClientImpl) GetComponents(ctx context.Context, in *GetCompone
 	pattern := "/api/v1/components"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationRuleGoGetComponents))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *RuleGoHTTPClientImpl) GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...http.CallOption) (*GetRegulationsListReply, error) {
+	var out GetRegulationsListReply
+	pattern := "/api/v1/rules"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationRuleGoGetRegulationsList))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {

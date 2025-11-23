@@ -22,6 +22,8 @@ import (
 	"github.com/rulego/rulego/node_pool"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 // ProviderSet is data providers.
@@ -47,9 +49,34 @@ func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 	return &Data{db: db}, cleanup, nil
 }
 
+const (
+	LogModeSilent = `silent`
+	LogModeError  = `error`
+	LogModeWarn   = `warn`
+	LogModeInfo   = `info`
+)
+
+func LogModeString2GormLogLevel(mode string) gormLogger.LogLevel {
+	switch mode {
+	case LogModeSilent:
+		return gormLogger.Silent
+	case LogModeError:
+		return gormLogger.Error
+	case LogModeWarn:
+		return gormLogger.Warn
+	case LogModeInfo:
+		return gormLogger.Info
+	default:
+		return gormLogger.Warn
+	}
+}
+
 func NewDB(config *conf.Data) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s timezone=%s", config.Postgres.Host, config.Postgres.User, config.Postgres.Password, config.Postgres.Dbname, config.Postgres.Port, config.Postgres.Sslmode, config.Postgres.Timezone)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger:         gormLogger.Default.LogMode(LogModeString2GormLogLevel("info")),
+		NamingStrategy: schema.NamingStrategy{SingularTable: true},
+	})
 	if err != nil {
 		return nil, err
 	}

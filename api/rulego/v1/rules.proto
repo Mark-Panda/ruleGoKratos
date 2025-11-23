@@ -17,6 +17,13 @@ service RuleGo {
       get: "/api/v1/components"
     };
   }
+
+  // 获取所有规则链列表
+  rpc GetRegulationsList(GetRegulationsListReq) returns(GetRegulationsListReply) {
+    option (google.api.http) = {
+      get: "/api/v1/rules"
+    };
+  }
 }
 
 
@@ -29,3 +36,17 @@ message GetComponentsReply {
 	google.protobuf.Struct builtins = 3;
 }
 
+message GetRegulationsListReq {
+  string page = 1;
+  string size = 2;
+  string keywords = 3;
+  string root = 4;
+  string disabled = 5;
+}
+
+message GetRegulationsListReply {
+	repeated google.protobuf.Struct items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 size = 4;
+}

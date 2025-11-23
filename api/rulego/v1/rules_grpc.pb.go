@@ -24,6 +24,8 @@ const _ = grpc.SupportPackageIsVersion7
 type RuleGoClient interface {
 	// 获取所有组件
 	GetComponents(ctx context.Context, in *GetComponentsReq, opts ...grpc.CallOption) (*GetComponentsReply, error)
+	// 获取所有规则链列表
+	GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...grpc.CallOption) (*GetRegulationsListReply, error)
 }
 
 type ruleGoClient struct {
@@ -43,12 +45,23 @@ func (c *ruleGoClient) GetComponents(ctx context.Context, in *GetComponentsReq, 
 	return out, nil
 }
 
+func (c *ruleGoClient) GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...grpc.CallOption) (*GetRegulationsListReply, error) {
+	out := new(GetRegulationsListReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/GetRegulationsList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RuleGoServer is the server API for RuleGo service.
 // All implementations must embed UnimplementedRuleGoServer
 // for forward compatibility
 type RuleGoServer interface {
 	// 获取所有组件
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
+	// 获取所有规则链列表
+	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
 	mustEmbedUnimplementedRuleGoServer()
 }
 
@@ -58,6 +71,9 @@ type UnimplementedRuleGoServer struct {
 
 func (UnimplementedRuleGoServer) GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetComponents not implemented")
+}
+func (UnimplementedRuleGoServer) GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRegulationsList not implemented")
 }
 func (UnimplementedRuleGoServer) mustEmbedUnimplementedRuleGoServer() {}
 
@@ -90,6 +106,24 @@ func _RuleGo_GetComponents_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuleGo_GetRegulationsList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRegulationsListReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).GetRegulationsList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.RuleGo/GetRegulationsList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).GetRegulationsList(ctx, req.(*GetRegulationsListReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RuleGo_ServiceDesc is the grpc.ServiceDesc for RuleGo service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +134,10 @@ var RuleGo_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetComponents",
 			Handler:    _RuleGo_GetComponents_Handler,
+		},
+		{
+			MethodName: "GetRegulationsList",
+			Handler:    _RuleGo_GetRegulationsList_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

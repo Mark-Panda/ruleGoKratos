@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -40,6 +41,32 @@ func NewRegulationUsecase(repo RegulationRepo, logger log.Logger, ruleEngine *ru
 	return &RegulationUsecase{repo: repo, log: log.NewHelper(logger), ruleEngine: ruleEngine}
 }
 
+// 辅助函数：将任意对象转换为 *structpb.Struct
+func toStructPb(v interface{}) (*structpb.Struct, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return structpb.NewStruct(m)
+}
+
+// 辅助函数：将任意对象转换为 *structpb.ListValue
+func toListValuePb(v interface{}) (*structpb.ListValue, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var l []interface{}
+	if err := json.Unmarshal(b, &l); err != nil {
+		return nil, err
+	}
+	return structpb.NewList(l)
+}
+
 func (s *RegulationUsecase) GetComponents(ctx context.Context) (*v1.GetComponentsReply, error) {
 	componentRegistry := engine.NewCustomComponentRegistry(engine.Registry, new(engine.RuleComponentRegistry))
 	ruleConfig := rulego.NewConfig(types.WithDefaultPool(),
@@ -48,32 +75,6 @@ func (s *RegulationUsecase) GetComponents(ctx context.Context) (*v1.GetComponent
 		types.WithNodePool(node_pool.DefaultNodePool))
 
 	nodePool, _ := node_pool.DefaultNodePool.GetAllDef()
-
-	// 辅助函数：将任意对象转换为 *structpb.Struct
-	toStructPb := func(v interface{}) (*structpb.Struct, error) {
-		b, err := json.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-		var m map[string]interface{}
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return structpb.NewStruct(m)
-	}
-
-	// 辅助函数：将任意对象转换为 *structpb.ListValue
-	toListValuePb := func(v interface{}) (*structpb.ListValue, error) {
-		b, err := json.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-		var l []interface{}
-		if err := json.Unmarshal(b, &l); err != nil {
-			return nil, err
-		}
-		return structpb.NewList(l)
-	}
 
 	// endpoint组件
 	endpointsList, err := toListValuePb(endpoint.Registry.GetComponentForms().Values())
@@ -113,4 +114,56 @@ func (s *RegulationUsecase) GetComponents(ctx context.Context) (*v1.GetComponent
 		Nodes:     nodesList,
 		Builtins:  builtinsStruct,
 	}, nil
+}
+
+func (s *RegulationUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRegulationsListReq) (*v1.GetRegulationsListReply, error) {
+	res := &v1.GetRegulationsListReply{}
+	var page = 1
+	var size = 20
+	currentStr := in.Page
+	if i, err := strconv.Atoi(currentStr); err == nil {
+		page = i
+	}
+	pageSizeStr := in.Size
+	if i, err := strconv.Atoi(pageSizeStr); err == nil {
+		size = i
+	}
+	var root *bool
+	var disabled *bool
+	if i, err := strconv.ParseBool(in.Root); err == nil {
+		root = &i
+	}
+	if i, err := strconv.ParseBool(in.Disabled); err == nil {
+		disabled = &i
+	}
+	query := map[string]interface{}{}
+	if root != nil {
+		query["root"] = root
+	}
+	if disabled != nil {
+		query["disabled"] = disabled
+	}
+	if in.Keywords != "" {
+		query["name"] = in.Keywords
+	}
+	regulations, total, err := s.repo.FindListRegulation(ctx, query, page, size)
+	if err != nil {
+		return nil, err
+	}
+	res.Page = int32(page)
+	res.Size = int32(size)
+	res.Total = int32(total)
+	for _, regulation := range regulations {
+		var ruleChainLi types.RuleChain
+		err := json.Unmarshal([]byte(regulation.RuleConfig), &ruleChainLi)
+		if err != nil {
+			return nil, err
+		}
+		structPb, err := toStructPb(ruleChainLi)
+		if err != nil {
+			return nil, err
+		}
+		res.Items = append(res.Items, structPb)
+	}
+	return res, nil
 }

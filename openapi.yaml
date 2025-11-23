@@ -20,6 +20,40 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetComponentsReply'
+    /api/v1/rules:
+        get:
+            tags:
+                - RuleGo
+            description: 获取所有规则链列表
+            operationId: RuleGo_GetRegulationsList
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: string
+                - name: size
+                  in: query
+                  schema:
+                    type: string
+                - name: keywords
+                  in: query
+                  schema:
+                    type: string
+                - name: root
+                  in: query
+                  schema:
+                    type: string
+                - name: disabled
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetRegulationsListReply'
 components:
     schemas:
         google.protobuf.ListValue:
@@ -45,5 +79,21 @@ components:
                     $ref: '#/components/schemas/google.protobuf.ListValue'
                 builtins:
                     type: object
+        rulego.v1.GetRegulationsListReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        type: object
+                total:
+                    type: integer
+                    format: int32
+                page:
+                    type: integer
+                    format: int32
+                size:
+                    type: integer
+                    format: int32
 tags:
     - name: RuleGo

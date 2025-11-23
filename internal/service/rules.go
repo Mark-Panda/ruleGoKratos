@@ -27,3 +27,7 @@ func NewRuleGoService(ru *biz.RegulationUsecase, cru *biz.ComponentRegulationUse
 func (s *RuleGoService) GetComponents(ctx context.Context, in *v1.GetComponentsReq) (*v1.GetComponentsReply, error) {
 	return s.ru.GetComponents(ctx)
 }
+
+func (s *RuleGoService) GetRegulationsList(ctx context.Context, in *v1.GetRegulationsListReq) (*v1.GetRegulationsListReply, error) {
+	return s.ru.GetRegulationsList(ctx, in)
+}
