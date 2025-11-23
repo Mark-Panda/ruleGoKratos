@@ -58,7 +58,7 @@ func (r *runLogRepo) FindOneRunLog(ctx context.Context, where map[string]interfa
 	return &res, err
 }
 
-func (r *runLogRepo) FindListRunLog(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.RunLog, int64, error) {
+func (r *runLogRepo) FindListRunLog(ctx context.Context, where string, page int, pageSize int) ([]entity.RunLog, int64, error) {
 	info := dao.NewRunLog()
 	results, count, err := info.FindList(ctx, where, page, pageSize)
 	if err != nil {

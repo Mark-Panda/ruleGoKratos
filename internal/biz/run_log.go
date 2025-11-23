@@ -13,7 +13,7 @@ type RunLogRepo interface {
 	UpdateRunLog(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
 	DeleteRunLog(ctx context.Context, where map[string]interface{}) error
 	FindOneRunLog(ctx context.Context, where map[string]interface{}) (*entity.RunLog, error)
-	FindListRunLog(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.RunLog, int64, error)
+	FindListRunLog(ctx context.Context, where string, page int, pageSize int) ([]entity.RunLog, int64, error)
 	FindAllRunLog(ctx context.Context, where map[string]interface{}) ([]entity.RunLog, error)
 }
 
@@ -31,4 +31,8 @@ func NewRunLogUsecase(repo RunLogRepo, logger log.Logger) *RunLogUsecase {
 // CreateRunLog creates a RunLog, and returns the new RunLog.
 func (uc *RunLogUsecase) CreateRunLog(ctx context.Context) error {
 	return nil
+}
+
+func (uc *RunLogUsecase) List(ctx context.Context, page, size int, params string) ([]entity.RunLog, int64, error) {
+	return uc.repo.FindListRunLog(ctx, params, page, size)
 }

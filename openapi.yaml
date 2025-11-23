@@ -3,8 +3,7 @@
 
 openapi: 3.0.3
 info:
-    title: RuleGo API
-    description: The greeting service definition.
+    title: ""
     version: 0.0.1
 paths:
     /api/v1/components:
@@ -20,6 +19,37 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetComponentsReply'
+    /api/v1/logs/runs:
+        get:
+            tags:
+                - RunLog
+            operationId: RunLog_ListRunLogs
+            parameters:
+                - name: size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: startTime
+                  in: query
+                  schema:
+                    type: string
+                - name: endTime
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListRunLogsReply'
     /api/v1/rules:
         get:
             tags:
@@ -315,6 +345,39 @@ components:
                     type: object
                 metadata:
                     type: object
+        rulego.v1.ListRunLogsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.RunLogItem'
+                page:
+                    type: integer
+                    format: int32
+                size:
+                    type: integer
+                    format: int32
+                total:
+                    type: integer
+                    format: int32
+        rulego.v1.RunLogItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                ruleChain:
+                    type: object
+                metadata:
+                    type: object
+                startTs:
+                    type: string
+                endTs:
+                    type: string
+                logs:
+                    type: array
+                    items:
+                        type: object
         rulego.v1.UpdateRuleChainBaseInfoReply:
             type: object
             properties: {}
@@ -349,3 +412,6 @@ components:
                     type: object
 tags:
     - name: RuleGo
+      description: The greeting service definition.
+    - name: RunLog
+      description: The greeting service definition.

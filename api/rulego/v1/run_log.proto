@@ -11,6 +11,32 @@ option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
 // The greeting service definition.
 service RunLog {
-  
-  
+  rpc ListRunLogs (ListRunLogsRequest) returns (ListRunLogsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/logs/runs"
+    };
+  }
+}
+
+message ListRunLogsRequest {
+  int32 size = 1;
+  int32 page = 2;
+  string startTime = 3;
+  string endTime = 4;
+}
+
+message ListRunLogsReply {
+  repeated RunLogItem items = 1;
+  int32 page = 2;
+  int32 size = 3;
+  int32 total = 4;
+}
+
+message RunLogItem {
+  string id = 1;
+  google.protobuf.Struct ruleChain = 2;
+  google.protobuf.Struct metadata = 3;
+  int64 startTs = 4;
+  int64 endTs = 5;
+  repeated google.protobuf.Struct logs = 6;
 }

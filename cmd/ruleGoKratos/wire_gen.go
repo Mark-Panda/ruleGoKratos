@@ -45,8 +45,9 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 	mdWorkflowUsecase := biz.NewMdWorkflowUsecase(mdWorkflowRepo, logger)
 	runLogUsecase := biz.NewRunLogUsecase(runLogRepo, logger)
 	ruleGoService := service.NewRuleGoService(ruleChainUsecase, componentRegulationUsecase, componentUseRuleUsecase, mdWorkflowUsecase, runLogUsecase)
-	grpcServer := server.NewGRPCServer(confServer, ruleGoService, logger)
-	httpServer := server.NewHTTPServer(confServer, ruleGoService, logger)
+	runLogService := service.NewRunLogService(runLogUsecase)
+	grpcServer := server.NewGRPCServer(confServer, ruleGoService, runLogService, logger)
+	httpServer := server.NewHTTPServer(confServer, ruleGoService, runLogService, logger)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup()

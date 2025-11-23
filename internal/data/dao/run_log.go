@@ -47,7 +47,7 @@ func (r *RunLog) FindOne(ctx context.Context, where map[string]interface{}) (*Ru
 }
 
 // 分页查询
-func (r *RunLog) FindList(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]RunLog, int64, error) {
+func (r *RunLog) FindList(ctx context.Context, where string, page int, pageSize int) ([]RunLog, int64, error) {
 	var runLogs []RunLog
 	var count int64
 	db := db.WithContext(ctx).Model(r).Where(where)
