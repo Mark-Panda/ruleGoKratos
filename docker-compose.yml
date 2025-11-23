@@ -1,4 +1,3 @@
-version: "3"
 services:
   
   workflow:
@@ -21,9 +20,13 @@ services:
       - DATA_POSTGRES_PASSWORD=rulego
       - DATA_POSTGRES_DBNAME=rulego
       - DATA_POSTGRES_SSLMODE=disable
+      - DATA_POSTGRES_TIMEZONE=Asia/Shanghai
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
     restart: always
+    networks:
+      - rulego
   postgres-db:
     image: postgres:15
     restart: always
@@ -32,8 +35,18 @@ services:
     environment:
       POSTGRES_USER: rulego
       POSTGRES_PASSWORD: rulego
+      POSTGRES_DB: rulego
     volumes:
       - ./volumes/database_postgres-data:/var/lib/postgresql/data
       - ./sql/:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rulego -d rulego"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rulego
+
 networks:
   rulego:
+    driver: bridge
