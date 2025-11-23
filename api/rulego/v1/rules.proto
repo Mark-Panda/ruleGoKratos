@@ -64,6 +64,13 @@ service RuleGo {
     };
   }
 
+  // 删除规则链
+  rpc DeleteRuleChain(DeleteRuleChainReq) returns(DeleteRuleChainReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/rules/{id}"
+    };
+  }
+
   // 保存规则链附加信息
   rpc UpdateRuleChainBaseInfo(UpdateRuleChainBaseInfoReq) returns(UpdateRuleChainBaseInfoReply) {
     option (google.api.http) = {
@@ -153,4 +160,11 @@ message UpdateRuleChainBaseInfoReq {
 }
 
 message UpdateRuleChainBaseInfoReply {
+}
+
+message DeleteRuleChainReq {
+  string id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message DeleteRuleChainReply {
 }

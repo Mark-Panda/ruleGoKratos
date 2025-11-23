@@ -39,7 +39,7 @@ func (r *RuleChain) Updates(ctx context.Context, date map[string]interface{}, wh
 }
 
 func (r *RuleChain) Delete(ctx context.Context, where map[string]interface{}) error {
-	return db.WithContext(ctx).Model(r).Where(where).Delete(r).Error
+	return db.WithContext(ctx).Model(r).Where(where).Unscoped().Delete(r).Error
 }
 
 func (r *RuleChain) FindOne(ctx context.Context, where map[string]interface{}) (*RuleChain, error) {

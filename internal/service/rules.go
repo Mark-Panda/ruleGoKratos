@@ -54,3 +54,7 @@ func (s *RuleGoService) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.Upda
 func (s *RuleGoService) UpsertRuleChain(ctx context.Context, in *v1.UpsertRuleChainReq) (*v1.UpsertRuleChainReply, error) {
 	return s.rc.UpsertRuleChain(ctx, in)
 }
+
+func (s *RuleGoService) DeleteRuleChain(ctx context.Context, in *v1.DeleteRuleChainReq) (*v1.DeleteRuleChainReply, error) {
+	return s.rc.DeleteRuleChain(ctx, in)
+}

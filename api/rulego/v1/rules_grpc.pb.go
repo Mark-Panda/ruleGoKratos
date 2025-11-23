@@ -36,6 +36,8 @@ type RuleGoClient interface {
 	DeployRuleChain(ctx context.Context, in *DeployRuleChainReq, opts ...grpc.CallOption) (*DeployRuleChainReply, error)
 	// 新增或修改规则链
 	UpsertRuleChain(ctx context.Context, in *UpsertRuleChainReq, opts ...grpc.CallOption) (*UpsertRuleChainReply, error)
+	// 删除规则链
+	DeleteRuleChain(ctx context.Context, in *DeleteRuleChainReq, opts ...grpc.CallOption) (*DeleteRuleChainReply, error)
 	// 保存规则链附加信息
 	UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRuleChainBaseInfoReq, opts ...grpc.CallOption) (*UpdateRuleChainBaseInfoReply, error)
 }
@@ -111,6 +113,15 @@ func (c *ruleGoClient) UpsertRuleChain(ctx context.Context, in *UpsertRuleChainR
 	return out, nil
 }
 
+func (c *ruleGoClient) DeleteRuleChain(ctx context.Context, in *DeleteRuleChainReq, opts ...grpc.CallOption) (*DeleteRuleChainReply, error) {
+	out := new(DeleteRuleChainReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/DeleteRuleChain", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *ruleGoClient) UpdateRuleChainBaseInfo(ctx context.Context, in *UpdateRuleChainBaseInfoReq, opts ...grpc.CallOption) (*UpdateRuleChainBaseInfoReply, error) {
 	out := new(UpdateRuleChainBaseInfoReply)
 	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/UpdateRuleChainBaseInfo", in, out, opts...)
@@ -138,6 +149,8 @@ type RuleGoServer interface {
 	DeployRuleChain(context.Context, *DeployRuleChainReq) (*DeployRuleChainReply, error)
 	// 新增或修改规则链
 	UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error)
+	// 删除规则链
+	DeleteRuleChain(context.Context, *DeleteRuleChainReq) (*DeleteRuleChainReply, error)
 	// 保存规则链附加信息
 	UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error)
 	mustEmbedUnimplementedRuleGoServer()
@@ -167,6 +180,9 @@ func (UnimplementedRuleGoServer) DeployRuleChain(context.Context, *DeployRuleCha
 }
 func (UnimplementedRuleGoServer) UpsertRuleChain(context.Context, *UpsertRuleChainReq) (*UpsertRuleChainReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpsertRuleChain not implemented")
+}
+func (UnimplementedRuleGoServer) DeleteRuleChain(context.Context, *DeleteRuleChainReq) (*DeleteRuleChainReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteRuleChain not implemented")
 }
 func (UnimplementedRuleGoServer) UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRuleChainBaseInfo not implemented")
@@ -310,6 +326,24 @@ func _RuleGo_UpsertRuleChain_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuleGo_DeleteRuleChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRuleChainReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).DeleteRuleChain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.RuleGo/DeleteRuleChain",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).DeleteRuleChain(ctx, req.(*DeleteRuleChainReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RuleGo_UpdateRuleChainBaseInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateRuleChainBaseInfoReq)
 	if err := dec(in); err != nil {
@@ -362,6 +396,10 @@ var RuleGo_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpsertRuleChain",
 			Handler:    _RuleGo_UpsertRuleChain_Handler,
+		},
+		{
+			MethodName: "DeleteRuleChain",
+			Handler:    _RuleGo_DeleteRuleChain_Handler,
 		},
 		{
 			MethodName: "UpdateRuleChainBaseInfo",

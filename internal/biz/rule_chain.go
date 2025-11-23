@@ -524,3 +524,16 @@ func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.U
 
 	return &v1.UpdateRuleChainBaseInfoReply{}, nil
 }
+
+func (s *RuleChainUsecase) DeleteRuleChain(ctx context.Context, in *v1.DeleteRuleChainReq) (*v1.DeleteRuleChainReply, error) {
+	// 先从引擎中删除
+	s.ruleEngine.Del(in.Id)
+	// 再从数据库删除
+	err := s.ruleChainRepo.DeleteRuleChain(ctx, map[string]interface{}{
+		"rule_chain_id": in.Id,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &v1.DeleteRuleChainReply{}, nil
+}

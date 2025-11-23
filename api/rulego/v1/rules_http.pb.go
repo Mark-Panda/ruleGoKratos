@@ -19,6 +19,7 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationRuleGoDeleteRuleChain = "/rulego.v1.RuleGo/DeleteRuleChain"
 const OperationRuleGoDeployRuleChain = "/rulego.v1.RuleGo/DeployRuleChain"
 const OperationRuleGoExecuteRuleChain = "/rulego.v1.RuleGo/ExecuteRuleChain"
 const OperationRuleGoExecuteRuleChainSync = "/rulego.v1.RuleGo/ExecuteRuleChainSync"
@@ -29,6 +30,7 @@ const OperationRuleGoUpdateRuleChainBaseInfo = "/rulego.v1.RuleGo/UpdateRuleChai
 const OperationRuleGoUpsertRuleChain = "/rulego.v1.RuleGo/UpsertRuleChain"
 
 type RuleGoHTTPServer interface {
+	DeleteRuleChain(context.Context, *DeleteRuleChainReq) (*DeleteRuleChainReply, error)
 	DeployRuleChain(context.Context, *DeployRuleChainReq) (*DeployRuleChainReply, error)
 	ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error)
 	ExecuteRuleChainSync(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainSyncReply, error)
@@ -48,6 +50,7 @@ func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r.POST("/api/v1/rules/{id}/execute/{msgType}", _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/operate/{type}", _RuleGo_DeployRuleChain0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}", _RuleGo_UpsertRuleChain0_HTTP_Handler(srv))
+	r.DELETE("/api/v1/rules/{id}", _RuleGo_DeleteRuleChain0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/base", _RuleGo_UpdateRuleChainBaseInfo0_HTTP_Handler(srv))
 }
 
@@ -199,6 +202,28 @@ func _RuleGo_UpsertRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.C
 	}
 }
 
+func _RuleGo_DeleteRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in DeleteRuleChainReq
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoDeleteRuleChain)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.DeleteRuleChain(ctx, req.(*DeleteRuleChainReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*DeleteRuleChainReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _RuleGo_UpdateRuleChainBaseInfo0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in UpdateRuleChainBaseInfoReq
@@ -222,6 +247,7 @@ func _RuleGo_UpdateRuleChainBaseInfo0_HTTP_Handler(srv RuleGoHTTPServer) func(ct
 }
 
 type RuleGoHTTPClient interface {
+	DeleteRuleChain(ctx context.Context, req *DeleteRuleChainReq, opts ...http.CallOption) (rsp *DeleteRuleChainReply, err error)
 	DeployRuleChain(ctx context.Context, req *DeployRuleChainReq, opts ...http.CallOption) (rsp *DeployRuleChainReply, err error)
 	ExecuteRuleChain(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainReply, err error)
 	ExecuteRuleChainSync(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainSyncReply, err error)
@@ -238,6 +264,19 @@ type RuleGoHTTPClientImpl struct {
 
 func NewRuleGoHTTPClient(client *http.Client) RuleGoHTTPClient {
 	return &RuleGoHTTPClientImpl{client}
+}
+
+func (c *RuleGoHTTPClientImpl) DeleteRuleChain(ctx context.Context, in *DeleteRuleChainReq, opts ...http.CallOption) (*DeleteRuleChainReply, error) {
+	var out DeleteRuleChainReply
+	pattern := "/api/v1/rules/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationRuleGoDeleteRuleChain))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
 }
 
 func (c *RuleGoHTTPClientImpl) DeployRuleChain(ctx context.Context, in *DeployRuleChainReq, opts ...http.CallOption) (*DeployRuleChainReply, error) {

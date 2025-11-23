@@ -97,6 +97,24 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReply'
+        delete:
+            tags:
+                - RuleGo
+            description: 删除规则链
+            operationId: RuleGo_DeleteRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteRuleChainReply'
     /api/v1/rules/{id}/base:
         post:
             tags:
@@ -230,6 +248,9 @@ components:
                  The JSON representation for `ListValue` is JSON array.
         google.protobuf.Value:
             description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        rulego.v1.DeleteRuleChainReply:
+            type: object
+            properties: {}
         rulego.v1.DeployRuleChainReply:
             type: object
             properties: {}

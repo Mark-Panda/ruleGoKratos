@@ -2028,3 +2028,218 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = UpdateRuleChainBaseInfoReplyValidationError{}
+
+// Validate checks the field values on DeleteRuleChainReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *DeleteRuleChainReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on DeleteRuleChainReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// DeleteRuleChainReqMultiError, or nil if none found.
+func (m *DeleteRuleChainReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *DeleteRuleChainReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if utf8.RuneCountInString(m.GetId()) < 1 {
+		err := DeleteRuleChainReqValidationError{
+			field:  "Id",
+			reason: "value length must be at least 1 runes",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		return DeleteRuleChainReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// DeleteRuleChainReqMultiError is an error wrapping multiple validation errors
+// returned by DeleteRuleChainReq.ValidateAll() if the designated constraints
+// aren't met.
+type DeleteRuleChainReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m DeleteRuleChainReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m DeleteRuleChainReqMultiError) AllErrors() []error { return m }
+
+// DeleteRuleChainReqValidationError is the validation error returned by
+// DeleteRuleChainReq.Validate if the designated constraints aren't met.
+type DeleteRuleChainReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e DeleteRuleChainReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e DeleteRuleChainReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e DeleteRuleChainReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e DeleteRuleChainReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e DeleteRuleChainReqValidationError) ErrorName() string {
+	return "DeleteRuleChainReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e DeleteRuleChainReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sDeleteRuleChainReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = DeleteRuleChainReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = DeleteRuleChainReqValidationError{}
+
+// Validate checks the field values on DeleteRuleChainReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *DeleteRuleChainReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on DeleteRuleChainReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// DeleteRuleChainReplyMultiError, or nil if none found.
+func (m *DeleteRuleChainReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *DeleteRuleChainReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if len(errors) > 0 {
+		return DeleteRuleChainReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// DeleteRuleChainReplyMultiError is an error wrapping multiple validation
+// errors returned by DeleteRuleChainReply.ValidateAll() if the designated
+// constraints aren't met.
+type DeleteRuleChainReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m DeleteRuleChainReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m DeleteRuleChainReplyMultiError) AllErrors() []error { return m }
+
+// DeleteRuleChainReplyValidationError is the validation error returned by
+// DeleteRuleChainReply.Validate if the designated constraints aren't met.
+type DeleteRuleChainReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e DeleteRuleChainReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e DeleteRuleChainReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e DeleteRuleChainReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e DeleteRuleChainReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e DeleteRuleChainReplyValidationError) ErrorName() string {
+	return "DeleteRuleChainReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e DeleteRuleChainReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sDeleteRuleChainReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = DeleteRuleChainReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = DeleteRuleChainReplyValidationError{}
