@@ -245,14 +245,16 @@ func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteR
 	return res, nil
 }
 
-func (s *RuleChainUsecase) addWithOnRuleChainCompleted(ctx context.Context) types.RuleContextOption {
+func (s *RuleChainUsecase) addWithOnRuleChainCompleted(ctt context.Context) types.RuleContextOption {
 	return types.WithOnRuleChainCompleted(func(ctn types.RuleContext, snapshot types.RuleChainRunSnapshot) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		nodelogs, _ := json.Marshal(snapshot.Logs)
 		additionalInfo, _ := json.Marshal(snapshot.AdditionalInfo)
 		ruleChainInfo, _ := json.Marshal(snapshot.RuleChain)
 		metadata, _ := json.Marshal(snapshot.Metadata)
 		t := time.Now()
-		s.runLogRepo.CreateRunLog(ctx, &entity.RunLog{
+		err := s.runLogRepo.CreateRunLog(ctx, &entity.RunLog{
 			RunID:          snapshot.Id,
 			ChainID:        snapshot.RuleChain.RuleChain.ID,
 			ChainName:      snapshot.RuleChain.RuleChain.Name,
@@ -265,6 +267,9 @@ func (s *RuleChainUsecase) addWithOnRuleChainCompleted(ctx context.Context) type
 			CreatedAt:      &t,
 			UpdatedAt:      &t,
 		})
+		if err != nil {
+			s.log.Errorf(`create run log failed, error: %v`, err)
+		}
 	})
 }
 

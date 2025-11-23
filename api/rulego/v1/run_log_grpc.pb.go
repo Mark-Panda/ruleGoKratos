@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RunLogClient interface {
 	ListRunLogs(ctx context.Context, in *ListRunLogsRequest, opts ...grpc.CallOption) (*ListRunLogsReply, error)
+	GetRunLogByMsgId(ctx context.Context, in *GetRunLogByMsgIdReq, opts ...grpc.CallOption) (*RunLogItem, error)
 }
 
 type runLogClient struct {
@@ -42,11 +43,21 @@ func (c *runLogClient) ListRunLogs(ctx context.Context, in *ListRunLogsRequest, 
 	return out, nil
 }
 
+func (c *runLogClient) GetRunLogByMsgId(ctx context.Context, in *GetRunLogByMsgIdReq, opts ...grpc.CallOption) (*RunLogItem, error) {
+	out := new(RunLogItem)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RunLog/GetRunLogByMsgId", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RunLogServer is the server API for RunLog service.
 // All implementations must embed UnimplementedRunLogServer
 // for forward compatibility
 type RunLogServer interface {
 	ListRunLogs(context.Context, *ListRunLogsRequest) (*ListRunLogsReply, error)
+	GetRunLogByMsgId(context.Context, *GetRunLogByMsgIdReq) (*RunLogItem, error)
 	mustEmbedUnimplementedRunLogServer()
 }
 
@@ -56,6 +67,9 @@ type UnimplementedRunLogServer struct {
 
 func (UnimplementedRunLogServer) ListRunLogs(context.Context, *ListRunLogsRequest) (*ListRunLogsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRunLogs not implemented")
+}
+func (UnimplementedRunLogServer) GetRunLogByMsgId(context.Context, *GetRunLogByMsgIdReq) (*RunLogItem, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRunLogByMsgId not implemented")
 }
 func (UnimplementedRunLogServer) mustEmbedUnimplementedRunLogServer() {}
 
@@ -88,6 +102,24 @@ func _RunLog_ListRunLogs_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RunLog_GetRunLogByMsgId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRunLogByMsgIdReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunLogServer).GetRunLogByMsgId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.RunLog/GetRunLogByMsgId",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunLogServer).GetRunLogByMsgId(ctx, req.(*GetRunLogByMsgIdReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RunLog_ServiceDesc is the grpc.ServiceDesc for RunLog service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -98,6 +130,10 @@ var RunLog_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRunLogs",
 			Handler:    _RunLog_ListRunLogs_Handler,
+		},
+		{
+			MethodName: "GetRunLogByMsgId",
+			Handler:    _RunLog_GetRunLogByMsgId_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

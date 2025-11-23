@@ -16,6 +16,15 @@ service RunLog {
       get: "/api/v1/logs/runs"
     };
   }
+  rpc GetRunLogByMsgId (GetRunLogByMsgIdReq) returns (RunLogItem) {
+    option (google.api.http) = {
+      get: "/api/v1/logs/runs/msgId"
+    };
+  }
+}
+
+message GetRunLogByMsgIdReq {
+  string msgId = 1 [(validate.rules).string.min_len = 1];
 }
 
 message ListRunLogsRequest {

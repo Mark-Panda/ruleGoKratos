@@ -19,15 +19,18 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationRunLogGetRunLogByMsgId = "/rulego.v1.RunLog/GetRunLogByMsgId"
 const OperationRunLogListRunLogs = "/rulego.v1.RunLog/ListRunLogs"
 
 type RunLogHTTPServer interface {
+	GetRunLogByMsgId(context.Context, *GetRunLogByMsgIdReq) (*RunLogItem, error)
 	ListRunLogs(context.Context, *ListRunLogsRequest) (*ListRunLogsReply, error)
 }
 
 func RegisterRunLogHTTPServer(s *http.Server, srv RunLogHTTPServer) {
 	r := s.Route("/")
 	r.GET("/api/v1/logs/runs", _RunLog_ListRunLogs0_HTTP_Handler(srv))
+	r.GET("/api/v1/logs/runs/msgId", _RunLog_GetRunLogByMsgId0_HTTP_Handler(srv))
 }
 
 func _RunLog_ListRunLogs0_HTTP_Handler(srv RunLogHTTPServer) func(ctx http.Context) error {
@@ -49,7 +52,27 @@ func _RunLog_ListRunLogs0_HTTP_Handler(srv RunLogHTTPServer) func(ctx http.Conte
 	}
 }
 
+func _RunLog_GetRunLogByMsgId0_HTTP_Handler(srv RunLogHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetRunLogByMsgIdReq
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRunLogGetRunLogByMsgId)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetRunLogByMsgId(ctx, req.(*GetRunLogByMsgIdReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RunLogItem)
+		return ctx.Result(200, reply)
+	}
+}
+
 type RunLogHTTPClient interface {
+	GetRunLogByMsgId(ctx context.Context, req *GetRunLogByMsgIdReq, opts ...http.CallOption) (rsp *RunLogItem, err error)
 	ListRunLogs(ctx context.Context, req *ListRunLogsRequest, opts ...http.CallOption) (rsp *ListRunLogsReply, err error)
 }
 
@@ -59,6 +82,19 @@ type RunLogHTTPClientImpl struct {
 
 func NewRunLogHTTPClient(client *http.Client) RunLogHTTPClient {
 	return &RunLogHTTPClientImpl{client}
+}
+
+func (c *RunLogHTTPClientImpl) GetRunLogByMsgId(ctx context.Context, in *GetRunLogByMsgIdReq, opts ...http.CallOption) (*RunLogItem, error) {
+	var out RunLogItem
+	pattern := "/api/v1/logs/runs/msgId"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationRunLogGetRunLogByMsgId))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
 }
 
 func (c *RunLogHTTPClientImpl) ListRunLogs(ctx context.Context, in *ListRunLogsRequest, opts ...http.CallOption) (*ListRunLogsReply, error) {

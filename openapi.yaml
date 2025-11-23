@@ -50,6 +50,23 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.ListRunLogsReply'
+    /api/v1/logs/runs/msgId:
+        get:
+            tags:
+                - RunLog
+            operationId: RunLog_GetRunLogByMsgId
+            parameters:
+                - name: msgId
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.RunLogItem'
     /api/v1/rules:
         get:
             tags:

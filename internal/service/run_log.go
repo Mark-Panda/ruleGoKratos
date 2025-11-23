@@ -8,6 +8,7 @@ import (
 
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz"
+	"ruleGoKratos/internal/biz/entity"
 
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -44,36 +45,7 @@ func (s *RunLogService) ListRunLogs(ctx context.Context, req *v1.ListRunLogsRequ
 
 	items := make([]*v1.RunLogItem, 0, len(list))
 	for _, item := range list {
-		var ruleChainMap map[string]interface{}
-		if item.RuleChainInfo != "" {
-			_ = json.Unmarshal([]byte(item.RuleChainInfo), &ruleChainMap)
-		}
-		ruleChainStruct, _ := structpb.NewStruct(ruleChainMap)
-
-		var metadataMap map[string]interface{}
-		if item.Metadata != "" {
-			_ = json.Unmarshal([]byte(item.Metadata), &metadataMap)
-		}
-		metadataStruct, _ := structpb.NewStruct(metadataMap)
-
-		var logsList []map[string]interface{}
-		if item.NodeLog != "" {
-			_ = json.Unmarshal([]byte(item.NodeLog), &logsList)
-		}
-		logsStructs := make([]*structpb.Struct, 0, len(logsList))
-		for _, logItem := range logsList {
-			logStruct, _ := structpb.NewStruct(logItem)
-			logsStructs = append(logsStructs, logStruct)
-		}
-
-		items = append(items, &v1.RunLogItem{
-			Id:        strconv.FormatInt(item.ID, 10),
-			RuleChain: ruleChainStruct,
-			Metadata:  metadataStruct,
-			StartTs:   item.StartTs,
-			EndTs:     item.EndTs,
-			Logs:      logsStructs,
-		})
+		items = append(items, toRunLogItem(&item))
 	}
 
 	return &v1.ListRunLogsReply{
@@ -82,4 +54,48 @@ func (s *RunLogService) ListRunLogs(ctx context.Context, req *v1.ListRunLogsRequ
 		Size:  int32(size),
 		Total: int32(total),
 	}, nil
+}
+
+func (s *RunLogService) GetRunLogByMsgId(ctx context.Context, req *v1.GetRunLogByMsgIdReq) (*v1.RunLogItem, error) {
+	item, err := s.rlu.FindOne(ctx, req.MsgId)
+	if err != nil {
+		return nil, err
+	}
+	return toRunLogItem(item), nil
+}
+
+func toRunLogItem(item *entity.RunLog) *v1.RunLogItem {
+	if item == nil {
+		return nil
+	}
+	var ruleChainMap map[string]interface{}
+	if item.RuleChainInfo != "" {
+		_ = json.Unmarshal([]byte(item.RuleChainInfo), &ruleChainMap)
+	}
+	ruleChainStruct, _ := structpb.NewStruct(ruleChainMap)
+
+	var metadataMap map[string]interface{}
+	if item.Metadata != "" {
+		_ = json.Unmarshal([]byte(item.Metadata), &metadataMap)
+	}
+	metadataStruct, _ := structpb.NewStruct(metadataMap)
+
+	var logsList []map[string]interface{}
+	if item.NodeLog != "" {
+		_ = json.Unmarshal([]byte(item.NodeLog), &logsList)
+	}
+	logsStructs := make([]*structpb.Struct, 0, len(logsList))
+	for _, logItem := range logsList {
+		logStruct, _ := structpb.NewStruct(logItem)
+		logsStructs = append(logsStructs, logStruct)
+	}
+
+	return &v1.RunLogItem{
+		Id:        strconv.FormatInt(item.ID, 10),
+		RuleChain: ruleChainStruct,
+		Metadata:  metadataStruct,
+		StartTs:   item.StartTs,
+		EndTs:     item.EndTs,
+		Logs:      logsStructs,
+	}
 }

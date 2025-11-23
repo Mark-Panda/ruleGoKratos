@@ -36,3 +36,7 @@ func (uc *RunLogUsecase) CreateRunLog(ctx context.Context) error {
 func (uc *RunLogUsecase) List(ctx context.Context, page, size int, params string) ([]entity.RunLog, int64, error) {
 	return uc.repo.FindListRunLog(ctx, params, page, size)
 }
+
+func (uc *RunLogUsecase) FindOne(ctx context.Context, msgId string) (*entity.RunLog, error) {
+	return uc.repo.FindOneRunLog(ctx, map[string]interface{}{"run_id": msgId})
+}
