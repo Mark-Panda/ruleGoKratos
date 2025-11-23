@@ -22,8 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RuleGoClient interface {
-	// Sends a greeting
-	SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
+	// 获取所有组件
+	GetComponents(ctx context.Context, in *GetComponentsReq, opts ...grpc.CallOption) (*GetComponentsReply, error)
 }
 
 type ruleGoClient struct {
@@ -34,9 +34,9 @@ func NewRuleGoClient(cc grpc.ClientConnInterface) RuleGoClient {
 	return &ruleGoClient{cc}
 }
 
-func (c *ruleGoClient) SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error) {
-	out := new(HelloReply)
-	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/SayHello", in, out, opts...)
+func (c *ruleGoClient) GetComponents(ctx context.Context, in *GetComponentsReq, opts ...grpc.CallOption) (*GetComponentsReply, error) {
+	out := new(GetComponentsReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.RuleGo/GetComponents", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +47,8 @@ func (c *ruleGoClient) SayHello(ctx context.Context, in *HelloRequest, opts ...g
 // All implementations must embed UnimplementedRuleGoServer
 // for forward compatibility
 type RuleGoServer interface {
-	// Sends a greeting
-	SayHello(context.Context, *HelloRequest) (*HelloReply, error)
+	// 获取所有组件
+	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 	mustEmbedUnimplementedRuleGoServer()
 }
 
@@ -56,8 +56,8 @@ type RuleGoServer interface {
 type UnimplementedRuleGoServer struct {
 }
 
-func (UnimplementedRuleGoServer) SayHello(context.Context, *HelloRequest) (*HelloReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
+func (UnimplementedRuleGoServer) GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetComponents not implemented")
 }
 func (UnimplementedRuleGoServer) mustEmbedUnimplementedRuleGoServer() {}
 
@@ -72,20 +72,20 @@ func RegisterRuleGoServer(s grpc.ServiceRegistrar, srv RuleGoServer) {
 	s.RegisterService(&RuleGo_ServiceDesc, srv)
 }
 
-func _RuleGo_SayHello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HelloRequest)
+func _RuleGo_GetComponents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetComponentsReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RuleGoServer).SayHello(ctx, in)
+		return srv.(RuleGoServer).GetComponents(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/rulego.v1.RuleGo/SayHello",
+		FullMethod: "/rulego.v1.RuleGo/GetComponents",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuleGoServer).SayHello(ctx, req.(*HelloRequest))
+		return srv.(RuleGoServer).GetComponents(ctx, req.(*GetComponentsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -98,8 +98,8 @@ var RuleGo_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RuleGoServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SayHello",
-			Handler:    _RuleGo_SayHello_Handler,
+			MethodName: "GetComponents",
+			Handler:    _RuleGo_GetComponents_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

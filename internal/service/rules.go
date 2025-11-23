@@ -24,6 +24,6 @@ func NewRuleGoService(ru *biz.RegulationUsecase, cru *biz.ComponentRegulationUse
 }
 
 // SayHello implements helloworld.GreeterServer.
-func (s *RuleGoService) SayHello(ctx context.Context, in *v1.HelloRequest) (*v1.HelloReply, error) {
-	return nil, nil
+func (s *RuleGoService) GetComponents(ctx context.Context, in *v1.GetComponentsReq) (*v1.GetComponentsReply, error) {
+	return s.ru.GetComponents(ctx)
 }

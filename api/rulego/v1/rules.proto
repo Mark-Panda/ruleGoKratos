@@ -3,26 +3,29 @@ syntax = "proto3";
 package rulego.v1;
 
 import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
 
 // The greeting service definition.
 service RuleGo {
-  // Sends a greeting
-  rpc SayHello (HelloRequest) returns (HelloReply) {
+  
+  // 获取所有组件
+  rpc GetComponents(GetComponentsReq) returns(GetComponentsReply) {
     option (google.api.http) = {
-      get: "/rulego/{name}"
+      get: "/api/v1/components"
     };
   }
 }
 
-// The request message containing the user's name.
-message HelloRequest {
-  string name = 1;
+
+
+message GetComponentsReq {}
+
+message GetComponentsReply {
+	google.protobuf.ListValue endpoints = 1;
+	google.protobuf.ListValue nodes = 2;
+	google.protobuf.Struct builtins = 3;
 }
 
-// The response message containing the greetings
-message HelloReply {
-  string message = 1;
-}

@@ -19,41 +19,38 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
-const OperationRuleGoSayHello = "/rulego.v1.RuleGo/SayHello"
+const OperationRuleGoGetComponents = "/rulego.v1.RuleGo/GetComponents"
 
 type RuleGoHTTPServer interface {
-	SayHello(context.Context, *HelloRequest) (*HelloReply, error)
+	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 }
 
 func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r := s.Route("/")
-	r.GET("/rulego/{name}", _RuleGo_SayHello0_HTTP_Handler(srv))
+	r.GET("/api/v1/components", _RuleGo_GetComponents0_HTTP_Handler(srv))
 }
 
-func _RuleGo_SayHello0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+func _RuleGo_GetComponents0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
-		var in HelloRequest
+		var in GetComponentsReq
 		if err := ctx.BindQuery(&in); err != nil {
 			return err
 		}
-		if err := ctx.BindVars(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationRuleGoSayHello)
+		http.SetOperation(ctx, OperationRuleGoGetComponents)
 		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.SayHello(ctx, req.(*HelloRequest))
+			return srv.GetComponents(ctx, req.(*GetComponentsReq))
 		})
 		out, err := h(ctx, &in)
 		if err != nil {
 			return err
 		}
-		reply := out.(*HelloReply)
+		reply := out.(*GetComponentsReply)
 		return ctx.Result(200, reply)
 	}
 }
 
 type RuleGoHTTPClient interface {
-	SayHello(ctx context.Context, req *HelloRequest, opts ...http.CallOption) (rsp *HelloReply, err error)
+	GetComponents(ctx context.Context, req *GetComponentsReq, opts ...http.CallOption) (rsp *GetComponentsReply, err error)
 }
 
 type RuleGoHTTPClientImpl struct {
@@ -64,11 +61,11 @@ func NewRuleGoHTTPClient(client *http.Client) RuleGoHTTPClient {
 	return &RuleGoHTTPClientImpl{client}
 }
 
-func (c *RuleGoHTTPClientImpl) SayHello(ctx context.Context, in *HelloRequest, opts ...http.CallOption) (*HelloReply, error) {
-	var out HelloReply
-	pattern := "/rulego/{name}"
+func (c *RuleGoHTTPClientImpl) GetComponents(ctx context.Context, in *GetComponentsReq, opts ...http.CallOption) (*GetComponentsReply, error) {
+	var out GetComponentsReply
+	pattern := "/api/v1/components"
 	path := binding.EncodeURL(pattern, in, true)
-	opts = append(opts, http.Operation(OperationRuleGoSayHello))
+	opts = append(opts, http.Operation(OperationRuleGoGetComponents))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {
