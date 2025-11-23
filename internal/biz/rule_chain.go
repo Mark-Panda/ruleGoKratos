@@ -347,6 +347,8 @@ func (s *RuleChainUsecase) deployRuleChain(ctx context.Context, chainId string) 
 	if err != nil {
 		return err
 	}
+	// 必须设置为false，否则会报错 给规则引擎的时候如果这个值是true 会报the rule chain has been disabled  规则引擎按这个字段标识是否加载
+	ruleChain.RuleChain.Disabled = false
 	if def, err = json.Marshal(ruleChain); err != nil {
 		return err
 	} else {
