@@ -1,0 +1,607 @@
+{
+  "nodes": [
+    {
+      "id": "wbCsuZNkhv2RIO2M",
+      "type": "endpoint/schedule",
+      "meta": {
+        "position": {
+          "x": -374,
+          "y": 68
+        }
+      },
+      "data": {
+        "title": "定时任务_1",
+        "positionType": "header",
+        "inputsValues": {
+          "cron": {
+            "type": "constant",
+            "content": "*/10 * * * * *"
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "required": [
+            "cron"
+          ],
+          "properties": {
+            "cron": {
+              "type": "string",
+              "extra": {
+                "label": "Cron 表达式",
+                "description": "支持秒级（六位）Quartz 表达式，例如：*/10 * * * * *"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "_fQeFGIBkiOnmjud",
+      "type": "jsTransform",
+      "meta": {
+        "position": {
+          "x": 81,
+          "y": -41
+        }
+      },
+      "data": {
+        "title": "Transform",
+        "positionType": "middle",
+        "script": {
+          "language": "javascript",
+          "content": "// 函数签名不可修改\nasync function Transform(msg, metadata, msgType, dataType) {\n  // 默认返回值：原样返回四项内容（可在函数体内修改）\n  msg.data = \"aaa\"\n  return {\n    msg: msg,           // 转换后的消息内容\n    metadata: metadata, // 转换后的元数据\n    msgType: msgType,   // 转换后的消息类型\n    dataType: dataType  // 可选：转换后的数据类型\n  };\n}"
+        }
+      }
+    },
+    {
+      "id": "BmeKbRcReaKFMVPy",
+      "type": "jsFilter",
+      "meta": {
+        "position": {
+          "x": 538,
+          "y": -182
+        }
+      },
+      "data": {
+        "title": "JsFilter_1",
+        "positionType": "middle",
+        "script": {
+          "language": "javascript",
+          "content": "// 函数签名不可修改\nasync function Filter(msg, metadata, msgType, dataType) {\n  return msg.kname > 50;\n}"
+        }
+      }
+    },
+    {
+      "id": "DzZVw6JQ0HvK_1Z8",
+      "type": "llm",
+      "meta": {
+        "position": {
+          "x": 994.0887230028583,
+          "y": -351.75085663692823
+        }
+      },
+      "data": {
+        "title": "LLM_1",
+        "positionType": "middle",
+        "inputsValues": {
+          "model": {
+            "type": "constant",
+            "content": "gpt-3.5-turbo"
+          },
+          "key": {
+            "type": "constant",
+            "content": "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "url": {
+            "type": "constant",
+            "content": "https://mock-ai-url/api/v3"
+          },
+          "systemPrompt": {
+            "type": "template",
+            "content": "# Role\nYou are an AI assistant.\n"
+          },
+          "userPrompt": {
+            "type": "template",
+            "content": "ssss"
+          },
+          "temperature": {
+            "type": "constant",
+            "content": 0.5
+          },
+          "topP": {
+            "type": "constant",
+            "content": 0.5
+          },
+          "maxTokens": {
+            "type": "constant",
+            "content": 100000,
+            "schema": {
+              "type": "number",
+              "extra": {
+                "label": "最大输出长度"
+              }
+            }
+          },
+          "responseFormat": {
+            "type": "constant",
+            "content": "text"
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "required": [
+            "model",
+            "key",
+            "url",
+            "temperature",
+            "userPrompt",
+            "topP",
+            "maxTokens",
+            "responseFormat"
+          ],
+          "properties": {
+            "model": {
+              "type": "string",
+              "extra": {
+                "label": "模型名称"
+              }
+            },
+            "key": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "systemPrompt": {
+              "type": "string",
+              "extra": {
+                "label": "系统提示词",
+                "formComponent": "prompt-editor"
+              }
+            },
+            "userPrompt": {
+              "type": "string",
+              "extra": {
+                "label": "用户提示词",
+                "formComponent": "prompt-editor"
+              }
+            },
+            "maxTokens": {
+              "type": "number",
+              "extra": {
+                "label": "最大输出长度"
+              }
+            },
+            "responseFormat": {
+              "type": "string",
+              "enum": [
+                "text",
+                "json_object",
+                "json_schema"
+              ],
+              "extra": {
+                "label": "输出格式",
+                "formComponent": "enum-select"
+              }
+            },
+            "temperature": {
+              "type": "number"
+            },
+            "topP": {
+              "type": "number"
+            }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "id": "K9hssqiP0XRcaDoU",
+      "type": "flow",
+      "meta": {
+        "position": {
+          "x": 1456.1130297177297,
+          "y": -214.76482658558496
+        }
+      },
+      "data": {
+        "title": "子规则链_1",
+        "positionType": "middle",
+        "inputsValues": {
+          "targetId": {
+            "type": "constant",
+            "content": "cHwSEOcgCAI1"
+          },
+          "extend": {
+            "type": "constant",
+            "content": false
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "required": [
+            "targetId"
+          ],
+          "properties": {
+            "targetId": {
+              "type": "string",
+              "extra": {
+                "formComponent": "rule-select",
+                "label": "子规则链ID"
+              }
+            },
+            "extend": {
+              "type": "boolean",
+              "extra": {
+                "label": "继承模式"
+              },
+              "default": {
+                "type": "constant",
+                "content": false
+              }
+            }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "id": "RrHwqTX9KIKaCxF-",
+      "type": "switch",
+      "meta": {
+        "position": {
+          "x": 1941.090512359782,
+          "y": -274.11899753064233
+        }
+      },
+      "data": {
+        "title": "条件列表",
+        "positionType": "middle",
+        "cases": [
+          {
+            "key": "case_eqOkcz",
+            "groups": [
+              {
+                "operator": "and",
+                "rows": [
+                  {
+                    "type": "expression",
+                    "content": "",
+                    "left": {
+                      "type": "constant",
+                      "content": "msg.aa"
+                    },
+                    "operator": "==",
+                    "right": {
+                      "type": "constant",
+                      "content": "222"
+                    }
+                  }
+                ]
+              },
+              {
+                "operator": "and",
+                "rows": [
+                  {
+                    "type": "expression",
+                    "content": "",
+                    "left": {
+                      "type": "constant",
+                      "content": "msg.aa"
+                    },
+                    "operator": "==",
+                    "right": {
+                      "type": "constant",
+                      "content": "33"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "key": "case_1LBzS6",
+            "groups": [
+              {
+                "operator": "and",
+                "rows": [
+                  {
+                    "type": "expression",
+                    "content": "",
+                    "left": {
+                      "type": "constant",
+                      "content": "msg.cc"
+                    },
+                    "operator": "!=",
+                    "right": {
+                      "type": "constant",
+                      "content": "444"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "65gMQhEOy4mj_5TD",
+      "type": "for",
+      "meta": {
+        "position": {
+          "x": 2429.3899625803674,
+          "y": -390.1340734477834
+        }
+      },
+      "data": {
+        "title": "For_1",
+        "positionType": "middle",
+        "operationMode": {
+          "type": "constant",
+          "content": 0
+        },
+        "nodeId": {
+          "type": "constant",
+          "content": "KeGy_eoCySGCWoM9"
+        },
+        "note": {
+          "type": "constant",
+          "content": "3"
+        }
+      },
+      "blocks": [
+        {
+          "id": "block_start_BMdBq",
+          "type": "block-start",
+          "meta": {
+            "position": {
+              "x": 32,
+              "y": 143.33070828571567
+            }
+          },
+          "data": {
+            "positionType": "middle"
+          }
+        },
+        {
+          "id": "block_end_-3hu0",
+          "type": "block-end",
+          "meta": {
+            "position": {
+              "x": 1088.827406331477,
+              "y": 174.84999999999997
+            }
+          },
+          "data": {
+            "positionType": "middle"
+          }
+        },
+        {
+          "id": "KeGy_eoCySGCWoM9",
+          "type": "dbClient",
+          "meta": {
+            "position": {
+              "x": 363.92600136266714,
+              "y": 33.53477164482672
+            }
+          },
+          "data": {
+            "title": "查询数据库_1",
+            "positionType": "middle",
+            "inputsValues": {
+              "sql": {
+                "type": "template",
+                "content": "sss"
+              },
+              "params": {
+                "type": "constant",
+                "content": []
+              },
+              "getOne": {
+                "type": "constant",
+                "content": false
+              },
+              "poolSize": {
+                "type": "constant",
+                "content": 0
+              },
+              "driverName": {
+                "type": "constant",
+                "content": "mysql"
+              },
+              "dsn": {
+                "type": "constant",
+                "content": "sss",
+                "schema": {
+                  "type": "string",
+                  "extra": {
+                    "description": "数据库连接字符串，支持模板变量。示例：mysql 使用 user:pass@tcp(host:port)/db?charset=utf8mb4；postgres 使用 postgres://user:pass@host:port/db?sslmode=disable"
+                  }
+                }
+              }
+            },
+            "inputs": {
+              "type": "object",
+              "required": [
+                "sql",
+                "getOne",
+                "poolSize",
+                "driverName",
+                "dsn"
+              ],
+              "properties": {
+                "driverName": {
+                  "type": "string",
+                  "enum": [
+                    "mysql",
+                    "postgres"
+                  ],
+                  "extra": {
+                    "label": "数据库驱动名称",
+                    "formComponent": "enum-select"
+                  }
+                },
+                "dsn": {
+                  "type": "string",
+                  "extra": {
+                    "description": "数据库连接字符串，支持模板变量。示例：mysql 使用 user:pass@tcp(host:port)/db?charset=utf8mb4；postgres 使用 postgres://user:pass@host:port/db?sslmode=disable"
+                  }
+                },
+                "sql": {
+                  "type": "string",
+                  "extra": {
+                    "label": "sql",
+                    "formComponent": "prompt-editor",
+                    "description": "可以使用 ${metadata.key} 或者 ${msg.key}变量，SQL参数允许使用 ? 占位符"
+                  }
+                },
+                "params": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "extra": {
+                    "label": "参数列表",
+                    "description": "可以使用 ${metadata.key} 读取元数据中的变量或者使用 ${msg.key} 读取消息负荷中的变量进行替换",
+                    "formComponent": "array-editor"
+                  }
+                },
+                "getOne": {
+                  "type": "boolean",
+                  "extra": {
+                    "label": "是否仅返回一条记录",
+                    "description": "开启后仅返回第一条记录；关闭返回全部记录"
+                  }
+                },
+                "poolSize": {
+                  "type": "number",
+                  "extra": {
+                    "label": "连接池大小",
+                    "description": "并发量大时适当增大；留空或 0 使用默认值"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "G57GbxSeh-P8dT0S",
+          "type": "restApiCall",
+          "meta": {
+            "position": {
+              "x": 823.6491743983115,
+              "y": 0
+            }
+          },
+          "data": {
+            "title": "HTTP_1",
+            "positionType": "middle",
+            "api": {
+              "method": "GET",
+              "url": {
+                "type": "template",
+                "content": "sssss"
+              }
+            },
+            "body": {
+              "bodyType": "JSON"
+            },
+            "outputs": {
+              "type": "object",
+              "properties": {}
+            },
+            "timeout": {
+              "timeout": 10000,
+              "retryTimes": 1
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeID": "block_start_BMdBq",
+          "targetNodeID": "KeGy_eoCySGCWoM9"
+        },
+        {
+          "sourceNodeID": "G57GbxSeh-P8dT0S",
+          "targetNodeID": "block_end_-3hu0",
+          "sourcePortID": "Success"
+        },
+        {
+          "sourceNodeID": "KeGy_eoCySGCWoM9",
+          "targetNodeID": "G57GbxSeh-P8dT0S",
+          "sourcePortID": "Success"
+        }
+      ]
+    },
+    {
+      "id": "BQbt0-p7KHE0Pz9i",
+      "type": "log",
+      "meta": {
+        "position": {
+          "x": 3902.994924459967,
+          "y": -485.662015236015
+        }
+      },
+      "data": {
+        "title": "Log_1",
+        "positionType": "middle",
+        "script": {
+          "language": "javascript",
+          "content": "// 函数签名不可修改\nasync function String(msg, metadata, msgType, dataType) {\n  return 'Incoming message:\n' + JSON.stringify(msg) + '\nIncoming metadata:\n' + JSON.stringify(metadata);\n}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "sourceNodeID": "wbCsuZNkhv2RIO2M",
+      "targetNodeID": "_fQeFGIBkiOnmjud"
+    },
+    {
+      "sourceNodeID": "_fQeFGIBkiOnmjud",
+      "targetNodeID": "BmeKbRcReaKFMVPy",
+      "sourcePortID": "Success"
+    },
+    {
+      "sourceNodeID": "BmeKbRcReaKFMVPy",
+      "targetNodeID": "DzZVw6JQ0HvK_1Z8",
+      "sourcePortID": "True"
+    },
+    {
+      "sourceNodeID": "DzZVw6JQ0HvK_1Z8",
+      "targetNodeID": "K9hssqiP0XRcaDoU",
+      "sourcePortID": "Success"
+    },
+    {
+      "sourceNodeID": "K9hssqiP0XRcaDoU",
+      "targetNodeID": "RrHwqTX9KIKaCxF-",
+      "sourcePortID": "Success"
+    },
+    {
+      "sourceNodeID": "RrHwqTX9KIKaCxF-",
+      "targetNodeID": "65gMQhEOy4mj_5TD",
+      "sourcePortID": "case_eqOkcz"
+    },
+    {
+      "sourceNodeID": "65gMQhEOy4mj_5TD",
+      "targetNodeID": "BQbt0-p7KHE0Pz9i"
+    }
+  ],
+  "globalVariable": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "userId": {
+        "type": "string"
+      }
+    }
+  }
+}
