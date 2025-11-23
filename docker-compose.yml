@@ -1,0 +1,39 @@
+version: "3"
+services:
+  
+  workflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.all
+    container_name: workflow
+    ports:
+      - "8081:8081"
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - ./configs:/data/conf
+    environment:
+      # - SERVER_HTTP_ADDR=0.0.0.0:8000
+      # - SERVER_GRPC_ADDR=0.0.0.0:9000
+      - DATA_POSTGRES_HOST=postgres-db
+      - DATA_POSTGRES_PORT=5432
+      - DATA_POSTGRES_USER=rulego
+      - DATA_POSTGRES_PASSWORD=rulego
+      - DATA_POSTGRES_DBNAME=rulego
+      - DATA_POSTGRES_SSLMODE=disable
+    depends_on:
+      - postgres-db
+    restart: always
+  postgres-db:
+    image: postgres:15
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: rulego
+      POSTGRES_PASSWORD: rulego
+    volumes:
+      - ./volumes/database_postgres-data:/var/lib/postgresql/data
+      - ./sql/:/docker-entrypoint-initdb.d/
+networks:
+  rulego:

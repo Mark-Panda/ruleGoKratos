@@ -11,10 +11,10 @@ data:
     read_timeout: 0.2s
     write_timeout: 0.2s
   postgres:
-    host: 127.0.0.1
-    port: 5432
-    user: rulego
-    password: rulego
-    dbname: rulego
-    sslmode: disable
-    timezone: Asia/Shanghai
+    host: ${DATA_POSTGRES_HOST}
+    port: ${DATA_POSTGRES_PORT}
+    user: ${DATA_POSTGRES_USER}
+    password: ${DATA_POSTGRES_PASSWORD}
+    dbname: ${DATA_POSTGRES_DBNAME}
+    sslmode: ${DATA_POSTGRES_SSLMODE}
+    timezone: ${DATA_POSTGRES_TIMEZONE}
