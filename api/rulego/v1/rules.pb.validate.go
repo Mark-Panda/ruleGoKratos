@@ -1513,6 +1513,10 @@ func (m *UpdateRuleChainBaseInfoReq) validate(all bool) error {
 
 	// no validation rules for Root
 
+	// no validation rules for Disabled
+
+	// no validation rules for DebugMode
+
 	if all {
 		switch v := interface{}(m.GetAdditionalInfo()).(type) {
 		case interface{ ValidateAll() error }:
@@ -1536,6 +1540,35 @@ func (m *UpdateRuleChainBaseInfoReq) validate(all bool) error {
 		if err := v.Validate(); err != nil {
 			return UpdateRuleChainBaseInfoReqValidationError{
 				field:  "AdditionalInfo",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if all {
+		switch v := interface{}(m.GetConfiguration()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpdateRuleChainBaseInfoReqValidationError{
+					field:  "Configuration",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpdateRuleChainBaseInfoReqValidationError{
+					field:  "Configuration",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetConfiguration()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UpdateRuleChainBaseInfoReqValidationError{
+				field:  "Configuration",
 				reason: "embedded message failed validation",
 				cause:  err,
 			}

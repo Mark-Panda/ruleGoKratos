@@ -37,7 +37,7 @@ var ProviderSet = wire.NewSet(
 	NewComponentRegulationRepo,
 	NewMdWorkflowRepo,
 	NewRunLogRepo,
-	NewRegulationRepo,
+	NewRuleChainRepo,
 )
 
 var DBClient *gorm.DB

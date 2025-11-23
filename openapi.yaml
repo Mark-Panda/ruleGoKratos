@@ -281,7 +281,13 @@ components:
                     type: string
                 root:
                     type: boolean
+                disabled:
+                    type: boolean
+                debugMode:
+                    type: boolean
                 additionalInfo:
+                    type: object
+                configuration:
                     type: object
         rulego.v1.UpsertRuleChainReply:
             type: object

@@ -4,13 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strconv"
-	"time"
-
-	"google.golang.org/protobuf/types/known/structpb"
-
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/entity"
+	"strconv"
+	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/rulego/rulego"
@@ -20,29 +17,28 @@ import (
 	"github.com/rulego/rulego/endpoint"
 	"github.com/rulego/rulego/engine"
 	"github.com/rulego/rulego/node_pool"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type RegulationRepo interface {
-	CreateRegulation(ctx context.Context, regulation *entity.Regulation) error
-	UpdateRegulation(ctx context.Context, where map[string]interface{}, date map[string]interface{}) error
-	DeleteRegulation(ctx context.Context, where map[string]interface{}) error
-	FindOneRegulation(ctx context.Context, where map[string]interface{}) (*entity.Regulation, error)
-	FindListRegulation(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.Regulation, int64, error)
-	FindAllRegulation(ctx context.Context, where map[string]interface{}) ([]entity.Regulation, error)
+type RuleChainRepo interface {
+	CreateRuleChain(ctx context.Context, ruleChain *entity.RuleChain) error
+	UpdateRuleChain(ctx context.Context, where map[string]interface{}, data map[string]interface{}) error
+	DeleteRuleChain(ctx context.Context, where map[string]interface{}) error
+	FindOneRuleChain(ctx context.Context, where map[string]interface{}) (*entity.RuleChain, error)
+	FindListRuleChain(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.RuleChain, int64, error)
+	FindAllRuleChain(ctx context.Context, where map[string]interface{}) ([]entity.RuleChain, error)
 }
 
-// RegulationUsecase is a Regulation usecase.
-type RegulationUsecase struct {
-	repo       RegulationRepo
-	runLogRepo RunLogRepo
-	log        *log.Helper
-	ruleEngine *rulego.RuleGo
-	ruleConfig *types.Config
+type RuleChainUsecase struct {
+	ruleChainRepo RuleChainRepo
+	log           *log.Helper
+	runLogRepo    RunLogRepo
+	ruleEngine    *rulego.RuleGo
+	ruleConfig    *types.Config
 }
 
-// NewRegulationUsecase new a Regulation usecase.
-func NewRegulationUsecase(repo RegulationRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config) *RegulationUsecase {
-	return &RegulationUsecase{repo: repo, runLogRepo: runLogRepo, log: log.NewHelper(logger), ruleEngine: ruleEngine, ruleConfig: ruleConfig}
+func NewRuleChainUsecase(ruleChainRepo RuleChainRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config) *RuleChainUsecase {
+	return &RuleChainUsecase{ruleChainRepo: ruleChainRepo, runLogRepo: runLogRepo, log: log.NewHelper(logger), ruleEngine: ruleEngine, ruleConfig: ruleConfig}
 }
 
 // 辅助函数：将任意对象转换为 *structpb.Struct
@@ -71,7 +67,7 @@ func toListValuePb(v interface{}) (*structpb.ListValue, error) {
 	return structpb.NewList(l)
 }
 
-func (s *RegulationUsecase) GetComponents(ctx context.Context) (*v1.GetComponentsReply, error) {
+func (s *RuleChainUsecase) GetComponents(ctx context.Context) (*v1.GetComponentsReply, error) {
 	componentRegistry := engine.NewCustomComponentRegistry(engine.Registry, new(engine.RuleComponentRegistry))
 	ruleConfig := rulego.NewConfig(types.WithDefaultPool(),
 		// types.WithLogger(logger.Logger),
@@ -120,7 +116,7 @@ func (s *RegulationUsecase) GetComponents(ctx context.Context) (*v1.GetComponent
 	}, nil
 }
 
-func (s *RegulationUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRegulationsListReq) (*v1.GetRegulationsListReply, error) {
+func (s *RuleChainUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRegulationsListReq) (*v1.GetRegulationsListReply, error) {
 	res := &v1.GetRegulationsListReply{}
 	var page = 1
 	var size = 20
@@ -150,7 +146,7 @@ func (s *RegulationUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRe
 	if in.Keywords != "" {
 		query["name"] = in.Keywords
 	}
-	regulations, total, err := s.repo.FindListRegulation(ctx, query, page, size)
+	regulations, total, err := s.ruleChainRepo.FindListRuleChain(ctx, query, page, size)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +154,7 @@ func (s *RegulationUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRe
 	res.Size = int32(size)
 	res.Total = int32(total)
 	for _, regulation := range regulations {
-		var ruleChainLi types.RuleChain
-		err := json.Unmarshal([]byte(regulation.RuleConfig), &ruleChainLi)
+		ruleChainLi, err := s.RuleChainDBToRuleChain(&regulation)
 		if err != nil {
 			return nil, err
 		}
@@ -172,11 +167,34 @@ func (s *RegulationUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRe
 	return res, nil
 }
 
-func (s *RegulationUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
+// RuleChainDBToRuleChain 将数据库中的规则链转换为RuleChain
+func (s *RuleChainUsecase) RuleChainDBToRuleChain(ruleChainDB *entity.RuleChain) (*types.RuleChain, error) {
+	var ruleChain types.RuleChain
+	ruleChainInfo := types.RuleChainBaseInfo{
+		ID:        ruleChainDB.RuleChainID,
+		Name:      ruleChainDB.Name,
+		DebugMode: ruleChainDB.DebugMode,
+		Root:      ruleChainDB.Root,
+		Disabled:  ruleChainDB.Disabled,
+	}
+	additionalInfo := map[string]interface{}{}
+	json.Unmarshal([]byte(ruleChainDB.AdditionalInfo), &additionalInfo)
+	ruleChainInfo.AdditionalInfo = additionalInfo
+	configuration := map[string]interface{}{}
+	json.Unmarshal([]byte(ruleChainDB.Configuration), &configuration)
+	ruleChainInfo.Configuration = configuration
+	ruleChainMetadata := types.RuleMetadata{}
+	json.Unmarshal([]byte(ruleChainDB.Metadata), &ruleChainMetadata)
+	ruleChain.RuleChain = ruleChainInfo
+	ruleChain.Metadata = ruleChainMetadata
+	return &ruleChain, nil
+}
+
+func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
 	res := &v1.ExecuteRuleChainReply{}
 	engine, find := s.ruleEngine.Get(in.Id)
 	if !find {
-		return nil, errors.New("rule chain not found")
+		return nil, errors.New("规则链未部署")
 	}
 	data, err := json.Marshal(in.Data)
 	if err != nil {
@@ -192,7 +210,7 @@ func (s *RegulationUsecase) ExecuteRuleChain(ctx context.Context, in *v1.Execute
 	return res, nil
 }
 
-func (s *RegulationUsecase) addWithOnRuleChainCompleted(ctx context.Context) types.RuleContextOption {
+func (s *RuleChainUsecase) addWithOnRuleChainCompleted(ctx context.Context) types.RuleContextOption {
 	return types.WithOnRuleChainCompleted(func(ctn types.RuleContext, snapshot types.RuleChainRunSnapshot) {
 		nodelogs, _ := json.Marshal(snapshot.Logs)
 		additionalInfo, _ := json.Marshal(snapshot.AdditionalInfo)
@@ -215,10 +233,10 @@ func (s *RegulationUsecase) addWithOnRuleChainCompleted(ctx context.Context) typ
 	})
 }
 
-func (s *RegulationUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainSyncReply, error) {
+func (s *RuleChainUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainSyncReply, error) {
 	engine, find := s.ruleEngine.Get(in.Id)
 	if !find {
-		return nil, errors.New("rule chain not found")
+		return nil, errors.New("规则链未部署")
 	}
 	var err error
 	data, err := json.Marshal(in.Data)
@@ -251,7 +269,7 @@ func (s *RegulationUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exe
 	}, nil
 }
 
-func (s *RegulationUsecase) DeployRuleChain(ctx context.Context, in *v1.DeployRuleChainReq) (*v1.DeployRuleChainReply, error) {
+func (s *RuleChainUsecase) DeployRuleChain(ctx context.Context, in *v1.DeployRuleChainReq) (*v1.DeployRuleChainReply, error) {
 	res := &v1.DeployRuleChainReply{}
 	chainId := in.Id
 	if in.Type == "start" {
@@ -273,18 +291,16 @@ func (s *RegulationUsecase) DeployRuleChain(ctx context.Context, in *v1.DeployRu
 }
 
 // 部署上线
-func (s *RegulationUsecase) deployRuleChain(ctx context.Context, chainId string) error {
+func (s *RuleChainUsecase) deployRuleChain(ctx context.Context, chainId string) error {
 	var def []byte
 	var err error
-	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+	regulation, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": chainId,
 	})
 	if err != nil {
 		return err
 	}
-
-	var ruleChain types.RuleChain
-	err = json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+	ruleChain, err := s.RuleChainDBToRuleChain(regulation)
 	if err != nil {
 		return err
 	}
@@ -299,61 +315,43 @@ func (s *RegulationUsecase) deployRuleChain(ctx context.Context, chainId string)
 		}
 		if err != nil {
 			// 下线
-			ruleChain.RuleChain.Disabled = true
-			ruleChainJson, err := json.Marshal(ruleChain)
-			if err != nil {
-				return err
-			}
-			s.repo.UpdateRegulation(ctx, map[string]interface{}{
+			s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
 				"rule_chain_id": chainId,
 			}, map[string]interface{}{
-				"disabled":    true,
-				"rule_config": string(ruleChainJson),
+				"disabled": true,
 			})
 			return err
 		}
 		// 上线
-		ruleChain.RuleChain.Disabled = false
-		ruleChainJson, err := json.Marshal(ruleChain)
-		if err != nil {
-			return err
-		}
-		s.repo.UpdateRegulation(ctx, map[string]interface{}{
+		s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
 			"rule_chain_id": chainId,
 		}, map[string]interface{}{
-			"disabled":    false,
-			"rule_config": string(ruleChainJson),
+			"disabled": false,
 		})
 	}
 	return nil
 }
 
 // 下线
-func (s *RegulationUsecase) stopRuleChain(ctx context.Context, chainId string) error {
+func (s *RuleChainUsecase) stopRuleChain(ctx context.Context, chainId string) error {
 	var err error
-	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+	regulation, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": chainId,
 	})
 	if err != nil {
 		return err
 	}
-	var ruleChain types.RuleChain
-	err = json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+	ruleChain, err := s.RuleChainDBToRuleChain(regulation)
 	if err != nil {
 		return err
 	}
 	s.ruleEngine.Del(chainId)
 	// 下线
 	ruleChain.RuleChain.Disabled = true
-	ruleChainJson, err := json.Marshal(ruleChain)
-	if err != nil {
-		return err
-	}
-	err = s.repo.UpdateRegulation(ctx, map[string]interface{}{
+	err = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": chainId,
 	}, map[string]interface{}{
-		"disabled":    true,
-		"rule_config": string(ruleChainJson),
+		"disabled": true,
 	})
 	if err != nil {
 		return err
@@ -361,7 +359,7 @@ func (s *RegulationUsecase) stopRuleChain(ctx context.Context, chainId string) e
 	return nil
 }
 
-func (s *RegulationUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRuleChainReq) (*v1.UpsertRuleChainReply, error) {
+func (s *RuleChainUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRuleChainReq) (*v1.UpsertRuleChainReply, error) {
 	var ruleChain types.RuleChain
 	if in.RuleChain != nil {
 		b, err := in.RuleChain.MarshalJSON()
@@ -381,64 +379,93 @@ func (s *RegulationUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRu
 			return nil, err
 		}
 	}
-	// Ensure ID matches
-	ruleChain.RuleChain.ID = in.Id
 
-	ruleChainJson, err := json.Marshal(ruleChain)
-	if err != nil {
-		return nil, err
-	}
-
-	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+	ruleChainInfo, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": in.Id,
 	})
 
-	if err == nil && regulation != nil {
+	if err == nil && ruleChainInfo != nil {
 		// Update
-		err = s.repo.UpdateRegulation(ctx, map[string]interface{}{
+		updateData := map[string]interface{}{
+			"name":       ruleChain.RuleChain.Name,
+			"root":       ruleChain.RuleChain.Root,
+			"disabled":   ruleChain.RuleChain.Disabled,
+			"debug_mode": ruleChain.RuleChain.DebugMode,
+		}
+		configuration, err := json.Marshal(ruleChain.RuleChain.Configuration)
+		if err != nil {
+			return nil, err
+		}
+		updateData["configuration"] = string(configuration)
+		metadata, err := json.Marshal(ruleChain.Metadata)
+		if err != nil {
+			return nil, err
+		}
+		updateData["metadata"] = string(metadata)
+		additionalInfo, err := json.Marshal(ruleChain.RuleChain.AdditionalInfo)
+		if err != nil {
+			return nil, err
+		}
+		updateData["additional_info"] = string(additionalInfo)
+		err = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
 			"rule_chain_id": in.Id,
-		}, map[string]interface{}{
-			"rule_config": string(ruleChainJson),
-			"name":        ruleChain.RuleChain.Name,
-			"root":        ruleChain.RuleChain.Root,
-			"disabled":    ruleChain.RuleChain.Disabled,
-		})
+		}, updateData)
 	} else {
 		// Create
 		t := time.Now()
-		reg := &entity.Regulation{
+		reg := &entity.RuleChain{
 			RuleChainID: in.Id,
-			RuleConfig:  string(ruleChainJson),
+			UserName:    "admin",
 			Name:        ruleChain.RuleChain.Name,
 			Root:        ruleChain.RuleChain.Root,
 			Disabled:    ruleChain.RuleChain.Disabled,
+			DebugMode:   ruleChain.RuleChain.DebugMode,
+			RuleVersion: 0,
 			CreatedAt:   &t,
 			UpdatedAt:   &t,
 		}
-		err = s.repo.CreateRegulation(ctx, reg)
+		configuration, err := json.Marshal(ruleChain.RuleChain.Configuration)
+		if err != nil {
+			return nil, err
+		}
+		reg.Configuration = string(configuration)
+		metadata, err := json.Marshal(ruleChain.Metadata)
+		if err != nil {
+			return nil, err
+		}
+		reg.Metadata = string(metadata)
+		additionalInfo, err := json.Marshal(ruleChain.RuleChain.AdditionalInfo)
+		if err != nil {
+			return nil, err
+		}
+		reg.AdditionalInfo = string(additionalInfo)
+		err = s.ruleChainRepo.CreateRuleChain(ctx, reg)
 	}
 
 	if err != nil {
 		return nil, err
 	}
-
 	return &v1.UpsertRuleChainReply{}, nil
 }
 
-func (s *RegulationUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.UpdateRuleChainBaseInfoReq) (*v1.UpdateRuleChainBaseInfoReply, error) {
-	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.UpdateRuleChainBaseInfoReq) (*v1.UpdateRuleChainBaseInfoReply, error) {
+	ruleChainInfo, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": in.Id,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var ruleChain types.RuleChain
-	err = json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+	ruleChain, err := s.RuleChainDBToRuleChain(ruleChainInfo)
 	if err != nil {
 		return nil, err
 	}
-
+	updateData := map[string]interface{}{
+		"name":       in.Name,
+		"root":       in.Root,
+		"disabled":   in.Disabled,
+		"debug_mode": in.DebugMode,
+	}
 	// Update fields
 	if in.Name != "" {
 		ruleChain.RuleChain.Name = in.Name
@@ -449,26 +476,19 @@ func (s *RegulationUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.
 		if err != nil {
 			return nil, err
 		}
-		var additionalInfo map[string]interface{}
-		err = json.Unmarshal(additionalInfoBytes, &additionalInfo)
+		updateData["additional_info"] = string(additionalInfoBytes)
+	}
+	if in.Configuration != nil {
+		configurationBytes, err := in.Configuration.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		ruleChain.RuleChain.AdditionalInfo = additionalInfo
+		updateData["configuration"] = string(configurationBytes)
 	}
-
-	// Marshal back to JSON
-	ruleChainJson, err := json.Marshal(ruleChain)
-	if err != nil {
-		return nil, err
-	}
-
 	// Update DB
-	err = s.repo.UpdateRegulation(ctx, map[string]interface{}{
+	err = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": in.Id,
-	}, map[string]interface{}{
-		"rule_config": string(ruleChainJson),
-	})
+	}, updateData)
 	if err != nil {
 		return nil, err
 	}

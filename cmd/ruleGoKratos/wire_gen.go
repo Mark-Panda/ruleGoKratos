@@ -28,7 +28,7 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 	if err != nil {
 		return nil, nil, err
 	}
-	regulationRepo := data.NewRegulationRepo(dataData, logger)
+	ruleChainRepo := data.NewRuleChainRepo(dataData, logger)
 	runLogRepo := data.NewRunLogRepo(dataData, logger)
 	config := data.NewRuleConfig()
 	ruleGo, err := data.NewRuleEngine(confData, config)
@@ -36,7 +36,7 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 		cleanup()
 		return nil, nil, err
 	}
-	regulationUsecase := biz.NewRegulationUsecase(regulationRepo, runLogRepo, logger, ruleGo, config)
+	ruleChainUsecase := biz.NewRuleChainUsecase(ruleChainRepo, runLogRepo, logger, ruleGo, config)
 	componentRegulationRepo := data.NewComponentRegulationRepo(dataData, logger)
 	componentRegulationUsecase := biz.NewComponentRegulationUsecase(componentRegulationRepo, logger)
 	componentUseRuleRepo := data.NewComponentUseRuleRepo(dataData, logger)
@@ -44,7 +44,7 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 	mdWorkflowRepo := data.NewMdWorkflowRepo(dataData, logger)
 	mdWorkflowUsecase := biz.NewMdWorkflowUsecase(mdWorkflowRepo, logger)
 	runLogUsecase := biz.NewRunLogUsecase(runLogRepo, logger)
-	ruleGoService := service.NewRuleGoService(regulationUsecase, componentRegulationUsecase, componentUseRuleUsecase, mdWorkflowUsecase, runLogUsecase)
+	ruleGoService := service.NewRuleGoService(ruleChainUsecase, componentRegulationUsecase, componentUseRuleUsecase, mdWorkflowUsecase, runLogUsecase)
 	grpcServer := server.NewGRPCServer(confServer, ruleGoService, logger)
 	httpServer := server.NewHTTPServer(confServer, ruleGoService, logger)
 	app := newApp(logger, grpcServer, httpServer)

@@ -57,13 +57,14 @@ service RuleGo {
     };
   }
 
-  // 修改规则链基础信息
+  // 保存规则链附加信息
   rpc UpdateRuleChainBaseInfo(UpdateRuleChainBaseInfoReq) returns(UpdateRuleChainBaseInfoReply) {
     option (google.api.http) = {
       post: "/api/v1/rules/{id}/base",
       body: "*"
     };
   }
+  
 }
 
 message UpsertRuleChainReq {
@@ -129,7 +130,10 @@ message UpdateRuleChainBaseInfoReq {
   string id = 1 [(validate.rules).string.min_len = 1];
   string name = 2;
   bool root = 3;
-  google.protobuf.Struct additionalInfo = 4;
+  bool disabled = 4;
+  bool debugMode = 5;
+  google.protobuf.Struct additionalInfo = 6;
+  google.protobuf.Struct configuration = 7;
 }
 
 message UpdateRuleChainBaseInfoReply {
