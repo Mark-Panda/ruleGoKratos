@@ -63,6 +63,7 @@ paths:
             parameters:
                 - name: id
                   in: path
+                  description: 不能为空
                   required: true
                   schema:
                     type: string
@@ -93,6 +94,7 @@ paths:
             parameters:
                 - name: id
                   in: path
+                  description: 不能为空
                   required: true
                   schema:
                     type: string
@@ -114,6 +116,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReply'
+    /api/v1/rules/{id}/operate/{type}:
+        post:
+            tags:
+                - RuleGo
+            description: 部署或者下线规则链
+            operationId: RuleGo_DeployRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: type
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.DeployRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeployRuleChainReply'
 components:
     schemas:
         google.protobuf.ListValue:
@@ -130,6 +162,16 @@ components:
                  The JSON representation for `ListValue` is JSON array.
         google.protobuf.Value:
             description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        rulego.v1.DeployRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.DeployRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                type:
+                    type: string
         rulego.v1.ExecuteRuleChainReply:
             type: object
             properties: {}
@@ -138,6 +180,7 @@ components:
             properties:
                 id:
                     type: string
+                    description: 不能为空
                 msgType:
                     type: string
                 debugMode:

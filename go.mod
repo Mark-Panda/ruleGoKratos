@@ -2,9 +2,10 @@ module ruleGoKratos
 
 go 1.23.0
 
-toolchain go1.24.1
+// toolchain go1.23.12
 
 require (
+	github.com/envoyproxy/protoc-gen-validate v1.2.1
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/wire v0.6.0

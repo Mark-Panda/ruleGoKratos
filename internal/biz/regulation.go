@@ -37,11 +37,12 @@ type RegulationUsecase struct {
 	runLogRepo RunLogRepo
 	log        *log.Helper
 	ruleEngine *rulego.RuleGo
+	ruleConfig *types.Config
 }
 
 // NewRegulationUsecase new a Regulation usecase.
-func NewRegulationUsecase(repo RegulationRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo) *RegulationUsecase {
-	return &RegulationUsecase{repo: repo, runLogRepo: runLogRepo, log: log.NewHelper(logger), ruleEngine: ruleEngine}
+func NewRegulationUsecase(repo RegulationRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config) *RegulationUsecase {
+	return &RegulationUsecase{repo: repo, runLogRepo: runLogRepo, log: log.NewHelper(logger), ruleEngine: ruleEngine, ruleConfig: ruleConfig}
 }
 
 // 辅助函数：将任意对象转换为 *structpb.Struct
@@ -248,4 +249,114 @@ func (s *RegulationUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exe
 	return &v1.ExecuteRuleChainSyncReply{
 		Data: structPb,
 	}, nil
+}
+
+func (s *RegulationUsecase) DeployRuleChain(ctx context.Context, in *v1.DeployRuleChainReq) (*v1.DeployRuleChainReply, error) {
+	res := &v1.DeployRuleChainReply{}
+	chainId := in.Id
+	if in.Type == "start" {
+		// 部署
+		err := s.deployRuleChain(ctx, chainId)
+		if err != nil {
+			return nil, err
+		}
+	} else if in.Type == "stop" {
+		// 下线
+		err := s.stopRuleChain(ctx, chainId)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("invalid type")
+	}
+	return res, nil
+}
+
+// 部署上线
+func (s *RegulationUsecase) deployRuleChain(ctx context.Context, chainId string) error {
+	var def []byte
+	var err error
+	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+		"rule_chain_id": chainId,
+	})
+	if err != nil {
+		return err
+	}
+
+	var ruleChain types.RuleChain
+	err = json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+	if err != nil {
+		return err
+	}
+	if def, err = json.Marshal(ruleChain); err != nil {
+		return err
+	} else {
+		ruleEngine, ok := s.ruleEngine.Get(chainId)
+		if ok {
+			err = ruleEngine.ReloadSelf(def)
+		} else {
+			_, err = s.ruleEngine.New(chainId, def, rulego.WithConfig(*s.ruleConfig))
+		}
+		if err != nil {
+			// 下线
+			ruleChain.RuleChain.Disabled = true
+			ruleChainJson, err := json.Marshal(ruleChain)
+			if err != nil {
+				return err
+			}
+			s.repo.UpdateRegulation(ctx, map[string]interface{}{
+				"rule_chain_id": chainId,
+			}, map[string]interface{}{
+				"disabled":    true,
+				"rule_config": string(ruleChainJson),
+			})
+			return err
+		}
+		// 上线
+		ruleChain.RuleChain.Disabled = false
+		ruleChainJson, err := json.Marshal(ruleChain)
+		if err != nil {
+			return err
+		}
+		s.repo.UpdateRegulation(ctx, map[string]interface{}{
+			"rule_chain_id": chainId,
+		}, map[string]interface{}{
+			"disabled":    false,
+			"rule_config": string(ruleChainJson),
+		})
+	}
+	return nil
+}
+
+// 下线
+func (s *RegulationUsecase) stopRuleChain(ctx context.Context, chainId string) error {
+	var err error
+	regulation, err := s.repo.FindOneRegulation(ctx, map[string]interface{}{
+		"rule_chain_id": chainId,
+	})
+	if err != nil {
+		return err
+	}
+	var ruleChain types.RuleChain
+	err = json.Unmarshal([]byte(regulation.RuleConfig), &ruleChain)
+	if err != nil {
+		return err
+	}
+	s.ruleEngine.Del(chainId)
+	// 下线
+	ruleChain.RuleChain.Disabled = true
+	ruleChainJson, err := json.Marshal(ruleChain)
+	if err != nil {
+		return err
+	}
+	err = s.repo.UpdateRegulation(ctx, map[string]interface{}{
+		"rule_chain_id": chainId,
+	}, map[string]interface{}{
+		"disabled":    true,
+		"rule_config": string(ruleChainJson),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

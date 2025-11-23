@@ -15,6 +15,7 @@ else
 	API_PROTO_FILES=$(shell find api -name *.proto)
 endif
 
+
 .PHONY: init
 # init env
 init:
@@ -43,6 +44,15 @@ api:
  	       --go-grpc_out=paths=source_relative:. \
 	       --openapi_out=fq_schema_naming=true,default_response=false:. \
 	       $(API_PROTO_FILES)
+
+.PHONY: validate
+# generate validate code
+validate: 
+	protoc --proto_path=. \
+               --proto_path=./third_party \
+               --go_out=paths=source_relative:. \
+               --validate_out=paths=source_relative,lang=go:. \
+               $(API_PROTO_FILES)
 
 .PHONY: build
 # build

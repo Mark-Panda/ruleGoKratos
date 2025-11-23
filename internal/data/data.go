@@ -28,7 +28,17 @@ import (
 )
 
 // ProviderSet is data providers.
-var ProviderSet = wire.NewSet(NewDB, NewData, NewRuleEngine, NewComponentUseRuleRepo, NewComponentRegulationRepo, NewMdWorkflowRepo, NewRunLogRepo, NewRegulationRepo)
+var ProviderSet = wire.NewSet(
+	NewDB,
+	NewData,
+	NewRuleConfig,
+	NewRuleEngine,
+	NewComponentUseRuleRepo,
+	NewComponentRegulationRepo,
+	NewMdWorkflowRepo,
+	NewRunLogRepo,
+	NewRegulationRepo,
+)
 
 var DBClient *gorm.DB
 
@@ -86,19 +96,23 @@ func NewDB(config *conf.Data) (*gorm.DB, error) {
 	return db, nil
 }
 
+func NewRuleConfig() *types.Config {
+	componentRegistry := engine.NewCustomComponentRegistry(engine.Registry, new(engine.RuleComponentRegistry))
+	config := rulego.NewConfig(types.WithDefaultPool(),
+		// types.WithLogger(logger.Logger),
+		types.WithComponentsRegistry(componentRegistry),
+		types.WithNodePool(node_pool.DefaultNodePool))
+	return &config
+}
+
 // 初始化规则引擎
-func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
+func NewRuleEngine(c *conf.Data, ruleConfig *types.Config) (*rulego.RuleGo, error) {
 	var err error
 	// 获取所有的规则链信息
 	var regulations []Regulation
 	if err := DBClient.Table("regulation").Find(&regulations).Error; err != nil {
 		return nil, err
 	}
-	componentRegistry := engine.NewCustomComponentRegistry(engine.Registry, new(engine.RuleComponentRegistry))
-	ruleConfig := rulego.NewConfig(types.WithDefaultPool(),
-		// types.WithLogger(logger.Logger),
-		types.WithComponentsRegistry(componentRegistry),
-		types.WithNodePool(node_pool.DefaultNodePool))
 	pool := rulego.NewRuleGo()
 	// 加载所有规则链
 	for _, regulation := range regulations {
@@ -111,7 +125,7 @@ func NewRuleEngine(c *conf.Data) (*rulego.RuleGo, error) {
 			err = ruleEngine.ReloadSelf([]byte(regulation.RuleConfig))
 		} else {
 			fmt.Println("加载规则链", regulation.RuleChainID)
-			_, err = pool.New(regulation.RuleChainID, []byte(regulation.RuleConfig), rulego.WithConfig(ruleConfig))
+			_, err = pool.New(regulation.RuleChainID, []byte(regulation.RuleConfig), rulego.WithConfig(*ruleConfig))
 			ruleChain.RuleChain.Disabled = false
 			ruleChainJson, err := json.Marshal(ruleChain)
 			if err != nil {

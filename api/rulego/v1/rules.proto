@@ -4,6 +4,7 @@ package rulego.v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
+import "validate/validate.proto";
 
 option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
@@ -40,13 +41,31 @@ service RuleGo {
       body: "*"
     };
   }
+
+  // 部署或者下线规则链
+  rpc DeployRuleChain(DeployRuleChainReq) returns(DeployRuleChainReply) {
+    option (google.api.http) = {
+      post: "/api/v1/rules/{id}/operate/{type}",
+      body: "*"
+    };
+  }
+}
+
+message DeployRuleChainReq {
+  string id = 1 [(validate.rules).string.min_len = 1];
+  string type = 2 [(validate.rules).string.min_len = 1];
+}
+
+message DeployRuleChainReply {
+  
 }
 
 message ExecuteRuleChainReq {
-  string id = 1;
-  string msgType = 2;
+  // 不能为空
+  string id = 1 [(validate.rules).string.min_len = 1];
+  string msgType = 2 [(validate.rules).string.min_len = 1];
   bool debugMode = 3;
-  string msgId = 4;
+  string msgId = 4 [(validate.rules).string.min_len = 1];
   google.protobuf.Struct data = 5;
 }
 

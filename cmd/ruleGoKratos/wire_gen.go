@@ -30,12 +30,13 @@ func wireApp(confServer *conf.Server, confData *conf.Data, logger log.Logger) (*
 	}
 	regulationRepo := data.NewRegulationRepo(dataData, logger)
 	runLogRepo := data.NewRunLogRepo(dataData, logger)
-	ruleGo, err := data.NewRuleEngine(confData)
+	config := data.NewRuleConfig()
+	ruleGo, err := data.NewRuleEngine(confData, config)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	regulationUsecase := biz.NewRegulationUsecase(regulationRepo, runLogRepo, logger, ruleGo)
+	regulationUsecase := biz.NewRegulationUsecase(regulationRepo, runLogRepo, logger, ruleGo, config)
 	componentRegulationRepo := data.NewComponentRegulationRepo(dataData, logger)
 	componentRegulationUsecase := biz.NewComponentRegulationUsecase(componentRegulationRepo, logger)
 	componentUseRuleRepo := data.NewComponentUseRuleRepo(dataData, logger)
