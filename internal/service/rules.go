@@ -31,3 +31,11 @@ func (s *RuleGoService) GetComponents(ctx context.Context, in *v1.GetComponentsR
 func (s *RuleGoService) GetRegulationsList(ctx context.Context, in *v1.GetRegulationsListReq) (*v1.GetRegulationsListReply, error) {
 	return s.ru.GetRegulationsList(ctx, in)
 }
+
+func (s *RuleGoService) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
+	return s.ru.ExecuteRuleChain(ctx, in)
+}
+
+func (s *RuleGoService) ExecuteRuleChainSync(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainSyncReply, error) {
+	return s.ru.ExecuteRuleChainSync(ctx, in)
+}

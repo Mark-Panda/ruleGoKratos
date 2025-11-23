@@ -24,9 +24,39 @@ service RuleGo {
       get: "/api/v1/rules"
     };
   }
+
+  // 异步执行规则链
+  rpc ExecuteRuleChain(ExecuteRuleChainReq) returns(ExecuteRuleChainReply) {
+    option (google.api.http) = {
+      post: "/api/v1/rules/{id}/notify/{msgType}",
+      body: "*"
+    };
+  }
+
+  // 同步执行规则链
+  rpc ExecuteRuleChainSync(ExecuteRuleChainReq) returns(ExecuteRuleChainSyncReply) {
+    option (google.api.http) = {
+      post: "/api/v1/rules/{id}/execute/{msgType}",
+      body: "*"
+    };
+  }
 }
 
+message ExecuteRuleChainReq {
+  string id = 1;
+  string msgType = 2;
+  bool debugMode = 3;
+  string msgId = 4;
+  google.protobuf.Struct data = 5;
+}
 
+message ExecuteRuleChainReply {
+  
+}
+
+message ExecuteRuleChainSyncReply {
+  google.protobuf.Struct data = 1;
+}
 
 message GetComponentsReq {}
 

@@ -19,10 +19,14 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationRuleGoExecuteRuleChain = "/rulego.v1.RuleGo/ExecuteRuleChain"
+const OperationRuleGoExecuteRuleChainSync = "/rulego.v1.RuleGo/ExecuteRuleChainSync"
 const OperationRuleGoGetComponents = "/rulego.v1.RuleGo/GetComponents"
 const OperationRuleGoGetRegulationsList = "/rulego.v1.RuleGo/GetRegulationsList"
 
 type RuleGoHTTPServer interface {
+	ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error)
+	ExecuteRuleChainSync(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainSyncReply, error)
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
 }
@@ -31,6 +35,8 @@ func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r := s.Route("/")
 	r.GET("/api/v1/components", _RuleGo_GetComponents0_HTTP_Handler(srv))
 	r.GET("/api/v1/rules", _RuleGo_GetRegulationsList0_HTTP_Handler(srv))
+	r.POST("/api/v1/rules/{id}/notify/{msgType}", _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv))
+	r.POST("/api/v1/rules/{id}/execute/{msgType}", _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv))
 }
 
 func _RuleGo_GetComponents0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
@@ -71,7 +77,53 @@ func _RuleGo_GetRegulationsList0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx htt
 	}
 }
 
+func _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ExecuteRuleChainReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoExecuteRuleChain)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ExecuteRuleChain(ctx, req.(*ExecuteRuleChainReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ExecuteRuleChainReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ExecuteRuleChainReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoExecuteRuleChainSync)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ExecuteRuleChainSync(ctx, req.(*ExecuteRuleChainReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ExecuteRuleChainSyncReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type RuleGoHTTPClient interface {
+	ExecuteRuleChain(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainReply, err error)
+	ExecuteRuleChainSync(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainSyncReply, err error)
 	GetComponents(ctx context.Context, req *GetComponentsReq, opts ...http.CallOption) (rsp *GetComponentsReply, err error)
 	GetRegulationsList(ctx context.Context, req *GetRegulationsListReq, opts ...http.CallOption) (rsp *GetRegulationsListReply, err error)
 }
@@ -82,6 +134,32 @@ type RuleGoHTTPClientImpl struct {
 
 func NewRuleGoHTTPClient(client *http.Client) RuleGoHTTPClient {
 	return &RuleGoHTTPClientImpl{client}
+}
+
+func (c *RuleGoHTTPClientImpl) ExecuteRuleChain(ctx context.Context, in *ExecuteRuleChainReq, opts ...http.CallOption) (*ExecuteRuleChainReply, error) {
+	var out ExecuteRuleChainReply
+	pattern := "/api/v1/rules/{id}/notify/{msgType}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationRuleGoExecuteRuleChain))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *RuleGoHTTPClientImpl) ExecuteRuleChainSync(ctx context.Context, in *ExecuteRuleChainReq, opts ...http.CallOption) (*ExecuteRuleChainSyncReply, error) {
+	var out ExecuteRuleChainSyncReply
+	pattern := "/api/v1/rules/{id}/execute/{msgType}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationRuleGoExecuteRuleChainSync))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
 }
 
 func (c *RuleGoHTTPClientImpl) GetComponents(ctx context.Context, in *GetComponentsReq, opts ...http.CallOption) (*GetComponentsReply, error) {

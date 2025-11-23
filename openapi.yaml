@@ -54,6 +54,66 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetRegulationsListReply'
+    /api/v1/rules/{id}/execute/{msgType}:
+        post:
+            tags:
+                - RuleGo
+            description: 同步执行规则链
+            operationId: RuleGo_ExecuteRuleChainSync
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: msgType
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainSyncReply'
+    /api/v1/rules/{id}/notify/{msgType}:
+        post:
+            tags:
+                - RuleGo
+            description: 异步执行规则链
+            operationId: RuleGo_ExecuteRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: msgType
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReply'
 components:
     schemas:
         google.protobuf.ListValue:
@@ -70,6 +130,27 @@ components:
                  The JSON representation for `ListValue` is JSON array.
         google.protobuf.Value:
             description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        rulego.v1.ExecuteRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.ExecuteRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                msgType:
+                    type: string
+                debugMode:
+                    type: boolean
+                msgId:
+                    type: string
+                data:
+                    type: object
+        rulego.v1.ExecuteRuleChainSyncReply:
+            type: object
+            properties:
+                data:
+                    type: object
         rulego.v1.GetComponentsReply:
             type: object
             properties:

@@ -3,7 +3,9 @@ package biz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
+	"time"
 
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -32,13 +34,14 @@ type RegulationRepo interface {
 // RegulationUsecase is a Regulation usecase.
 type RegulationUsecase struct {
 	repo       RegulationRepo
+	runLogRepo RunLogRepo
 	log        *log.Helper
 	ruleEngine *rulego.RuleGo
 }
 
 // NewRegulationUsecase new a Regulation usecase.
-func NewRegulationUsecase(repo RegulationRepo, logger log.Logger, ruleEngine *rulego.RuleGo) *RegulationUsecase {
-	return &RegulationUsecase{repo: repo, log: log.NewHelper(logger), ruleEngine: ruleEngine}
+func NewRegulationUsecase(repo RegulationRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo) *RegulationUsecase {
+	return &RegulationUsecase{repo: repo, runLogRepo: runLogRepo, log: log.NewHelper(logger), ruleEngine: ruleEngine}
 }
 
 // 辅助函数：将任意对象转换为 *structpb.Struct
@@ -166,4 +169,83 @@ func (s *RegulationUsecase) GetRegulationsList(ctx context.Context, in *v1.GetRe
 		res.Items = append(res.Items, structPb)
 	}
 	return res, nil
+}
+
+func (s *RegulationUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
+	res := &v1.ExecuteRuleChainReply{}
+	engine, find := s.ruleEngine.Get(in.Id)
+	if !find {
+		return nil, errors.New("rule chain not found")
+	}
+	data, err := json.Marshal(in.Data)
+	if err != nil {
+		return nil, err
+	}
+	msg := types.RuleMsg{
+		Id:       in.MsgId,
+		Data:     types.NewSharedData(string(data)),
+		Type:     in.MsgType,
+		DataType: types.JSON,
+	}
+	engine.OnMsg(msg, s.addWithOnRuleChainCompleted(ctx))
+	return res, nil
+}
+
+func (s *RegulationUsecase) addWithOnRuleChainCompleted(ctx context.Context) types.RuleContextOption {
+	return types.WithOnRuleChainCompleted(func(ctn types.RuleContext, snapshot types.RuleChainRunSnapshot) {
+		nodelogs, _ := json.Marshal(snapshot.Logs)
+		additionalInfo, _ := json.Marshal(snapshot.AdditionalInfo)
+		ruleChainInfo, _ := json.Marshal(snapshot.RuleChain)
+		metadata, _ := json.Marshal(snapshot.Metadata)
+		t := time.Now()
+		s.runLogRepo.CreateRunLog(ctx, &entity.RunLog{
+			RunID:          snapshot.Id,
+			ChainID:        snapshot.RuleChain.RuleChain.ID,
+			ChainName:      snapshot.RuleChain.RuleChain.Name,
+			NodeLog:        string(nodelogs),
+			AdditionalInfo: string(additionalInfo),
+			RuleChainInfo:  string(ruleChainInfo),
+			Metadata:       string(metadata),
+			StartTs:        snapshot.StartTs,
+			EndTs:          snapshot.EndTs,
+			CreatedAt:      &t,
+			UpdatedAt:      &t,
+		})
+	})
+}
+
+func (s *RegulationUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainSyncReply, error) {
+	engine, find := s.ruleEngine.Get(in.Id)
+	if !find {
+		return nil, errors.New("rule chain not found")
+	}
+	var err error
+	data, err := json.Marshal(in.Data)
+	if err != nil {
+		return nil, err
+	}
+	msg := types.RuleMsg{
+		Id:       in.MsgId,
+		Data:     types.NewSharedData(string(data)),
+		Type:     in.MsgType,
+		DataType: types.JSON,
+	}
+	var result string
+	engine.OnMsgAndWait(msg, types.WithOnEnd(func(ctn types.RuleContext, msg types.RuleMsg, err1 error, relationType string) {
+		if err1 != nil {
+			err = err1
+			return
+		}
+		result = msg.GetData()
+	}))
+	if err != nil {
+		return nil, err
+	}
+	structPb, err := toStructPb(result)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.ExecuteRuleChainSyncReply{
+		Data: structPb,
+	}, nil
 }
