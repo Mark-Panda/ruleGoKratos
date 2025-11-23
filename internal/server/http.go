@@ -1,6 +1,7 @@
 package server
 
 import (
+	nethttp "net/http"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/conf"
 	"ruleGoKratos/internal/service"
@@ -16,6 +17,7 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, logger log.Logg
 		http.Middleware(
 			recovery.Recovery(),
 		),
+		http.Filter(corsFilter),
 	}
 	if c.Http.Network != "" {
 		opts = append(opts, http.Network(c.Http.Network))
@@ -29,4 +31,17 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, logger log.Logg
 	srv := http.NewServer(opts...)
 	v1.RegisterRuleGoHTTPServer(srv, rules)
 	return srv
+}
+
+func corsFilter(h nethttp.Handler) nethttp.Handler {
+	return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Access-Token, X-Requested-With")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(nethttp.StatusNoContent)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
 }
