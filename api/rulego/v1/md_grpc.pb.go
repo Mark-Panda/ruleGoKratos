@@ -7,7 +7,10 @@
 package v1
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,6 +22,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MdWorkflowClient interface {
+	List(ctx context.Context, in *ListMdRequest, opts ...grpc.CallOption) (*ListMdReply, error)
+	Update(ctx context.Context, in *UpdateMdRequest, opts ...grpc.CallOption) (*MdItem, error)
+	Create(ctx context.Context, in *CreateMdRequest, opts ...grpc.CallOption) (*MdItem, error)
 }
 
 type mdWorkflowClient struct {
@@ -29,10 +35,40 @@ func NewMdWorkflowClient(cc grpc.ClientConnInterface) MdWorkflowClient {
 	return &mdWorkflowClient{cc}
 }
 
+func (c *mdWorkflowClient) List(ctx context.Context, in *ListMdRequest, opts ...grpc.CallOption) (*ListMdReply, error) {
+	out := new(ListMdReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.MdWorkflow/List", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mdWorkflowClient) Update(ctx context.Context, in *UpdateMdRequest, opts ...grpc.CallOption) (*MdItem, error) {
+	out := new(MdItem)
+	err := c.cc.Invoke(ctx, "/rulego.v1.MdWorkflow/Update", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mdWorkflowClient) Create(ctx context.Context, in *CreateMdRequest, opts ...grpc.CallOption) (*MdItem, error) {
+	out := new(MdItem)
+	err := c.cc.Invoke(ctx, "/rulego.v1.MdWorkflow/Create", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MdWorkflowServer is the server API for MdWorkflow service.
 // All implementations must embed UnimplementedMdWorkflowServer
 // for forward compatibility
 type MdWorkflowServer interface {
+	List(context.Context, *ListMdRequest) (*ListMdReply, error)
+	Update(context.Context, *UpdateMdRequest) (*MdItem, error)
+	Create(context.Context, *CreateMdRequest) (*MdItem, error)
 	mustEmbedUnimplementedMdWorkflowServer()
 }
 
@@ -40,6 +76,15 @@ type MdWorkflowServer interface {
 type UnimplementedMdWorkflowServer struct {
 }
 
+func (UnimplementedMdWorkflowServer) List(context.Context, *ListMdRequest) (*ListMdReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedMdWorkflowServer) Update(context.Context, *UpdateMdRequest) (*MdItem, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
+}
+func (UnimplementedMdWorkflowServer) Create(context.Context, *CreateMdRequest) (*MdItem, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
+}
 func (UnimplementedMdWorkflowServer) mustEmbedUnimplementedMdWorkflowServer() {}
 
 // UnsafeMdWorkflowServer may be embedded to opt out of forward compatibility for this service.
@@ -53,13 +98,80 @@ func RegisterMdWorkflowServer(s grpc.ServiceRegistrar, srv MdWorkflowServer) {
 	s.RegisterService(&MdWorkflow_ServiceDesc, srv)
 }
 
+func _MdWorkflow_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MdWorkflowServer).List(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.MdWorkflow/List",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MdWorkflowServer).List(ctx, req.(*ListMdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MdWorkflow_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MdWorkflowServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.MdWorkflow/Update",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MdWorkflowServer).Update(ctx, req.(*UpdateMdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MdWorkflow_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MdWorkflowServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.MdWorkflow/Create",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MdWorkflowServer).Create(ctx, req.(*CreateMdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MdWorkflow_ServiceDesc is the grpc.ServiceDesc for MdWorkflow service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MdWorkflow_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "rulego.v1.MdWorkflow",
 	HandlerType: (*MdWorkflowServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "api/rulego/v1/md.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "List",
+			Handler:    _MdWorkflow_List_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _MdWorkflow_Update_Handler,
+		},
+		{
+			MethodName: "Create",
+			Handler:    _MdWorkflow_Create_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "api/rulego/v1/md.proto",
 }

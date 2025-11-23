@@ -11,6 +11,65 @@ option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
 // The greeting service definition.
 service Component {
-  
-  
+  rpc ListComponentUseRule (ListComponentUseRuleRequest) returns (ListComponentUseRuleReply) {
+    option (google.api.http) = {
+      get: "/api/v1/componentUseRule/page"
+    };
+  }
+  rpc UpdateComponentUseRule (UpdateComponentUseRuleRequest) returns (UpdateComponentUseRuleReply) {
+    option (google.api.http) = {
+      post: "/api/v1/componentUseRule/update"
+      body: "*"
+    };
+  }
+  rpc CreateComponentUseRule (CreateComponentUseRuleRequest) returns (CreateComponentUseRuleReply) {
+    option (google.api.http) = {
+      post: "/api/v1/componentUseRule/create"
+      body: "*"
+    };
+  }
+}
+
+message CreateComponentUseRuleRequest {
+  string componentName = 1;
+  string componentType = 2;
+  bool disabled = 3;
+  string useDesc = 4;
+  string useRuleDesc = 5;
+}
+
+message CreateComponentUseRuleReply {
+}
+
+message UpdateComponentUseRuleRequest {
+  int64 id = 1;
+  string componentName = 2;
+  string componentType = 3;
+  bool disabled = 4;
+  string useDesc = 5;
+  string useRuleDesc = 6;
+}
+
+message UpdateComponentUseRuleReply {
+}
+
+message ListComponentUseRuleRequest {
+  int32 page = 1;
+  int32 size = 2;
+}
+
+message ListComponentUseRuleReply {
+  repeated ComponentUseRuleItem list = 1;
+  int64 total = 2;
+}
+
+message ComponentUseRuleItem {
+  int64 id = 1;
+  string componentName = 2;
+  string componentType = 3;
+  bool disabled = 4;
+  string useDesc = 5;
+  string useRuleDesc = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
 }

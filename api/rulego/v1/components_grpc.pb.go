@@ -7,7 +7,10 @@
 package v1
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,6 +22,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ComponentClient interface {
+	ListComponentUseRule(ctx context.Context, in *ListComponentUseRuleRequest, opts ...grpc.CallOption) (*ListComponentUseRuleReply, error)
+	UpdateComponentUseRule(ctx context.Context, in *UpdateComponentUseRuleRequest, opts ...grpc.CallOption) (*UpdateComponentUseRuleReply, error)
+	CreateComponentUseRule(ctx context.Context, in *CreateComponentUseRuleRequest, opts ...grpc.CallOption) (*CreateComponentUseRuleReply, error)
 }
 
 type componentClient struct {
@@ -29,10 +35,40 @@ func NewComponentClient(cc grpc.ClientConnInterface) ComponentClient {
 	return &componentClient{cc}
 }
 
+func (c *componentClient) ListComponentUseRule(ctx context.Context, in *ListComponentUseRuleRequest, opts ...grpc.CallOption) (*ListComponentUseRuleReply, error) {
+	out := new(ListComponentUseRuleReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Component/ListComponentUseRule", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *componentClient) UpdateComponentUseRule(ctx context.Context, in *UpdateComponentUseRuleRequest, opts ...grpc.CallOption) (*UpdateComponentUseRuleReply, error) {
+	out := new(UpdateComponentUseRuleReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Component/UpdateComponentUseRule", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *componentClient) CreateComponentUseRule(ctx context.Context, in *CreateComponentUseRuleRequest, opts ...grpc.CallOption) (*CreateComponentUseRuleReply, error) {
+	out := new(CreateComponentUseRuleReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Component/CreateComponentUseRule", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ComponentServer is the server API for Component service.
 // All implementations must embed UnimplementedComponentServer
 // for forward compatibility
 type ComponentServer interface {
+	ListComponentUseRule(context.Context, *ListComponentUseRuleRequest) (*ListComponentUseRuleReply, error)
+	UpdateComponentUseRule(context.Context, *UpdateComponentUseRuleRequest) (*UpdateComponentUseRuleReply, error)
+	CreateComponentUseRule(context.Context, *CreateComponentUseRuleRequest) (*CreateComponentUseRuleReply, error)
 	mustEmbedUnimplementedComponentServer()
 }
 
@@ -40,6 +76,15 @@ type ComponentServer interface {
 type UnimplementedComponentServer struct {
 }
 
+func (UnimplementedComponentServer) ListComponentUseRule(context.Context, *ListComponentUseRuleRequest) (*ListComponentUseRuleReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListComponentUseRule not implemented")
+}
+func (UnimplementedComponentServer) UpdateComponentUseRule(context.Context, *UpdateComponentUseRuleRequest) (*UpdateComponentUseRuleReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateComponentUseRule not implemented")
+}
+func (UnimplementedComponentServer) CreateComponentUseRule(context.Context, *CreateComponentUseRuleRequest) (*CreateComponentUseRuleReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateComponentUseRule not implemented")
+}
 func (UnimplementedComponentServer) mustEmbedUnimplementedComponentServer() {}
 
 // UnsafeComponentServer may be embedded to opt out of forward compatibility for this service.
@@ -53,13 +98,80 @@ func RegisterComponentServer(s grpc.ServiceRegistrar, srv ComponentServer) {
 	s.RegisterService(&Component_ServiceDesc, srv)
 }
 
+func _Component_ListComponentUseRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListComponentUseRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ComponentServer).ListComponentUseRule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Component/ListComponentUseRule",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ComponentServer).ListComponentUseRule(ctx, req.(*ListComponentUseRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Component_UpdateComponentUseRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateComponentUseRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ComponentServer).UpdateComponentUseRule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Component/UpdateComponentUseRule",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ComponentServer).UpdateComponentUseRule(ctx, req.(*UpdateComponentUseRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Component_CreateComponentUseRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateComponentUseRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ComponentServer).CreateComponentUseRule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Component/CreateComponentUseRule",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ComponentServer).CreateComponentUseRule(ctx, req.(*CreateComponentUseRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Component_ServiceDesc is the grpc.ServiceDesc for Component service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Component_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "rulego.v1.Component",
 	HandlerType: (*ComponentServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "api/rulego/v1/components.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ListComponentUseRule",
+			Handler:    _Component_ListComponentUseRule_Handler,
+		},
+		{
+			MethodName: "UpdateComponentUseRule",
+			Handler:    _Component_UpdateComponentUseRule_Handler,
+		},
+		{
+			MethodName: "CreateComponentUseRule",
+			Handler:    _Component_CreateComponentUseRule_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "api/rulego/v1/components.proto",
 }

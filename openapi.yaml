@@ -6,6 +6,65 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/componentUseRule/create:
+        post:
+            tags:
+                - Component
+            operationId: Component_CreateComponentUseRule
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateComponentUseRuleRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateComponentUseRuleReply'
+    /api/v1/componentUseRule/page:
+        get:
+            tags:
+                - Component
+            operationId: Component_ListComponentUseRule
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListComponentUseRuleReply'
+    /api/v1/componentUseRule/update:
+        post:
+            tags:
+                - Component
+            operationId: Component_UpdateComponentUseRule
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateComponentUseRuleRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateComponentUseRuleReply'
     /api/v1/components:
         get:
             tags:
@@ -19,6 +78,65 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetComponentsReply'
+    /api/v1/doc/create:
+        post:
+            tags:
+                - MdWorkflow
+            operationId: MdWorkflow_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateMdRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.MdItem'
+    /api/v1/doc/edit:
+        post:
+            tags:
+                - MdWorkflow
+            operationId: MdWorkflow_Update
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateMdRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.MdItem'
+    /api/v1/doc/list:
+        get:
+            tags:
+                - MdWorkflow
+            operationId: MdWorkflow_List
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListMdReply'
     /api/v1/logs/runs:
         get:
             tags:
@@ -311,6 +429,52 @@ components:
                  The JSON representation for `ListValue` is JSON array.
         google.protobuf.Value:
             description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        rulego.v1.ComponentUseRuleItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                componentName:
+                    type: string
+                componentType:
+                    type: string
+                disabled:
+                    type: boolean
+                useDesc:
+                    type: string
+                useRuleDesc:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        rulego.v1.CreateComponentUseRuleReply:
+            type: object
+            properties: {}
+        rulego.v1.CreateComponentUseRuleRequest:
+            type: object
+            properties:
+                componentName:
+                    type: string
+                componentType:
+                    type: string
+                disabled:
+                    type: boolean
+                useDesc:
+                    type: string
+                useRuleDesc:
+                    type: string
+        rulego.v1.CreateMdRequest:
+            type: object
+            properties:
+                title:
+                    type: string
+                content:
+                    type: string
+                desc:
+                    type: string
+                chainId:
+                    type: string
         rulego.v1.DeleteRuleChainReply:
             type: object
             properties: {}
@@ -364,6 +528,30 @@ components:
                     type: object
                 metadata:
                     type: object
+        rulego.v1.ListComponentUseRuleReply:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ComponentUseRuleItem'
+                total:
+                    type: string
+        rulego.v1.ListMdReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.MdItem'
+                page:
+                    type: integer
+                    format: int32
+                size:
+                    type: integer
+                    format: int32
+                total:
+                    type: string
         rulego.v1.ListRunLogsReply:
             type: object
             properties:
@@ -380,6 +568,28 @@ components:
                 total:
                     type: integer
                     format: int32
+        rulego.v1.MdItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                desc:
+                    type: string
+                chainId:
+                    type: string
+                chainName:
+                    type: string
+                chainVersion:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
         rulego.v1.RunLogItem:
             type: object
             properties:
@@ -397,6 +607,37 @@ components:
                     type: array
                     items:
                         type: object
+        rulego.v1.UpdateComponentUseRuleReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateComponentUseRuleRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                componentName:
+                    type: string
+                componentType:
+                    type: string
+                disabled:
+                    type: boolean
+                useDesc:
+                    type: string
+                useRuleDesc:
+                    type: string
+        rulego.v1.UpdateMdRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                desc:
+                    type: string
+                chainId:
+                    type: string
         rulego.v1.UpdateRuleChainBaseInfoReply:
             type: object
             properties: {}
@@ -430,6 +671,10 @@ components:
                 metadata:
                     type: object
 tags:
+    - name: Component
+      description: The greeting service definition.
+    - name: MdWorkflow
+      description: The greeting service definition.
     - name: RuleGo
       description: The greeting service definition.
     - name: RunLog

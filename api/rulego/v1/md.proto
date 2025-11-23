@@ -11,6 +11,60 @@ option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
 // The greeting service definition.
 service MdWorkflow {
-  
-  
+  rpc List (ListMdRequest) returns (ListMdReply) {
+    option (google.api.http) = {
+      get: "/api/v1/doc/list"
+    };
+  }
+  rpc Update (UpdateMdRequest) returns (MdItem) {
+    option (google.api.http) = {
+      post: "/api/v1/doc/edit"
+      body: "*"
+    };
+  }
+  rpc Create (CreateMdRequest) returns (MdItem) {
+    option (google.api.http) = {
+      post: "/api/v1/doc/create"
+      body: "*"
+    };
+  }
+}
+
+message CreateMdRequest {
+  string title = 1;
+  string content = 2;
+  string desc = 3;
+  string chain_id = 4 [json_name = "chainId"];
+}
+
+message UpdateMdRequest {
+  int64 id = 1;
+  string title = 2;
+  string content = 3;
+  string desc = 4;
+  string chain_id = 5 [json_name = "chainId"];
+}
+
+message ListMdRequest {
+  int32 page = 1;
+  int32 size = 2;
+}
+
+message MdItem {
+  int64 id = 1;
+  string title = 2;
+  string content = 3;
+  string desc = 4;
+  string chain_id = 5 [json_name = "chainId"];
+  string chain_name = 6 [json_name = "chainName"];
+  int32 chain_version = 7 [json_name = "chainVersion"];
+  string created_at = 8 [json_name = "createdAt"];
+  string updated_at = 9 [json_name = "updatedAt"];
+}
+
+message ListMdReply {
+  repeated MdItem items = 1;
+  int32 page = 2;
+  int32 size = 3;
+  int64 total = 4;
 }

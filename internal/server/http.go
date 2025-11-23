@@ -12,7 +12,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *service.RunLogService, logger log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *service.RunLogService, components *service.ComponentService, md *service.MdWorkflowService, logger log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
@@ -31,6 +31,8 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	srv := http.NewServer(opts...)
 	v1.RegisterRuleGoHTTPServer(srv, rules)
 	v1.RegisterRunLogHTTPServer(srv, runLogs)
+	v1.RegisterComponentHTTPServer(srv, components)
+	v1.RegisterMdWorkflowHTTPServer(srv, md)
 	return srv
 }
 

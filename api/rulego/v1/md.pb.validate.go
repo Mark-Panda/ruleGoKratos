@@ -34,3 +34,580 @@ var (
 	_ = anypb.Any{}
 	_ = sort.Sort
 )
+
+// Validate checks the field values on CreateMdRequest with the rules defined
+// in the proto definition for this message. If any rules are violated, the
+// first error encountered is returned, or nil if there are no violations.
+func (m *CreateMdRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on CreateMdRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// CreateMdRequestMultiError, or nil if none found.
+func (m *CreateMdRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *CreateMdRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Title
+
+	// no validation rules for Content
+
+	// no validation rules for Desc
+
+	// no validation rules for ChainId
+
+	if len(errors) > 0 {
+		return CreateMdRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// CreateMdRequestMultiError is an error wrapping multiple validation errors
+// returned by CreateMdRequest.ValidateAll() if the designated constraints
+// aren't met.
+type CreateMdRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m CreateMdRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m CreateMdRequestMultiError) AllErrors() []error { return m }
+
+// CreateMdRequestValidationError is the validation error returned by
+// CreateMdRequest.Validate if the designated constraints aren't met.
+type CreateMdRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e CreateMdRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e CreateMdRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e CreateMdRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e CreateMdRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e CreateMdRequestValidationError) ErrorName() string { return "CreateMdRequestValidationError" }
+
+// Error satisfies the builtin error interface
+func (e CreateMdRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sCreateMdRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = CreateMdRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = CreateMdRequestValidationError{}
+
+// Validate checks the field values on UpdateMdRequest with the rules defined
+// in the proto definition for this message. If any rules are violated, the
+// first error encountered is returned, or nil if there are no violations.
+func (m *UpdateMdRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateMdRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpdateMdRequestMultiError, or nil if none found.
+func (m *UpdateMdRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateMdRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Id
+
+	// no validation rules for Title
+
+	// no validation rules for Content
+
+	// no validation rules for Desc
+
+	// no validation rules for ChainId
+
+	if len(errors) > 0 {
+		return UpdateMdRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateMdRequestMultiError is an error wrapping multiple validation errors
+// returned by UpdateMdRequest.ValidateAll() if the designated constraints
+// aren't met.
+type UpdateMdRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateMdRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateMdRequestMultiError) AllErrors() []error { return m }
+
+// UpdateMdRequestValidationError is the validation error returned by
+// UpdateMdRequest.Validate if the designated constraints aren't met.
+type UpdateMdRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateMdRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateMdRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateMdRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateMdRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateMdRequestValidationError) ErrorName() string { return "UpdateMdRequestValidationError" }
+
+// Error satisfies the builtin error interface
+func (e UpdateMdRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateMdRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateMdRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateMdRequestValidationError{}
+
+// Validate checks the field values on ListMdRequest with the rules defined in
+// the proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
+func (m *ListMdRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ListMdRequest with the rules defined
+// in the proto definition for this message. If any rules are violated, the
+// result is a list of violation errors wrapped in ListMdRequestMultiError, or
+// nil if none found.
+func (m *ListMdRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ListMdRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Page
+
+	// no validation rules for Size
+
+	if len(errors) > 0 {
+		return ListMdRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// ListMdRequestMultiError is an error wrapping multiple validation errors
+// returned by ListMdRequest.ValidateAll() if the designated constraints
+// aren't met.
+type ListMdRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ListMdRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ListMdRequestMultiError) AllErrors() []error { return m }
+
+// ListMdRequestValidationError is the validation error returned by
+// ListMdRequest.Validate if the designated constraints aren't met.
+type ListMdRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListMdRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListMdRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListMdRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListMdRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListMdRequestValidationError) ErrorName() string { return "ListMdRequestValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ListMdRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListMdRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListMdRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListMdRequestValidationError{}
+
+// Validate checks the field values on MdItem with the rules defined in the
+// proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
+func (m *MdItem) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on MdItem with the rules defined in the
+// proto definition for this message. If any rules are violated, the result is
+// a list of violation errors wrapped in MdItemMultiError, or nil if none found.
+func (m *MdItem) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *MdItem) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Id
+
+	// no validation rules for Title
+
+	// no validation rules for Content
+
+	// no validation rules for Desc
+
+	// no validation rules for ChainId
+
+	// no validation rules for ChainName
+
+	// no validation rules for ChainVersion
+
+	// no validation rules for CreatedAt
+
+	// no validation rules for UpdatedAt
+
+	if len(errors) > 0 {
+		return MdItemMultiError(errors)
+	}
+
+	return nil
+}
+
+// MdItemMultiError is an error wrapping multiple validation errors returned by
+// MdItem.ValidateAll() if the designated constraints aren't met.
+type MdItemMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m MdItemMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m MdItemMultiError) AllErrors() []error { return m }
+
+// MdItemValidationError is the validation error returned by MdItem.Validate if
+// the designated constraints aren't met.
+type MdItemValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e MdItemValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e MdItemValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e MdItemValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e MdItemValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e MdItemValidationError) ErrorName() string { return "MdItemValidationError" }
+
+// Error satisfies the builtin error interface
+func (e MdItemValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sMdItem.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = MdItemValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = MdItemValidationError{}
+
+// Validate checks the field values on ListMdReply with the rules defined in
+// the proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
+func (m *ListMdReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ListMdReply with the rules defined in
+// the proto definition for this message. If any rules are violated, the
+// result is a list of violation errors wrapped in ListMdReplyMultiError, or
+// nil if none found.
+func (m *ListMdReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ListMdReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	for idx, item := range m.GetItems() {
+		_, _ = idx, item
+
+		if all {
+			switch v := interface{}(item).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, ListMdReplyValidationError{
+						field:  fmt.Sprintf("Items[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, ListMdReplyValidationError{
+						field:  fmt.Sprintf("Items[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ListMdReplyValidationError{
+					field:  fmt.Sprintf("Items[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	// no validation rules for Page
+
+	// no validation rules for Size
+
+	// no validation rules for Total
+
+	if len(errors) > 0 {
+		return ListMdReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// ListMdReplyMultiError is an error wrapping multiple validation errors
+// returned by ListMdReply.ValidateAll() if the designated constraints aren't met.
+type ListMdReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ListMdReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ListMdReplyMultiError) AllErrors() []error { return m }
+
+// ListMdReplyValidationError is the validation error returned by
+// ListMdReply.Validate if the designated constraints aren't met.
+type ListMdReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListMdReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListMdReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListMdReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListMdReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListMdReplyValidationError) ErrorName() string { return "ListMdReplyValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ListMdReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListMdReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListMdReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListMdReplyValidationError{}

@@ -29,6 +29,25 @@ func NewComponentUseRuleUsecase(repo ComponentUseRuleRepo, logger log.Logger) *C
 }
 
 // CreateComponentUseRule creates a ComponentUseRule, and returns the new ComponentUseRule.
-func (uc *ComponentUseRuleUsecase) CreateComponentUseRule(ctx context.Context) error {
-	return nil
+func (uc *ComponentUseRuleUsecase) CreateComponentUseRule(ctx context.Context, info entity.ComponentUseRule) error {
+	return uc.repo.CreateComponentUseRule(ctx, &info)
+}
+
+// ListComponentUseRule list ComponentUseRule
+func (uc *ComponentUseRuleUsecase) ListComponentUseRule(ctx context.Context, page, size int) ([]entity.ComponentUseRule, int64, error) {
+	return uc.repo.FindListComponentUseRule(ctx, nil, page, size)
+}
+
+// UpdateComponentUseRule update ComponentUseRule
+func (uc *ComponentUseRuleUsecase) UpdateComponentUseRule(ctx context.Context, info entity.ComponentUseRule) error {
+	if info.ID == 0 {
+		return uc.repo.CreateComponentUseRule(ctx, &info)
+	}
+	return uc.repo.UpdateComponentUseRule(ctx, map[string]interface{}{"id": info.ID}, map[string]interface{}{
+		"component_name": info.ComponentName,
+		"component_type": info.ComponentType,
+		"disabled":       info.Disabled,
+		"use_desc":       info.UseDesc,
+		"use_rule_desc":  info.UseRuleDesc,
+	})
 }

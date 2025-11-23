@@ -34,3 +34,800 @@ var (
 	_ = anypb.Any{}
 	_ = sort.Sort
 )
+
+// Validate checks the field values on CreateComponentUseRuleRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *CreateComponentUseRuleRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on CreateComponentUseRuleRequest with
+// the rules defined in the proto definition for this message. If any rules
+// are violated, the result is a list of violation errors wrapped in
+// CreateComponentUseRuleRequestMultiError, or nil if none found.
+func (m *CreateComponentUseRuleRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *CreateComponentUseRuleRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for ComponentName
+
+	// no validation rules for ComponentType
+
+	// no validation rules for Disabled
+
+	// no validation rules for UseDesc
+
+	// no validation rules for UseRuleDesc
+
+	if len(errors) > 0 {
+		return CreateComponentUseRuleRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// CreateComponentUseRuleRequestMultiError is an error wrapping multiple
+// validation errors returned by CreateComponentUseRuleRequest.ValidateAll()
+// if the designated constraints aren't met.
+type CreateComponentUseRuleRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m CreateComponentUseRuleRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m CreateComponentUseRuleRequestMultiError) AllErrors() []error { return m }
+
+// CreateComponentUseRuleRequestValidationError is the validation error
+// returned by CreateComponentUseRuleRequest.Validate if the designated
+// constraints aren't met.
+type CreateComponentUseRuleRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e CreateComponentUseRuleRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e CreateComponentUseRuleRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e CreateComponentUseRuleRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e CreateComponentUseRuleRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e CreateComponentUseRuleRequestValidationError) ErrorName() string {
+	return "CreateComponentUseRuleRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e CreateComponentUseRuleRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sCreateComponentUseRuleRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = CreateComponentUseRuleRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = CreateComponentUseRuleRequestValidationError{}
+
+// Validate checks the field values on CreateComponentUseRuleReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *CreateComponentUseRuleReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on CreateComponentUseRuleReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// CreateComponentUseRuleReplyMultiError, or nil if none found.
+func (m *CreateComponentUseRuleReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *CreateComponentUseRuleReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if len(errors) > 0 {
+		return CreateComponentUseRuleReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// CreateComponentUseRuleReplyMultiError is an error wrapping multiple
+// validation errors returned by CreateComponentUseRuleReply.ValidateAll() if
+// the designated constraints aren't met.
+type CreateComponentUseRuleReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m CreateComponentUseRuleReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m CreateComponentUseRuleReplyMultiError) AllErrors() []error { return m }
+
+// CreateComponentUseRuleReplyValidationError is the validation error returned
+// by CreateComponentUseRuleReply.Validate if the designated constraints
+// aren't met.
+type CreateComponentUseRuleReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e CreateComponentUseRuleReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e CreateComponentUseRuleReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e CreateComponentUseRuleReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e CreateComponentUseRuleReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e CreateComponentUseRuleReplyValidationError) ErrorName() string {
+	return "CreateComponentUseRuleReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e CreateComponentUseRuleReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sCreateComponentUseRuleReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = CreateComponentUseRuleReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = CreateComponentUseRuleReplyValidationError{}
+
+// Validate checks the field values on UpdateComponentUseRuleRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpdateComponentUseRuleRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateComponentUseRuleRequest with
+// the rules defined in the proto definition for this message. If any rules
+// are violated, the result is a list of violation errors wrapped in
+// UpdateComponentUseRuleRequestMultiError, or nil if none found.
+func (m *UpdateComponentUseRuleRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateComponentUseRuleRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Id
+
+	// no validation rules for ComponentName
+
+	// no validation rules for ComponentType
+
+	// no validation rules for Disabled
+
+	// no validation rules for UseDesc
+
+	// no validation rules for UseRuleDesc
+
+	if len(errors) > 0 {
+		return UpdateComponentUseRuleRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateComponentUseRuleRequestMultiError is an error wrapping multiple
+// validation errors returned by UpdateComponentUseRuleRequest.ValidateAll()
+// if the designated constraints aren't met.
+type UpdateComponentUseRuleRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateComponentUseRuleRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateComponentUseRuleRequestMultiError) AllErrors() []error { return m }
+
+// UpdateComponentUseRuleRequestValidationError is the validation error
+// returned by UpdateComponentUseRuleRequest.Validate if the designated
+// constraints aren't met.
+type UpdateComponentUseRuleRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateComponentUseRuleRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateComponentUseRuleRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateComponentUseRuleRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateComponentUseRuleRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateComponentUseRuleRequestValidationError) ErrorName() string {
+	return "UpdateComponentUseRuleRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdateComponentUseRuleRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateComponentUseRuleRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateComponentUseRuleRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateComponentUseRuleRequestValidationError{}
+
+// Validate checks the field values on UpdateComponentUseRuleReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *UpdateComponentUseRuleReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UpdateComponentUseRuleReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UpdateComponentUseRuleReplyMultiError, or nil if none found.
+func (m *UpdateComponentUseRuleReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UpdateComponentUseRuleReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if len(errors) > 0 {
+		return UpdateComponentUseRuleReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// UpdateComponentUseRuleReplyMultiError is an error wrapping multiple
+// validation errors returned by UpdateComponentUseRuleReply.ValidateAll() if
+// the designated constraints aren't met.
+type UpdateComponentUseRuleReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpdateComponentUseRuleReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpdateComponentUseRuleReplyMultiError) AllErrors() []error { return m }
+
+// UpdateComponentUseRuleReplyValidationError is the validation error returned
+// by UpdateComponentUseRuleReply.Validate if the designated constraints
+// aren't met.
+type UpdateComponentUseRuleReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UpdateComponentUseRuleReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UpdateComponentUseRuleReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UpdateComponentUseRuleReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UpdateComponentUseRuleReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UpdateComponentUseRuleReplyValidationError) ErrorName() string {
+	return "UpdateComponentUseRuleReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e UpdateComponentUseRuleReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUpdateComponentUseRuleReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UpdateComponentUseRuleReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UpdateComponentUseRuleReplyValidationError{}
+
+// Validate checks the field values on ListComponentUseRuleRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *ListComponentUseRuleRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ListComponentUseRuleRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ListComponentUseRuleRequestMultiError, or nil if none found.
+func (m *ListComponentUseRuleRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ListComponentUseRuleRequest) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Page
+
+	// no validation rules for Size
+
+	if len(errors) > 0 {
+		return ListComponentUseRuleRequestMultiError(errors)
+	}
+
+	return nil
+}
+
+// ListComponentUseRuleRequestMultiError is an error wrapping multiple
+// validation errors returned by ListComponentUseRuleRequest.ValidateAll() if
+// the designated constraints aren't met.
+type ListComponentUseRuleRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ListComponentUseRuleRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ListComponentUseRuleRequestMultiError) AllErrors() []error { return m }
+
+// ListComponentUseRuleRequestValidationError is the validation error returned
+// by ListComponentUseRuleRequest.Validate if the designated constraints
+// aren't met.
+type ListComponentUseRuleRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListComponentUseRuleRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListComponentUseRuleRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListComponentUseRuleRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListComponentUseRuleRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListComponentUseRuleRequestValidationError) ErrorName() string {
+	return "ListComponentUseRuleRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListComponentUseRuleRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListComponentUseRuleRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListComponentUseRuleRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListComponentUseRuleRequestValidationError{}
+
+// Validate checks the field values on ListComponentUseRuleReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *ListComponentUseRuleReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ListComponentUseRuleReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ListComponentUseRuleReplyMultiError, or nil if none found.
+func (m *ListComponentUseRuleReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ListComponentUseRuleReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	for idx, item := range m.GetList() {
+		_, _ = idx, item
+
+		if all {
+			switch v := interface{}(item).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, ListComponentUseRuleReplyValidationError{
+						field:  fmt.Sprintf("List[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, ListComponentUseRuleReplyValidationError{
+						field:  fmt.Sprintf("List[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ListComponentUseRuleReplyValidationError{
+					field:  fmt.Sprintf("List[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	// no validation rules for Total
+
+	if len(errors) > 0 {
+		return ListComponentUseRuleReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// ListComponentUseRuleReplyMultiError is an error wrapping multiple validation
+// errors returned by ListComponentUseRuleReply.ValidateAll() if the
+// designated constraints aren't met.
+type ListComponentUseRuleReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ListComponentUseRuleReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ListComponentUseRuleReplyMultiError) AllErrors() []error { return m }
+
+// ListComponentUseRuleReplyValidationError is the validation error returned by
+// ListComponentUseRuleReply.Validate if the designated constraints aren't met.
+type ListComponentUseRuleReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListComponentUseRuleReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListComponentUseRuleReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListComponentUseRuleReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListComponentUseRuleReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListComponentUseRuleReplyValidationError) ErrorName() string {
+	return "ListComponentUseRuleReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListComponentUseRuleReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListComponentUseRuleReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListComponentUseRuleReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListComponentUseRuleReplyValidationError{}
+
+// Validate checks the field values on ComponentUseRuleItem with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *ComponentUseRuleItem) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ComponentUseRuleItem with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ComponentUseRuleItemMultiError, or nil if none found.
+func (m *ComponentUseRuleItem) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ComponentUseRuleItem) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Id
+
+	// no validation rules for ComponentName
+
+	// no validation rules for ComponentType
+
+	// no validation rules for Disabled
+
+	// no validation rules for UseDesc
+
+	// no validation rules for UseRuleDesc
+
+	// no validation rules for CreatedAt
+
+	// no validation rules for UpdatedAt
+
+	if len(errors) > 0 {
+		return ComponentUseRuleItemMultiError(errors)
+	}
+
+	return nil
+}
+
+// ComponentUseRuleItemMultiError is an error wrapping multiple validation
+// errors returned by ComponentUseRuleItem.ValidateAll() if the designated
+// constraints aren't met.
+type ComponentUseRuleItemMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ComponentUseRuleItemMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ComponentUseRuleItemMultiError) AllErrors() []error { return m }
+
+// ComponentUseRuleItemValidationError is the validation error returned by
+// ComponentUseRuleItem.Validate if the designated constraints aren't met.
+type ComponentUseRuleItemValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ComponentUseRuleItemValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ComponentUseRuleItemValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ComponentUseRuleItemValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ComponentUseRuleItemValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ComponentUseRuleItemValidationError) ErrorName() string {
+	return "ComponentUseRuleItemValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ComponentUseRuleItemValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sComponentUseRuleItem.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ComponentUseRuleItemValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ComponentUseRuleItemValidationError{}
