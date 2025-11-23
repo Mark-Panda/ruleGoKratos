@@ -12,7 +12,7 @@ CREATE TABLE "public"."rule_chain" (
     "rule_version" int4 NOT NULL DEFAULT 0,
     "configuration" json DEFAULT null,
     "metadata" json DEFAULT null,
-    "additionalInfo" json DEFAULT null,
+    "additional_info" json DEFAULT null,
     "created_at" timestamptz(6) NOT NULL DEFAULT now(),
     "updated_at" timestamptz(6) NOT NULL DEFAULT now(),
     "deleted_at" timestamptz(6),
@@ -34,7 +34,7 @@ COMMENT ON COLUMN "public"."rule_chain"."rule_chain_id" IS '规则ID';
 COMMENT ON COLUMN "public"."rule_chain"."rule_version" IS '版本号';
 COMMENT ON COLUMN "public"."rule_chain"."configuration" IS '规则配置信息';
 COMMENT ON COLUMN "public"."rule_chain"."metadata" IS '规则配置信息';
-COMMENT ON COLUMN "public"."rule_chain"."additionalInfo" IS '规则配置信息';
+COMMENT ON COLUMN "public"."rule_chain"."additional_info" IS '规则配置信息';
 COMMENT ON COLUMN "public"."rule_chain"."created_at" IS '创建时间';
 COMMENT ON COLUMN "public"."rule_chain"."updated_at" IS '更新时间';
 COMMENT ON COLUMN "public"."rule_chain"."deleted_at" IS '删除时间';

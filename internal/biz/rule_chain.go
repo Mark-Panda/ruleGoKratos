@@ -206,16 +206,22 @@ func (s *RuleChainUsecase) RuleChainDBToRuleChain(ruleChainDB *entity.RuleChain)
 		Root:      ruleChainDB.Root,
 		Disabled:  ruleChainDB.Disabled,
 	}
-	additionalInfo := map[string]interface{}{}
-	json.Unmarshal([]byte(ruleChainDB.AdditionalInfo), &additionalInfo)
-	ruleChainInfo.AdditionalInfo = additionalInfo
-	configuration := map[string]interface{}{}
-	json.Unmarshal([]byte(ruleChainDB.Configuration), &configuration)
-	ruleChainInfo.Configuration = configuration
-	ruleChainMetadata := types.RuleMetadata{}
-	json.Unmarshal([]byte(ruleChainDB.Metadata), &ruleChainMetadata)
+	if ruleChainDB.AdditionalInfo != nil {
+		additionalInfo := map[string]interface{}{}
+		json.Unmarshal([]byte(*ruleChainDB.AdditionalInfo), &additionalInfo)
+		ruleChainInfo.AdditionalInfo = additionalInfo
+	}
+	if ruleChainDB.Configuration != nil {
+		configuration := map[string]interface{}{}
+		json.Unmarshal([]byte(*ruleChainDB.Configuration), &configuration)
+		ruleChainInfo.Configuration = configuration
+	}
+	if ruleChainDB.Metadata != nil {
+		ruleChainMetadata := types.RuleMetadata{}
+		json.Unmarshal([]byte(*ruleChainDB.Metadata), &ruleChainMetadata)
+		ruleChain.Metadata = ruleChainMetadata
+	}
 	ruleChain.RuleChain = ruleChainInfo
-	ruleChain.Metadata = ruleChainMetadata
 	return &ruleChain, nil
 }
 
@@ -457,17 +463,20 @@ func (s *RuleChainUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRul
 		if err != nil {
 			return nil, err
 		}
-		reg.Configuration = string(configuration)
+		configurationStr := string(configuration)
+		reg.Configuration = &configurationStr
 		metadata, err := json.Marshal(ruleChain.Metadata)
 		if err != nil {
 			return nil, err
 		}
-		reg.Metadata = string(metadata)
+		metadataStr := string(metadata)
+		reg.Metadata = &metadataStr
 		additionalInfo, err := json.Marshal(ruleChain.RuleChain.AdditionalInfo)
 		if err != nil {
 			return nil, err
 		}
-		reg.AdditionalInfo = string(additionalInfo)
+		additionalInfoStr := string(additionalInfo)
+		reg.AdditionalInfo = &additionalInfoStr
 		err = s.ruleChainRepo.CreateRuleChain(ctx, reg)
 	}
 

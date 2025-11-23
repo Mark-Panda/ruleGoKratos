@@ -11,9 +11,9 @@ type RuleChain struct {
 	Name           string     `json:"name"`
 	RuleChainID    string     `json:"ruleChainId"`
 	RuleVersion    int        `json:"ruleVersion"`
-	Configuration  string     `json:"configuration"`
-	Metadata       string     `json:"metadata"`
-	AdditionalInfo string     `json:"additionalInfo"`
+	Configuration  *string    `json:"configuration"`
+	Metadata       *string    `json:"metadata"`
+	AdditionalInfo *string    `json:"additionalInfo"`
 	CreatedAt      *time.Time `json:"createdAt"`
 	UpdatedAt      *time.Time `json:"updatedAt"`
 	DeletedAt      *time.Time `json:"deletedAt"`

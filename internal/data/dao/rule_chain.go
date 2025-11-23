@@ -14,9 +14,9 @@ type RuleChain struct {
 	Name           string     `gorm:"column:name" json:"name"`
 	RuleChainID    string     `gorm:"column:rule_chain_id" json:"ruleChainId"`
 	RuleVersion    int        `gorm:"column:rule_version" json:"ruleVersion"`
-	Configuration  string     `gorm:"column:configuration;type:json" json:"configuration"`
-	Metadata       string     `gorm:"column:metadata;type:json" json:"metadata"`
-	AdditionalInfo string     `gorm:"column:additionalInfo;type:json" json:"additionalInfo"`
+	Configuration  *string    `gorm:"column:configuration;type:json" json:"configuration"`
+	Metadata       *string    `gorm:"column:metadata;type:json" json:"metadata"`
+	AdditionalInfo *string    `gorm:"column:additional_info;type:json" json:"additionalInfo"`
 	CreatedAt      *time.Time `gorm:"column:created_at" json:"createdAt"`
 	UpdatedAt      *time.Time `gorm:"column:updated_at" json:"updatedAt"`
 	DeletedAt      *time.Time `gorm:"column:deleted_at" json:"deletedAt"`
