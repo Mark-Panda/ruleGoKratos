@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/jinzhu/copier"
+	"gorm.io/gorm"
 )
 
 var _ biz.RuleChainRepo = &ruleChainRepo{}
@@ -60,12 +61,15 @@ func (r *ruleChainRepo) FindOneRuleChain(ctx context.Context, where map[string]i
 	info := dao.NewRuleChain()
 	ruleChain, err := info.FindOne(ctx, where)
 	if err != nil {
-		return nil, err
+		if gorm.ErrRecordNotFound != err {
+			return nil, err
+		}
+		return nil, nil
 	}
 
 	ruleChainInfo := entity.RuleChain{}
 	_ = copier.Copy(&ruleChainInfo, ruleChain)
-	return &ruleChainInfo, err
+	return &ruleChainInfo, nil
 }
 
 func (r *ruleChainRepo) FindListRuleChain(ctx context.Context, where map[string]interface{}, page int, pageSize int) ([]entity.RuleChain, int64, error) {

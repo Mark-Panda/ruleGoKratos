@@ -484,6 +484,25 @@ func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.U
 	if err != nil {
 		return nil, err
 	}
+	t := time.Now()
+	if ruleChainInfo == nil {
+		// 创建
+		err := s.ruleChainRepo.CreateRuleChain(ctx, &entity.RuleChain{
+			RuleChainID: in.Id,
+			UserName:    "admin",
+			Name:        in.Name,
+			Root:        in.Root,
+			Disabled:    in.Disabled,
+			DebugMode:   in.DebugMode,
+			RuleVersion: 0,
+			CreatedAt:   &t,
+			UpdatedAt:   &t,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &v1.UpdateRuleChainBaseInfoReply{}, nil
+	}
 
 	ruleChain, err := s.RuleChainDBToRuleChain(ruleChainInfo)
 	if err != nil {
