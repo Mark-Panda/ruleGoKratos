@@ -57,4 +57,6 @@ message AI {
     string api_key      = 2;
     string api_base_url = 3;
   }
+  DouBao doubao = 1;
+  OpenAI openai = 2;
 }

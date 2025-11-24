@@ -188,6 +188,8 @@ func (x *Data) GetPostgres() *Data_Postgres {
 
 type AI struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Doubao        *AI_DouBao             `protobuf:"bytes,1,opt,name=doubao,proto3" json:"doubao,omitempty"`
+	Openai        *AI_OpenAI             `protobuf:"bytes,2,opt,name=openai,proto3" json:"openai,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -220,6 +222,20 @@ func (x *AI) ProtoReflect() protoreflect.Message {
 // Deprecated: Use AI.ProtoReflect.Descriptor instead.
 func (*AI) Descriptor() ([]byte, []int) {
 	return file_conf_conf_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AI) GetDoubao() *AI_DouBao {
+	if x != nil {
+		return x.Doubao
+	}
+	return nil
+}
+
+func (x *AI) GetOpenai() *AI_OpenAI {
+	if x != nil {
+		return x.Openai
+	}
+	return nil
 }
 
 type Server_HTTP struct {
@@ -658,8 +674,10 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\x16\n" +
 	"\x06dbname\x18\x05 \x01(\tR\x06dbname\x12\x18\n" +
 	"\asslmode\x18\x06 \x01(\tR\asslmode\x12\x1a\n" +
-	"\btimezone\x18\a \x01(\tR\btimezone\"\xba\x01\n" +
-	"\x02AI\x1aY\n" +
+	"\btimezone\x18\a \x01(\tR\btimezone\"\x98\x02\n" +
+	"\x02AI\x12-\n" +
+	"\x06doubao\x18\x01 \x01(\v2\x15.kratos.api.AI.DouBaoR\x06doubao\x12-\n" +
+	"\x06openai\x18\x02 \x01(\v2\x15.kratos.api.AI.OpenAIR\x06openai\x1aY\n" +
 	"\x06DouBao\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x17\n" +
 	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12 \n" +
@@ -705,15 +723,17 @@ var file_conf_conf_proto_depIdxs = []int32{
 	5,  // 4: kratos.api.Server.grpc:type_name -> kratos.api.Server.GRPC
 	6,  // 5: kratos.api.Data.redis:type_name -> kratos.api.Data.Redis
 	7,  // 6: kratos.api.Data.postgres:type_name -> kratos.api.Data.Postgres
-	10, // 7: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
-	10, // 8: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
-	10, // 9: kratos.api.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
-	10, // 10: kratos.api.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	8,  // 7: kratos.api.AI.doubao:type_name -> kratos.api.AI.DouBao
+	9,  // 8: kratos.api.AI.openai:type_name -> kratos.api.AI.OpenAI
+	10, // 9: kratos.api.Server.HTTP.timeout:type_name -> google.protobuf.Duration
+	10, // 10: kratos.api.Server.GRPC.timeout:type_name -> google.protobuf.Duration
+	10, // 11: kratos.api.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
+	10, // 12: kratos.api.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_conf_conf_proto_init() }

@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"os"
 	"ruleGoKratos/internal/conf"
 
 	"github.com/go-kratos/blades"
@@ -20,14 +19,17 @@ func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
 }
 
 func (uc *AgentUsecase) CreateAgent(ctx context.Context) error {
-	model := openai.NewModel("gpt-5", openai.Config{
-		APIKey:  os.Getenv("OPENAI_API_KEY"),
-		BaseURL: os.Getenv("OPENAI_BASE_URL"),
+	model := openai.NewModel(uc.config.Ai.Doubao.Model, openai.Config{
+		APIKey:  uc.config.Ai.Doubao.ApiKey,
+		BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
 	})
 	_, err := blades.NewAgent(
-		"Blades Agent",
+		"RuleGo Node Generator Agent",
 		blades.WithModel(model),
 		blades.WithInstructions("You are a helpful assistant that provides detailed and accurate information."),
+		blades.WithDescription("You are a helpful assistant that provides detailed and accurate information."),
+		// blades.WithTools(tools.NewTool()),
+		// blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
 		return err
