@@ -7,18 +7,19 @@ import "google/protobuf/duration.proto";
 
 message Bootstrap {
   Server server = 1;
-  Data data = 2;
+  Data data     = 2;
+  AI ai         = 3;
 }
 
 message Server {
   message HTTP {
-    string network = 1;
-    string addr = 2;
+    string network                   = 1;
+    string addr                      = 2;
     google.protobuf.Duration timeout = 3;
   }
   message GRPC {
-    string network = 1;
-    string addr = 2;
+    string network                   = 1;
+    string addr                      = 2;
     google.protobuf.Duration timeout = 3;
   }
   HTTP http = 1;
@@ -27,20 +28,33 @@ message Server {
 
 message Data {
   message Redis {
-    string network = 1;
-    string addr = 2;
-    google.protobuf.Duration read_timeout = 3;
+    string network                         = 1;
+    string addr                            = 2;
+    google.protobuf.Duration read_timeout  = 3;
     google.protobuf.Duration write_timeout = 4;
   }
   message Postgres {
-    string host = 1;
-    int32 port = 2;
-    string user = 3;
+    string host     = 1;
+    int32 port      = 2;
+    string user     = 3;
     string password = 4;
-    string dbname = 5;
-    string sslmode = 6;
+    string dbname   = 5;
+    string sslmode  = 6;
     string timezone = 7;
   }
-  Redis redis = 1;
+  Redis redis       = 1;
   Postgres postgres = 2;
+}
+
+message AI {
+  message DouBao {
+    string model        = 1;
+    string api_key      = 2;
+    string api_base_url = 3;
+  }
+  message OpenAI {
+    string model        = 1;
+    string api_key      = 2;
+    string api_base_url = 3;
+  }
 }

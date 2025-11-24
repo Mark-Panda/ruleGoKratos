@@ -18,3 +18,12 @@ data:
     dbname: ${DATA_POSTGRES_DBNAME}
     sslmode: ${DATA_POSTGRES_SSLMODE}
     timezone: ${DATA_POSTGRES_TIMEZONE}
+ai:
+  doubao:
+    model: ${AI_DOUBAO_MODEL}
+    api_key: ${AI_DOUBAO_API_KEY}
+    api_base_url: ${AI_DOUBAO_BASE_URL}
+  openai:
+    model: ${AI_OPENAI_MODEL}
+    api_key: ${AI_OPENAI_API_KEY}
+    api_base_url: ${AI_OPENAI_BASE_URL}
