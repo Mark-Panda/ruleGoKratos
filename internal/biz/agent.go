@@ -30,13 +30,13 @@ func (uc *AgentUsecase) CreateAgent(ctx context.Context) error {
 
 // 节点agent
 func (uc *AgentUsecase) CreateNodeAgent(ctx context.Context, model blades.ModelProvider, nodeType string) (blades.Agent, error) {
-	componentUseRule, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_type": nodeType})
+	componentUseRule, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_name": nodeType})
 	if err != nil {
 		return nil, err
 	}
 	nodeSystemPrompt := fmt.Sprintf(`
 	你是一个RuleGo %s节点构造师,你擅长根据用户给的需求构造出符合需求的RuleGo节点
-	`, componentUseRule.ComponentType)
+	`, componentUseRule.ComponentName)
 	return blades.NewAgent(
 		"RuleGo Node Generator Agent",
 		blades.WithModel(model),
