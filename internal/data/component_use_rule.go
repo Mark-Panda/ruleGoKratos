@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/jinzhu/copier"
+	"gorm.io/gorm"
 )
 
 type componentUseRuleRepo struct {
@@ -49,6 +50,9 @@ func (r *componentUseRuleRepo) FindOneComponentUseRule(ctx context.Context, wher
 	info := dao.NewComponentUseRule()
 	result, err := info.FindOne(ctx, where)
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	res := entity.ComponentUseRule{}
