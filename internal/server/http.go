@@ -12,7 +12,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *service.RunLogService, components *service.ComponentService, md *service.MdWorkflowService, logger log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *service.RunLogService, components *service.ComponentService, md *service.MdWorkflowService, chat *service.ChatService, logger log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
@@ -33,6 +33,17 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	v1.RegisterRunLogHTTPServer(srv, runLogs)
 	v1.RegisterComponentHTTPServer(srv, components)
 	v1.RegisterMdWorkflowHTTPServer(srv, md)
+
+	// 注册Chat服务的HTTP SSE路由
+	// 注意：流式响应需要直接使用底层ResponseWriter，绕过Kratos的响应处理
+	srv.Route("/").POST("/api/v1/chat/stream", func(ctx http.Context) error {
+		// 直接调用流式处理函数，它已经处理了所有响应写入
+		// 返回nil表示响应已经由ChatStreamHTTP处理完成
+		chat.ChatStreamHTTP(ctx.Response(), ctx.Request())
+		// 返回nil，告诉Kratos响应已经处理，不要尝试再次写入
+		return nil
+	})
+
 	return srv
 }
 

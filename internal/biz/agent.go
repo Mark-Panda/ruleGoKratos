@@ -6,6 +6,7 @@ import (
 	"ruleGoKratos/internal/conf"
 
 	"github.com/go-kratos/blades"
+	"github.com/go-kratos/blades/contrib/openai"
 	"github.com/go-kratos/kratos/v2/log"
 )
 
@@ -45,4 +46,76 @@ func (uc *AgentUsecase) CreateNodeAgent(ctx context.Context, model blades.ModelP
 		// blades.WithTools(tools.NewTool()),
 		// blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
+}
+
+// GetModelProvider 获取模型提供者
+func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider, error) {
+	if modelName == "" {
+		// 默认使用配置中的模型
+		if uc.config.Ai != nil && uc.config.Ai.Doubao != nil && uc.config.Ai.Doubao.Model != "" {
+			modelName = uc.config.Ai.Doubao.Model
+			return openai.NewModel(modelName, openai.Config{
+				APIKey:  uc.config.Ai.Doubao.ApiKey,
+				BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
+			}), nil
+		} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil && uc.config.Ai.Openai.Model != "" {
+			modelName = uc.config.Ai.Openai.Model
+			return openai.NewModel(modelName, openai.Config{
+				APIKey:  uc.config.Ai.Openai.ApiKey,
+				BaseURL: uc.config.Ai.Openai.ApiBaseUrl,
+			}), nil
+		}
+		return nil, fmt.Errorf("未配置AI模型")
+	}
+
+	// 根据模型名称选择配置
+	if uc.config.Ai != nil && uc.config.Ai.Doubao != nil && uc.config.Ai.Doubao.Model == modelName {
+		return openai.NewModel(modelName, openai.Config{
+			APIKey:  uc.config.Ai.Doubao.ApiKey,
+			BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
+		}), nil
+	} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil {
+		return openai.NewModel(modelName, openai.Config{
+			APIKey:  uc.config.Ai.Openai.ApiKey,
+			BaseURL: uc.config.Ai.Openai.ApiBaseUrl,
+		}), nil
+	}
+
+	return nil, fmt.Errorf("未找到模型配置: %s", modelName)
+}
+
+// ChatStream 流式对话
+func (uc *AgentUsecase) ChatStream(ctx context.Context, modelName string, history []*blades.Message, userMessage string) blades.Generator[*blades.Message, error] {
+	model, err := uc.GetModelProvider(modelName)
+	if err != nil {
+		// 返回一个生成器，立即返回错误
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+
+	agent, err := blades.NewAgent(
+		"Chat Assistant",
+		blades.WithModel(model),
+		blades.WithInstructions("你是一个有用的AI助手，能够回答用户的问题。"),
+	)
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+
+	// 构建用户消息
+	msg := blades.UserMessage(userMessage)
+
+	// 构建Invocation，包含历史消息
+	invocation := &blades.Invocation{
+		ID:         blades.NewInvocationID(),
+		Message:    msg,
+		History:    history,
+		Streamable: true,
+	}
+
+	// 使用Agent的Run方法进行流式对话
+	return agent.Run(ctx, invocation)
 }

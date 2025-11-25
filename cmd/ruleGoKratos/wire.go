@@ -18,6 +18,14 @@ import (
 )
 
 // wireApp init kratos application.
-func wireApp(*conf.Server, *conf.Data, log.Logger) (*kratos.App, func(), error) {
-	panic(wire.Build(server.ProviderSet, data.ProviderSet, biz.ProviderSet, service.ProviderSet, newApp))
+func wireApp(*conf.Bootstrap, log.Logger) (*kratos.App, func(), error) {
+	panic(wire.Build(
+		// 提供从Bootstrap中提取的Server和Data
+		wire.FieldsOf(new(*conf.Bootstrap), "Server", "Data"),
+		server.ProviderSet,
+		data.ProviderSet,
+		biz.ProviderSet,
+		service.ProviderSet,
+		newApp,
+	))
 }

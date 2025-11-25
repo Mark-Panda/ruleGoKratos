@@ -6,6 +6,27 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/chat/stream:
+        post:
+            tags:
+                - Chat
+                - Chat
+            summary: 与大模型流式对话
+            description: 使用Server-Sent Events (SSE)实现与大模型的流式对话
+            operationId: ChatStream
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.ChatStreamReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ChatStreamReply'
     /api/v1/componentUseRule/create:
         post:
             tags:
@@ -440,6 +461,33 @@ components:
                  The JSON representation for `ListValue` is JSON array.
         google.protobuf.Value:
             description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        rulego.v1.ChatMessage:
+            type: object
+            properties:
+                role:
+                    type: string
+                content:
+                    type: string
+        rulego.v1.ChatStreamReply:
+            type: object
+            properties:
+                content:
+                    type: string
+                done:
+                    type: boolean
+                error:
+                    type: string
+        rulego.v1.ChatStreamReq:
+            type: object
+            properties:
+                message:
+                    type: string
+                model:
+                    type: string
+                history:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ChatMessage'
         rulego.v1.ComponentUseRuleItem:
             type: object
             properties:
@@ -682,6 +730,8 @@ components:
                 metadata:
                     type: object
 tags:
+    - name: Chat
+      description: Chat服务定义
     - name: Component
       description: The greeting service definition.
     - name: MdWorkflow
