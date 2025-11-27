@@ -11,6 +11,7 @@ services:
     volumes:
       - ./configs:/data/conf
     environment:
+      - PUBLIC_API_ORIGIN=http://localhost:8000
       - DATA_POSTGRES_HOST=postgres-db
       - DATA_POSTGRES_PORT=5432
       - DATA_POSTGRES_USER=rulego
