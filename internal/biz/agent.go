@@ -150,6 +150,7 @@ func (uc *AgentUsecase) CreateTaskPlanningAgent(ctx context.Context, history []*
 		blades.WithInstruction(`你是一个翻译代理。你使用提供给你的工具进行翻译。如果要求提供多个翻译，你需要按顺序调用相关工具。你永远不要独自翻译，你总是要使用提供的工具。`),
 		blades.WithModel(model),
 		blades.WithTools(translatorWorkers...),
+		blades.WithMiddleware(NewLogging),
 	)
 	if err != nil {
 		uc.log.Errorf("任务规划失败:", err)
@@ -161,6 +162,7 @@ func (uc *AgentUsecase) CreateTaskPlanningAgent(ctx context.Context, history []*
 		"synthesizer_agent",
 		blades.WithInstruction("你检查翻译内容，如有需要则进行修正，并生成最终的连贯回复。"),
 		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
 	)
 	if err != nil {
 		uc.log.Errorf("任务规划失败1111:", err)
@@ -210,6 +212,7 @@ func (uc *AgentUsecase) CreateTranslatorWorkers(model blades.ModelProvider) ([]t
 		blades.WithDescription("An English to Spanish translator"),
 		blades.WithInstruction("You translate the user's message to Spanish"),
 		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
 	)
 	if err != nil {
 		uc.log.Errorf("子代理工具失败:", err)
@@ -220,6 +223,7 @@ func (uc *AgentUsecase) CreateTranslatorWorkers(model blades.ModelProvider) ([]t
 		blades.WithDescription("An English to French translator"),
 		blades.WithInstruction("You translate the user's message to French"),
 		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
 	)
 	if err != nil {
 		uc.log.Errorf("子代理工具失败1111:", err)
@@ -230,6 +234,7 @@ func (uc *AgentUsecase) CreateTranslatorWorkers(model blades.ModelProvider) ([]t
 		blades.WithDescription("An English to Italian translator"),
 		blades.WithInstruction("You translate the user's message to Italian"),
 		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
 	)
 	if err != nil {
 		uc.log.Errorf("子代理工具失败2222:", err)
