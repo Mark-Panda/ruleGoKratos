@@ -6,8 +6,8 @@ toolchain go1.24.10
 
 require (
 	github.com/envoyproxy/protoc-gen-validate v1.2.1
-	github.com/go-kratos/blades v0.2.0
-	github.com/go-kratos/blades/contrib/openai v0.2.0
+	github.com/go-kratos/blades v0.3.0
+	github.com/go-kratos/blades/contrib/openai v0.3.0
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/gnostic v0.7.1
@@ -43,6 +43,7 @@ require (
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-kratos/aegis v0.2.0 // indirect
+	github.com/go-kratos/kit v0.0.0-20251121083925-65298ad2aa44 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/form/v4 v4.2.1 // indirect
@@ -97,7 +98,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kratos/blades"
 	"github.com/go-kratos/blades/contrib/openai"
+	"github.com/go-kratos/blades/tools"
 	"github.com/go-kratos/kratos/v2/log"
 )
 
@@ -41,7 +42,7 @@ func (uc *AgentUsecase) CreateNodeAgent(ctx context.Context, model blades.ModelP
 	return blades.NewAgent(
 		"RuleGo Node Generator Agent",
 		blades.WithModel(model),
-		blades.WithInstructions(nodeSystemPrompt),
+		blades.WithInstruction(nodeSystemPrompt),
 		blades.WithDescription("You are a helpful assistant that provides detailed and accurate information."),
 		// blades.WithTools(tools.NewTool()),
 		// blades.WithOutputSchema(&jsonschema.Schema{}),
@@ -93,11 +94,20 @@ func (uc *AgentUsecase) ChatStream(ctx context.Context, modelName string, histor
 			yield(nil, err)
 		}
 	}
+	// 读取文件内容
+	// content, err := os.ReadFile("proto.md")
+	// if err != nil {
+	// 	return func(yield func(*blades.Message, error) bool) {
+	// 		yield(nil, err)
+	// 	}
+	// }
+	// systemPrompt := string(content)
 
 	agent, err := blades.NewAgent(
 		"Chat Assistant",
 		blades.WithModel(model),
-		blades.WithInstructions("你是一个有用的AI助手，能够回答用户的问题。"),
+		// blades.WithInstruction(systemPrompt),
+		blades.WithInstruction("你是一个有用的AI助手，能够回答用户的问题。"),
 	)
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
@@ -118,4 +128,116 @@ func (uc *AgentUsecase) ChatStream(ctx context.Context, modelName string, histor
 
 	// 使用Agent的Run方法进行流式对话
 	return agent.Run(ctx, invocation)
+}
+
+// 创建任务规划agent
+func (uc *AgentUsecase) CreateTaskPlanningAgent(ctx context.Context, history []*blades.Message, userMessage string) blades.Generator[*blades.Message, error] {
+	model, err := uc.GetModelProvider("")
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	translatorWorkers, err := uc.CreateTranslatorWorkers(model)
+	if err != nil {
+		uc.log.Errorf("创建子代理工具失败:", err)
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	orchestratorAgent, err := blades.NewAgent(
+		"orchestrator_agent",
+		blades.WithInstruction(`你是一个翻译代理。你使用提供给你的工具进行翻译。如果要求提供多个翻译，你需要按顺序调用相关工具。你永远不要独自翻译，你总是要使用提供的工具。`),
+		blades.WithModel(model),
+		blades.WithTools(translatorWorkers...),
+	)
+	if err != nil {
+		uc.log.Errorf("任务规划失败:", err)
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	synthesizerAgent, err := blades.NewAgent(
+		"synthesizer_agent",
+		blades.WithInstruction("你检查翻译内容，如有需要则进行修正，并生成最终的连贯回复。"),
+		blades.WithModel(model),
+	)
+	if err != nil {
+		uc.log.Errorf("任务规划失败1111:", err)
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	input := blades.UserMessage(userMessage)
+	orchestratorRunner := blades.NewRunner(orchestratorAgent)
+	// 构建Invocation，包含历史消息
+	// invocation := &blades.Invocation{
+	// 	ID:         blades.NewInvocationID(),
+	// 	Message:    input,
+	// 	History:    history,
+	// 	Streamable: true,
+	// }
+
+	// 运行任务规划
+	stream := orchestratorRunner.RunStream(ctx, input)
+	var message *blades.Message
+	for message, err = range stream {
+		if err != nil {
+			uc.log.Errorf("任务规划失败2222:", err)
+			return func(yield func(*blades.Message, error) bool) {
+				yield(nil, err)
+			}
+		}
+	}
+	// 运行任务修正
+	synthesizerRunner := blades.NewRunner(synthesizerAgent)
+	output, err := synthesizerRunner.Run(ctx, blades.UserMessage(message.Text()))
+	if err != nil {
+		uc.log.Errorf("任务规划失败3333:", err)
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	return func(yield func(*blades.Message, error) bool) {
+		yield(output, nil)
+	}
+}
+
+// 子代理工具
+func (uc *AgentUsecase) CreateTranslatorWorkers(model blades.ModelProvider) ([]tools.Tool, error) {
+	spanishAgent, err := blades.NewAgent(
+		"spanish_agent",
+		blades.WithDescription("An English to Spanish translator"),
+		blades.WithInstruction("You translate the user's message to Spanish"),
+		blades.WithModel(model),
+	)
+	if err != nil {
+		uc.log.Errorf("子代理工具失败:", err)
+		return nil, err
+	}
+	frenchAgent, err := blades.NewAgent(
+		"french_agent",
+		blades.WithDescription("An English to French translator"),
+		blades.WithInstruction("You translate the user's message to French"),
+		blades.WithModel(model),
+	)
+	if err != nil {
+		uc.log.Errorf("子代理工具失败1111:", err)
+		return nil, err
+	}
+	italianAgent, err := blades.NewAgent(
+		"italian_agent",
+		blades.WithDescription("An English to Italian translator"),
+		blades.WithInstruction("You translate the user's message to Italian"),
+		blades.WithModel(model),
+	)
+	if err != nil {
+		uc.log.Errorf("子代理工具失败2222:", err)
+		return nil, err
+	}
+	return []tools.Tool{
+		blades.NewAgentTool(spanishAgent),
+		blades.NewAgentTool(frenchAgent),
+		blades.NewAgentTool(italianAgent),
+	}, nil
 }
