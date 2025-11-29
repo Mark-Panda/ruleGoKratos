@@ -94,20 +94,11 @@ func (uc *AgentUsecase) ChatStream(ctx context.Context, modelName string, histor
 			yield(nil, err)
 		}
 	}
-	// 读取文件内容
-	// content, err := os.ReadFile("proto.md")
-	// if err != nil {
-	// 	return func(yield func(*blades.Message, error) bool) {
-	// 		yield(nil, err)
-	// 	}
-	// }
-	// systemPrompt := string(content)
-
 	agent, err := blades.NewAgent(
-		"Chat Assistant",
+		"RuleGo规则链架构师",
 		blades.WithModel(model),
-		// blades.WithInstruction(systemPrompt),
-		blades.WithInstruction("你是一个有用的AI助手，能够回答用户的问题。"),
+		blades.WithInstruction(RuleChainPlannerPrompt),
+		blades.WithDescription("将Markdown格式的业务流程文档转化为符合官方规范的RuleGo规则链JSON"),
 	)
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
