@@ -1,6 +1,11 @@
 package biz
 
-import _ "embed"
+import (
+	"bytes"
+	_ "embed"
+	"ruleGoKratos/internal/biz/entity"
+	"text/template"
+)
 
 //go:embed prompt/planner.tpl
 var RuleChainPlannerPrompt string // 任务规划
@@ -16,3 +21,27 @@ var RuleChainNodeToolPrompt string // 节点组件生成工具
 
 //go:embed prompt/connect_tool.tpl
 var RuleChainConnectToolPrompt string // 连接组件生成工具
+
+func getNodeToolPrompt(param entity.NodeToolTpl) (string, error) {
+	tpl, err := template.New(`RuleChainNodeToolPrompt`).Parse(RuleChainNodeToolPrompt)
+	if err != nil {
+		return "", err
+	}
+	var headerTPL bytes.Buffer
+	if err1 := tpl.Execute(&headerTPL, param); err1 != nil {
+		return "", err1
+	}
+	return headerTPL.String(), nil
+}
+
+func getPlannerPrompt(param entity.PlannerTpl) (string, error) {
+	tpl, err := template.New(`RuleChainPlannerPrompt`).Parse(RuleChainPlannerPrompt)
+	if err != nil {
+		return "", err
+	}
+	var headerTPL bytes.Buffer
+	if err1 := tpl.Execute(&headerTPL, param); err1 != nil {
+		return "", err1
+	}
+	return headerTPL.String(), nil
+}
