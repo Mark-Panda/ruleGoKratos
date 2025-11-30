@@ -1,9 +1,9 @@
 server:
   http:
-    addr: 0.0.0.0:8001
+    addr: ${SERVER_HTTP_ADDR}
     timeout: 10000s
   grpc:
-    addr: 0.0.0.0:9001
+    addr: ${SERVER_GRPC_ADDR}
     timeout: 1s
 data:
   redis:
