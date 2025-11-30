@@ -9,6 +9,7 @@ import (
 	"github.com/go-kratos/blades/contrib/openai"
 	"github.com/go-kratos/blades/tools"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/uuid"
 )
 
 type AgentUsecase struct {
@@ -236,4 +237,91 @@ func (uc *AgentUsecase) CreateTranslatorWorkers(model blades.ModelProvider) ([]t
 		blades.NewAgentTool(frenchAgent),
 		blades.NewAgentTool(italianAgent),
 	}, nil
+}
+
+// 创建RuleGo任务规划agent
+func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMessage string) (*blades.Message, error) {
+	model, err := uc.GetModelProvider("")
+	if err != nil {
+		return nil, err
+	}
+	// 创建子代理工具
+	rulegoWorkers, err := uc.CreateRuleChainWorker(model)
+	if err != nil {
+		return nil, err
+	}
+	planagent, err := blades.NewAgent(
+		"RuleGo规则链架构师",
+		blades.WithModel(model),
+		blades.WithInstruction(RuleChainPlannerPrompt),
+		blades.WithDescription("将Markdown格式的业务流程文档转化为符合官方规范的RuleGo规则链JSON"),
+		blades.WithTools(rulegoWorkers...),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	input := blades.UserMessage(userMessage)
+	planRunner := blades.NewRunner(planagent)
+	// 构建Invocation，包含历史消息
+	// invocation := &blades.Invocation{
+	// 	ID:         blades.NewInvocationID(),
+	// 	Message:    input,
+	// 	History:    history,
+	// 	Streamable: true,
+	// }
+
+	// 运行任务规划
+	output, err := planRunner.Run(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// 创建RuleGo子代理
+func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]tools.Tool, error) {
+	uuidTool, err := uc.GenerateUUIDTool()
+	if err != nil {
+		return nil, err
+	}
+	nodeAgent, err := blades.NewAgent(
+		"node_agent",
+		blades.WithDescription("根据用户需求生成符合RuleGo规范的节点JSON"),
+		blades.WithInstruction(RuleChainNodeToolPrompt),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithTools(uuidTool),
+	)
+	if err != nil {
+		uc.log.Errorf("子代理工具失败:", err)
+		return nil, err
+	}
+	connectAgent, err := blades.NewAgent(
+		"connect_agent",
+		blades.WithDescription("根据用户需求生成符合RuleGo规范的连接JSON"),
+		blades.WithInstruction(RuleChainConnectToolPrompt),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithTools(),
+	)
+	if err != nil {
+		uc.log.Errorf("子代理工具失败:", err)
+		return nil, err
+	}
+	return []tools.Tool{
+		blades.NewAgentTool(nodeAgent),
+		blades.NewAgentTool(connectAgent),
+	}, nil
+}
+
+// 生成UUID的工具函数
+func (uc *AgentUsecase) GenerateUUIDTool() (tools.Tool, error) {
+	return tools.NewFunc(
+		"generate_uuid",
+		"生成UUID",
+		func(ctx context.Context, input string) (string, error) {
+			return uuid.NewString(), nil
+		},
+	)
 }
