@@ -48,11 +48,11 @@ func (m *MdWorkflow) FindList(ctx context.Context, where map[string]interface{},
 	var mdWorkflows []MdWorkflow
 	var count int64
 	db := db.WithContext(ctx).Model(m).Where(where)
-	err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&mdWorkflows).Error
+	err := db.Count(&count).Error
+	err = db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&mdWorkflows).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	err = db.Count(&count).Error
 	return mdWorkflows, count, err
 }
 

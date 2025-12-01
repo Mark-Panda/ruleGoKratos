@@ -51,11 +51,11 @@ func (r *RunLog) FindList(ctx context.Context, where string, page int, pageSize 
 	var runLogs []RunLog
 	var count int64
 	db := db.WithContext(ctx).Model(r).Where(where)
-	err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&runLogs).Error
+	err := db.Count(&count).Error
+	err = db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&runLogs).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	err = db.Count(&count).Error
 	return runLogs, count, err
 }
 
