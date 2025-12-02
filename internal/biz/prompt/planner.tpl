@@ -31,12 +31,12 @@
 以下是一个好计划的示例：
 用户请求：“读取数据库user表数据，查询name是张三的用户信息，并将用户的phone字段作为https://yapi.yc345.tv/project/2820/data/12334接口的参数，获取到接口的返回信息”
 {
- "步骤": [
+ "steps": [
     {
       "instruction": "1.读取数据库user表数据，需要用到dbClient节点。 2.将用户的phone字段作为https://yapi.yc345.tv/project/2820/data/12334接口的参数，获取到接口的返回信息，需要用到http节点。3. 节点关系时dbClient节点指向http节点"
     },
     {
-      "指令": "调用节点agent分别生成dbClient和HTTP节点数据，生成节点组件后调用 connect agent 生成节点关联关系"
+      "instruction": "调用节点agent分别生成dbClient和HTTP节点数据，生成节点组件后调用 connect agent 生成节点关联关系"
     },
     {
       "instruction": "整个节点信息和连接信息，将其组合成为完整的RuleGo规则的JSON结构。"
