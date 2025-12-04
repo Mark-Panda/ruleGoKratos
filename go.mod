@@ -11,6 +11,7 @@ require (
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/gnostic v0.7.1
+	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/rulego/rulego v0.34.2
@@ -53,7 +54,6 @@ require (
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

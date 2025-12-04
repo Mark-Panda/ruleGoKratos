@@ -76,8 +76,6 @@ github.com/go-kratos/aegis v0.2.0 h1:dObzCDWn3XVjUkgxyBp6ZeWtx/do0DPZ7LY3yNSJLUQ
 github.com/go-kratos/aegis v0.2.0/go.mod h1:v0R2m73WgEEYB3XYu6aE2WcMwsZkJ/Rzuf5eVccm7bI=
 github.com/go-kratos/blades v0.3.0 h1:eIhP/fnrJ8uOFVpZMR4D2MSqIceT2nW3+uXZlvgdIDQ=
 github.com/go-kratos/blades v0.3.0/go.mod h1:omAgUyp9v+tsoNCM3hO74XsUfd9ErfX+UdztqmojqL4=
-github.com/go-kratos/blades/contrib/openai v0.2.0 h1:0u5pRvFhh9ozxjS+qE4vQVQlSkvxRBFOPu8mSbbKmHg=
-github.com/go-kratos/blades/contrib/openai v0.2.0/go.mod h1:FArGkRYGYqlLuS5AhfFLUOtBQ6s/+I8iVkdEhtEee8s=
 github.com/go-kratos/blades/contrib/openai v0.3.0 h1:lZQy3N+KiT0IeB6e9HaXJ6idD8tkzocTryc907BYJLM=
 github.com/go-kratos/blades/contrib/openai v0.3.0/go.mod h1:DrUkaJa5M1Hx+kDoWHJtnhymGJF2VFx/ZPrwhq9ifIw=
 github.com/go-kratos/kit v0.0.0-20251121083925-65298ad2aa44 h1:T2JdBeiSLO+WUmMW4WF32SmS7TtUYGshDlL0+iFoUJg=
@@ -355,8 +353,6 @@ golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.3.0/go.mod h1:FU7BRWz2tNW+3quACPkgCx/L+uEAv1htQ0V83Z9Rj+Y=
 golang.org/x/sync v0.6.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
-golang.org/x/sync v0.17.0 h1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=
-golang.org/x/sync v0.17.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
 golang.org/x/sync v0.18.0 h1:kr88TuHDroi+UVf+0hZnirlk8o8T+4MrK6mr60WkH/I=
 golang.org/x/sync v0.18.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
