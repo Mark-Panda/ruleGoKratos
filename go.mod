@@ -6,14 +6,16 @@ toolchain go1.24.10
 
 require (
 	github.com/envoyproxy/protoc-gen-validate v1.2.1
-	github.com/go-kratos/blades v0.3.0
+	github.com/go-kratos/blades v0.3.1
 	github.com/go-kratos/blades/contrib/openai v0.3.0
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/gnostic v0.7.1
+	github.com/google/jsonschema-go v0.3.0
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/jinzhu/copier v0.4.0
+	github.com/openai/openai-go/v3 v3.8.1
 	github.com/rulego/rulego v0.34.2
 	github.com/rulego/rulego-components v0.34.0
 	github.com/rulego/rulego-components-ai v0.31.1
@@ -52,7 +54,6 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gofrs/uuid/v5 v5.0.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
-	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -74,7 +75,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openai/openai-go/v3 v3.8.1 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect

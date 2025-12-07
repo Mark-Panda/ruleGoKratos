@@ -10,7 +10,9 @@ import (
 	"github.com/go-kratos/blades/contrib/openai"
 	"github.com/go-kratos/blades/tools"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/google/uuid"
+	"github.com/openai/openai-go/v3/option"
 )
 
 type AgentUsecase struct {
@@ -32,12 +34,20 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 			return openai.NewModel(modelName, openai.Config{
 				APIKey:  uc.config.Ai.Doubao.ApiKey,
 				BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
+				RequestOptions: []option.RequestOption{
+					option.WithHeader("Accept", "application/json"),
+					option.WithHeader("OpenAI-Response-Format", "json_object"),
+				},
 			}), nil
 		} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil && uc.config.Ai.Openai.Model != "" {
 			modelName = uc.config.Ai.Openai.Model
 			return openai.NewModel(modelName, openai.Config{
 				APIKey:  uc.config.Ai.Openai.ApiKey,
 				BaseURL: uc.config.Ai.Openai.ApiBaseUrl,
+				RequestOptions: []option.RequestOption{
+					option.WithHeader("Accept", "application/json"),
+					option.WithHeader("OpenAI-Response-Format", "json_object"),
+				},
 			}), nil
 		}
 		return nil, fmt.Errorf("未配置AI模型")
@@ -48,11 +58,19 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 		return openai.NewModel(modelName, openai.Config{
 			APIKey:  uc.config.Ai.Doubao.ApiKey,
 			BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
+			RequestOptions: []option.RequestOption{
+				option.WithHeader("Accept", "application/json"),
+				option.WithHeader("OpenAI-Response-Format", "json_object"),
+			},
 		}), nil
 	} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil {
 		return openai.NewModel(modelName, openai.Config{
 			APIKey:  uc.config.Ai.Openai.ApiKey,
 			BaseURL: uc.config.Ai.Openai.ApiBaseUrl,
+			RequestOptions: []option.RequestOption{
+				option.WithHeader("Accept", "application/json"),
+				option.WithHeader("OpenAI-Response-Format", "json_object"),
+			},
 		}), nil
 	}
 
@@ -123,6 +141,7 @@ func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMes
 		blades.WithDescription("将业务流程文档解析并生成RuleGo的DSL"),
 		blades.WithTools(rulegoWorkers...),
 		blades.WithMiddleware(NewLogging),
+		blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
@@ -132,54 +151,14 @@ func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMes
 
 	input := blades.UserMessage(userMessage)
 	planRunner := blades.NewRunner(planagent)
-	// output, err := planRunner.Run(ctx, input)
-	// if err != nil {
-	// 	return func(yield func(*blades.Message, error) bool) {
-	// 		yield(nil, err)
-	// 	}
-	// }
-	// 运行任务规划
-	stream := planRunner.RunStream(ctx, input)
-	var message *blades.Message
-	for message, err = range stream {
-		if err != nil {
-			uc.log.Errorf("任务规划失败2222:", err)
-			return func(yield func(*blades.Message, error) bool) {
-				yield(nil, err)
+	return func(yield func(*blades.Message, error) bool) {
+		stream := planRunner.RunStream(ctx, input)
+		for msg, err := range stream {
+			if !yield(msg, err) {
+				break
 			}
 		}
-		return func(yield func(*blades.Message, error) bool) {
-			yield(message, nil)
-		}
 	}
-	return func(yield func(*blades.Message, error) bool) {
-		yield(message, nil)
-	}
-	// // 最终组装输出规则链的agent
-	// assemblyPrompts, err := getAssemblyPrompt(entity.AssemblyTpl{})
-	// if err != nil {
-	// 	return func(yield func(*blades.Message, error) bool) {
-	// 		yield(nil, err)
-	// 	}
-	// }
-	// assemblyAgent, err := blades.NewAgent(
-	// 	"assembly_agent",
-	// 	blades.WithInstruction(assemblyPrompts),
-	// 	blades.WithDescription("将节点配置和连接关系组装成符合RuleGo规范的规则链JSON"),
-	// 	blades.WithModel(model),
-	// 	blades.WithMiddleware(NewLogging),
-	// )
-	// assemblyRunner := blades.NewRunner(assemblyAgent)
-	// output, err := assemblyRunner.Run(ctx, blades.UserMessage(message.Text()))
-	// if err != nil {
-	// 	uc.log.Errorf("任务规划失败3333:", err)
-	// 	return func(yield func(*blades.Message, error) bool) {
-	// 		yield(nil, err)
-	// 	}
-	// }
-	// return func(yield func(*blades.Message, error) bool) {
-	// 	yield(output, nil)
-	// }
 }
 
 // 创建RuleGo子代理
@@ -196,35 +175,39 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 	if err != nil {
 		return nil, err
 	}
+
 	nodeAgent, err := blades.NewAgent(
 		"node_agent",
 		blades.WithDescription("根据用户需求生成符合RuleGo规范的节点JSON"),
 		blades.WithInstruction(nodePrompts),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
-		blades.WithTools(uuidTool),
-		blades.WithTools(nodeConfigTool),
+		// blades.WithTools(uuidTool),
+		// blades.WithTools(nodeConfigTool),
+		blades.WithInputSchema(&jsonschema.Schema{}),
+		blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
-		uc.log.Errorf("子代理工具失败:", err)
+		uc.log.Errorf("node_agent子代理工具失败:", err)
 		return nil, err
 	}
-	// connectPrompts, err := getConnectToolPrompt(entity.ConnectUseRuleTpl{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// connectAgent, err := blades.NewAgent(
-	// 	"connect_agent",
-	// 	blades.WithDescription("根据用户需求生成符合RuleGo规范的连接JSON"),
-	// 	blades.WithInstruction(connectPrompts),
-	// 	blades.WithModel(model),
-	// 	blades.WithMiddleware(NewLogging),
-	// 	blades.WithTools(),
-	// )
-	// if err != nil {
-	// 	uc.log.Errorf("子代理工具失败:", err)
-	// 	return nil, err
-	// }
+	connectPrompts, err := getConnectToolPrompt(entity.ConnectUseRuleTpl{})
+	if err != nil {
+		return nil, err
+	}
+	connectAgent, err := blades.NewAgent(
+		"connect_agent",
+		blades.WithDescription("根据用户需求生成符合RuleGo规范的连接JSON"),
+		blades.WithInstruction(connectPrompts),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithInputSchema(&jsonschema.Schema{}),
+		blades.WithOutputSchema(&jsonschema.Schema{}),
+	)
+	if err != nil {
+		uc.log.Errorf("connect_agent子代理工具失败:", err)
+		return nil, err
+	}
 
 	// 最终组装输出规则链的agent
 	assemblyPrompts, err := getAssemblyPrompt(entity.AssemblyTpl{})
@@ -237,10 +220,19 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		blades.WithDescription("将节点配置和连接关系组装成符合RuleGo规范的规则链JSON"),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
+		blades.WithInputSchema(&jsonschema.Schema{}),
+		blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
+	if err != nil {
+		uc.log.Errorf("assembly_agent子代理工具失败:", err)
+		return nil, err
+	}
 	return []tools.Tool{
 		blades.NewAgentTool(nodeAgent),
+		blades.NewAgentTool(connectAgent),
 		blades.NewAgentTool(assemblyAgent),
+		uuidTool,
+		nodeConfigTool,
 	}, nil
 }
 
