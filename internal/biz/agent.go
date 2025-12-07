@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"ruleGoKratos/internal/biz/entity"
 	"ruleGoKratos/internal/conf"
 
 	"github.com/go-kratos/blades"
@@ -20,34 +21,6 @@ type AgentUsecase struct {
 
 func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap, componentUseRuleRepo ComponentUseRuleRepo) *AgentUsecase {
 	return &AgentUsecase{log: log.NewHelper(logger), config: config, componentUseRuleRepo: componentUseRuleRepo}
-}
-
-func (uc *AgentUsecase) CreateAgent(ctx context.Context) error {
-	// model := openai.NewModel(uc.config.Ai.Doubao.Model, openai.Config{
-	// 	APIKey:  uc.config.Ai.Doubao.ApiKey,
-	// 	BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
-	// })
-
-	return nil
-}
-
-// 节点agent
-func (uc *AgentUsecase) CreateNodeAgent(ctx context.Context, model blades.ModelProvider, nodeType string) (blades.Agent, error) {
-	componentUseRule, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_name": nodeType})
-	if err != nil {
-		return nil, err
-	}
-	nodeSystemPrompt := fmt.Sprintf(`
-	你是一个RuleGo %s节点构造师,你擅长根据用户给的需求构造出符合需求的RuleGo节点
-	`, componentUseRule.ComponentName)
-	return blades.NewAgent(
-		"RuleGo Node Generator Agent",
-		blades.WithModel(model),
-		blades.WithInstruction(nodeSystemPrompt),
-		blades.WithDescription("You are a helpful assistant that provides detailed and accurate information."),
-		// blades.WithTools(tools.NewTool()),
-		// blades.WithOutputSchema(&jsonschema.Schema{}),
-	)
 }
 
 // GetModelProvider 获取模型提供者
@@ -122,58 +95,51 @@ func (uc *AgentUsecase) ChatStream(ctx context.Context, modelName string, histor
 	return agent.Run(ctx, invocation)
 }
 
-// 创建任务规划agent
-func (uc *AgentUsecase) CreateTaskPlanningAgent(ctx context.Context, history []*blades.Message, userMessage string) blades.Generator[*blades.Message, error] {
+// 创建RuleGo任务规划agent
+func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMessage string) blades.Generator[*blades.Message, error] {
 	model, err := uc.GetModelProvider("")
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
 			yield(nil, err)
 		}
 	}
-	translatorWorkers, err := uc.CreateTranslatorWorkers(model)
+	// 创建子代理工具
+	rulegoWorkers, err := uc.CreateRuleChainWorker(model)
 	if err != nil {
-		uc.log.Errorf("创建子代理工具失败:", err)
 		return func(yield func(*blades.Message, error) bool) {
 			yield(nil, err)
 		}
 	}
-	orchestratorAgent, err := blades.NewAgent(
-		"orchestrator_agent",
-		blades.WithInstruction(`你是一个翻译代理。你使用提供给你的工具进行翻译。如果要求提供多个翻译，你需要按顺序调用相关工具。你永远不要独自翻译，你总是要使用提供的工具。`),
+	planPrompts, err := getPlannerPrompt(entity.PlannerTpl{})
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	planagent, err := blades.NewAgent(
+		"plan_agent",
 		blades.WithModel(model),
-		blades.WithTools(translatorWorkers...),
+		blades.WithInstruction(planPrompts),
+		blades.WithDescription("将业务流程文档解析并生成RuleGo的DSL"),
+		blades.WithTools(rulegoWorkers...),
 		blades.WithMiddleware(NewLogging),
 	)
 	if err != nil {
-		uc.log.Errorf("任务规划失败:", err)
 		return func(yield func(*blades.Message, error) bool) {
 			yield(nil, err)
 		}
 	}
-	synthesizerAgent, err := blades.NewAgent(
-		"synthesizer_agent",
-		blades.WithInstruction("你检查翻译内容，如有需要则进行修正，并生成最终的连贯回复。"),
-		blades.WithModel(model),
-		blades.WithMiddleware(NewLogging),
-	)
-	if err != nil {
-		uc.log.Errorf("任务规划失败1111:", err)
-		return func(yield func(*blades.Message, error) bool) {
-			yield(nil, err)
-		}
-	}
-	input := blades.UserMessage(userMessage)
-	orchestratorRunner := blades.NewRunner(orchestratorAgent)
-	// 构建Invocation，包含历史消息
-	// invocation := &blades.Invocation{
-	// 	ID:         blades.NewInvocationID(),
-	// 	Message:    input,
-	// 	History:    history,
-	// 	Streamable: true,
-	// }
 
+	input := blades.UserMessage(userMessage)
+	planRunner := blades.NewRunner(planagent)
+	// output, err := planRunner.Run(ctx, input)
+	// if err != nil {
+	// 	return func(yield func(*blades.Message, error) bool) {
+	// 		yield(nil, err)
+	// 	}
+	// }
 	// 运行任务规划
-	stream := orchestratorRunner.RunStream(ctx, input)
+	stream := planRunner.RunStream(ctx, input)
 	var message *blades.Message
 	for message, err = range stream {
 		if err != nil {
@@ -182,101 +148,38 @@ func (uc *AgentUsecase) CreateTaskPlanningAgent(ctx context.Context, history []*
 				yield(nil, err)
 			}
 		}
-	}
-	// 运行任务修正
-	synthesizerRunner := blades.NewRunner(synthesizerAgent)
-	output, err := synthesizerRunner.Run(ctx, blades.UserMessage(message.Text()))
-	if err != nil {
-		uc.log.Errorf("任务规划失败3333:", err)
 		return func(yield func(*blades.Message, error) bool) {
-			yield(nil, err)
+			yield(message, nil)
 		}
 	}
 	return func(yield func(*blades.Message, error) bool) {
-		yield(output, nil)
+		yield(message, nil)
 	}
-}
-
-// 子代理工具
-func (uc *AgentUsecase) CreateTranslatorWorkers(model blades.ModelProvider) ([]tools.Tool, error) {
-	spanishAgent, err := blades.NewAgent(
-		"spanish_agent",
-		blades.WithDescription("An English to Spanish translator"),
-		blades.WithInstruction("You translate the user's message to Spanish"),
-		blades.WithModel(model),
-		blades.WithMiddleware(NewLogging),
-	)
-	if err != nil {
-		uc.log.Errorf("子代理工具失败:", err)
-		return nil, err
-	}
-	frenchAgent, err := blades.NewAgent(
-		"french_agent",
-		blades.WithDescription("An English to French translator"),
-		blades.WithInstruction("You translate the user's message to French"),
-		blades.WithModel(model),
-		blades.WithMiddleware(NewLogging),
-	)
-	if err != nil {
-		uc.log.Errorf("子代理工具失败1111:", err)
-		return nil, err
-	}
-	italianAgent, err := blades.NewAgent(
-		"italian_agent",
-		blades.WithDescription("An English to Italian translator"),
-		blades.WithInstruction("You translate the user's message to Italian"),
-		blades.WithModel(model),
-		blades.WithMiddleware(NewLogging),
-	)
-	if err != nil {
-		uc.log.Errorf("子代理工具失败2222:", err)
-		return nil, err
-	}
-	return []tools.Tool{
-		blades.NewAgentTool(spanishAgent),
-		blades.NewAgentTool(frenchAgent),
-		blades.NewAgentTool(italianAgent),
-	}, nil
-}
-
-// 创建RuleGo任务规划agent
-func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMessage string) (*blades.Message, error) {
-	model, err := uc.GetModelProvider("")
-	if err != nil {
-		return nil, err
-	}
-	// 创建子代理工具
-	rulegoWorkers, err := uc.CreateRuleChainWorker(model)
-	if err != nil {
-		return nil, err
-	}
-	planagent, err := blades.NewAgent(
-		"RuleGo规则链架构师",
-		blades.WithModel(model),
-		blades.WithInstruction(RuleChainPlannerPrompt),
-		blades.WithDescription("将Markdown格式的业务流程文档转化为符合官方规范的RuleGo规则链JSON"),
-		blades.WithTools(rulegoWorkers...),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	input := blades.UserMessage(userMessage)
-	planRunner := blades.NewRunner(planagent)
-	// 构建Invocation，包含历史消息
-	// invocation := &blades.Invocation{
-	// 	ID:         blades.NewInvocationID(),
-	// 	Message:    input,
-	// 	History:    history,
-	// 	Streamable: true,
+	// // 最终组装输出规则链的agent
+	// assemblyPrompts, err := getAssemblyPrompt(entity.AssemblyTpl{})
+	// if err != nil {
+	// 	return func(yield func(*blades.Message, error) bool) {
+	// 		yield(nil, err)
+	// 	}
 	// }
-
-	// 运行任务规划
-	output, err := planRunner.Run(ctx, input)
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
+	// assemblyAgent, err := blades.NewAgent(
+	// 	"assembly_agent",
+	// 	blades.WithInstruction(assemblyPrompts),
+	// 	blades.WithDescription("将节点配置和连接关系组装成符合RuleGo规范的规则链JSON"),
+	// 	blades.WithModel(model),
+	// 	blades.WithMiddleware(NewLogging),
+	// )
+	// assemblyRunner := blades.NewRunner(assemblyAgent)
+	// output, err := assemblyRunner.Run(ctx, blades.UserMessage(message.Text()))
+	// if err != nil {
+	// 	uc.log.Errorf("任务规划失败3333:", err)
+	// 	return func(yield func(*blades.Message, error) bool) {
+	// 		yield(nil, err)
+	// 	}
+	// }
+	// return func(yield func(*blades.Message, error) bool) {
+	// 	yield(output, nil)
+	// }
 }
 
 // 创建RuleGo子代理
@@ -285,33 +188,59 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 	if err != nil {
 		return nil, err
 	}
+	nodeConfigTool, err := uc.GetNodeConfig()
+	if err != nil {
+		return nil, err
+	}
+	nodePrompts, err := getNodeToolPrompt(entity.NodeToolTpl{})
+	if err != nil {
+		return nil, err
+	}
 	nodeAgent, err := blades.NewAgent(
 		"node_agent",
 		blades.WithDescription("根据用户需求生成符合RuleGo规范的节点JSON"),
-		blades.WithInstruction(RuleChainNodeToolPrompt),
+		blades.WithInstruction(nodePrompts),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
 		blades.WithTools(uuidTool),
+		blades.WithTools(nodeConfigTool),
 	)
 	if err != nil {
 		uc.log.Errorf("子代理工具失败:", err)
 		return nil, err
 	}
-	connectAgent, err := blades.NewAgent(
-		"connect_agent",
-		blades.WithDescription("根据用户需求生成符合RuleGo规范的连接JSON"),
-		blades.WithInstruction(RuleChainConnectToolPrompt),
+	// connectPrompts, err := getConnectToolPrompt(entity.ConnectUseRuleTpl{})
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// connectAgent, err := blades.NewAgent(
+	// 	"connect_agent",
+	// 	blades.WithDescription("根据用户需求生成符合RuleGo规范的连接JSON"),
+	// 	blades.WithInstruction(connectPrompts),
+	// 	blades.WithModel(model),
+	// 	blades.WithMiddleware(NewLogging),
+	// 	blades.WithTools(),
+	// )
+	// if err != nil {
+	// 	uc.log.Errorf("子代理工具失败:", err)
+	// 	return nil, err
+	// }
+
+	// 最终组装输出规则链的agent
+	assemblyPrompts, err := getAssemblyPrompt(entity.AssemblyTpl{})
+	if err != nil {
+		return nil, err
+	}
+	assemblyAgent, err := blades.NewAgent(
+		"assembly_agent",
+		blades.WithInstruction(assemblyPrompts),
+		blades.WithDescription("将节点配置和连接关系组装成符合RuleGo规范的规则链JSON"),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
-		blades.WithTools(),
 	)
-	if err != nil {
-		uc.log.Errorf("子代理工具失败:", err)
-		return nil, err
-	}
 	return []tools.Tool{
 		blades.NewAgentTool(nodeAgent),
-		blades.NewAgentTool(connectAgent),
+		blades.NewAgentTool(assemblyAgent),
 	}, nil
 }
 
@@ -322,6 +251,24 @@ func (uc *AgentUsecase) GenerateUUIDTool() (tools.Tool, error) {
 		"生成UUID",
 		func(ctx context.Context, input string) (string, error) {
 			return uuid.NewString(), nil
+		},
+	)
+}
+
+// 查询节点配置信息
+func (uc *AgentUsecase) GetNodeConfig() (tools.Tool, error) {
+	return tools.NewFunc(
+		"get_node_config",
+		"获取节点配置信息",
+		func(ctx context.Context, input string) (string, error) {
+			result, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_name": input})
+			if err != nil {
+				return "", err
+			}
+			if result == nil {
+				return "", nil
+			}
+			return result.UseRuleDesc, nil
 		},
 	)
 }

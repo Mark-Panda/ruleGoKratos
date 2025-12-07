@@ -127,7 +127,7 @@ func (s *ChatService) ChatStreamHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 使用Agent进行流式对话
-	generator := s.agentUC.CreateTaskPlanningAgent(ctx, history, "请将以下句子翻译成西班牙语、法语和意大利语：'Hello, how are you?'")
+	generator := s.agentUC.CreateRuleChainPlannerAgent(ctx, req.Message)
 	// generator := s.agentUC.ChatStream(ctx, req.Model, history, req.Message)
 
 	// 遍历生成器并发送响应

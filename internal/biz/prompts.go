@@ -22,6 +22,9 @@ var RuleChainNodeToolPrompt string // 节点组件生成工具
 //go:embed prompt/connect_tool.tpl
 var RuleChainConnectToolPrompt string // 连接组件生成工具
 
+//go:embed prompt/assembly.tpl
+var RuleChainAssemblyPrompt string // 规则链组装工具
+
 func getNodeToolPrompt(param entity.NodeToolTpl) (string, error) {
 	tpl, err := template.New(`RuleChainNodeToolPrompt`).Parse(RuleChainNodeToolPrompt)
 	if err != nil {
@@ -34,8 +37,32 @@ func getNodeToolPrompt(param entity.NodeToolTpl) (string, error) {
 	return headerTPL.String(), nil
 }
 
+func getConnectToolPrompt(param entity.ConnectUseRuleTpl) (string, error) {
+	tpl, err := template.New(`RuleChainConnectToolPrompt`).Parse(RuleChainConnectToolPrompt)
+	if err != nil {
+		return "", err
+	}
+	var headerTPL bytes.Buffer
+	if err1 := tpl.Execute(&headerTPL, param); err1 != nil {
+		return "", err1
+	}
+	return headerTPL.String(), nil
+}
+
 func getPlannerPrompt(param entity.PlannerTpl) (string, error) {
 	tpl, err := template.New(`RuleChainPlannerPrompt`).Parse(RuleChainPlannerPrompt)
+	if err != nil {
+		return "", err
+	}
+	var headerTPL bytes.Buffer
+	if err1 := tpl.Execute(&headerTPL, param); err1 != nil {
+		return "", err1
+	}
+	return headerTPL.String(), nil
+}
+
+func getAssemblyPrompt(param entity.AssemblyTpl) (string, error) {
+	tpl, err := template.New(`RuleChainAssemblyPrompt`).Parse(RuleChainAssemblyPrompt)
 	if err != nil {
 		return "", err
 	}

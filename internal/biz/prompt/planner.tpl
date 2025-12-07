@@ -36,10 +36,10 @@
       "instruction": "1.读取数据库user表数据，需要用到dbClient节点。 2.将用户的phone字段作为https://yapi.yc345.tv/project/2820/data/12334接口的参数，获取到接口的返回信息，需要用到http节点。3. 节点关系时dbClient节点指向http节点"
     },
     {
-      "instruction": "调用节点agent分别生成dbClient和HTTP节点数据，生成节点组件后调用 connect agent 生成节点关联关系"
+      "instruction": "调用 `node_agent` 工具 分别生成dbClient和HTTP节点数据"
     },
     {
-      "instruction": "整个节点信息和连接信息，将其组合成为完整的RuleGo规则的JSON结构。"
+      "instruction": "根据节点关联关系和生成的节点JSON数据，调用 `assembly_agent` 工具 生成完整的RuleGo规则的JSON结构。"
     }
   ]
 }

@@ -21,3 +21,6 @@ type ConnectUseRuleTpl struct {
 	ToId   string `json:"toId"`
 	Type   string `json:"type"`
 }
+
+type AssemblyTpl struct {
+}

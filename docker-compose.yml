@@ -6,12 +6,11 @@ services:
     container_name: workflow
     ports:
       - "8081:8081"
-      - "8000:8000"
-      - "9000:9000"
+      - "8001:8000"
+      - "9001:9000"
     volumes:
       - ./configs:/data/conf
     environment:
-      - PUBLIC_API_ORIGIN=http://localhost:8000
       - SERVER_HTTP_ADDR=0.0.0.0:8000
       - SERVER_GRPC_ADDR=0.0.0.0:9000
       - DATA_POSTGRES_HOST=postgres-db

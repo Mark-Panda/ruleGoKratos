@@ -19,10 +19,12 @@ func NewLogging(next blades.Handler) blades.Handler {
 
 func (m *AgentLogger) onError(start time.Time, agent blades.AgentContext, invocation *blades.Invocation, err error) {
 	log.Printf("失败日志: 模型名称(%s) prompt(%s) 失败之后耗时 %s: 错误信息为%v", agent.Name(), invocation.Message.String(), time.Since(start), err)
+	// log.Printf("失败日志: 模型名称(%s) prompt(%s) 失败之后耗时 %s: 错误信息为%v", agent.Name(), invocation.Message.String(), time.Since(start), err)
 }
 
 func (m *AgentLogger) onSuccess(start time.Time, agent blades.AgentContext, invocation *blades.Invocation, output *blades.Message) {
 	log.Printf("成功日志: 模型名称(%s) prompt(%s) 成功之后耗时 %s: 输出内容为%s", agent.Name(), invocation.Message.String(), time.Since(start), output.String())
+	log.Printf("成功日志:  输出内容为%s", output.String())
 }
 
 func (m *AgentLogger) Handle(ctx context.Context, invocation *blades.Invocation) blades.Generator[*blades.Message, error] {

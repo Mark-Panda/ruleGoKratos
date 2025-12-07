@@ -167,10 +167,8 @@ export const ComponentsSection: React.FC<{ view?: 'installed' | 'rules' }> = ({
     return arr;
   }, [ruleItems, ruleKeywords, ruleKind, ruleStatus]);
 
-  const pagedRules = useMemo(() => {
-    const start = (rulePage - 1) * ruleSize;
-    return filteredRules.slice(start, start + ruleSize);
-  }, [filteredRules, rulePage, ruleSize]);
+  // 直接使用服务端返回的数据，不进行客户端分页
+  const pagedRules = filteredRules;
 
   const fetchRules = async (page?: number, size?: number) => {
     setRuleLoading(true);
@@ -915,10 +913,10 @@ export const ComponentsSection: React.FC<{ view?: 'installed' | 'rules' }> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Typography.Text>共 {filteredRules.length} 条</Typography.Text>
+                <Typography.Text>共 {ruleTotal} 条</Typography.Text>
                 <Typography.Text type="tertiary" style={{ fontSize: 12 }}>
-                  显示 {filteredRules.length === 0 ? 0 : (rulePage - 1) * ruleSize + 1}-
-                  {Math.min(rulePage * ruleSize, filteredRules.length)} 条
+                  显示 {ruleTotal === 0 ? 0 : (rulePage - 1) * ruleSize + 1}-
+                  {Math.min(rulePage * ruleSize, ruleTotal)} 条
                 </Typography.Text>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

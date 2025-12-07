@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   Button,
@@ -77,7 +77,27 @@ export const WorkflowSection: React.FC = () => {
     }
   };
 
+  // 跟踪上一次的筛选条件，用于检测筛选条件是否改变
+  const prevKeywordsRef = useRef(keywords);
+  const prevChainFilterRef = useRef(chainFilter);
+
   useEffect(() => {
+    const keywordsChanged = prevKeywordsRef.current !== keywords;
+    const chainFilterChanged = prevChainFilterRef.current !== chainFilter;
+
+    // 如果筛选条件改变且当前不在第一页，重置到第一页
+    if ((keywordsChanged || chainFilterChanged) && page !== 1) {
+      prevKeywordsRef.current = keywords;
+      prevChainFilterRef.current = chainFilter;
+      setPage(1);
+      return;
+    }
+
+    // 更新引用
+    prevKeywordsRef.current = keywords;
+    prevChainFilterRef.current = chainFilter;
+
+    // 刷新列表
     refreshList();
   }, [page, size, keywords, chainFilter, showEditor]);
 
@@ -140,11 +160,7 @@ export const WorkflowSection: React.FC = () => {
               开启
             </Tag>
           );
-        return (
-          <Tag style={{ borderRadius: 4 }}>
-            关闭
-          </Tag>
-        );
+        return <Tag style={{ borderRadius: 4 }}>关闭</Tag>;
       },
     },
     {
@@ -325,7 +341,14 @@ export const WorkflowSection: React.FC = () => {
                   span={10}
                   style={{ textAlign: 'left', display: 'flex', gap: 12, paddingLeft: 24 }}
                 >
-                  <Button type="primary" theme="solid" onClick={refreshList}>
+                  <Button
+                    type="primary"
+                    theme="solid"
+                    onClick={() => {
+                      setPage(1);
+                      refreshList();
+                    }}
+                  >
                     筛选
                   </Button>
                   <Button
@@ -333,6 +356,7 @@ export const WorkflowSection: React.FC = () => {
                     onClick={() => {
                       setKeywords('');
                       setChainFilter('all');
+                      setPage(1);
                     }}
                   >
                     重置
