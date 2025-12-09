@@ -10,7 +10,6 @@ import (
 	"github.com/go-kratos/blades/contrib/openai"
 	"github.com/go-kratos/blades/tools"
 	"github.com/go-kratos/kratos/v2/log"
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/google/uuid"
 	"github.com/openai/openai-go/v3/option"
 )
@@ -141,7 +140,7 @@ func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMes
 		blades.WithDescription("将业务流程文档解析并生成RuleGo的DSL"),
 		blades.WithTools(rulegoWorkers...),
 		blades.WithMiddleware(NewLogging),
-		blades.WithOutputSchema(&jsonschema.Schema{}),
+		// blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
@@ -184,8 +183,8 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		blades.WithMiddleware(NewLogging),
 		// blades.WithTools(uuidTool),
 		// blades.WithTools(nodeConfigTool),
-		blades.WithInputSchema(&jsonschema.Schema{}),
-		blades.WithOutputSchema(&jsonschema.Schema{}),
+		// blades.WithInputSchema(&jsonschema.Schema{}),
+		// blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
 		uc.log.Errorf("node_agent子代理工具失败:", err)
@@ -201,8 +200,8 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		blades.WithInstruction(connectPrompts),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
-		blades.WithInputSchema(&jsonschema.Schema{}),
-		blades.WithOutputSchema(&jsonschema.Schema{}),
+		// blades.WithInputSchema(&jsonschema.Schema{}),
+		// blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
 		uc.log.Errorf("connect_agent子代理工具失败:", err)
@@ -220,8 +219,8 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		blades.WithDescription("将节点配置和连接关系组装成符合RuleGo规范的规则链JSON"),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
-		blades.WithInputSchema(&jsonschema.Schema{}),
-		blades.WithOutputSchema(&jsonschema.Schema{}),
+		// blades.WithInputSchema(&jsonschema.Schema{}),
+		// blades.WithOutputSchema(&jsonschema.Schema{}),
 	)
 	if err != nil {
 		uc.log.Errorf("assembly_agent子代理工具失败:", err)
