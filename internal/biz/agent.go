@@ -127,17 +127,17 @@ func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMes
 			yield(nil, err)
 		}
 	}
-	planPrompts, err := getPlannerPrompt(entity.PlannerTpl{})
+	executePrompts, err := getExecutePrompt(entity.ExecuteTpl{})
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
 			yield(nil, err)
 		}
 	}
 	planagent, err := blades.NewAgent(
-		"plan_agent",
+		"execute_agent",
 		blades.WithModel(model),
-		blades.WithInstruction(planPrompts),
-		blades.WithDescription("将业务流程文档解析并生成RuleGo的DSL"),
+		blades.WithInstruction(executePrompts),
+		blades.WithDescription("执行agent"),
 		blades.WithTools(rulegoWorkers...),
 		blades.WithMiddleware(NewLogging),
 		// blades.WithOutputSchema(&jsonschema.Schema{}),
@@ -226,10 +226,26 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		uc.log.Errorf("assembly_agent子代理工具失败:", err)
 		return nil, err
 	}
+
+	planPrompts, err := getPlannerPrompt(entity.PlannerTpl{})
+	if err != nil {
+		return nil, err
+	}
+	planAgent, err := blades.NewAgent(
+		"plan_agent",
+		blades.WithInstruction(planPrompts),
+		blades.WithDescription("将业务流程文档解析并生成RuleGo的DSL"),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+	)
+	if err != nil {
+		return nil, err
+	}
 	return []tools.Tool{
 		blades.NewAgentTool(nodeAgent),
 		blades.NewAgentTool(connectAgent),
 		blades.NewAgentTool(assemblyAgent),
+		blades.NewAgentTool(planAgent),
 		uuidTool,
 		nodeConfigTool,
 	}, nil

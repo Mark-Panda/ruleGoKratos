@@ -1,7 +1,7 @@
 package entity
 
 type PlannerTpl struct {
-	NodeUseList []NodeUseRuleTpl `json:"nodeUseList"`
+	// NodeUseList []NodeUseRuleTpl `json:"nodeUseList"`
 }
 
 type NodeUseRuleTpl struct {
@@ -23,4 +23,7 @@ type ConnectUseRuleTpl struct {
 }
 
 type AssemblyTpl struct {
+}
+
+type ExecuteTpl struct {
 }

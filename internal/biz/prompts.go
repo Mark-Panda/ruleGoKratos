@@ -72,3 +72,15 @@ func getAssemblyPrompt(param entity.AssemblyTpl) (string, error) {
 	}
 	return headerTPL.String(), nil
 }
+
+func getExecutePrompt(param entity.ExecuteTpl) (string, error) {
+	tpl, err := template.New(`RuleChainExecutePrompt`).Parse(RuleChainExecutePrompt)
+	if err != nil {
+		return "", err
+	}
+	var headerTPL bytes.Buffer
+	if err1 := tpl.Execute(&headerTPL, param); err1 != nil {
+		return "", err1
+	}
+	return headerTPL.String(), nil
+}
