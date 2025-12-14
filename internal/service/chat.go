@@ -51,11 +51,11 @@ func (s *ChatService) ChatStream(req *v1.ChatStreamReq, stream v1.Chat_ChatStrea
 			})
 		}
 		if msg != nil {
-            // 提取消息文本内容（空文本回退到字符串化表示）
-            content := msg.Text()
-            if content == "" {
-                content = msg.String()
-            }
+			// 提取消息文本内容（空文本回退到字符串化表示）
+			content := msg.Text()
+			if content == "" {
+				content = msg.String()
+			}
 			if content != "" {
 				if sendErr := stream.Send(&v1.ChatStreamReply{
 					Content: content,
@@ -130,6 +130,7 @@ func (s *ChatService) ChatStreamHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 使用Agent进行流式对话
+	// generator := s.agentUC.CreateRuleChainTestAgent(ctx, req.Message)
 	generator := s.agentUC.CreateRuleChainPlannerAgent(ctx, req.Message)
 	// generator := s.agentUC.ChatStream(ctx, req.Model, history, req.Message)
 
@@ -151,11 +152,11 @@ func (s *ChatService) ChatStreamHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if msg != nil {
-            // 提取消息文本内容（空文本回退到字符串化表示）
-            content := msg.Text()
-            if content == "" {
-                content = msg.String()
-            }
+			// 提取消息文本内容（空文本回退到字符串化表示）
+			content := msg.Text()
+			if content == "" {
+				content = msg.String()
+			}
 			if content != "" {
 				reply := &v1.ChatStreamReply{
 					Content: content,

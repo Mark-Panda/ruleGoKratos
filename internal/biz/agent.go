@@ -112,6 +112,83 @@ func (uc *AgentUsecase) ChatStream(ctx context.Context, modelName string, histor
 	return agent.Run(ctx, invocation)
 }
 
+func (uc *AgentUsecase) CreateRuleChainTestAgent(ctx context.Context, userMessage string) blades.Generator[*blades.Message, error] {
+	model, err := uc.GetModelProvider("")
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	uuidTool, err := uc.GenerateUUIDTool()
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	planPrompts, err := getPlannerPrompt(entity.PlannerTpl{})
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	planAgent, err := blades.NewAgent(
+		"plan_agent",
+		blades.WithInstruction(planPrompts),
+		blades.WithDescription("任务规划agent"),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithTools(uuidTool),
+		// blades.WithOutputSchema(&jsonschema.Schema{
+		// 	Type: "object",
+		// 	Properties: map[string]*jsonschema.Schema{
+		// 		"steps": {
+		// 			Type:        "array",
+		// 			Description: "任务规划步骤列表",
+		// 			Items: &jsonschema.Schema{
+		// 				Type: "object",
+		// 				Properties: map[string]*jsonschema.Schema{
+		// 					"instruction": {
+		// 						Type:        "string",
+		// 						Description: "步骤指令说明",
+		// 					},
+		// 					"tools_to_call": {
+		// 						Type:        "array",
+		// 						Description: "该步骤需要调用的工具列表",
+		// 						Items: &jsonschema.Schema{
+		// 							Type: "string",
+		// 						},
+		// 					},
+		// 				},
+		// 				Required: []string{"instruction", "tools_to_call"},
+		// 			},
+		// 		},
+		// 	},
+		// 	Required: []string{"steps"},
+		// }),
+	)
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+	if err != nil {
+		return func(yield func(*blades.Message, error) bool) {
+			yield(nil, err)
+		}
+	}
+
+	input := blades.UserMessage(userMessage)
+	planRunner := blades.NewRunner(planAgent)
+	return func(yield func(*blades.Message, error) bool) {
+		stream := planRunner.RunStream(ctx, input)
+		for msg, err := range stream {
+			if !yield(msg, err) {
+				break
+			}
+		}
+	}
+}
+
 // 创建RuleGo任务规划agent
 func (uc *AgentUsecase) CreateRuleChainPlannerAgent(ctx context.Context, userMessage string) blades.Generator[*blades.Message, error] {
 	model, err := uc.GetModelProvider("")
@@ -237,6 +314,7 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		blades.WithDescription("将业务流程文档解析并生成RuleGo的DSL"),
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
+		blades.WithTools(uuidTool),
 	)
 	if err != nil {
 		return nil, err
