@@ -33,6 +33,7 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	v1.RegisterRunLogHTTPServer(srv, runLogs)
 	v1.RegisterComponentHTTPServer(srv, components)
 	v1.RegisterMdWorkflowHTTPServer(srv, md)
+	v1.RegisterChatHTTPServer(srv, chat)
 
 	// 注册Chat服务的HTTP SSE路由
 	// 注意：流式响应需要直接使用底层ResponseWriter，绕过Kratos的响应处理

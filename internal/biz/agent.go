@@ -2,14 +2,17 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"ruleGoKratos/internal/biz/entity"
 	"ruleGoKratos/internal/conf"
+	"strings"
 
 	"github.com/go-kratos/blades"
 	"github.com/go-kratos/blades/contrib/openai"
 	"github.com/go-kratos/blades/tools"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/google/uuid"
 	"github.com/openai/openai-go/v3/option"
 )
@@ -35,7 +38,7 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 				BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
 				RequestOptions: []option.RequestOption{
 					option.WithHeader("Accept", "application/json"),
-					option.WithHeader("OpenAI-Response-Format", "json_object"),
+					option.WithHeader("response_format", "json_object"),
 				},
 			}), nil
 		} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil && uc.config.Ai.Openai.Model != "" {
@@ -45,7 +48,6 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 				BaseURL: uc.config.Ai.Openai.ApiBaseUrl,
 				RequestOptions: []option.RequestOption{
 					option.WithHeader("Accept", "application/json"),
-					option.WithHeader("OpenAI-Response-Format", "json_object"),
 				},
 			}), nil
 		}
@@ -59,7 +61,6 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 			BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
 			RequestOptions: []option.RequestOption{
 				option.WithHeader("Accept", "application/json"),
-				option.WithHeader("OpenAI-Response-Format", "json_object"),
 			},
 		}), nil
 	} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil {
@@ -68,7 +69,6 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 			BaseURL: uc.config.Ai.Openai.ApiBaseUrl,
 			RequestOptions: []option.RequestOption{
 				option.WithHeader("Accept", "application/json"),
-				option.WithHeader("OpenAI-Response-Format", "json_object"),
 			},
 		}), nil
 	}
@@ -138,39 +138,27 @@ func (uc *AgentUsecase) CreateRuleChainTestAgent(ctx context.Context, userMessag
 		blades.WithModel(model),
 		blades.WithMiddleware(NewLogging),
 		blades.WithTools(uuidTool),
-		// blades.WithOutputSchema(&jsonschema.Schema{
-		// 	Type: "object",
-		// 	Properties: map[string]*jsonschema.Schema{
-		// 		"steps": {
-		// 			Type:        "array",
-		// 			Description: "任务规划步骤列表",
-		// 			Items: &jsonschema.Schema{
-		// 				Type: "object",
-		// 				Properties: map[string]*jsonschema.Schema{
-		// 					"instruction": {
-		// 						Type:        "string",
-		// 						Description: "步骤指令说明",
-		// 					},
-		// 					"tools_to_call": {
-		// 						Type:        "array",
-		// 						Description: "该步骤需要调用的工具列表",
-		// 						Items: &jsonschema.Schema{
-		// 							Type: "string",
-		// 						},
-		// 					},
-		// 				},
-		// 				Required: []string{"instruction", "tools_to_call"},
-		// 			},
-		// 		},
-		// 	},
-		// 	Required: []string{"steps"},
-		// }),
+		blades.WithOutputSchema(&jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"steps": {
+					Type:        "array",
+					Description: "任务规划步骤列表",
+					Items: &jsonschema.Schema{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"instruction": {
+								Type:        "string",
+								Description: "步骤指令说明",
+							},
+						},
+						Required: []string{"instruction"},
+					},
+				},
+			},
+			Required: []string{"steps"},
+		}),
 	)
-	if err != nil {
-		return func(yield func(*blades.Message, error) bool) {
-			yield(nil, err)
-		}
-	}
 	if err != nil {
 		return func(yield func(*blades.Message, error) bool) {
 			yield(nil, err)
@@ -356,4 +344,227 @@ func (uc *AgentUsecase) GetNodeConfig() (tools.Tool, error) {
 			return result.UseRuleDesc, nil
 		},
 	)
+}
+
+func (uc *AgentUsecase) RuleChainTestAgent(ctx context.Context, userMessage string) (*blades.Message, error) {
+	model, err := uc.GetModelProvider("")
+	if err != nil {
+		return nil, err
+	}
+	uuidTool, err := uc.GenerateUUIDTool()
+	if err != nil {
+		return nil, err
+	}
+	nodeConfigTool, err := uc.GetNodeConfig()
+	if err != nil {
+		return nil, err
+	}
+	planPrompts, err := getPlannerPrompt(entity.PlannerTpl{})
+	if err != nil {
+		return nil, err
+	}
+	planAgent, err := blades.NewAgent(
+		"plan_agent",
+		blades.WithInstruction(planPrompts),
+		blades.WithDescription("任务规划agent"),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithTools(uuidTool),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	nodePrompts, err := getNodeToolPrompt(entity.NodeToolTpl{})
+	if err != nil {
+		return nil, err
+	}
+	nodeAgent, err := blades.NewAgent(
+		"node_agent",
+		blades.WithDescription("节点agent"),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithInstruction(nodePrompts),
+		blades.WithTools(nodeConfigTool),
+	)
+	if err != nil {
+		return nil, err
+	}
+	connectPrompts, err := getConnectToolPrompt(entity.ConnectUseRuleTpl{})
+	if err != nil {
+		return nil, err
+	}
+	connectAgent, err := blades.NewAgent(
+		"connect_agent",
+		blades.WithDescription("连接agent"),
+		blades.WithModel(model),
+		blades.WithInstruction(connectPrompts),
+		blades.WithMiddleware(NewLogging),
+	)
+	if err != nil {
+		return nil, err
+	}
+	input := blades.UserMessage(userMessage)
+	planRunner := blades.NewRunner(planAgent)
+	stream := planRunner.RunStream(ctx, input)
+	var lastMsg *blades.Message
+	for msg, err := range stream {
+		if err != nil {
+			return nil, err
+		}
+		if msg != nil {
+			lastMsg = msg
+			// 判断是否是最后一个消息
+			if msg.Status == blades.StatusCompleted {
+				break
+			}
+		}
+	}
+	planMsgStr := lastMsg.Text()
+	fmt.Println("planMsgStr:", planMsgStr)
+	planResult, err := FinalJSONParser(planMsgStr)
+	if err != nil {
+		fmt.Println("SafeUnmarshalPlan error:", err)
+	} else {
+		fmt.Println("planResult:", planResult)
+	}
+	var lastNodeMsg, lastConnectMsg *blades.Message
+	for i, step := range planResult.Steps {
+		if i == len(planResult.Steps)-2 {
+			nodeInput := blades.UserMessage(step.Instruction)
+			nodeRunner := blades.NewRunner(nodeAgent)
+			nodeStream := nodeRunner.RunStream(ctx, nodeInput)
+			for nodeMsg, err := range nodeStream {
+				if err != nil {
+					break
+				}
+				if nodeMsg != nil {
+					// 判断是否是最后一个消息
+					if nodeMsg.Status == blades.StatusCompleted {
+						lastNodeMsg = nodeMsg
+						break
+					}
+				}
+			}
+		}
+		if i == len(planResult.Steps)-1 {
+			connectInput := blades.UserMessage(step.Instruction)
+			connectRunner := blades.NewRunner(connectAgent)
+			connectStream := connectRunner.RunStream(ctx, connectInput)
+			for connectMsg, err := range connectStream {
+				if err != nil {
+					break
+				}
+				if connectMsg != nil {
+					// 判断是否是最后一个消息
+					if connectMsg.Status == blades.StatusCompleted {
+						lastConnectMsg = connectMsg
+						break
+					}
+				}
+			}
+		}
+	}
+	nodeMsgStr := lastNodeMsg.Text()
+	fmt.Println("nodeMsgStr:", nodeMsgStr)
+	connectMsgStr := lastConnectMsg.Text()
+	fmt.Println("connectMsgStr:", connectMsgStr)
+	return lastMsg, nil
+}
+
+// FinalJSONParser 核心解析函数
+func FinalJSONParser(raw string) (*PlanResult, error) {
+	// 1. 物理隔离：只截取最外层大括号内部的内容，彻底无视 Markdown 反引号
+	start := strings.Index(raw, "{")
+	end := strings.LastIndex(raw, "}")
+
+	if start == -1 || end == -1 || end < start {
+		return nil, fmt.Errorf("未能在字符串中找到有效的 JSON 结构")
+	}
+
+	content := raw[start : end+1]
+
+	// 2. 预处理：处理 instruction 内部的非法嵌套引号
+	content = fixInternalQuotesSimple(content)
+
+	// 3. 处理换行符：将真实的换行符替换为空格，防止 Unmarshal 崩溃
+	content = strings.ReplaceAll(content, "\n", " ")
+	content = strings.ReplaceAll(content, "\r", " ")
+
+	// 4. 解析为结构体
+	var result PlanResult
+	err := json.Unmarshal([]byte(content), &result)
+	if err != nil {
+		return nil, fmt.Errorf("解析失败: %v\n截取内容预览: %s", err, truncate(content, 100))
+	}
+
+	return &result, nil
+}
+
+// fixInternalQuotesSimple 修复 "instruction": "..." 内部未转义的引号
+func fixInternalQuotesSimple(input string) string {
+	sb := strings.Builder{}
+	// 按关键字切割，这样我们可以精确处理每个 instruction 的值
+	parts := strings.Split(input, `"instruction"`)
+
+	sb.WriteString(parts[0])
+	for i := 1; i < len(parts); i++ {
+		sb.WriteString(`"instruction"`)
+
+		// 找到该 instruction 值的起始双引号
+		firstQuote := strings.Index(parts[i], `"`)
+		if firstQuote == -1 {
+			sb.WriteString(parts[i])
+			continue
+		}
+
+		// 从后往前找该 instruction 值的结束双引号
+		// 逻辑：结束引号后通常紧跟 ',' 或 '}'
+		lastQuote := -1
+		for j := len(parts[i]) - 1; j > firstQuote; j-- {
+			if parts[i][j] == '"' {
+				remain := strings.TrimSpace(parts[i][j+1:])
+				if strings.HasPrefix(remain, ",") || strings.HasPrefix(remain, "}") || remain == "" {
+					lastQuote = j
+					break
+				}
+			}
+		}
+
+		if lastQuote != -1 {
+			// prefix 包含冒号和起始引号，如 `: "`
+			prefix := parts[i][:firstQuote+1]
+			// body 是 instruction 的文字内容
+			body := parts[i][firstQuote+1 : lastQuote]
+			// suffix 包含结束引号和后续结构，如 `" ,`
+			suffix := parts[i][lastQuote:]
+
+			// 【核心修复】：将 body 内部所有双引号转义
+			// 先把已有的 \" 还原成 "，再统一转义成 \"，防止重复转义
+			body = strings.ReplaceAll(body, `\"`, `"`)
+			body = strings.ReplaceAll(body, `"`, `\"`)
+
+			sb.WriteString(prefix)
+			sb.WriteString(body)
+			sb.WriteString(suffix)
+		} else {
+			sb.WriteString(parts[i])
+		}
+	}
+	return sb.String()
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
+
+type PlanResult struct {
+	Steps []Step `json:"steps"`
+}
+
+type Step struct {
+	Instruction string `json:"instruction"`
 }

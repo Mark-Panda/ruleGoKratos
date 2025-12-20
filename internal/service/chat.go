@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	v1 "ruleGoKratos/api/rulego/v1"
@@ -130,8 +131,8 @@ func (s *ChatService) ChatStreamHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 使用Agent进行流式对话
-	// generator := s.agentUC.CreateRuleChainTestAgent(ctx, req.Message)
-	generator := s.agentUC.CreateRuleChainPlannerAgent(ctx, req.Message)
+	generator := s.agentUC.CreateRuleChainTestAgent(ctx, req.Message)
+	// generator := s.agentUC.CreateRuleChainPlannerAgent(ctx, req.Message)
 	// generator := s.agentUC.ChatStream(ctx, req.Model, history, req.Message)
 
 	// 遍历生成器并发送响应
@@ -208,4 +209,14 @@ func (s *ChatService) sendSSEError(w http.ResponseWriter, errorMsg string) {
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+func (s *ChatService) RuleChainTest(ctx context.Context, req *v1.RuleChainTestReq) (*v1.RuleChainTestReply, error) {
+	msg, err := s.agentUC.RuleChainTestAgent(ctx, req.Message)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.RuleChainTestReply{
+		Content: msg.Text(),
+	}, nil
 }

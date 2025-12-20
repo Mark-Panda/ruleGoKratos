@@ -50,3 +50,7 @@ docker run --rm -p 8000:8000 -p 9000:9000 -v </path/to/your/configs>:/data/conf 
 ```
 
 # ruleGoKratos
+
+可用模型  多模态 深度思考模型 支持结构化输出
+doubao-seed-1-6-thinking-250715 
+doubao-1-5-thinking-pro-250415

@@ -6,6 +6,27 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/chat/rule-chain-test:
+        post:
+            tags:
+                - Chat
+                - Chat
+            summary: 测试规则链
+            description: 测试规则链
+            operationId: RuleChainTest
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.RuleChainTestReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.RuleChainTestReply'
     /api/v1/chat/stream:
         post:
             tags:
@@ -648,6 +669,16 @@ components:
                 createdAt:
                     type: string
                 updatedAt:
+                    type: string
+        rulego.v1.RuleChainTestReply:
+            type: object
+            properties:
+                content:
+                    type: string
+        rulego.v1.RuleChainTestReq:
+            type: object
+            properties:
+                message:
                     type: string
         rulego.v1.RunLogItem:
             type: object

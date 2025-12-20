@@ -9,35 +9,54 @@ option go_package = "ruleGoKratos/api/rulego/v1;v1";
 
 // Chat服务定义
 service Chat {
-    // 与大模型流式对话
-    rpc ChatStream(ChatStreamReq) returns (stream ChatStreamReply) {
-        option (google.api.http) = {
-            post: "/api/v1/chat/stream"
-            body: "*"
-        };
-        option (openapi.v3.operation) = {
-            operation_id: "ChatStream"
-            tags: "Chat"
-            summary: "与大模型流式对话"
-            description: "使用Server-Sent Events (SSE)实现与大模型的流式对话"
-        };
-    }
+  // 与大模型流式对话
+  rpc ChatStream(ChatStreamReq) returns (stream ChatStreamReply) {
+    option (google.api.http) = {
+      post: "/api/v1/chat/stream"
+      body: "*"
+    };
+    option (openapi.v3.operation) = {
+      operation_id: "ChatStream"
+      tags: "Chat"
+      summary: "与大模型流式对话"
+      description: "使用Server-Sent Events (SSE)实现与大模型的流式对话"
+    };
+  }
+  rpc RuleChainTest(RuleChainTestReq) returns (RuleChainTestReply) {
+    option (google.api.http) = {
+      post: "/api/v1/chat/rule-chain-test"
+      body: "*"
+    };
+    option (openapi.v3.operation) = {
+      operation_id: "RuleChainTest"
+      tags: "Chat"
+      summary: "测试规则链"
+      description: "测试规则链"
+    };
+  }
 }
 
 message ChatStreamReq {
-    string message = 1;           // 用户消息
-    string model = 2;             // 模型名称，可选，默认使用配置中的模型
-    repeated ChatMessage history = 3; // 对话历史
+  string message               = 1;  // 用户消息
+  string model                 = 2;  // 模型名称，可选，默认使用配置中的模型
+  repeated ChatMessage history = 3;  // 对话历史
 }
 
 message ChatMessage {
-    string role = 1;    // "user" 或 "assistant"
-    string content = 2; // 消息内容
+  string role    = 1;  // "user" 或 "assistant"
+  string content = 2;  // 消息内容
 }
 
 message ChatStreamReply {
-    string content = 1;      // 流式返回的内容片段
-    bool done = 2;           // 是否完成
-    string error = 3;        // 错误信息（如果有）
+  string content = 1;  // 流式返回的内容片段
+  bool done      = 2;  // 是否完成
+  string error   = 3;  // 错误信息（如果有）
 }
 
+message RuleChainTestReq {
+  string message = 1;  // 用户消息
+}
+
+message RuleChainTestReply {
+  string content = 1;  // 返回的内容
+}
