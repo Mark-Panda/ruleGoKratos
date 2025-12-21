@@ -383,7 +383,13 @@ func (uc *AgentUsecase) toolLogging() tools.Middleware {
 	return func(next tools.Handler) tools.Handler {
 		return tools.HandleFunc(func(ctx context.Context, req string) (string, error) {
 			uc.log.Infof("Request received: %s", req)
-			return next.Handle(ctx, req)
+			res, err := next.Handle(ctx, req)
+			if err != nil {
+				uc.log.Errorf("get_node_config子代理工具失败:", err)
+				return "", err
+			}
+			// uc.log.Infof("Response: %s", res)
+			return res, nil
 		})
 	}
 }
