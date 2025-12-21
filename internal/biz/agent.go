@@ -38,7 +38,6 @@ func (uc *AgentUsecase) GetModelProvider(modelName string) (blades.ModelProvider
 				BaseURL: uc.config.Ai.Doubao.ApiBaseUrl,
 				RequestOptions: []option.RequestOption{
 					option.WithHeader("Accept", "application/json"),
-					option.WithHeader("response_format", "json_object"),
 				},
 			}), nil
 		} else if uc.config.Ai != nil && uc.config.Ai.Openai != nil && uc.config.Ai.Openai.Model != "" {
@@ -249,7 +248,20 @@ func (uc *AgentUsecase) CreateRuleChainWorker(model blades.ModelProvider) ([]too
 		// blades.WithTools(uuidTool),
 		// blades.WithTools(nodeConfigTool),
 		// blades.WithInputSchema(&jsonschema.Schema{}),
-		// blades.WithOutputSchema(&jsonschema.Schema{}),
+		blades.WithOutputSchema(&jsonschema.Schema{
+			Type: "array",
+			Items: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"id":             {Type: "string"},
+					"type":           {Type: "string"},
+					"name":           {Type: "string"},
+					"additionalInfo": {Type: "object"},
+					"configuration":  {Type: "object"},
+				},
+				Required: []string{"id", "type", "configuration"},
+			},
+		}),
 	)
 	if err != nil {
 		uc.log.Errorf("node_agent子代理工具失败:", err)
@@ -639,6 +651,20 @@ func (uc *AgentUsecase) RuleChainTestNodeAgent(ctx context.Context, userMessage 
 		blades.WithMiddleware(NewLogging),
 		blades.WithInstruction(nodePrompts),
 		blades.WithTools(nodeConfigTool),
+		blades.WithOutputSchema(&jsonschema.Schema{
+			Type: "array",
+			Items: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"id":             {Type: "string"},
+					"type":           {Type: "string"},
+					"name":           {Type: "string"},
+					"additionalInfo": {Type: "object"},
+					"configuration":  {Type: "object"},
+				},
+				Required: []string{"id", "type", "configuration"},
+			},
+		}),
 	)
 	if err != nil {
 		return nil, err
