@@ -323,27 +323,75 @@ func (uc *AgentUsecase) GenerateUUIDTool() (tools.Tool, error) {
 		"generate_uuid",
 		"生成UUID",
 		func(ctx context.Context, input string) (string, error) {
-			return uuid.NewString(), nil
+			uuidStr := uuid.NewString()
+			uc.log.Infof("生成UUID: %s", uuidStr)
+			return uuidStr, nil
 		},
 	)
 }
 
 // 查询节点配置信息
+// func (uc *AgentUsecase) GetNodeConfig() (tools.Tool, error) {
+// 	return tools.NewFunc(
+// 		"get_node_config",
+// 		"获取节点配置信息",
+// 		func(ctx context.Context, input string) (string, error) {
+// 			uc.log.Infof("节点类型: %s", input)
+// 			result, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_name": input})
+// 			if err != nil {
+// 				return "", err
+// 			}
+// 			if result == nil {
+// 				return "", nil
+// 			}
+// 			return result.UseRuleDesc, nil
+// 		},
+// 	)
+// }
+
+func (uc *AgentUsecase) GetNodeConfigHandle(ctx context.Context, input string) (string, error) {
+	// input解析为 {"node_type": "string"}
+	var inputMap map[string]string
+	err := json.Unmarshal([]byte(input), &inputMap)
+	if err != nil {
+		return "", err
+	}
+	nodeType := inputMap["node_type"]
+	result, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_name": nodeType})
+	if err != nil {
+		return "", err
+	}
+	if result == nil {
+		return "", nil
+	}
+	return result.UseRuleDesc, nil
+}
+
+func (uc *AgentUsecase) toolLogging() tools.Middleware {
+	return func(next tools.Handler) tools.Handler {
+		return tools.HandleFunc(func(ctx context.Context, req string) (string, error) {
+			uc.log.Infof("Request received: %s", req)
+			return next.Handle(ctx, req)
+		})
+	}
+}
 func (uc *AgentUsecase) GetNodeConfig() (tools.Tool, error) {
-	return tools.NewFunc(
+	aa := tools.NewTool(
 		"get_node_config",
 		"获取节点配置信息",
-		func(ctx context.Context, input string) (string, error) {
-			result, err := uc.componentUseRuleRepo.FindOneComponentUseRule(ctx, map[string]interface{}{"component_name": input})
-			if err != nil {
-				return "", err
-			}
-			if result == nil {
-				return "", nil
-			}
-			return result.UseRuleDesc, nil
-		},
+		tools.HandleFunc(uc.GetNodeConfigHandle),
+		tools.WithInputSchema(&jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"node_type": {
+					Type:        "string",
+					Description: "节点类型",
+				},
+			},
+		}),
+		tools.WithMiddleware(uc.toolLogging()),
 	)
+	return aa, nil
 }
 
 func (uc *AgentUsecase) RuleChainTestAgent(ctx context.Context, userMessage string) (*blades.Message, error) {
@@ -430,7 +478,7 @@ func (uc *AgentUsecase) RuleChainTestAgent(ctx context.Context, userMessage stri
 	}
 	var lastNodeMsg, lastConnectMsg *blades.Message
 	for i, step := range planResult.Steps {
-		if i == len(planResult.Steps)-2 {
+		if i == len(planResult.Steps)-3 {
 			nodeInput := blades.UserMessage(step.Instruction)
 			nodeRunner := blades.NewRunner(nodeAgent)
 			nodeStream := nodeRunner.RunStream(ctx, nodeInput)
@@ -447,7 +495,7 @@ func (uc *AgentUsecase) RuleChainTestAgent(ctx context.Context, userMessage stri
 				}
 			}
 		}
-		if i == len(planResult.Steps)-1 {
+		if i == len(planResult.Steps)-2 {
 			connectInput := blades.UserMessage(step.Instruction)
 			connectRunner := blades.NewRunner(connectAgent)
 			connectStream := connectRunner.RunStream(ctx, connectInput)
@@ -567,4 +615,52 @@ type PlanResult struct {
 
 type Step struct {
 	Instruction string `json:"instruction"`
+}
+
+func (uc *AgentUsecase) RuleChainTestNodeAgent(ctx context.Context, userMessage string) (*blades.Message, error) {
+	model, err := uc.GetModelProvider("")
+	if err != nil {
+		return nil, err
+	}
+
+	nodeConfigTool, err := uc.GetNodeConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	nodePrompts, err := getNodeToolPrompt(entity.NodeToolTpl{})
+	if err != nil {
+		return nil, err
+	}
+	nodeAgent, err := blades.NewAgent(
+		"node_agent",
+		blades.WithDescription("节点agent"),
+		blades.WithModel(model),
+		blades.WithMiddleware(NewLogging),
+		blades.WithInstruction(nodePrompts),
+		blades.WithTools(nodeConfigTool),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	input := blades.UserMessage(userMessage)
+	nodeRunner := blades.NewRunner(nodeAgent)
+	stream := nodeRunner.RunStream(ctx, input)
+	var lastMsg *blades.Message
+	for msg, err := range stream {
+		if err != nil {
+			return nil, err
+		}
+		if msg != nil {
+			lastMsg = msg
+			// 判断是否是最后一个消息
+			if msg.Status == blades.StatusCompleted {
+				break
+			}
+		}
+	}
+	nodeMsgStr := lastMsg.Text()
+	fmt.Println("planMsgStr:", nodeMsgStr)
+	return lastMsg, nil
 }

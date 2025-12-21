@@ -212,7 +212,8 @@ func (s *ChatService) sendSSEError(w http.ResponseWriter, errorMsg string) {
 }
 
 func (s *ChatService) RuleChainTest(ctx context.Context, req *v1.RuleChainTestReq) (*v1.RuleChainTestReply, error) {
-	msg, err := s.agentUC.RuleChainTestAgent(ctx, req.Message)
+	msg, err := s.agentUC.RuleChainTestNodeAgent(ctx, req.Message)
+	// msg, err := s.agentUC.RuleChainTestAgent(ctx, req.Message)
 	if err != nil {
 		return nil, err
 	}
