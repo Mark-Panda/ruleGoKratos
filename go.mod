@@ -5,7 +5,7 @@ go 1.24.6
 toolchain go1.24.10
 
 require (
-	github.com/cloudwego/eino v0.7.14
+	github.com/cloudwego/eino v0.7.17
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.6
 	github.com/cloudwego/eino-ext/components/tool/duckduckgo/v2 v2.0.0-20251225093215-b503e4544587
 	github.com/envoyproxy/protoc-gen-validate v1.2.1
@@ -19,23 +19,23 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/openai/openai-go/v3 v3.8.1
-	github.com/rulego/rulego v0.34.2
-	github.com/rulego/rulego-components v0.34.0
+	github.com/rulego/rulego v0.35.0
+	github.com/rulego/rulego-components v0.35.1
 	github.com/rulego/rulego-components-ai v0.31.1
 	go.uber.org/automaxprocs v1.5.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5
-	google.golang.org/grpc v1.75.0
+	google.golang.org/grpc v1.75.1
 	google.golang.org/protobuf v1.36.8
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
 
 require (
+	al.essio.dev/pkg/shellescape v1.5.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
-	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aws/aws-sdk-go v1.34.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3 // indirect
 	github.com/eino-contrib/jsonschema v1.0.3 // indirect
 	github.com/evanphx/json-patch v0.5.2 // indirect
-	github.com/expr-lang/expr v1.17.6 // indirect
+	github.com/expr-lang/expr v1.17.7-0.20251210132847-775fc3aca520 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-kratos/aegis v0.2.0 // indirect
@@ -104,7 +104,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/redis/go-redis/v9 v9.12.1 // indirect
+	github.com/redis/go-redis/v9 v9.18.0-beta.2 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sashabaranov/go-openai v1.37.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -115,7 +115,7 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	github.com/vadv/gopher-lua-libs v0.5.0 // indirect
+	github.com/vadv/gopher-lua-libs v0.8.0 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yargevad/filepathx v1.0.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
@@ -125,6 +125,7 @@ require (
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.11.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
