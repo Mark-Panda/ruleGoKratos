@@ -22,20 +22,36 @@ WORKDIR /src
 # Build the Go application
 RUN GOPROXY=https://goproxy.cn make build
 
-# Stage 3: Final Image
+# Stage 3: Feishu / Lark CLI (@larksuite/cli, npm global)
+FROM docker.m.daocloud.io/node:22-slim AS lark-cli-installer
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm install -g @larksuite/cli \
+    && npx --yes skills add larksuite/cli -y -g
+
+# Stage 4: Final Image
 FROM docker.m.daocloud.io/debian:stable-slim
 
 # Replace sources with Aliyun mirror for speed in China
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
     sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
-# Install Nginx and basic dependencies
+# Install Nginx, Cursor Agent CLI deps, and basic dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates  \
+    ca-certificates \
+    curl \
+    tar \
     netbase \
     nginx \
     && rm -rf /var/lib/apt/lists/ \
     && apt-get autoremove -y && apt-get autoclean -y
+
+# Cursor Agent CLI (~/.local/bin); Feishu CLI needs Node from /usr/local
+ENV PATH="/root/.local/bin:/usr/local/bin:${PATH}"
+
+RUN curl -fsSL https://cursor.com/install | bash
+
+# Feishu CLI: copy Node runtime + global npm modules from lark-cli-installer
+COPY --from=lark-cli-installer /usr/local /usr/local
 
 WORKDIR /app
 
