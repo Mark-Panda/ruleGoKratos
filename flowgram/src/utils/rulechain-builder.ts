@@ -280,7 +280,7 @@ function buildRuleChainMetaNodes(
       base.configuration = newconfig;
       break;
     }
-    case 'ai/llm': {
+        case 'ai/llm': {
       if (
         n.data?.inputs &&
         Object.keys(n.data?.inputs).length > 0 &&
@@ -311,6 +311,21 @@ function buildRuleChainMetaNodes(
         }
         configmap['params'] = parammap;
         base.configuration = configmap;
+      }
+      break;
+    }
+    case 'ai/agentHarness': {
+      if (
+        n.data?.inputs &&
+        Object.keys(n.data?.inputs).length > 0 &&
+        n.data?.inputsValues &&
+        Object.keys(n.data?.inputsValues).length > 0
+      ) {
+        const cfg: Record<string, any> = {};
+        for (const key of Object.keys(n.data.inputs.properties)) {
+          cfg[key] = (n.data.inputsValues as any)[key]?.content;
+        }
+        base.configuration = cfg;
       }
       break;
     }
@@ -828,6 +843,114 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 },
                 temperature: { type: 'number' },
                 topP: { type: 'number' },
+              },
+            },
+            outputs: { type: 'object', properties: {} },
+          };
+          break;
+        }
+        case 'ai/agentHarness': {
+          const cfg = n.configuration ?? {};
+          base.data = {
+            title: n.name ?? 'ai/agentHarness',
+            positionType: 'middle',
+            inputsValues: {
+              model: { type: 'template', content: String(cfg.model ?? '') },
+              systemPrompt: { type: 'template', content: String(cfg.systemPrompt ?? '') },
+              userPrompt: { type: 'template', content: String(cfg.userPrompt ?? '') },
+              enableSkillTool: { type: 'constant', content: Boolean(cfg.enableSkillTool ?? true) },
+              enableMcpTool: { type: 'constant', content: Boolean(cfg.enableMcpTool ?? true) },
+              enableUUIDTool: { type: 'constant', content: Boolean(cfg.enableUUIDTool ?? true) },
+              enableWorkspaceTools: {
+                type: 'constant',
+                content: Boolean(cfg.enableWorkspaceTools ?? false),
+              },
+              skillAllowlist: { type: 'template', content: String(cfg.skillAllowlist ?? '') },
+              mcpAllowlist: { type: 'template', content: String(cfg.mcpAllowlist ?? '') },
+              maxIterations: { type: 'constant', content: Number(cfg.maxIterations ?? 0) },
+              maxToolCalls: { type: 'constant', content: Number(cfg.maxToolCalls ?? 0) },
+              toolTimeoutSecs: { type: 'constant', content: Number(cfg.toolTimeoutSecs ?? 0) },
+            },
+            inputs: {
+              type: 'object',
+              required: [
+                'model',
+                'systemPrompt',
+                'userPrompt',
+                'enableSkillTool',
+                'enableMcpTool',
+                'enableUUIDTool',
+                'enableWorkspaceTools',
+                'skillAllowlist',
+                'mcpAllowlist',
+                'maxIterations',
+                'maxToolCalls',
+                'toolTimeoutSecs',
+              ],
+              properties: {
+                model: {
+                  type: 'string',
+                  extra: {
+                    label: '模型名称',
+                    formComponent: 'prompt-editor',
+                    description: '留空则用配置默认模型；支持 ${} 模板',
+                  },
+                },
+                systemPrompt: {
+                  type: 'string',
+                  extra: { label: '系统提示词', formComponent: 'prompt-editor' },
+                },
+                userPrompt: {
+                  type: 'string',
+                  extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+                },
+                enableSkillTool: {
+                  type: 'boolean',
+                  extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
+                },
+                enableMcpTool: {
+                  type: 'boolean',
+                  extra: { label: '启用 call_mcp_tool', description: '允许模型调用 MCP' },
+                },
+                enableUUIDTool: {
+                  type: 'boolean',
+                  extra: { label: '启用 generate_uuid' },
+                },
+                enableWorkspaceTools: {
+                  type: 'boolean',
+                  extra: {
+                    label: '启用 Workspace 工具',
+                    description: '读/写文件与 shell（与 Chat Agent 一致）',
+                  },
+                },
+                skillAllowlist: {
+                  type: 'string',
+                  extra: {
+                    label: 'Skill 白名单',
+                    formComponent: 'prompt-editor',
+                    description: '逗号分隔；空=不限制',
+                  },
+                },
+                mcpAllowlist: {
+                  type: 'string',
+                  extra: {
+                    label: 'MCP 白名单',
+                    formComponent: 'prompt-editor',
+                    description: '形如 mysrv:tool_a,other:tool_b；空=不限制',
+                  },
+                },
+                maxIterations: {
+                  type: 'number',
+                  extra: { label: '最大迭代轮次', description: '0 表示使用服务默认' },
+                },
+                maxToolCalls: {
+                  type: 'number',
+                  extra: { label: '最大工具调用次数', description: '0 表示使用服务默认' },
+                },
+                toolTimeoutSecs: {
+                  type: 'number',
+                  extra: { label: '单次工具超时(秒)', description: '0 表示使用服务默认' },
+                },
               },
             },
             outputs: { type: 'object', properties: {} },

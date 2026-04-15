@@ -7,6 +7,7 @@ export enum WorkflowNodeType {
   Start = 'start',
   End = 'end',
   LLM = 'ai/llm',
+  AgentHarness = 'ai/agentHarness',
   HTTP = 'restApiCall',
   Code = 'code',
   Variable = 'variable',

@@ -50,9 +50,12 @@ type HarnessConfig struct {
 }
 
 type HarnessRequest struct {
-	Model   string
-	History []HistoryMessage
-	Input   string
+	Model           string
+	History         []HistoryMessage
+	Input           string
+	SystemPrompt    string
+	ToolOptions     *HarnessToolOptions
+	ConfigOverride  *HarnessConfig
 }
 
 type SkillExecutor interface {
@@ -199,8 +202,15 @@ func (uc *AgentUsecase) newChatModel(ctx context.Context, modelName string) (mod
 }
 
 func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) []*schema.Message {
+	return uc.composeMessages(uc.getSystemPrompt(), history, userMessage)
+}
+
+func (uc *AgentUsecase) composeMessages(systemPrompt string, history []HistoryMessage, userMessage string) []*schema.Message {
+	if strings.TrimSpace(systemPrompt) == "" {
+		systemPrompt = uc.getSystemPrompt()
+	}
 	msgs := make([]*schema.Message, 0, len(history)+2)
-	msgs = append(msgs, schema.SystemMessage(uc.getSystemPrompt()))
+	msgs = append(msgs, schema.SystemMessage(systemPrompt))
 	for _, item := range history {
 		switch item.Role {
 		case "assistant":
@@ -263,7 +273,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		defer func() {
 			uc.harnessLogger.LogRunFinish(requestID, time.Since(start))
 		}()
-		cfg := uc.sanitizeConfig()
+		cfg := uc.effectiveHarnessConfig(req.ConfigOverride)
 
 		einoModel, err := uc.newChatModel(ctx, req.Model)
 		if err != nil {
@@ -272,30 +282,37 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			return
 		}
 
-		toolRegistry, toolInfos, err := uc.BuildToolRegistry()
+		toolRegistry, toolInfos, err := uc.resolveToolRegistry(req.ToolOptions)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "build_tools", err)
 			yield(nil, sanitizeExternalError(err))
 			return
 		}
-		modelWithTools, err := einoModel.WithTools(toolInfos)
-		if err != nil {
-			uc.harnessLogger.LogError(requestID, "bind_tools", err)
-			yield(nil, sanitizeExternalError(err))
-			return
+		modelRunner := einoModel
+		if len(toolInfos) > 0 {
+			modelWithTools, wErr := einoModel.WithTools(toolInfos)
+			if wErr != nil {
+				uc.harnessLogger.LogError(requestID, "bind_tools", wErr)
+				yield(nil, sanitizeExternalError(wErr))
+				return
+			}
+			modelRunner = modelWithTools
 		}
 		allowedTools := make(map[string]bool, len(toolRegistry))
 		for name := range toolRegistry {
 			allowedTools[name] = true
 		}
 
-		// 对话状态持续累积在 msgs 中，并在每轮请求时回灌给模型。
-		msgs := uc.buildMessages(req.History, req.Input)
+		systemPrompt := strings.TrimSpace(req.SystemPrompt)
+		if systemPrompt == "" {
+			systemPrompt = uc.getSystemPrompt()
+		}
+		msgs := uc.composeMessages(systemPrompt, req.History, req.Input)
 		toolCallCount := 0
 		for i := 0; i < cfg.MaxIterations; i++ {
 			modelStart := time.Now()
 			// 是否调用工具由模型通过流式 chunk 中的 tool_calls 决定。
-			stream, genErr := modelWithTools.Stream(ctx, msgs)
+			stream, genErr := modelRunner.Stream(ctx, msgs)
 			uc.harnessLogger.LogModelRound(requestID, i+1, time.Since(modelStart), genErr)
 			if genErr != nil {
 				uc.harnessLogger.LogError(requestID, "model_stream", genErr)

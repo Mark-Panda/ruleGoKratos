@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"ruleGoKratos/internal/biz"
 	"ruleGoKratos/internal/conf"
 	_ "ruleGoKratos/internal/data/components"
 	"ruleGoKratos/internal/data/dao"
@@ -107,7 +108,8 @@ func NewRuleConfig() *types.Config {
 }
 
 // 初始化规则引擎
-func NewRuleEngine(c *conf.Data, ruleConfig *types.Config) (*rulego.RuleGo, error) {
+func NewRuleEngine(c *conf.Data, ruleConfig *types.Config, agentUc *biz.AgentUsecase) (*rulego.RuleGo, error) {
+	WireRuleGoAgent(agentUc)
 	// 获取所有的规则链信息
 	var ruleChainList []RuleChain
 	if err := DBClient.Table("rule_chain").Where("disabled = ?", false).Find(&ruleChainList).Error; err != nil {

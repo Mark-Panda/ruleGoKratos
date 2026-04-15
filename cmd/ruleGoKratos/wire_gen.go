@@ -33,7 +33,8 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 	ruleChainRepo := data.NewRuleChainRepo(dataData, logger)
 	runLogRepo := data.NewRunLogRepo(dataData, logger)
 	config := data.NewRuleConfig()
-	ruleGo, err := data.NewRuleEngine(confData, config)
+	agentUsecase := biz.NewAgentUsecase(logger, bootstrap)
+	ruleGo, err := data.NewRuleEngine(confData, config, agentUsecase)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
