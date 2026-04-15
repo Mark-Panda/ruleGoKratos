@@ -8,9 +8,19 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-const API_ORIGIN = (
-  ((import.meta as any).env?.PUBLIC_API_ORIGIN as string) || 'http://localhost:8001'
-).replace(/\/$/, '');
+/** 未设置时：浏览器内用当前站点 origin（与 Docker/Nginx 同端口）；非浏览器回退 8000 便于本地脚本 */
+function resolveApiOrigin(): string {
+  const fromEnv = (import.meta as any).env?.PUBLIC_API_ORIGIN as string | undefined;
+  if (fromEnv != null && String(fromEnv).trim() !== '') {
+    return String(fromEnv).replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return 'http://127.0.0.1:8000';
+}
+
+const API_ORIGIN = resolveApiOrigin();
 let BASE_URL = `${API_ORIGIN}/api/v1`;
 
 const getToken = (): string => {

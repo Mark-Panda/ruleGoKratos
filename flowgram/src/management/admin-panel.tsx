@@ -18,6 +18,7 @@ import {
 import { WorkflowSection } from './sections/WorkflowSection';
 import { DocsSection } from './sections/DocsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
+import { AgentSection } from './sections/AgentSection';
 import { IntroPage } from '../landing/IntroPage';
 
 type MenuKey =
@@ -26,14 +27,19 @@ type MenuKey =
   | 'component-installed'
   | 'component-rules'
   | 'docs'
+  | 'agent-skills'
+  | 'agent-mcp'
   | 'engine'
-  | 'component';
+  | 'component'
+  | 'agent';
 
 export const AdminPanel: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<MenuKey>(() => {
     try {
       const h = typeof window !== 'undefined' ? window.location.hash : '';
       if (h === '#/' || h === '' || h === '#') return 'intro';
+      if (h.startsWith('#/agent/skills')) return 'agent-skills';
+      if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
       if (h.startsWith('#/docs')) return 'docs';
@@ -46,6 +52,8 @@ export const AdminPanel: React.FC = () => {
   useEffect(() => {
     const getMenu = (h: string): MenuKey => {
       if (h === '#/' || h === '' || h === '#') return 'intro';
+      if (h.startsWith('#/agent/skills')) return 'agent-skills';
+      if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
       if (h.startsWith('#/docs')) return 'docs';
@@ -65,6 +73,8 @@ export const AdminPanel: React.FC = () => {
     if (activeMenu === 'intro') return <IntroPage />;
     if (activeMenu === 'workflow') return <WorkflowSection />;
     if (activeMenu === 'docs') return <DocsSection />;
+    if (activeMenu === 'agent-skills') return <AgentSection view="skills" />;
+    if (activeMenu === 'agent-mcp') return <AgentSection view="mcps" />;
     if (activeMenu === 'component-rules') return <ComponentsSection view="rules" />;
     return <ComponentsSection view="installed" />;
   };
@@ -81,6 +91,10 @@ export const AdminPanel: React.FC = () => {
         return '组件规则';
       case 'docs':
         return '开发文档';
+      case 'agent-skills':
+        return 'SKILL 管理';
+      case 'agent-mcp':
+        return 'MCP 配置';
       default:
         return '概览';
     }
@@ -88,6 +102,7 @@ export const AdminPanel: React.FC = () => {
 
   const getParentTitle = () => {
     if (activeMenu === 'workflow') return '工作流引擎';
+    if (activeMenu === 'agent-skills' || activeMenu === 'agent-mcp') return 'Agent 管理';
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
     return '系统';
   };
@@ -154,18 +169,29 @@ export const AdminPanel: React.FC = () => {
                   },
                 ],
               },
+              {
+                text: 'Agent 管理',
+                itemKey: 'agent',
+                icon: <IconList />,
+                items: [
+                  { itemKey: 'agent-skills', text: 'SKILL 管理' },
+                  { itemKey: 'agent-mcp', text: 'MCP 配置' },
+                ],
+              },
               { itemKey: 'docs', text: '开发文档', icon: <IconFile /> },
             ]}
             selectedKeys={[activeMenu]}
-            defaultOpenKeys={['engine', 'component']}
+            defaultOpenKeys={['engine', 'component', 'agent']}
             onSelect={(data) => {
               const key = data.itemKey as MenuKey;
-              if (key === 'engine' || key === 'component') return;
+              if (key === 'engine' || key === 'component' || key === 'agent') return;
               setActiveMenu(key);
               if (key === 'intro') window.location.hash = '#/';
               if (key === 'workflow') window.location.hash = '#/admin';
               if (key === 'component-installed') window.location.hash = '#/components';
               if (key === 'component-rules') window.location.hash = '#/components/rules';
+              if (key === 'agent-skills') window.location.hash = '#/agent/skills';
+              if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
               if (key === 'docs') window.location.hash = '#/docs';
             }}
             style={{ background: 'transparent' }}
@@ -246,15 +272,23 @@ export const AdminPanel: React.FC = () => {
             onChange={(key) => {
               // Only handle tab clicks if they correspond to actual routes
               if (
-                ['intro', 'workflow', 'component-installed', 'component-rules', 'docs'].includes(
-                  key
-                )
+                [
+                  'intro',
+                  'workflow',
+                  'component-installed',
+                  'component-rules',
+                  'docs',
+                  'agent-skills',
+                  'agent-mcp',
+                ].includes(key)
               ) {
                 setActiveMenu(key as MenuKey);
                 if (key === 'intro') window.location.hash = '#/';
                 if (key === 'workflow') window.location.hash = '#/admin';
                 if (key === 'component-installed') window.location.hash = '#/components';
                 if (key === 'component-rules') window.location.hash = '#/components/rules';
+                if (key === 'agent-skills') window.location.hash = '#/agent/skills';
+                if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
                 if (key === 'docs') window.location.hash = '#/docs';
               }
             }}

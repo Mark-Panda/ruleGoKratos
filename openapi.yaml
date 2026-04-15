@@ -6,6 +6,106 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/admin/mcps:
+        get:
+            tags:
+                - Admin
+            operationId: Admin_ListMcpConfigs
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListMcpConfigsReply'
+        post:
+            tags:
+                - Admin
+            operationId: Admin_CreateMcpConfig
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateMcpConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.McpConfigItem'
+    /api/v1/admin/mcps/{id}:
+        put:
+            tags:
+                - Admin
+            operationId: Admin_UpdateMcpConfig
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateMcpConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateMcpConfigReply'
+        delete:
+            tags:
+                - Admin
+            operationId: Admin_DeleteMcpConfig
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteMcpConfigReply'
+    /api/v1/admin/skills:
+        get:
+            tags:
+                - Admin
+            operationId: Admin_ListSkills
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListSkillsReply'
+    /api/v1/admin/skills/upload:
+        post:
+            tags:
+                - Admin
+            operationId: Admin_UploadSkill
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UploadSkillRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UploadSkillReply'
     /api/v1/chat/stream:
         post:
             tags:
@@ -523,6 +623,21 @@ components:
                     type: string
                 useRuleDesc:
                     type: string
+        rulego.v1.CreateMcpConfigRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                server:
+                    type: string
+                endpoint:
+                    type: string
+                headers:
+                    type: object
+                enabled:
+                    type: boolean
+                description:
+                    type: string
         rulego.v1.CreateMdRequest:
             type: object
             properties:
@@ -534,6 +649,9 @@ components:
                     type: string
                 chainId:
                     type: string
+        rulego.v1.DeleteMcpConfigReply:
+            type: object
+            properties: {}
         rulego.v1.DeleteRuleChainReply:
             type: object
             properties: {}
@@ -596,6 +714,13 @@ components:
                         $ref: '#/components/schemas/rulego.v1.ComponentUseRuleItem'
                 total:
                     type: string
+        rulego.v1.ListMcpConfigsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.McpConfigItem'
         rulego.v1.ListMdReply:
             type: object
             properties:
@@ -627,6 +752,36 @@ components:
                 total:
                     type: integer
                     format: int32
+        rulego.v1.ListSkillsReply:
+            type: object
+            properties:
+                root:
+                    type: string
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.SkillItem'
+        rulego.v1.McpConfigItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                server:
+                    type: string
+                endpoint:
+                    type: string
+                headers:
+                    type: object
+                enabled:
+                    type: boolean
+                description:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
         rulego.v1.MdItem:
             type: object
             properties:
@@ -666,6 +821,17 @@ components:
                     type: array
                     items:
                         type: object
+        rulego.v1.SkillItem:
+            type: object
+            properties:
+                name:
+                    type: string
+                path:
+                    type: string
+                size:
+                    type: string
+                updatedAt:
+                    type: string
         rulego.v1.UpdateComponentUseRuleReply:
             type: object
             properties: {}
@@ -683,6 +849,26 @@ components:
                 useDesc:
                     type: string
                 useRuleDesc:
+                    type: string
+        rulego.v1.UpdateMcpConfigReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateMcpConfigRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                server:
+                    type: string
+                endpoint:
+                    type: string
+                headers:
+                    type: object
+                enabled:
+                    type: boolean
+                description:
                     type: string
         rulego.v1.UpdateMdRequest:
             type: object
@@ -717,6 +903,18 @@ components:
                     type: object
                 configuration:
                     type: object
+        rulego.v1.UploadSkillReply:
+            type: object
+            properties:
+                path:
+                    type: string
+        rulego.v1.UploadSkillRequest:
+            type: object
+            properties:
+                path:
+                    type: string
+                contentBase64:
+                    type: string
         rulego.v1.UpsertRuleChainReply:
             type: object
             properties: {}
@@ -730,6 +928,7 @@ components:
                 metadata:
                     type: object
 tags:
+    - name: Admin
     - name: Chat
       description: Chat服务定义
     - name: Component

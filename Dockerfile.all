@@ -24,6 +24,11 @@ RUN GOPROXY=https://goproxy.cn make build
 
 # Stage 3: Feishu / Lark CLI (@larksuite/cli, npm global)
 FROM docker.m.daocloud.io/node:22-slim AS lark-cli-installer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 RUN npm config set registry https://registry.npmmirror.com \
     && npm install -g @larksuite/cli \
     && npx --yes skills add larksuite/cli -y -g
@@ -42,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tar \
     netbase \
     nginx \
+    python3 \
     && rm -rf /var/lib/apt/lists/ \
     && apt-get autoremove -y && apt-get autoclean -y
 
@@ -84,18 +90,13 @@ RUN echo 'server { \
     } \
     }' > /etc/nginx/sites-enabled/default
 
-# Create a startup script to run both Backend and Nginx
-RUN echo '#!/bin/bash \n\
-    # Start Backend in background \n\
-    ./server -conf /data/conf & \n\
-    \n\
-    # Start Nginx in foreground \n\
-    nginx -g "daemon off;" \n\
-    ' > /app/start.sh && chmod +x /app/start.sh
+# Backend + Nginx（勿用 echo 拼 \\n：在单引号里不是换行，会导致脚本无效、后端未起 → Nginx 502）
+COPY scripts/docker-workflow-start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 EXPOSE 8081
 EXPOSE 8000
 EXPOSE 9000
 VOLUME /data/conf
 
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]

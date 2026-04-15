@@ -34,5 +34,6 @@ agent:
     dirs: ${AGENT_SKILL_DIRS:}
     namespace: ${AGENT_SKILL_NAMESPACE:}
     allowlist: ${AGENT_SKILL_ALLOWLIST:}
-    hot_reload: ${AGENT_SKILL_HOT_RELOAD:true}
+    # 勿用环境变量占位 bool：展开后为 YAML 字符串 "true"/"false"，proto 无法解析
+    hot_reload: true
     scan_interval_ms: ${AGENT_SKILL_SCAN_INTERVAL_MS:1000}

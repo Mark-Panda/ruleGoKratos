@@ -25,7 +25,6 @@ services:
       - AGENT_SKILL_DIRS=
       - AGENT_SKILL_NAMESPACE=
       - AGENT_SKILL_ALLOWLIST=
-      - AGENT_SKILL_HOT_RELOAD=true
       - AGENT_SKILL_SCAN_INTERVAL_MS=1000
     depends_on:
       postgres-db:

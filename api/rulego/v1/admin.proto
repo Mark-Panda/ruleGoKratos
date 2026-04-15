@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package rulego.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "ruleGoKratos/api/rulego/v1;v1";
+
+service Admin {
+  rpc ListSkills (ListSkillsRequest) returns (ListSkillsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/skills"
+    };
+  }
+
+  rpc UploadSkill (UploadSkillRequest) returns (UploadSkillReply) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/skills/upload"
+      body: "*"
+    };
+  }
+
+  rpc ListMcpConfigs (ListMcpConfigsRequest) returns (ListMcpConfigsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/mcps"
+    };
+  }
+
+  rpc CreateMcpConfig (CreateMcpConfigRequest) returns (McpConfigItem) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mcps"
+      body: "*"
+    };
+  }
+
+  rpc UpdateMcpConfig (UpdateMcpConfigRequest) returns (UpdateMcpConfigReply) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/mcps/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteMcpConfig (DeleteMcpConfigRequest) returns (DeleteMcpConfigReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/admin/mcps/{id}"
+    };
+  }
+}
+
+message ListSkillsRequest {}
+
+message SkillItem {
+  string name = 1;
+  string path = 2;
+  int64 size = 3;
+  string updated_at = 4 [json_name = "updatedAt"];
+}
+
+message ListSkillsReply {
+  string root = 1;
+  repeated SkillItem items = 2;
+}
+
+message UploadSkillRequest {
+  string path = 1;
+  string content_base64 = 2 [json_name = "contentBase64"];
+}
+
+message UploadSkillReply {
+  string path = 1;
+}
+
+message ListMcpConfigsRequest {}
+
+message McpConfigItem {
+  int64 id = 1;
+  string name = 2;
+  string server = 3;
+  string endpoint = 4;
+  google.protobuf.Struct headers = 5;
+  bool enabled = 6;
+  string description = 7;
+  string created_at = 8 [json_name = "createdAt"];
+  string updated_at = 9 [json_name = "updatedAt"];
+}
+
+message ListMcpConfigsReply {
+  repeated McpConfigItem items = 1;
+}
+
+message CreateMcpConfigRequest {
+  string name = 1;
+  string server = 2;
+  string endpoint = 3;
+  google.protobuf.Struct headers = 4;
+  bool enabled = 5;
+  string description = 6;
+}
+
+message UpdateMcpConfigRequest {
+  int64 id = 1;
+  string name = 2;
+  string server = 3;
+  string endpoint = 4;
+  google.protobuf.Struct headers = 5;
+  bool enabled = 6;
+  string description = 7;
+}
+
+message UpdateMcpConfigReply {}
+
+message DeleteMcpConfigRequest {
+  int64 id = 1;
+}
+
+message DeleteMcpConfigReply {}

@@ -9,6 +9,14 @@ import { defineConfig } from '@rsbuild/core';
 
 export default defineConfig({
   plugins: [pluginReact(), pluginLess()],
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.RSBUILD_API_PROXY || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
+  },
   source: {
     entry: {
       index: './src/app.tsx',
