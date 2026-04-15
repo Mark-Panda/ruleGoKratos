@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"ruleGoKratos/internal/conf"
 	"strings"
 	"testing"
@@ -36,10 +37,10 @@ func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildToolRegistry failed: %v", err)
 	}
-	if len(registry) != 3 {
+	if len(registry) != 6 {
 		t.Fatalf("unexpected tool registry size: %d", len(registry))
 	}
-	if len(infos) != 3 {
+	if len(infos) != 6 {
 		t.Fatalf("unexpected tool infos size: %d", len(infos))
 	}
 	if _, ok := registry["run_skill"]; !ok {
@@ -47,6 +48,36 @@ func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
 	}
 	if _, ok := registry["call_mcp_tool"]; !ok {
 		t.Fatalf("call_mcp_tool tool missing")
+	}
+	for _, name := range []string{"read_workspace_file", "write_workspace_file", "run_workspace_shell"} {
+		if _, ok := registry[name]; !ok {
+			t.Fatalf("tool %s missing", name)
+		}
+	}
+}
+
+func TestWorkspaceWriteReadAndRejectEscape(t *testing.T) {
+	root := t.TempDir()
+	uc := newTestAgentUsecase()
+	uc.config = &conf.Bootstrap{Agent: &conf.Agent{WorkspaceRoot: root}}
+
+	wt, err := uc.BuildWriteWorkspaceFileTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Invoke(context.Background(), `{"path":"sub/x.txt","content":"hello"}`); err != nil {
+		t.Fatal(err)
+	}
+	rt, err := uc.BuildReadWorkspaceFileTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := rt.Invoke(context.Background(), `{"path":"sub/x.txt"}`)
+	if err != nil || out != "hello" {
+		t.Fatalf("read back: err=%v out=%q", err, out)
+	}
+	if _, err := rt.Invoke(context.Background(), `{"path":"../`+filepath.Base(root)+`_leak.txt"}`); err == nil {
+		t.Fatalf("expected error for escape path")
 	}
 }
 

@@ -247,9 +247,11 @@ func (x *AI) GetOpenai() *AI_OpenAI {
 }
 
 type Agent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SystemPrompt  string                 `protobuf:"bytes,1,opt,name=system_prompt,json=systemPrompt,proto3" json:"system_prompt,omitempty"`
-	Skill         *Agent_Skill           `protobuf:"bytes,2,opt,name=skill,proto3" json:"skill,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	SystemPrompt string                 `protobuf:"bytes,1,opt,name=system_prompt,json=systemPrompt,proto3" json:"system_prompt,omitempty"`
+	// Agent 内置读/写文件与 shell 的根目录；空则回退为 skill.dir，再空则为进程工作目录
+	WorkspaceRoot string       `protobuf:"bytes,3,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
+	Skill         *Agent_Skill `protobuf:"bytes,2,opt,name=skill,proto3" json:"skill,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -287,6 +289,13 @@ func (*Agent) Descriptor() ([]byte, []int) {
 func (x *Agent) GetSystemPrompt() string {
 	if x != nil {
 		return x.SystemPrompt
+	}
+	return ""
+}
+
+func (x *Agent) GetWorkspaceRoot() string {
+	if x != nil {
+		return x.WorkspaceRoot
 	}
 	return ""
 }
@@ -832,9 +841,10 @@ const file_conf_conf_proto_rawDesc = "" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x17\n" +
 	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12 \n" +
 	"\fapi_base_url\x18\x03 \x01(\tR\n" +
-	"apiBaseUrl\"\x90\x02\n" +
+	"apiBaseUrl\"\xb7\x02\n" +
 	"\x05Agent\x12#\n" +
-	"\rsystem_prompt\x18\x01 \x01(\tR\fsystemPrompt\x12-\n" +
+	"\rsystem_prompt\x18\x01 \x01(\tR\fsystemPrompt\x12%\n" +
+	"\x0eworkspace_root\x18\x03 \x01(\tR\rworkspaceRoot\x12-\n" +
 	"\x05skill\x18\x02 \x01(\v2\x17.kratos.api.Agent.SkillR\x05skill\x1a\xb2\x01\n" +
 	"\x05Skill\x12\x10\n" +
 	"\x03dir\x18\x01 \x01(\tR\x03dir\x12\x12\n" +

@@ -11,9 +11,11 @@ services:
     volumes:
       - ./configs:/data/conf
       - ./skills:/app/skills
+      - ./agent_workspace:/app/agent_workspace
     environment:
       - SERVER_HTTP_ADDR=0.0.0.0:8000
       - SERVER_GRPC_ADDR=0.0.0.0:9000
+      - AGENT_WORKSPACE_ROOT=/app/agent_workspace
       - DATA_POSTGRES_HOST=postgres-db
       - DATA_POSTGRES_PORT=5432
       - DATA_POSTGRES_USER=rulego

@@ -29,6 +29,8 @@ ai:
     api_base_url: ${AI_OPENAI_BASE_URL}
 agent:
   system_prompt: ${AGENT_SYSTEM_PROMPT:You are an AI agent harness. Use tools when needed and answer clearly.}
+  # Agent 内置读/写文件、bash 的根目录（字符串可用环境变量覆盖）
+  workspace_root: ${AGENT_WORKSPACE_ROOT:agent_workspace}
   skill:
     dir: ${AGENT_SKILL_DIR:skills}
     dirs: ${AGENT_SKILL_DIRS:}

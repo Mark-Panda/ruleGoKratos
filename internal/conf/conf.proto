@@ -64,6 +64,8 @@ message AI {
 
 message Agent {
   string system_prompt = 1;
+  // Agent 内置读/写文件与 shell 的根目录；空则回退为 skill.dir，再空则为进程工作目录
+  string workspace_root = 3;
   message Skill {
     string dir              = 1;
     string dirs             = 2;

@@ -428,12 +428,30 @@ func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.
 	if err != nil {
 		return nil, nil, err
 	}
-	registry := map[string]*HarnessTool{
-		uuidTool.Info.Name:  uuidTool,
-		skillTool.Info.Name: skillTool,
-		mcpTool.Info.Name:   mcpTool,
+	readFileTool, err := uc.BuildReadWorkspaceFileTool()
+	if err != nil {
+		return nil, nil, err
 	}
-	infos := []*schema.ToolInfo{uuidTool.Info, skillTool.Info, mcpTool.Info}
+	writeFileTool, err := uc.BuildWriteWorkspaceFileTool()
+	if err != nil {
+		return nil, nil, err
+	}
+	shellTool, err := uc.BuildRunWorkspaceShellTool()
+	if err != nil {
+		return nil, nil, err
+	}
+	registry := map[string]*HarnessTool{
+		uuidTool.Info.Name:         uuidTool,
+		skillTool.Info.Name:        skillTool,
+		mcpTool.Info.Name:          mcpTool,
+		readFileTool.Info.Name:     readFileTool,
+		writeFileTool.Info.Name:    writeFileTool,
+		shellTool.Info.Name:        shellTool,
+	}
+	infos := []*schema.ToolInfo{
+		uuidTool.Info, skillTool.Info, mcpTool.Info,
+		readFileTool.Info, writeFileTool.Info, shellTool.Info,
+	}
 	return registry, infos, nil
 }
 
