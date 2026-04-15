@@ -27,3 +27,12 @@ ai:
     model: ${AI_OPENAI_MODEL}
     api_key: ${AI_OPENAI_API_KEY}
     api_base_url: ${AI_OPENAI_BASE_URL}
+agent:
+  system_prompt: ${AGENT_SYSTEM_PROMPT:You are an AI agent harness. Use tools when needed and answer clearly.}
+  skill:
+    dir: ${AGENT_SKILL_DIR:skills}
+    dirs: ${AGENT_SKILL_DIRS:}
+    namespace: ${AGENT_SKILL_NAMESPACE:}
+    allowlist: ${AGENT_SKILL_ALLOWLIST:}
+    hot_reload: ${AGENT_SKILL_HOT_RELOAD:true}
+    scan_interval_ms: ${AGENT_SKILL_SCAN_INTERVAL_MS:1000}

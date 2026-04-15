@@ -9,6 +9,7 @@ message Bootstrap {
   Server server = 1;
   Data data     = 2;
   AI ai         = 3;
+  Agent agent   = 4;
 }
 
 message Server {
@@ -59,4 +60,17 @@ message AI {
   }
   DouBao doubao = 1;
   OpenAI openai = 2;
+}
+
+message Agent {
+  string system_prompt = 1;
+  message Skill {
+    string dir              = 1;
+    string dirs             = 2;
+    string namespace        = 3;
+    string allowlist        = 4;
+    bool hot_reload         = 5;
+    int32 scan_interval_ms  = 6;
+  }
+  Skill skill = 2;
 }

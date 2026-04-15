@@ -50,10 +50,8 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 	runLogService := service.NewRunLogService(runLogUsecase)
 	componentService := service.NewComponentService(runLogUsecase, componentUseRuleUsecase)
 	mdWorkflowService := service.NewMdWorkflowService(mdWorkflowUsecase)
-	agentUsecase := biz.NewAgentUsecase(logger, bootstrap, componentUseRuleRepo)
-	chatService := service.NewChatService(agentUsecase, logger)
-	grpcServer := server.NewGRPCServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, chatService, logger)
-	httpServer := server.NewHTTPServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, chatService, logger)
+	grpcServer := server.NewGRPCServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, logger)
+	httpServer := server.NewHTTPServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, logger)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup()

@@ -1,52 +1,52 @@
 package biz
 
 import (
-	"context"
-	"log"
+	"fmt"
 	"time"
 
-	"github.com/go-kratos/blades"
+	"github.com/go-kratos/kratos/v2/log"
 )
 
-type AgentLogger struct {
-	next blades.Handler
+type HarnessLogger struct {
+	log *log.Helper
 }
 
-// NewLogging creates a new Logging middleware.
-func NewLogging(next blades.Handler) blades.Handler {
-	return &AgentLogger{next}
+func NewHarnessLogger(helper *log.Helper) *HarnessLogger {
+	return &HarnessLogger{log: helper}
 }
 
-func (m *AgentLogger) onError(start time.Time, agent blades.AgentContext, invocation *blades.Invocation, err error) {
-	log.Printf("失败日志: 模型名称(%s) prompt(%s) 失败之后耗时 %s: 错误信息为%v", agent.Name(), invocation.Message.String(), time.Since(start), err)
-	// log.Printf("失败日志: 模型名称(%s) prompt(%s) 失败之后耗时 %s: 错误信息为%v", agent.Name(), invocation.Message.String(), time.Since(start), err)
+func (l *HarnessLogger) LogRunStart(requestID, model string, historySize int, input string) {
+	l.log.Infof("harness run start request_id=%s model=%s history_size=%d input_len=%d", requestID, model, historySize, len(input))
 }
 
-func (m *AgentLogger) onSuccess(start time.Time, agent blades.AgentContext, invocation *blades.Invocation, output *blades.Message) {
-	log.Printf("成功日志: 模型名称(%s) prompt(%s) 成功之后耗时 %s: 输出内容为%s", agent.Name(), invocation.Message.String(), time.Since(start), output.String())
-	log.Printf("成功日志:  输出内容为%s", output.String())
+func (l *HarnessLogger) LogRunFinish(requestID string, cost time.Duration) {
+	l.log.Infof("harness run finish request_id=%s cost_ms=%d", requestID, cost.Milliseconds())
 }
 
-func (m *AgentLogger) Handle(ctx context.Context, invocation *blades.Invocation) blades.Generator[*blades.Message, error] {
-	return func(yield func(*blades.Message, error) bool) {
-		start := time.Now()
-		agent, ok := blades.FromAgentContext(ctx)
-		if !ok {
-			yield(nil, blades.ErrNoAgentContext)
-			return
-		}
-		streaming := m.next.Handle(ctx, invocation)
-		for msg, err := range streaming {
-			if err != nil {
-				m.onError(start, agent, invocation, err)
-			} else {
-				m.onSuccess(start, agent, invocation, msg)
-			}
-			if !yield(msg, err) {
-				break
-			}
-		}
-		// 打印完整的成功日志
-		// log.Printf("完整成功日志: 模型名称(%s) prompt(%s) 成功之后耗时 %s: 输出内容为%s", agent.Name(), invocation.Message.String(), time.Since(start), output.String())
+func (l *HarnessLogger) LogModelRound(requestID string, round int, cost time.Duration, err error) {
+	if err != nil {
+		l.log.Errorf("harness model round failed request_id=%s round=%d cost_ms=%d err=%v", requestID, round, cost.Milliseconds(), err)
+		return
 	}
+	l.log.Infof("harness model round request_id=%s round=%d cost_ms=%d", requestID, round, cost.Milliseconds())
+}
+
+func (l *HarnessLogger) LogToolCall(requestID, toolName string, cost time.Duration, err error) {
+	if err != nil {
+		l.log.Errorf("harness tool call failed request_id=%s tool=%s cost_ms=%d err=%v", requestID, toolName, cost.Milliseconds(), err)
+		return
+	}
+	l.log.Infof("harness tool call request_id=%s tool=%s cost_ms=%d", requestID, toolName, cost.Milliseconds())
+}
+
+func (l *HarnessLogger) LogError(requestID, stage string, err error) {
+	l.log.Errorf("harness error request_id=%s stage=%s err=%v", requestID, stage, err)
+}
+
+func (l *HarnessLogger) LogSandboxDecision(requestID, toolName string, allowed bool, reason string) {
+	l.log.Infof("harness sandbox request_id=%s tool=%s allowed=%t reason=%s", requestID, toolName, allowed, reason)
+}
+
+func formatErrorCode(code, detail string) error {
+	return fmt.Errorf("%s: %s", code, detail)
 }

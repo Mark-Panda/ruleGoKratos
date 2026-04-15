@@ -1,0 +1,202 @@
+package biz
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"ruleGoKratos/internal/conf"
+	"strings"
+	"testing"
+
+	"github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/schema"
+	"github.com/go-kratos/kratos/v2/log"
+)
+
+func newTestAgentUsecase() *AgentUsecase {
+	helper := log.NewHelper(log.NewStdLogger(io.Discard))
+	return &AgentUsecase{
+		log:           helper,
+		harnessLogger: NewHarnessLogger(helper),
+		harnessConfig: HarnessConfig{
+			MaxIterations:   defaultMaxIterations,
+			MaxToolCalls:    defaultMaxToolCalls,
+			ToolTimeoutSecs: defaultToolTimeoutSecs,
+			ChunkSize:       defaultChunkSize,
+		},
+		skillExecutor: &NoopSkillExecutor{},
+		mcpExecutor:   &NoopMcpExecutor{},
+	}
+}
+
+func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
+	uc := newTestAgentUsecase()
+	registry, infos, err := uc.BuildToolRegistry()
+	if err != nil {
+		t.Fatalf("BuildToolRegistry failed: %v", err)
+	}
+	if len(registry) != 3 {
+		t.Fatalf("unexpected tool registry size: %d", len(registry))
+	}
+	if len(infos) != 3 {
+		t.Fatalf("unexpected tool infos size: %d", len(infos))
+	}
+	if _, ok := registry["run_skill"]; !ok {
+		t.Fatalf("run_skill tool missing")
+	}
+	if _, ok := registry["call_mcp_tool"]; !ok {
+		t.Fatalf("call_mcp_tool tool missing")
+	}
+}
+
+func TestRunSkillToolValidateArgs(t *testing.T) {
+	uc := newTestAgentUsecase()
+	tool, err := uc.BuildSkillTool()
+	if err != nil {
+		t.Fatalf("BuildSkillTool failed: %v", err)
+	}
+	_, err = tool.Invoke(context.Background(), `{"payload":"abc"}`)
+	if err == nil || !strings.Contains(err.Error(), "skill_name") {
+		t.Fatalf("expected skill_name validation error, got: %v", err)
+	}
+}
+
+func TestCallMcpToolValidateArgs(t *testing.T) {
+	uc := newTestAgentUsecase()
+	tool, err := uc.BuildMCPTool()
+	if err != nil {
+		t.Fatalf("BuildMCPTool failed: %v", err)
+	}
+	_, err = tool.Invoke(context.Background(), `{"server":"","tool":"x"}`)
+	if err == nil || !strings.Contains(err.Error(), "server") {
+		t.Fatalf("expected server/tool validation error, got: %v", err)
+	}
+}
+
+type fakeSkillExecutor struct {
+	called bool
+	name   string
+	data   string
+}
+
+func (f *fakeSkillExecutor) Execute(ctx context.Context, skillName string, payload string) (string, error) {
+	f.called = true
+	f.name = skillName
+	f.data = payload
+	return fmt.Sprintf("skill:%s:%s", skillName, payload), nil
+}
+
+type fakeMcpExecutor struct {
+	called    bool
+	server    string
+	tool      string
+	arguments string
+}
+
+func (f *fakeMcpExecutor) Call(ctx context.Context, server string, tool string, arguments string) (string, error) {
+	f.called = true
+	f.server = server
+	f.tool = tool
+	f.arguments = arguments
+	return fmt.Sprintf("mcp:%s:%s:%s", server, tool, arguments), nil
+}
+
+func TestRunSkillToolShouldInvokeExecutor(t *testing.T) {
+	uc := newTestAgentUsecase()
+	fake := &fakeSkillExecutor{}
+	uc.SetSkillExecutor(fake)
+	tool, err := uc.BuildSkillTool()
+	if err != nil {
+		t.Fatalf("BuildSkillTool failed: %v", err)
+	}
+	output, err := tool.Invoke(context.Background(), `{"skill_name":"planner","payload":"demo"}`)
+	if err != nil {
+		t.Fatalf("tool invoke failed: %v", err)
+	}
+	if !fake.called || fake.name != "planner" || fake.data != "demo" {
+		t.Fatalf("skill executor was not called correctly")
+	}
+	if output != "skill:planner:demo" {
+		t.Fatalf("unexpected output: %s", output)
+	}
+}
+
+func TestCallMcpToolShouldInvokeExecutor(t *testing.T) {
+	uc := newTestAgentUsecase()
+	fake := &fakeMcpExecutor{}
+	uc.SetMcpExecutor(fake)
+	tool, err := uc.BuildMCPTool()
+	if err != nil {
+		t.Fatalf("BuildMCPTool failed: %v", err)
+	}
+	output, err := tool.Invoke(context.Background(), `{"server":"cursor","tool":"browser_tabs","arguments":"{\"action\":\"list\"}"}`)
+	if err != nil {
+		t.Fatalf("tool invoke failed: %v", err)
+	}
+	if !fake.called || fake.server != "cursor" || fake.tool != "browser_tabs" {
+		t.Fatalf("mcp executor was not called correctly")
+	}
+	if output == "" {
+		t.Fatalf("unexpected empty output")
+	}
+}
+
+type fakeToolCallingModel struct {
+	streamErr error
+}
+
+func (f *fakeToolCallingModel) Generate(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.Message, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeToolCallingModel) Stream(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.StreamReader[*schema.Message], error) {
+	if f.streamErr != nil {
+		return nil, f.streamErr
+	}
+	return schema.StreamReaderFromArray([]*schema.Message{}), nil
+}
+
+func (f *fakeToolCallingModel) WithTools(tools []*schema.ToolInfo) (model.ToolCallingChatModel, error) {
+	return f, nil
+}
+
+func TestExecuteHarnessShouldYieldErrorWhenModelStreamFailed(t *testing.T) {
+	uc := newTestAgentUsecase()
+	uc.chatModelFunc = func(ctx context.Context, modelName string) (model.ToolCallingChatModel, error) {
+		return &fakeToolCallingModel{streamErr: errors.New("stream init failed")}, nil
+	}
+	gen := uc.ExecuteStream(context.Background(), "", nil, "hello")
+	var gotErr error
+	gen(func(msg *StreamMessage, err error) bool {
+		if err != nil {
+			gotErr = err
+			return false
+		}
+		return true
+	})
+	if gotErr == nil || !strings.Contains(gotErr.Error(), "Agent执行失败") {
+		t.Fatalf("expected sanitized stream error, got: %v", gotErr)
+	}
+}
+
+func TestBuildMessagesShouldUseDefaultSystemPrompt(t *testing.T) {
+	uc := newTestAgentUsecase()
+	msgs := uc.buildMessages(nil, "hello")
+	if len(msgs) == 0 || msgs[0].Content != defaultSystemPrompt {
+		t.Fatalf("expected default system prompt, got: %#v", msgs)
+	}
+}
+
+func TestBuildMessagesShouldUseConfiguredSystemPrompt(t *testing.T) {
+	uc := newTestAgentUsecase()
+	uc.config = &conf.Bootstrap{
+		Agent: &conf.Agent{
+			SystemPrompt: "custom system prompt",
+		},
+	}
+	msgs := uc.buildMessages(nil, "hello")
+	if len(msgs) == 0 || msgs[0].Content != "custom system prompt" {
+		t.Fatalf("expected configured system prompt, got: %#v", msgs)
+	}
+}

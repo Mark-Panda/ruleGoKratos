@@ -10,6 +10,7 @@ services:
       - "9001:9000"
     volumes:
       - ./configs:/data/conf
+      - ./skills:/app/skills
     environment:
       - SERVER_HTTP_ADDR=0.0.0.0:8000
       - SERVER_GRPC_ADDR=0.0.0.0:9000
@@ -20,6 +21,12 @@ services:
       - DATA_POSTGRES_DBNAME=rulego
       - DATA_POSTGRES_SSLMODE=disable
       - DATA_POSTGRES_TIMEZONE=Asia/Shanghai
+      - AGENT_SKILL_DIR=/app/skills
+      - AGENT_SKILL_DIRS=
+      - AGENT_SKILL_NAMESPACE=
+      - AGENT_SKILL_ALLOWLIST=
+      - AGENT_SKILL_HOT_RELOAD=true
+      - AGENT_SKILL_SCAN_INTERVAL_MS=1000
     depends_on:
       postgres-db:
         condition: service_healthy
