@@ -34,6 +34,7 @@ export enum WorkflowNodeType {
   RedisClient = 'x/redisClient',
   CursorCli = 'x/cursorCli',
   CursorAcp = 'x/cursorAcp',
+  FeishuWebhook = 'x/feishuWebhook',
   Yapi = 'transform/yapi',
 }
 

@@ -3,6 +3,7 @@ import {
   transformAiLlmConfigIn,
   transformAiLlmConfigOut,
   transformCursorCliConfigIn,
+  transformFeishuWebhookConfigIn,
   transformRestApiCallIn,
   transformRestApiCallOut,
   transformSwitchConfigIn,
@@ -339,6 +340,45 @@ export const cursorCliMappingSpec: NodeMappingSpec = {
  * x/cursorAcp：以 stdio 启动 agent acp（JSON-RPC 每行一条）。
  * 用户任务/说明：写在 stdinLines 中对应 RPC（如 session/prompt）的 JSON 行内，无单独 prompt 键。
  */
+/**
+ * x/feishuWebhook：飞书自定义机器人 Webhook（v2）。
+ * post：postSplitByLine / postAtAllBefore|After / postMentionUserIds 为友好勾选与列表。
+ * interactive：interactivePreset=notice_card 时用 cardNoticeTitle + cardNoticeMarkdown 组装通知卡。
+ */
+export const feishuWebhookMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/feishuWebhook',
+  fields: [
+    { inputKey: 'msgType', dslKey: 'msgType', valueType: 'constant', defaultValue: 'text' },
+    { inputKey: 'webhookUrl', dslKey: 'webhookUrl', valueType: 'template', defaultValue: '' },
+    { inputKey: 'text', dslKey: 'text', valueType: 'template', defaultValue: '' },
+    { inputKey: 'postTitle', dslKey: 'postTitle', valueType: 'template', defaultValue: '' },
+    { inputKey: 'postBody', dslKey: 'postBody', valueType: 'template', defaultValue: '' },
+    { inputKey: 'postLang', dslKey: 'postLang', valueType: 'constant', defaultValue: 'zh_cn' },
+    { inputKey: 'postSplitByLine', dslKey: 'postSplitByLine', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'postAtAllBefore', dslKey: 'postAtAllBefore', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'postAtAllAfter', dslKey: 'postAtAllAfter', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'postMentionUserIds', dslKey: 'postMentionUserIds', valueType: 'json', defaultValue: [] },
+    {
+      inputKey: 'interactivePreset',
+      dslKey: 'interactivePreset',
+      valueType: 'constant',
+      defaultValue: 'card_json',
+    },
+    { inputKey: 'cardNoticeTitle', dslKey: 'cardNoticeTitle', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'cardNoticeMarkdown',
+      dslKey: 'cardNoticeMarkdown',
+      valueType: 'template',
+      defaultValue: '',
+    },
+    { inputKey: 'cardJson', dslKey: 'cardJson', valueType: 'template', defaultValue: '' },
+    { inputKey: 'rawJson', dslKey: 'rawJson', valueType: 'template', defaultValue: '' },
+    { inputKey: 'timeoutMs', dslKey: 'timeoutMs', valueType: 'number', defaultValue: 15000 },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: false },
+  ],
+  transformIn: transformFeishuWebhookConfigIn,
+};
+
 export const cursorAcpMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorAcp',
   fields: [
@@ -370,6 +410,7 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   luaTransform: luaTransformMappingSpec,
   'x/cursorCli': cursorCliMappingSpec,
   'x/cursorAcp': cursorAcpMappingSpec,
+  'x/feishuWebhook': feishuWebhookMappingSpec,
 };
 
 export function getNodeMappingSpec(nodeType: string): NodeMappingSpec | undefined {

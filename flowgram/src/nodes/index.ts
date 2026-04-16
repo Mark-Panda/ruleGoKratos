@@ -10,6 +10,7 @@ import { StartNodeRegistry } from './start';
 import { RedisClientNodeRegistry } from './redisClient';
 import { CursorCliNodeRegistry } from './cursorCli';
 import { CursorAcpNodeRegistry } from './cursorAcp';
+import { FeishuWebhookNodeRegistry } from './feishuWebhook';
 import { MultiNodeOutputRegistry } from './multi-node-output';
 import { LuaTransformNodeRegistry } from './luaTransform';
 import { LogStringNodeRegistry } from './logString';
@@ -59,6 +60,7 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   RedisClientNodeRegistry,
   CursorCliNodeRegistry,
   CursorAcpNodeRegistry,
+  FeishuWebhookNodeRegistry,
   CronNodeRegistry,
   FlowSubChainNodeRegistry,
 ];

@@ -278,3 +278,26 @@ export function transformCursorCliConfigIn(
   }
   return next;
 }
+
+/** fromDSL：旧规则链无 msgType/postLang 时回填为 text/zh_cn；补全 post/@ 与卡片预设字段。 */
+export function transformFeishuWebhookConfigIn(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const next = { ...config };
+  const mt = next.msgType;
+  if (mt === undefined || mt === null || String(mt).trim() === '') {
+    next.msgType = 'text';
+  }
+  const pl = next.postLang;
+  if (pl === undefined || pl === null || String(pl).trim() === '') {
+    next.postLang = 'zh_cn';
+  }
+  if (!Array.isArray(next.postMentionUserIds)) {
+    next.postMentionUserIds = [];
+  }
+  const ip = next.interactivePreset;
+  if (ip === undefined || ip === null || String(ip).trim() === '') {
+    next.interactivePreset = 'card_json';
+  }
+  return next;
+}

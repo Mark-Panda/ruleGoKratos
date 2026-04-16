@@ -425,6 +425,12 @@ function buildRuleChainMetaNodes(
       base.configuration = mapNodeToDslConfig(n, specAcp) as Record<string, any>;
       break;
     }
+    case 'x/feishuWebhook': {
+      const specFs = getNodeMappingSpec('x/feishuWebhook');
+      if (!specFs) break;
+      base.configuration = mapNodeToDslConfig(n, specFs) as Record<string, any>;
+      break;
+    }
     case 'transform/multiNodeOutput': {
       const specMulti = getNodeMappingSpec('transform/multiNodeOutput');
       if (!specMulti) break;
@@ -978,6 +984,200 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   timeoutMs: {
                     type: 'constant',
                     content: Number((cfg as any).timeoutMs ?? 120000),
+                  },
+                },
+          } as any;
+          break;
+        }
+        case 'x/feishuWebhook': {
+          const cfg = n.configuration ?? {};
+          const specFs = getNodeMappingSpec('x/feishuWebhook');
+          const ivMapFs = specFs
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFs)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '飞书 Webhook',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['msgType', 'webhookUrl', 'timeoutMs'],
+              properties: {
+                msgType: {
+                  type: 'string',
+                  enum: ['text', 'post', 'interactive', 'raw'],
+                  default: { type: 'constant', content: 'text' } as any,
+                  extra: {
+                    label: '消息类型',
+                    formComponent: 'enum-select',
+                    description: 'text / post / interactive / raw',
+                  },
+                },
+                webhookUrl: {
+                  type: 'string',
+                  extra: {
+                    label: 'Webhook URL',
+                    formComponent: 'prompt-editor',
+                    description: 'https；建议 ${metadata.xxx} 注入',
+                  },
+                },
+                text: {
+                  type: 'string',
+                  extra: {
+                    label: '纯文本（text）',
+                    formComponent: 'prompt-editor',
+                    description: 'msg_type=text',
+                  },
+                },
+                postTitle: {
+                  type: 'string',
+                  extra: {
+                    label: '富文本标题（post）',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                postBody: {
+                  type: 'string',
+                  extra: {
+                    label: '富文本正文（post）',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                postLang: {
+                  type: 'string',
+                  enum: ['zh_cn', 'en_us', 'ja_jp'],
+                  default: { type: 'constant', content: 'zh_cn' } as any,
+                  extra: {
+                    label: '富文本语言（post）',
+                    formComponent: 'enum-select',
+                  },
+                },
+                postSplitByLine: {
+                  type: 'boolean',
+                  extra: { label: '正文按换行拆段（post）' },
+                },
+                postAtAllBefore: {
+                  type: 'boolean',
+                  extra: { label: '正文前 @所有人（post）' },
+                },
+                postAtAllAfter: {
+                  type: 'boolean',
+                  extra: { label: '正文后 @所有人（post）' },
+                },
+                postMentionUserIds: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  extra: {
+                    label: '@成员 id 列表（post）',
+                    formComponent: 'array-editor',
+                  },
+                },
+                interactivePreset: {
+                  type: 'string',
+                  enum: ['card_json', 'notice_card'],
+                  default: { type: 'constant', content: 'card_json' } as any,
+                  extra: {
+                    label: '卡片方式（interactive）',
+                    formComponent: 'enum-select',
+                  },
+                },
+                cardNoticeTitle: {
+                  type: 'string',
+                  extra: {
+                    label: '通知卡片标题',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                cardNoticeMarkdown: {
+                  type: 'string',
+                  extra: {
+                    label: '通知卡片 Markdown',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                cardJson: {
+                  type: 'string',
+                  extra: {
+                    label: '卡片 JSON（自定义）',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                rawJson: {
+                  type: 'string',
+                  extra: {
+                    label: '自定义整包（raw）',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                timeoutMs: {
+                  type: 'number',
+                  extra: { label: '超时(毫秒)', description: '默认 15000' },
+                },
+                replaceData: {
+                  type: 'boolean',
+                  extra: {
+                    label: '用响应体替换消息体',
+                    description: '成功时把接口返回 JSON 写入下游 msg 数据',
+                  },
+                },
+              },
+            },
+            inputsValues: specFs
+              ? inputsValuesMapToFlowData(ivMapFs, specFs)
+              : {
+                  msgType: {
+                    type: 'constant',
+                    content: String((cfg as any).msgType ?? 'text'),
+                  },
+                  webhookUrl: {
+                    type: 'template',
+                    content: String((cfg as any).webhookUrl ?? ''),
+                  },
+                  text: { type: 'template', content: String((cfg as any).text ?? '') },
+                  postTitle: { type: 'template', content: String((cfg as any).postTitle ?? '') },
+                  postBody: { type: 'template', content: String((cfg as any).postBody ?? '') },
+                  postLang: {
+                    type: 'constant',
+                    content: String((cfg as any).postLang ?? 'zh_cn'),
+                  },
+                  postSplitByLine: {
+                    type: 'constant',
+                    content: (cfg as any).postSplitByLine === true,
+                  },
+                  postAtAllBefore: {
+                    type: 'constant',
+                    content: (cfg as any).postAtAllBefore === true,
+                  },
+                  postAtAllAfter: {
+                    type: 'constant',
+                    content: (cfg as any).postAtAllAfter === true,
+                  },
+                  postMentionUserIds: {
+                    type: 'constant',
+                    content: Array.isArray((cfg as any).postMentionUserIds)
+                      ? (cfg as any).postMentionUserIds
+                      : [],
+                  },
+                  interactivePreset: {
+                    type: 'constant',
+                    content: String((cfg as any).interactivePreset ?? 'card_json'),
+                  },
+                  cardNoticeTitle: {
+                    type: 'template',
+                    content: String((cfg as any).cardNoticeTitle ?? ''),
+                  },
+                  cardNoticeMarkdown: {
+                    type: 'template',
+                    content: String((cfg as any).cardNoticeMarkdown ?? ''),
+                  },
+                  cardJson: { type: 'template', content: String((cfg as any).cardJson ?? '') },
+                  rawJson: { type: 'template', content: String((cfg as any).rawJson ?? '') },
+                  timeoutMs: {
+                    type: 'constant',
+                    content: Number((cfg as any).timeoutMs ?? 15000),
+                  },
+                  replaceData: {
+                    type: 'constant',
+                    content: (cfg as any).replaceData === true,
                   },
                 },
           } as any;

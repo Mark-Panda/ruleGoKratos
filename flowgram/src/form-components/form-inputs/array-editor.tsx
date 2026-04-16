@@ -14,11 +14,14 @@ export function ArrayEditor({
   onChange,
   readonly,
   hasError,
+  addButtonLabel,
 }: {
   value: IFlowValue | undefined;
   onChange: (val: IFlowValue) => void;
   readonly?: boolean;
   hasError?: boolean;
+  /** 覆盖默认「添加参数」文案 */
+  addButtonLabel?: string;
 }) {
   const items = useMemo(() => {
     const arr = Array.isArray(value?.content) ? (value?.content as unknown[]) : [];
@@ -56,7 +59,7 @@ export function ArrayEditor({
       ))}
       {!readonly && (
         <Button icon={<IconPlus />} type="secondary" onClick={() => setItems([...items, ''])}>
-          添加参数
+          {addButtonLabel ?? '添加参数'}
         </Button>
       )}
     </div>

@@ -38,6 +38,7 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   [WorkflowNodeType.RedisClient]: 'Redis客户端',
   [WorkflowNodeType.CursorCli]: 'Cursor CLI (agent)',
   [WorkflowNodeType.CursorAcp]: 'Cursor ACP (agent acp)',
+  [WorkflowNodeType.FeishuWebhook]: '飞书 Webhook',
   [WorkflowNodeType.Cron]: '定时触发',
   [WorkflowNodeType.Flow]: '子规则链',
 

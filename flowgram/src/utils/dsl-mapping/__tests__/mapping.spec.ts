@@ -7,6 +7,7 @@ import {
   aiLlmMappingSpec,
   cursorAcpMappingSpec,
   cursorCliMappingSpec,
+  feishuWebhookMappingSpec,
   dbClientMappingSpec,
   flowMappingSpec,
   jsFilterMappingSpec,
@@ -838,6 +839,74 @@ describe('remaining node specs round-trip', () => {
     const acpIv = mapDslToNodeInputsValues(acpCfg as Record<string, unknown>, cursorAcpMappingSpec);
     expect(acpIv.stdinLines?.content).toEqual(['{"jsonrpc":"2.0","id":1,"method":"ping"}']);
 
+    const fwCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            msgType: { content: 'post' },
+            webhookUrl: { content: 'https://open.feishu.cn/open-apis/bot/v2/hook/x' },
+            text: { content: 'hello ${msg.id}' },
+            postTitle: { content: 'T' },
+            postBody: { content: 'B' },
+            postLang: { content: 'en_us' },
+            postSplitByLine: { content: true },
+            postAtAllBefore: { content: true },
+            postAtAllAfter: { content: false },
+            postMentionUserIds: { content: ['ou_a', 'ou_b'] },
+            interactivePreset: { content: 'notice_card' },
+            cardNoticeTitle: { content: 'N' },
+            cardNoticeMarkdown: { content: 'M' },
+            cardJson: { content: '{}' },
+            rawJson: { content: '{}' },
+            timeoutMs: { content: 8000 },
+            replaceData: { content: true },
+          },
+        },
+      },
+      feishuWebhookMappingSpec
+    );
+    expect(fwCfg).toMatchObject({
+      msgType: 'post',
+      webhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/x',
+      text: 'hello ${msg.id}',
+      postTitle: 'T',
+      postBody: 'B',
+      postLang: 'en_us',
+      postSplitByLine: true,
+      postAtAllBefore: true,
+      postAtAllAfter: false,
+      postMentionUserIds: ['ou_a', 'ou_b'],
+      interactivePreset: 'notice_card',
+      cardNoticeTitle: 'N',
+      cardNoticeMarkdown: 'M',
+      cardJson: '{}',
+      rawJson: '{}',
+      timeoutMs: 8000,
+      replaceData: true,
+    });
+    const fwIv = mapDslToNodeInputsValues(fwCfg as Record<string, unknown>, feishuWebhookMappingSpec);
+    expect(fwIv.msgType?.content).toBe('post');
+    expect(fwIv.webhookUrl?.content).toBe('https://open.feishu.cn/open-apis/bot/v2/hook/x');
+    expect(fwIv.text?.content).toBe('hello ${msg.id}');
+    expect(fwIv.postLang?.content).toBe('en_us');
+    expect(fwIv.postSplitByLine?.content).toBe(true);
+    expect(fwIv.postMentionUserIds?.content).toEqual(['ou_a', 'ou_b']);
+    expect(fwIv.interactivePreset?.content).toBe('notice_card');
+    expect(fwIv.timeoutMs?.content).toBe(8000);
+    expect(fwIv.replaceData?.content).toBe(true);
+
+    const fwLegacyIv = mapDslToNodeInputsValues(
+      {
+        webhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/legacy',
+        text: 'legacy',
+      } as Record<string, unknown>,
+      feishuWebhookMappingSpec
+    );
+    expect(fwLegacyIv.msgType?.content).toBe('text');
+    expect(fwLegacyIv.postLang?.content).toBe('zh_cn');
+    expect(fwLegacyIv.interactivePreset?.content).toBe('card_json');
+    expect(fwLegacyIv.postMentionUserIds?.content).toEqual([]);
+
     const flowCfg = mapNodeToDslConfig(
       { data: { inputsValues: { targetId: { content: 'sub-1' }, extend: { content: true } } } },
       flowMappingSpec
@@ -1264,5 +1333,193 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     expect((node as any)?.data?.inputsValues?.apiKey?.content).toBe('test-key');
     expect((node as any)?.data?.inputsValues?.workspacePath?.content).toBe('/repo/acp');
     expect((node as any)?.data?.inputsValues?.timeoutMs?.content).toBe(60000);
+  });
+
+  it('x/feishuWebhook：文档→RuleChain→文档 round-trip 保持 configuration', () => {
+    const chainId = 'chain-fs-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'FsRT',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'f1',
+            type: 'x/feishuWebhook',
+            meta: { position: { x: 220, y: 0 } },
+            data: {
+              title: 'FH',
+              positionType: 'middle',
+              inputsValues: {
+                msgType: { type: 'constant', content: 'text' },
+                webhookUrl: {
+                  type: 'template',
+                  content: 'https://open.feishu.cn/open-apis/bot/v2/hook/abc',
+                },
+                text: { type: 'template', content: 'ping ${msg.type}' },
+                postTitle: { type: 'template', content: '' },
+                postBody: { type: 'template', content: '' },
+                postLang: { type: 'constant', content: 'zh_cn' },
+                postSplitByLine: { type: 'constant', content: false },
+                postAtAllBefore: { type: 'constant', content: false },
+                postAtAllAfter: { type: 'constant', content: false },
+                postMentionUserIds: { type: 'constant', content: [] },
+                interactivePreset: { type: 'constant', content: 'card_json' },
+                cardNoticeTitle: { type: 'template', content: '' },
+                cardNoticeMarkdown: { type: 'template', content: '' },
+                cardJson: { type: 'template', content: '' },
+                rawJson: { type: 'template', content: '' },
+                timeoutMs: { type: 'constant', content: 12000 },
+                replaceData: { type: 'constant', content: false },
+              },
+              inputs: { type: 'object', required: ['webhookUrl'], properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'f1', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'f1');
+    expect(meta?.type).toBe('x/feishuWebhook');
+    expect(meta.configuration.webhookUrl).toBe('https://open.feishu.cn/open-apis/bot/v2/hook/abc');
+    expect(meta.configuration.msgType).toBe('text');
+    expect(meta.configuration.text).toBe('ping ${msg.type}');
+    expect(meta.configuration.interactivePreset).toBe('card_json');
+    expect(meta.configuration.timeoutMs).toBe(12000);
+    expect(meta.configuration.replaceData).toBe(false);
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'f1');
+    expect((node as any)?.data?.inputsValues?.webhookUrl?.content).toBe(
+      'https://open.feishu.cn/open-apis/bot/v2/hook/abc'
+    );
+    expect((node as any)?.data?.inputsValues?.msgType?.content).toBe('text');
+    expect((node as any)?.data?.inputsValues?.text?.content).toBe('ping ${msg.type}');
+    expect((node as any)?.data?.inputsValues?.interactivePreset?.content).toBe('card_json');
+    expect((node as any)?.data?.inputsValues?.timeoutMs?.content).toBe(12000);
+    expect((node as any)?.data?.inputsValues?.replaceData?.content).toBe(false);
+  });
+
+  it('x/feishuWebhook post：文档→RuleChain→文档 round-trip', () => {
+    const chainId = 'chain-fs-post';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'FsPost',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'fp',
+            type: 'x/feishuWebhook',
+            meta: { position: { x: 200, y: 0 } },
+            data: {
+              title: 'Post',
+              positionType: 'middle',
+              inputsValues: {
+                msgType: { type: 'constant', content: 'post' },
+                webhookUrl: {
+                  type: 'template',
+                  content: 'https://open.feishu.cn/open-apis/bot/v2/hook/posthook',
+                },
+                text: { type: 'template', content: '' },
+                postTitle: { type: 'template', content: '告警 ${msg.type}' },
+                postBody: { type: 'template', content: '详情见 metadata' },
+                postLang: { type: 'constant', content: 'ja_jp' },
+                postSplitByLine: { type: 'constant', content: true },
+                postAtAllBefore: { type: 'constant', content: true },
+                postAtAllAfter: { type: 'constant', content: false },
+                postMentionUserIds: { type: 'constant', content: ['ou_x'] },
+                interactivePreset: { type: 'constant', content: 'card_json' },
+                cardNoticeTitle: { type: 'template', content: '' },
+                cardNoticeMarkdown: { type: 'template', content: '' },
+                cardJson: { type: 'template', content: '' },
+                rawJson: { type: 'template', content: '' },
+                timeoutMs: { type: 'constant', content: 10000 },
+                replaceData: { type: 'constant', content: false },
+              },
+              inputs: { type: 'object', required: ['msgType'], properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'fp', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'fp');
+    expect(meta.configuration.msgType).toBe('post');
+    expect(meta.configuration.postTitle).toBe('告警 ${msg.type}');
+    expect(meta.configuration.postLang).toBe('ja_jp');
+    expect(meta.configuration.postSplitByLine).toBe(true);
+    expect(meta.configuration.postAtAllBefore).toBe(true);
+    expect(meta.configuration.postMentionUserIds).toEqual(['ou_x']);
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'fp');
+    expect((node as any)?.data?.inputsValues?.msgType?.content).toBe('post');
+    expect((node as any)?.data?.inputsValues?.postTitle?.content).toBe('告警 ${msg.type}');
+    expect((node as any)?.data?.inputsValues?.postLang?.content).toBe('ja_jp');
+    expect((node as any)?.data?.inputsValues?.postMentionUserIds?.content).toEqual(['ou_x']);
+  });
+
+  it('x/feishuWebhook interactive 通知卡片：round-trip', () => {
+    const chainId = 'chain-fs-notice';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'FsNotice',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'fn',
+            type: 'x/feishuWebhook',
+            meta: { position: { x: 200, y: 0 } },
+            data: {
+              title: 'Notice',
+              positionType: 'middle',
+              inputsValues: {
+                msgType: { type: 'constant', content: 'interactive' },
+                webhookUrl: {
+                  type: 'template',
+                  content: 'https://open.feishu.cn/open-apis/bot/v2/hook/h',
+                },
+                text: { type: 'template', content: '' },
+                postTitle: { type: 'template', content: '' },
+                postBody: { type: 'template', content: '' },
+                postLang: { type: 'constant', content: 'zh_cn' },
+                postSplitByLine: { type: 'constant', content: false },
+                postAtAllBefore: { type: 'constant', content: false },
+                postAtAllAfter: { type: 'constant', content: false },
+                postMentionUserIds: { type: 'constant', content: [] },
+                interactivePreset: { type: 'constant', content: 'notice_card' },
+                cardNoticeTitle: { type: 'template', content: '标题A' },
+                cardNoticeMarkdown: { type: 'template', content: '**正文**' },
+                cardJson: { type: 'template', content: '' },
+                rawJson: { type: 'template', content: '' },
+                timeoutMs: { type: 'constant', content: 15000 },
+                replaceData: { type: 'constant', content: false },
+              },
+              inputs: { type: 'object', properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'fn', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'fn');
+    expect(meta.configuration.interactivePreset).toBe('notice_card');
+    expect(meta.configuration.cardNoticeTitle).toBe('标题A');
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'fn');
+    expect((node as any)?.data?.inputsValues?.interactivePreset?.content).toBe('notice_card');
+    expect((node as any)?.data?.inputsValues?.cardNoticeTitle?.content).toBe('标题A');
   });
 });

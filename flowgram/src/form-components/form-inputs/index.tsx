@@ -17,9 +17,18 @@ import { NodeIdSelect } from './node-id-select';
 import { NodeIdMultiSelect } from './node-id-multi-select';
 import { CronEditor } from './cron-editor';
 
-export function FormInputs() {
+export type FormInputsProps = {
+  /** 返回 true 的字段才会渲染；未设置则渲染全部 */
+  propertyFilter?: (propertyKey: string) => boolean;
+  /** 渲染顺序；未设置则按 inputs.properties 的键顺序 */
+  propertyKeyOrder?: readonly string[];
+};
+
+export function FormInputs(props?: FormInputsProps) {
   const { readonly } = useNodeRenderContext();
   const isSidebar = useIsSidebar();
+  const propertyFilter = props?.propertyFilter;
+  const propertyKeyOrder = props?.propertyKeyOrder;
 
   return (
     <Field<JsonSchema> name="inputs">
@@ -29,7 +38,14 @@ export function FormInputs() {
         if (!properties) {
           return <></>;
         }
-        const content = Object.keys(properties).map((key) => {
+        const allKeys = Object.keys(properties);
+        const keys =
+          propertyKeyOrder && propertyKeyOrder.length > 0
+            ? propertyKeyOrder.filter(
+                (k) => Boolean(properties[k]) && (!propertyFilter || propertyFilter(k))
+              )
+            : allKeys.filter((k) => !propertyFilter || propertyFilter(k));
+        const content = keys.map((key) => {
           const property = properties[key];
 
           const enumList = (property as { enum?: unknown }).enum;
@@ -227,6 +243,13 @@ export function FormInputs() {
                         onChange={field.onChange}
                         readonly={readonly}
                         hasError={Object.keys(fieldState?.errors || {}).length > 0}
+                        addButtonLabel={
+                          typeof (property as { extra?: { arrayAddLabel?: string } }).extra
+                            ?.arrayAddLabel === 'string'
+                            ? (property as { extra?: { arrayAddLabel?: string } }).extra
+                                ?.arrayAddLabel
+                            : undefined
+                        }
                       />
                     );
                   }
