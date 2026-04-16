@@ -3,11 +3,29 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { WorkflowDocument, WorkflowNodeEntity } from '@flowgram.ai/free-layout-editor';
+import { customAlphabet } from 'nanoid';
+import type { WorkflowDocument } from '@flowgram.ai/free-layout-editor';
 
-import { FlowDocumentJSON, FlowNodeJSON } from '../typings/node';
-import { WorkflowNodeType } from '../nodes/constants';
-import { alphaNanoid } from './index';
+import type { FlowDocumentJSON, FlowNodeJSON } from '../typings/node';
+import type { FlowValueLike, NodeMappingSpec } from './dsl-mapping/types';
+import {
+  buildForFlowFromDsl,
+  buildScheduleEndpointsFromDocument,
+  buildScheduleEndpointFlowNode,
+  buildStartFlowData,
+  emitForToRuleChain,
+  emitGroupToRuleChain,
+  shouldSkipRuleChainMetaNode,
+} from './dsl-mapping/structure-engine';
+import { getNodeMappingSpec } from './dsl-mapping/specs';
+import {
+  mapDslToNodeInputsValues,
+  mapNodeToDslConfig,
+  type InputsValuesMap,
+} from './dsl-mapping/engine';
+
+const alphaNanoid = (size: number) =>
+  customAlphabet('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', size)();
 
 export interface RuleChainBaseInfo {
   id: string;
@@ -74,6 +92,201 @@ interface RuleChainRC {
   metadata: RuleMetadataRC;
 }
 
+/**
+ * 从画布 restApiCall 节点 data 组装 spec 引擎所需的 inputsValues。
+ * params / headers：优先按 schema `*.properties` 的键对齐；若导入后缺失 `properties`，则从
+ * `paramsValues` / `headersValues` 的键兜底（避免再导出时丢 query 表单项）。
+ */
+function buildRestApiCallInputsValues(n: any): Record<string, FlowValueLike> {
+  const urlContent = n.data?.api?.url?.content ?? '';
+  const method = n.data?.api?.method ?? 'GET';
+
+  const parammap: Record<string, unknown> = {};
+  const pv = n.data?.paramsValues;
+  if (pv && typeof pv === 'object' && Object.keys(pv).length > 0) {
+    let paramKeys: string[] = [];
+    const props = n.data?.params?.properties;
+    if (props && typeof props === 'object') {
+      paramKeys = Object.keys(props);
+    }
+    if (paramKeys.length === 0) {
+      paramKeys = Object.keys(pv);
+    }
+    for (const key of paramKeys) {
+      const cell = (pv as any)[key];
+      if (cell !== undefined) {
+        parammap[key] = cell?.content;
+      }
+    }
+  }
+
+  const headermap: Record<string, unknown> = {};
+  const hv = n.data?.headersValues;
+  if (hv && typeof hv === 'object' && Object.keys(hv).length > 0) {
+    let headerKeys: string[] = [];
+    const hprops = n.data?.headers?.properties;
+    if (hprops && typeof hprops === 'object') {
+      headerKeys = Object.keys(hprops);
+    }
+    if (headerKeys.length === 0) {
+      headerKeys = Object.keys(hv);
+    }
+    for (const key of headerKeys) {
+      const cell = (hv as any)[key];
+      if (cell !== undefined) {
+        headermap[key] = cell?.content;
+      }
+    }
+  }
+
+  const out: Record<string, FlowValueLike> = {
+    url: { content: urlContent },
+    requestMethod: { content: method },
+  };
+  if (Object.keys(parammap).length > 0) {
+    out.params = { content: parammap };
+  }
+  if (Object.keys(headermap).length > 0) {
+    out.headers = { content: headermap };
+  }
+  if (n.data?.body?.bodyType === 'JSON' && n.data?.body?.json?.content !== undefined) {
+    out.body = { content: String(n.data.body.json.content ?? '') };
+  }
+  if (n.data?.timeout && n.data.timeout.timeout !== undefined) {
+    out.readTimeoutMs = { content: n.data.timeout.timeout };
+  }
+  return out;
+}
+
+function buildYapiInputsValues(n: any): Record<string, FlowValueLike> {
+  const cfg = n.data?.yapiConfig ?? {};
+  return {
+    baseUrl: { content: String(cfg.baseUrl ?? '') },
+    userName: { content: String(cfg.userName ?? '') },
+    password: { content: String(cfg.password ?? '') },
+    interfacePath: { content: String(cfg.interfacePath ?? '') },
+    loginType: { content: String(cfg.loginType ?? 'ldap') },
+  };
+}
+
+function extractJsFunctionBody(scriptText: string, fnName: string): string {
+  const fnIdx = scriptText.indexOf(`function ${fnName}`);
+  const braceStart = fnIdx >= 0 ? scriptText.indexOf('{', fnIdx) : -1;
+  if (braceStart < 0) return '';
+  let i = braceStart + 1;
+  let depth = 1;
+  let end = scriptText.length;
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  for (; i < scriptText.length; i++) {
+    const ch = scriptText[i];
+    const prev = scriptText[i - 1];
+    if (inLineComment) {
+      if (ch === '\n') inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === '*' && scriptText[i + 1] === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (!inSingle && !inDouble && !inTemplate) {
+      if (ch === '/' && scriptText[i + 1] === '/') {
+        inLineComment = true;
+        i++;
+        continue;
+      }
+      if (ch === '/' && scriptText[i + 1] === '*') {
+        inBlockComment = true;
+        i++;
+        continue;
+      }
+      if (ch === "'" && prev !== '\\') {
+        inSingle = true;
+        continue;
+      }
+      if (ch === '"' && prev !== '\\') {
+        inDouble = true;
+        continue;
+      }
+      if (ch === '`' && prev !== '\\') {
+        inTemplate = true;
+        continue;
+      }
+    } else {
+      if (inSingle && ch === "'" && prev !== '\\') {
+        inSingle = false;
+        continue;
+      }
+      if (inDouble && ch === '"' && prev !== '\\') {
+        inDouble = false;
+        continue;
+      }
+      if (inTemplate && ch === '`' && prev !== '\\') {
+        inTemplate = false;
+        continue;
+      }
+      continue;
+    }
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  return scriptText.slice(braceStart + 1, end).trim();
+}
+
+function extractLuaTransformBody(scriptText: string): string {
+  const fnIdx = scriptText.indexOf('function Transform');
+  if (fnIdx < 0) return '';
+  const lineEndIdx = scriptText.indexOf('\n', fnIdx);
+  const endIdx = scriptText.lastIndexOf('end');
+  return scriptText
+    .slice(lineEndIdx >= 0 ? lineEndIdx + 1 : fnIdx, endIdx >= 0 ? endIdx : scriptText.length)
+    .trim();
+}
+
+function buildScriptInputsValues(n: any): Record<string, FlowValueLike> {
+  const scriptText = String(n.data?.script?.content ?? '');
+  const matchName =
+    n.type === 'jsTransform'
+      ? 'Transform'
+      : n.type === 'log'
+      ? 'ToString'
+      : n.type === 'jsFilter'
+      ? 'Filter'
+      : '';
+  const scriptBody = matchName ? extractJsFunctionBody(scriptText, matchName) : '';
+  return { scriptBody: { content: scriptBody } };
+}
+
+function buildLuaInputsValues(n: any): Record<string, FlowValueLike> {
+  const scriptText = String(n.data?.script?.content ?? '');
+  return { scriptBody: { content: extractLuaTransformBody(scriptText) } };
+}
+
+function inputsValuesMapToFlowData(
+  iv: InputsValuesMap,
+  spec: NodeMappingSpec
+): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const f of spec.fields) {
+    const cell = iv[f.inputKey];
+    const flowType = f.valueType === 'template' ? 'template' : 'constant';
+    out[f.inputKey] = { type: flowType, content: cell?.content };
+  }
+  return out;
+}
+
 export function buildRuleChainJSONFromDocument(
   document: WorkflowDocument,
   baseOverride?: Partial<RuleChainBaseInfo>
@@ -89,46 +302,11 @@ export function buildRuleChainJSONFromDocument(
       if (conn) connectionsRC.push(conn);
     }
   }
-  const endpointTypes = new Set(['endpoint/schedule']);
-  const endpoiontsRc: EndpointDsl[] = flattened
-    .filter((n: any) => endpointTypes.has(String(n.type)))
-    .map((n: any) => {
-      const nodeType = String(n.type);
-      const base: EndpointDsl = {
-        id: n.id,
-        additionalInfo: n.meta ? { meta: n.meta } : undefined,
-        type: nodeType,
-        name: n.data?.title ?? nodeType,
-        debugMode: false,
-        configuration: {},
-      };
-      switch (nodeType) {
-        case 'endpoint/schedule':
-          if (n.data?.inputs && n.data?.inputsValues) {
-            base.routers = [
-              {
-                id: alphaNanoid(16),
-                params: [],
-                from: {
-                  path: n.data?.inputsValues.cron.content,
-                  configuration: {},
-                  processors: [],
-                },
-                to: {
-                  path: baseOverride?.id + ':' + flattened[0].id,
-                  configuration: {},
-                  wait: false,
-                  processors: [],
-                },
-              },
-            ];
-          }
-          break;
-        default:
-          break;
-      }
-      return base;
-    });
+  const endpoiontsRc: EndpointDsl[] = buildScheduleEndpointsFromDocument(
+    flattened,
+    baseOverride,
+    alphaNanoid
+  );
 
   const nodesRC: RuleNodeRC[] = [];
   for (const n of flattened) {
@@ -174,338 +352,116 @@ function buildRuleChainMetaNodes(
       ...(n.data ?? {}),
     },
   };
+  if (shouldSkipRuleChainMetaNode(nodeType)) {
+    return;
+  }
   switch (nodeType) {
-    case 'endpoint/schedule':
-    case 'block-start':
-    case 'block-end':
-      return;
     case 'group': {
-      if (n.data) {
-        base.configuration = { nodeIds: n.data?.blockIDs };
-        base.type = 'groupAction';
-      }
+      emitGroupToRuleChain(n, base);
       break;
     }
     case 'for': {
-      if (n.data) {
-        base.configuration = {
-          range: n.data?.note?.content,
-          do: n.data?.nodeId?.content,
-          mode: n.data?.operationMode?.content,
-          extra: {
-            blocks: [],
-            edges: [],
-          },
-        };
-      }
-      if (n.blocks && n.blocks.length > 0) {
-        const forBlocks: any[] = [];
-        for (const b of n.blocks) {
-          forBlocks.push(b);
-          const t = String(b.type);
-          if (t !== 'block-start' && t !== 'block-end') {
-            buildRuleChainMetaNodes(b, nodesRC, connectionsRC);
-          }
-        }
-        base.configuration.extra.blocks = forBlocks;
-      }
-      if (n.edges && n.edges.length > 0) {
-        const forEdges: any = [];
-        for (const e of n.edges) {
-          const sourceId = e.sourceNodeID ?? '';
-          const targetId = e.targetNodeID ?? '';
-          forEdges.push(e);
-          if (
-            !String(sourceId).startsWith('block_start') &&
-            !String(targetId).startsWith('block_end')
-          ) {
-            const connection = buildRuleChainMetaConnection(e);
-            if (connection) {
-              connectionsRC.push(connection);
-            }
-          }
-        }
-        base.configuration.extra.edges = forEdges;
-      }
+      emitForToRuleChain(
+        n,
+        base,
+        nodesRC,
+        connectionsRC,
+        (child) => buildRuleChainMetaNodes(child, nodesRC, connectionsRC),
+        buildRuleChainMetaConnection
+      );
       break;
     }
     case 'restApiCall': {
-      const newconfig: Record<string, any> = {};
-      if (n.data?.api) {
-        newconfig['requestMethod'] = n.data?.api.method;
-        if (n.data?.api.url?.content) {
-          newconfig['restEndpointUrlPattern'] = n.data?.api.url?.content;
-        }
-      }
-      if (
-        n.data?.headersValues &&
-        Object.keys(n.data?.headersValues).length > 0 &&
-        n.data?.headers &&
-        Object.keys(n.data?.headers).length > 0
-      ) {
-        const headermap: Record<string, any> = {};
-        for (const key of Object.keys(n.data.headers.properties)) {
-          const v = (n.data.headersValues as any)[key];
-          headermap[key] = v?.content;
-        }
-        newconfig['headers'] = headermap;
-      }
-      if (
-        n.data?.paramsValues &&
-        Object.keys(n.data?.paramsValues).length > 0 &&
-        n.data?.params &&
-        Object.keys(n.data?.params).length > 0
-      ) {
-        const parammap: Record<string, any> = {};
-        for (const key of Object.keys(n.data.params.properties)) {
-          const v = (n.data.paramsValues as any)[key];
-          parammap[key] = v?.content;
-        }
-        newconfig['params'] = parammap;
-        const urlPattern = newconfig['restEndpointUrlPattern'];
-        if (urlPattern && typeof urlPattern === 'string' && Object.keys(parammap).length > 0) {
-          const qs = Object.entries(parammap)
-            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v ?? ''))}`)
-            .join('&');
-          const sep = urlPattern.includes('?') ? '&' : '?';
-          newconfig['restEndpointUrlPattern'] = qs ? `${urlPattern}${sep}${qs}` : urlPattern;
-        }
-      }
-      if (n.data?.body && n.data?.body?.bodyType === 'JSON' && n.data?.body?.json?.content) {
-        newconfig['body'] = n.data?.body.json.content;
-      }
-      if (n.data?.timeout) {
-        newconfig['readTimeoutMs'] = n.data?.timeout.timeout;
-      }
-      base.configuration = newconfig;
+      const specRest = getNodeMappingSpec('restApiCall');
+      if (!specRest) break;
+      const synthetic = {
+        data: { inputsValues: buildRestApiCallInputsValues(n) },
+      };
+      base.configuration = mapNodeToDslConfig(synthetic, specRest) as Record<string, any>;
       break;
     }
-        case 'ai/llm': {
-      if (
-        n.data?.inputs &&
-        Object.keys(n.data?.inputs).length > 0 &&
-        n.data?.inputsValues &&
-        Object.keys(n.data?.inputsValues).length > 0
-      ) {
-        const configmap: Record<string, any> = {};
-        const parammap: Record<string, any> = {};
-        for (const key of Object.keys(n.data.inputs.properties)) {
-          switch (key) {
-            case 'userPrompt':
-              configmap['messages'] = [
-                {
-                  role: 'user',
-                  content: (n.data.inputsValues as any)[key]?.content,
-                },
-              ];
-              break;
-            case 'temperature':
-            case 'responseFormat':
-            case 'topP':
-            case 'maxTokens':
-              parammap[key] = (n.data.inputsValues as any)[key]?.content;
-              break;
-            default:
-              configmap[key] = (n.data.inputsValues as any)[key]?.content;
-          }
-        }
-        configmap['params'] = parammap;
-        base.configuration = configmap;
-      }
+    case 'ai/llm': {
+      const spec = getNodeMappingSpec('ai/llm');
+      if (!spec) break;
+      base.configuration = mapNodeToDslConfig(n, spec) as Record<string, any>;
       break;
     }
     case 'ai/agentHarness': {
-      if (
-        n.data?.inputs &&
-        Object.keys(n.data?.inputs).length > 0 &&
-        n.data?.inputsValues &&
-        Object.keys(n.data?.inputsValues).length > 0
-      ) {
-        const cfg: Record<string, any> = {};
-        for (const key of Object.keys(n.data.inputs.properties)) {
-          cfg[key] = (n.data.inputsValues as any)[key]?.content;
-        }
-        base.configuration = cfg;
-      }
+      const specAh = getNodeMappingSpec('ai/agentHarness');
+      if (!specAh) break;
+      base.configuration = mapNodeToDslConfig(n, specAh) as Record<string, any>;
       break;
     }
     case 'switch': {
-      if (Array.isArray(n.data?.cases) && n.data.cases.length > 0) {
-        const formatValue = (v: any) => {
-          const val = v?.content;
-          const isNum =
-            typeof val === 'number' || (typeof val === 'string' && /^-?\d+(?:\.\d+)?$/.test(val));
-          return isNum ? String(val) : JSON.stringify(String(val ?? ''));
-        };
-        const formatRow = (row: any) => {
-          if (!row) return '';
-          if (row.content && String(row.content).trim().length > 0) {
-            return String(row.content).trim();
-          }
-          if (row.type === 'expression') {
-            const left = row.left?.content ?? '';
-            const op = row.operator ?? '';
-            const right = formatValue(row.right ?? {});
-            if (left && op && right) return `${left} ${op} ${right}`;
-          }
-          return '';
-        };
-        const formatGroup = (g: any) => {
-          const rows = Array.isArray(g?.rows) ? g.rows : [];
-          const exprs = rows.map(formatRow).filter((s: string) => s && s.length > 0);
-          const joiner = g?.operator === 'or' ? ' || ' : ' && ';
-          if (exprs.length === 0) return '';
-          const joined = exprs.join(joiner);
-          return exprs.length > 1 ? `(${joined})` : joined;
-        };
-        const cases = (n.data.cases as any[])
-          .map((c: any) => {
-            const groups = Array.isArray(c?.groups) ? c.groups : [];
-            const groupExprs = groups.map(formatGroup).filter((s: string) => s && s.length > 0);
-            const fullExpr = groupExprs.join(' || ');
-            return { case: fullExpr, then: String(c.key ?? '') };
-          })
-          .filter((item) => item.case && item.then);
-        base.configuration = { cases };
-      }
+      const specSwitch = getNodeMappingSpec('switch');
+      if (!specSwitch) break;
+      const synthetic = {
+        data: { inputsValues: { cases: { content: n.data?.cases ?? [] } } },
+      };
+      base.configuration = mapNodeToDslConfig(synthetic, specSwitch) as Record<string, any>;
+      break;
+    }
+    case 'dbClient': {
+      const specDb = getNodeMappingSpec('dbClient');
+      if (!specDb) break;
+      base.configuration = mapNodeToDslConfig(n, specDb) as Record<string, any>;
+      break;
+    }
+    case 'x/redisClient': {
+      const specRedis = getNodeMappingSpec('x/redisClient');
+      if (!specRedis) break;
+      base.configuration = mapNodeToDslConfig(n, specRedis) as Record<string, any>;
+      break;
+    }
+    case 'transform/multiNodeOutput': {
+      const specMulti = getNodeMappingSpec('transform/multiNodeOutput');
+      if (!specMulti) break;
+      base.configuration = mapNodeToDslConfig(n, specMulti) as Record<string, any>;
       break;
     }
     case 'jsTransform':
     case 'log':
     case 'jsFilter': {
-      if (n.data?.script) {
-        const matchName =
-          n.type === 'jsTransform'
-            ? 'Transform'
-            : n.type === 'log'
-            ? 'ToString'
-            : n.type === 'jsFilter'
-            ? 'Filter'
-            : '';
-        const scriptText: string = String(n.data?.script?.content ?? '');
-        const fnIdx = scriptText.indexOf(`function ${matchName}`);
-        const braceStart = fnIdx >= 0 ? scriptText.indexOf('{', fnIdx) : -1;
-        if (braceStart >= 0) {
-          let i = braceStart + 1;
-          let depth = 1;
-          let end = scriptText.length;
-          let inSingle = false;
-          let inDouble = false;
-          let inTemplate = false;
-          let inLineComment = false;
-          let inBlockComment = false;
-          for (; i < scriptText.length; i++) {
-            const ch = scriptText[i];
-            const prev = scriptText[i - 1];
-            if (inLineComment) {
-              if (ch === '\n') inLineComment = false;
-              continue;
-            }
-            if (inBlockComment) {
-              if (ch === '*' && scriptText[i + 1] === '/') {
-                inBlockComment = false;
-                i++;
-              }
-              continue;
-            }
-            if (!inSingle && !inDouble && !inTemplate) {
-              if (ch === '/' && scriptText[i + 1] === '/') {
-                inLineComment = true;
-                i++;
-                continue;
-              }
-              if (ch === '/' && scriptText[i + 1] === '*') {
-                inBlockComment = true;
-                i++;
-                continue;
-              }
-              if (ch === "'" && prev !== '\\') {
-                inSingle = true;
-                continue;
-              }
-              if (ch === '"' && prev !== '\\') {
-                inDouble = true;
-                continue;
-              }
-              if (ch === '`' && prev !== '\\') {
-                inTemplate = true;
-                continue;
-              }
-            } else {
-              if (inSingle && ch === "'" && prev !== '\\') {
-                inSingle = false;
-                continue;
-              }
-              if (inDouble && ch === '"' && prev !== '\\') {
-                inDouble = false;
-                continue;
-              }
-              if (inTemplate && ch === '`' && prev !== '\\') {
-                inTemplate = false;
-                continue;
-              }
-              continue;
-            }
-            if (ch === '{') depth++;
-            else if (ch === '}') {
-              depth--;
-              if (depth === 0) {
-                end = i;
-                break;
-              }
-            }
-          }
-          const body = scriptText.slice(braceStart + 1, end).trim();
-          base.configuration = { jsScript: body };
-        }
-      }
+      const specJs = getNodeMappingSpec(nodeType);
+      if (!specJs) break;
+      const synthetic = { data: { inputsValues: buildScriptInputsValues(n) } };
+      base.configuration = mapNodeToDslConfig(synthetic, specJs) as Record<string, any>;
       break;
     }
     case 'luaTransform': {
-      if (n.data?.script) {
-        const scriptText: string = String(n.data?.script?.content ?? '');
-        const fnIdx = scriptText.indexOf('function Transform');
-        if (fnIdx >= 0) {
-          const lineEndIdx = scriptText.indexOf('\n', fnIdx);
-          const endIdx = scriptText.lastIndexOf('end');
-          const body = scriptText
-            .slice(
-              lineEndIdx >= 0 ? lineEndIdx + 1 : fnIdx,
-              endIdx >= 0 ? endIdx : scriptText.length
-            )
-            .trim();
-          base.configuration = { luaScript: body } as any;
-        }
-      }
+      const specLua = getNodeMappingSpec('luaTransform');
+      if (!specLua) break;
+      const synthetic = { data: { inputsValues: buildLuaInputsValues(n) } };
+      base.configuration = mapNodeToDslConfig(synthetic, specLua) as Record<string, any>;
       break;
     }
     case 'flow': {
-      if (n.data?.inputs && n.data?.inputsValues) {
-        const tId = n.data?.inputsValues?.targetId?.content;
-        const ext = n.data?.inputsValues?.extend?.content;
-        base.configuration = {
-          targetId: String(tId ?? ''),
-          extend: !!ext,
-        } as any;
-      }
+      const specFlow = getNodeMappingSpec('flow');
+      if (!specFlow) break;
+      base.configuration = mapNodeToDslConfig(n, specFlow) as Record<string, any>;
       break;
     }
     case 'transform/yapi': {
-      base.configuration = {
-        ...(n.data?.yapiConfig ?? {}),
-      };
+      const specYapi = getNodeMappingSpec('transform/yapi');
+      if (!specYapi) break;
+      const synthetic = { data: { inputsValues: buildYapiInputsValues(n) } };
+      base.configuration = mapNodeToDslConfig(synthetic, specYapi) as Record<string, any>;
       break;
     }
     default: {
       // 保持默认逻辑
+      const props = n.data?.inputs?.properties;
       if (
         n.data?.inputs &&
-        Object.keys(n.data?.inputs).length > 0 &&
+        Object.keys(n.data.inputs).length > 0 &&
+        props &&
+        typeof props === 'object' &&
+        !Array.isArray(props) &&
         n.data?.inputsValues &&
-        Object.keys(n.data?.inputsValues).length > 0
+        Object.keys(n.data.inputsValues).length > 0
       ) {
         const parammap: Record<string, any> = {};
-        for (const key of Object.keys(n.data.inputs.properties)) {
+        for (const key of Object.keys(props)) {
           const v = (n.data.inputsValues as any)[key];
           parammap[key] = v?.content;
         }
@@ -667,7 +623,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
       const idxInLayer = layerNodes.indexOf(id);
       const fallbackX = startX + lv * spacingX;
       const fallbackY = startY + (idxInLayer >= 0 ? idxInLayer : 0) * spacingY;
-      const pos = (n?.additionalInfo?.meta?.position as any) || { x: fallbackX, y: fallbackY };
+      const pos = (n?.additionalInfo?.meta?.position as any) || {
+        x: fallbackX,
+        y: fallbackY,
+      };
       const t = String(n.type ?? 'default');
       if (t === 'groupAction') return null as any;
       const base: any = {
@@ -678,13 +637,15 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
       };
       switch (t) {
         case 'start': {
-          base.data = {
-            title: n.name ?? 'Start',
-          };
+          base.data = buildStartFlowData(n);
           break;
         }
         case 'x/redisClient': {
           const cfg = n.configuration ?? {};
+          const specRedis = getNodeMappingSpec('x/redisClient');
+          const ivMapRedis = specRedis
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specRedis)
+            : ({} as InputsValuesMap);
           base.data = {
             title: n.name ?? 'Redis 客户端',
             positionType: 'middle',
@@ -707,7 +668,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     description: '并发量大时适当增大；留空或 0 使用默认值',
                   },
                 },
-                db: { type: 'number', extra: { label: '数据库编号', description: '默认为 0' } },
+                db: {
+                  type: 'number',
+                  extra: { label: '数据库编号', description: '默认为 0' },
+                },
                 cmd: {
                   type: 'string',
                   extra: {
@@ -729,14 +693,33 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               },
             },
             inputsValues: {
-              server: { type: 'constant', content: String((cfg as any).server ?? '') },
-              password: { type: 'constant', content: String((cfg as any).password ?? '') },
-              poolSize: { type: 'constant', content: Number((cfg as any).poolSize ?? 0) },
-              db: { type: 'constant', content: Number((cfg as any).db ?? 0) },
-              cmd: { type: 'template', content: String((cfg as any).cmd ?? '') },
+              server: {
+                type: 'constant',
+                content: String(ivMapRedis.server?.content ?? (cfg as any).server ?? ''),
+              },
+              password: {
+                type: 'constant',
+                content: String(ivMapRedis.password?.content ?? (cfg as any).password ?? ''),
+              },
+              poolSize: {
+                type: 'constant',
+                content: Number(ivMapRedis.poolSize?.content ?? (cfg as any).poolSize ?? 0),
+              },
+              db: {
+                type: 'constant',
+                content: Number(ivMapRedis.db?.content ?? (cfg as any).db ?? 0),
+              },
+              cmd: {
+                type: 'template',
+                content: String(ivMapRedis.cmd?.content ?? (cfg as any).cmd ?? ''),
+              },
               params: {
                 type: 'constant',
-                content: Array.isArray((cfg as any).params) ? (cfg as any).params : [],
+                content: Array.isArray(ivMapRedis.params?.content)
+                  ? ivMapRedis.params?.content
+                  : Array.isArray((cfg as any).params)
+                  ? (cfg as any).params
+                  : [],
               },
             },
           } as any;
@@ -744,42 +727,29 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
         }
         case 'restApiCall': {
           const cfg = n.configuration ?? {};
-          const fullUrl = String(cfg.restEndpointUrlPattern ?? '');
-          let baseUrl = fullUrl;
-          const queryValues: Record<string, any> = {};
-          const qm = fullUrl.indexOf('?');
-          if (qm >= 0) {
-            baseUrl = fullUrl.slice(0, qm);
-            const qs = fullUrl.slice(qm + 1);
-            qs.split('&').forEach((pair) => {
-              if (!pair) return;
-              const [rawK, rawV] = pair.split('=');
-              if (!rawK) return;
-              const k = decodeURIComponent(rawK);
-              const v = rawV !== undefined ? decodeURIComponent(rawV) : '';
-              queryValues[k] = v;
-            });
-          }
-          const headerVals = Object.keys(cfg.headers || {}).reduce((acc: any, k) => {
-            acc[k] = { type: 'constant', content: (cfg.headers as any)[k] };
+          const specRest = getNodeMappingSpec('restApiCall');
+          if (!specRest) break;
+          const iv = mapDslToNodeInputsValues(cfg as Record<string, unknown>, specRest);
+          const hObj = (iv.headers?.content ?? {}) as Record<string, unknown>;
+          const headerVals = Object.keys(hObj).reduce((acc: any, k) => {
+            acc[k] = { type: 'constant', content: hObj[k] };
             return acc;
           }, {});
-          const paramValsFromCfg = Object.keys(cfg.params || {}).reduce((acc: any, k) => {
-            acc[k] = { type: 'constant', content: (cfg.params as any)[k] };
+          const pObj = (iv.params?.content ?? {}) as Record<string, unknown>;
+          const mergedParamVals = Object.keys(pObj).reduce((acc: any, k) => {
+            acc[k] = { type: 'constant', content: pObj[k] };
             return acc;
           }, {});
-          const paramValsFromUrl = Object.keys(queryValues).reduce((acc: any, k) => {
-            acc[k] = { type: 'constant', content: queryValues[k] };
-            return acc;
-          }, {});
-          const mergedParamVals = { ...paramValsFromUrl, ...paramValsFromCfg };
-
+          const urlStr =
+            iv.url?.content != null && String(iv.url.content).length > 0
+              ? String(iv.url.content)
+              : '';
           base.data = {
             title: n.name ?? 'restApiCall',
             positionType: 'middle',
             api: {
-              method: cfg.requestMethod ?? 'GET',
-              url: baseUrl ? { type: 'template', content: baseUrl } : undefined,
+              method: (iv.requestMethod?.content as string) ?? 'GET',
+              url: urlStr ? { type: 'template', content: urlStr } : undefined,
             },
             headers: {},
             headersValues: headerVals,
@@ -787,178 +757,181 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             paramsValues: mergedParamVals,
             body: {
               bodyType: 'JSON',
-              json: cfg.body ? { type: 'template', content: cfg.body } : undefined,
+              json: iv.body?.content ? { type: 'template', content: iv.body.content } : undefined,
             },
-            timeout: { retryTimes: 0, timeout: cfg.readTimeoutMs ?? 0 },
+            timeout: {
+              retryTimes: 0,
+              timeout: Number(iv.readTimeoutMs?.content ?? 0),
+            },
           };
           break;
         }
         case 'ai/llm': {
           const cfg = n.configuration ?? {};
-          const msg = Array.isArray(cfg.messages) ? cfg.messages[0]?.content : '';
-          const params = cfg.params ?? {};
+          const specLlm = getNodeMappingSpec('ai/llm');
+          const inputsSchema = {
+            type: 'object',
+            required: [
+              'model',
+              'key',
+              'url',
+              'temperature',
+              'userPrompt',
+              'topP',
+              'maxTokens',
+              'responseFormat',
+            ],
+            properties: {
+              model: { type: 'string', extra: { label: '模型名称' } },
+              key: { type: 'string' },
+              url: { type: 'string' },
+              systemPrompt: {
+                type: 'string',
+                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
+              },
+              userPrompt: {
+                type: 'string',
+                extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+              },
+              maxTokens: { type: 'number', extra: { label: '最大输出长度' } },
+              responseFormat: {
+                type: 'string',
+                enum: ['text', 'json_object', 'json_schema'],
+                extra: { label: '输出格式', formComponent: 'enum-select' },
+              },
+              temperature: { type: 'number' },
+              topP: { type: 'number' },
+            },
+          };
+          if (!specLlm) break;
+          const ivMap = mapDslToNodeInputsValues(cfg as Record<string, unknown>, specLlm);
           base.data = {
             title: n.name ?? 'ai/llm',
             positionType: 'middle',
-            inputsValues: {
-              model: { type: 'constant', content: String(cfg.model ?? '') },
-              key: { type: 'constant', content: String(cfg.key ?? '') },
-              url: { type: 'constant', content: String(cfg.url ?? '') },
-              systemPrompt: { type: 'template', content: String(cfg.systemPrompt ?? '') },
-              userPrompt: { type: 'template', content: String(msg ?? '') },
-              temperature: { type: 'constant', content: params.temperature ?? 0.5 },
-              topP: { type: 'constant', content: params.topP ?? 0.5 },
-              maxTokens: { type: 'constant', content: params.maxTokens ?? 0 },
-              responseFormat: { type: 'constant', content: params.responseFormat ?? 'text' },
-            },
-            inputs: {
-              type: 'object',
-              required: [
-                'model',
-                'key',
-                'url',
-                'temperature',
-                'userPrompt',
-                'topP',
-                'maxTokens',
-                'responseFormat',
-              ],
-              properties: {
-                model: { type: 'string', extra: { label: '模型名称' } },
-                key: { type: 'string' },
-                url: { type: 'string' },
-                systemPrompt: {
-                  type: 'string',
-                  extra: { label: '系统提示词', formComponent: 'prompt-editor' },
-                },
-                userPrompt: {
-                  type: 'string',
-                  extra: { label: '用户提示词', formComponent: 'prompt-editor' },
-                },
-                maxTokens: { type: 'number', extra: { label: '最大输出长度' } },
-                responseFormat: {
-                  type: 'string',
-                  enum: ['text', 'json_object', 'json_schema'],
-                  extra: { label: '输出格式', formComponent: 'enum-select' },
-                },
-                temperature: { type: 'number' },
-                topP: { type: 'number' },
-              },
-            },
+            inputsValues: inputsValuesMapToFlowData(ivMap, specLlm),
+            inputs: inputsSchema,
             outputs: { type: 'object', properties: {} },
           };
           break;
         }
         case 'ai/agentHarness': {
           const cfg = n.configuration ?? {};
+          const specAh = getNodeMappingSpec('ai/agentHarness');
+          const inputsSchemaAh = {
+            type: 'object',
+            required: [
+              'model',
+              'systemPrompt',
+              'userPrompt',
+              'enableSkillTool',
+              'enableMcpTool',
+              'enableUUIDTool',
+              'enableWorkspaceTools',
+              'skillAllowlist',
+              'mcpAllowlist',
+              'maxIterations',
+              'maxToolCalls',
+              'toolTimeoutSecs',
+            ],
+            properties: {
+              model: {
+                type: 'string',
+                extra: {
+                  label: '模型名称',
+                  formComponent: 'prompt-editor',
+                  description: '留空则用配置默认模型；支持 ${} 模板',
+                },
+              },
+              systemPrompt: {
+                type: 'string',
+                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
+              },
+              userPrompt: {
+                type: 'string',
+                extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+              },
+              enableSkillTool: {
+                type: 'boolean',
+                extra: {
+                  label: '启用 run_skill',
+                  description: '允许模型调用 Skill 执行器',
+                },
+              },
+              enableMcpTool: {
+                type: 'boolean',
+                extra: {
+                  label: '启用 call_mcp_tool',
+                  description: '允许模型调用 MCP',
+                },
+              },
+              enableUUIDTool: {
+                type: 'boolean',
+                extra: { label: '启用 generate_uuid' },
+              },
+              enableWorkspaceTools: {
+                type: 'boolean',
+                extra: {
+                  label: '启用 Workspace 工具',
+                  description: '读/写文件与 shell（与 Chat Agent 一致）',
+                },
+              },
+              skillAllowlist: {
+                type: 'string',
+                extra: {
+                  label: 'Skill 白名单',
+                  formComponent: 'prompt-editor',
+                  description: '逗号分隔；空=不限制',
+                },
+              },
+              mcpAllowlist: {
+                type: 'string',
+                extra: {
+                  label: 'MCP 白名单',
+                  formComponent: 'prompt-editor',
+                  description: '形如 mysrv:tool_a,other:tool_b；空=不限制',
+                },
+              },
+              maxIterations: {
+                type: 'number',
+                extra: {
+                  label: '最大迭代轮次',
+                  description: '0 表示使用服务默认',
+                },
+              },
+              maxToolCalls: {
+                type: 'number',
+                extra: {
+                  label: '最大工具调用次数',
+                  description: '0 表示使用服务默认',
+                },
+              },
+              toolTimeoutSecs: {
+                type: 'number',
+                extra: {
+                  label: '单次工具超时(秒)',
+                  description: '0 表示使用服务默认',
+                },
+              },
+            },
+          };
+          if (!specAh) break;
+          const ivMapAh = mapDslToNodeInputsValues(cfg as Record<string, unknown>, specAh);
           base.data = {
             title: n.name ?? 'ai/agentHarness',
             positionType: 'middle',
-            inputsValues: {
-              model: { type: 'template', content: String(cfg.model ?? '') },
-              systemPrompt: { type: 'template', content: String(cfg.systemPrompt ?? '') },
-              userPrompt: { type: 'template', content: String(cfg.userPrompt ?? '') },
-              enableSkillTool: { type: 'constant', content: Boolean(cfg.enableSkillTool ?? true) },
-              enableMcpTool: { type: 'constant', content: Boolean(cfg.enableMcpTool ?? true) },
-              enableUUIDTool: { type: 'constant', content: Boolean(cfg.enableUUIDTool ?? true) },
-              enableWorkspaceTools: {
-                type: 'constant',
-                content: Boolean(cfg.enableWorkspaceTools ?? false),
-              },
-              skillAllowlist: { type: 'template', content: String(cfg.skillAllowlist ?? '') },
-              mcpAllowlist: { type: 'template', content: String(cfg.mcpAllowlist ?? '') },
-              maxIterations: { type: 'constant', content: Number(cfg.maxIterations ?? 0) },
-              maxToolCalls: { type: 'constant', content: Number(cfg.maxToolCalls ?? 0) },
-              toolTimeoutSecs: { type: 'constant', content: Number(cfg.toolTimeoutSecs ?? 0) },
-            },
-            inputs: {
-              type: 'object',
-              required: [
-                'model',
-                'systemPrompt',
-                'userPrompt',
-                'enableSkillTool',
-                'enableMcpTool',
-                'enableUUIDTool',
-                'enableWorkspaceTools',
-                'skillAllowlist',
-                'mcpAllowlist',
-                'maxIterations',
-                'maxToolCalls',
-                'toolTimeoutSecs',
-              ],
-              properties: {
-                model: {
-                  type: 'string',
-                  extra: {
-                    label: '模型名称',
-                    formComponent: 'prompt-editor',
-                    description: '留空则用配置默认模型；支持 ${} 模板',
-                  },
-                },
-                systemPrompt: {
-                  type: 'string',
-                  extra: { label: '系统提示词', formComponent: 'prompt-editor' },
-                },
-                userPrompt: {
-                  type: 'string',
-                  extra: { label: '用户提示词', formComponent: 'prompt-editor' },
-                },
-                enableSkillTool: {
-                  type: 'boolean',
-                  extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
-                },
-                enableMcpTool: {
-                  type: 'boolean',
-                  extra: { label: '启用 call_mcp_tool', description: '允许模型调用 MCP' },
-                },
-                enableUUIDTool: {
-                  type: 'boolean',
-                  extra: { label: '启用 generate_uuid' },
-                },
-                enableWorkspaceTools: {
-                  type: 'boolean',
-                  extra: {
-                    label: '启用 Workspace 工具',
-                    description: '读/写文件与 shell（与 Chat Agent 一致）',
-                  },
-                },
-                skillAllowlist: {
-                  type: 'string',
-                  extra: {
-                    label: 'Skill 白名单',
-                    formComponent: 'prompt-editor',
-                    description: '逗号分隔；空=不限制',
-                  },
-                },
-                mcpAllowlist: {
-                  type: 'string',
-                  extra: {
-                    label: 'MCP 白名单',
-                    formComponent: 'prompt-editor',
-                    description: '形如 mysrv:tool_a,other:tool_b；空=不限制',
-                  },
-                },
-                maxIterations: {
-                  type: 'number',
-                  extra: { label: '最大迭代轮次', description: '0 表示使用服务默认' },
-                },
-                maxToolCalls: {
-                  type: 'number',
-                  extra: { label: '最大工具调用次数', description: '0 表示使用服务默认' },
-                },
-                toolTimeoutSecs: {
-                  type: 'number',
-                  extra: { label: '单次工具超时(秒)', description: '0 表示使用服务默认' },
-                },
-              },
-            },
+            inputsValues: inputsValuesMapToFlowData(ivMapAh, specAh),
+            inputs: inputsSchemaAh,
             outputs: { type: 'object', properties: {} },
           };
           break;
         }
         case 'jsTransform': {
-          const body = String((n.configuration ?? {}).jsScript ?? '');
+          const cfg = n.configuration ?? {};
+          const specJs = getNodeMappingSpec('jsTransform');
+          const ivMap = specJs
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specJs)
+            : ({} as InputsValuesMap);
+          const body = String(ivMap.scriptBody?.content ?? (cfg as any).jsScript ?? '');
           base.data = {
             title: n.name ?? 'jsTransform',
             positionType: 'middle',
@@ -971,6 +944,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
         }
         case 'dbClient': {
           const cfg = n.configuration ?? {};
+          const specDb = getNodeMappingSpec('dbClient');
+          const ivMapDb = specDb
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specDb)
+            : ({} as InputsValuesMap);
           base.data = {
             title: n.name ?? 'dbClient',
             positionType: 'middle',
@@ -981,7 +958,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 driverName: {
                   type: 'string',
                   enum: ['mysql', 'postgres'],
-                  extra: { label: '数据库驱动名称', formComponent: 'enum-select' },
+                  extra: {
+                    label: '数据库驱动名称',
+                    formComponent: 'enum-select',
+                  },
                 },
                 dsn: {
                   type: 'string',
@@ -1028,21 +1008,45 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               },
             },
             inputsValues: {
-              sql: { type: 'template', content: String((cfg as any).sql ?? '') },
+              sql: {
+                type: 'template',
+                content: String(ivMapDb.sql?.content ?? (cfg as any).sql ?? ''),
+              },
               params: {
                 type: 'constant',
-                content: Array.isArray((cfg as any).params) ? (cfg as any).params : [],
+                content: Array.isArray(ivMapDb.params?.content)
+                  ? ivMapDb.params?.content
+                  : Array.isArray((cfg as any).params)
+                  ? (cfg as any).params
+                  : [],
               },
-              getOne: { type: 'constant', content: !!(cfg as any).getOne },
-              poolSize: { type: 'constant', content: Number((cfg as any).poolSize ?? 0) },
-              driverName: { type: 'constant', content: String((cfg as any).driverName ?? 'mysql') },
-              dsn: { type: 'template', content: String((cfg as any).dsn ?? '') },
+              getOne: {
+                type: 'constant',
+                content: !!(ivMapDb.getOne?.content ?? (cfg as any).getOne),
+              },
+              poolSize: {
+                type: 'constant',
+                content: Number(ivMapDb.poolSize?.content ?? (cfg as any).poolSize ?? 0),
+              },
+              driverName: {
+                type: 'constant',
+                content: String(ivMapDb.driverName?.content ?? (cfg as any).driverName ?? 'mysql'),
+              },
+              dsn: {
+                type: 'template',
+                content: String(ivMapDb.dsn?.content ?? (cfg as any).dsn ?? ''),
+              },
             },
           } as any;
           break;
         }
         case 'luaTransform': {
-          const body = String((n.configuration ?? {}).luaScript ?? '');
+          const cfg = n.configuration ?? {};
+          const specLua = getNodeMappingSpec('luaTransform');
+          const ivMap = specLua
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specLua)
+            : ({} as InputsValuesMap);
+          const body = String(ivMap.scriptBody?.content ?? (cfg as any).luaScript ?? '');
           base.data = {
             title: n.name ?? 'luaTransform',
             positionType: 'middle',
@@ -1054,7 +1058,12 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           break;
         }
         case 'log': {
-          const body = String((n.configuration ?? {}).jsScript ?? '');
+          const cfg = n.configuration ?? {};
+          const specLog = getNodeMappingSpec('log');
+          const ivMap = specLog
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specLog)
+            : ({} as InputsValuesMap);
+          const body = String(ivMap.scriptBody?.content ?? (cfg as any).jsScript ?? '');
           base.data = {
             title: n.name ?? 'log',
             positionType: 'middle',
@@ -1066,7 +1075,12 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           break;
         }
         case 'jsFilter': {
-          const body = String((n.configuration ?? {}).jsScript ?? '');
+          const cfg = n.configuration ?? {};
+          const specJsFilter = getNodeMappingSpec('jsFilter');
+          const ivMap = specJsFilter
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specJsFilter)
+            : ({} as InputsValuesMap);
+          const body = String(ivMap.scriptBody?.content ?? (cfg as any).jsScript ?? '');
           base.data = {
             title: n.name ?? 'jsFilter',
             positionType: 'middle',
@@ -1079,106 +1093,54 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
         }
         case 'switch': {
           const cfg = n.configuration ?? {};
-          const cases = Array.isArray(cfg.cases) ? cfg.cases : [];
-          const splitTopLevel = (expr: string, delim: '||' | '&&') => {
-            const parts: string[] = [];
-            let buf = '';
-            let depth = 0;
-            let inSingle = false;
-            let inDouble = false;
-            let inTemplate = false;
-            for (let i = 0; i < expr.length; i++) {
-              const ch = expr[i];
-              const prev = expr[i - 1];
-              if (!inSingle && !inDouble && !inTemplate) {
-                if (ch === '(') depth++;
-                else if (ch === ')') depth = Math.max(0, depth - 1);
-                else if (ch === "'" && prev !== '\\') inSingle = true;
-                else if (ch === '"' && prev !== '\\') inDouble = true;
-                else if (ch === '`' && prev !== '\\') inTemplate = true;
-                const isDelim =
-                  delim === '||' ? expr.slice(i, i + 2) === '||' : expr.slice(i, i + 2) === '&&';
-                if (isDelim && depth === 0) {
-                  parts.push(buf.trim());
-                  buf = '';
-                  i++;
-                  continue;
-                }
-              } else {
-                if (inSingle && ch === "'" && prev !== '\\') inSingle = false;
-                else if (inDouble && ch === '"' && prev !== '\\') inDouble = false;
-                else if (inTemplate && ch === '`' && prev !== '\\') inTemplate = false;
-              }
-              buf += ch;
-            }
-            if (buf.trim()) parts.push(buf.trim());
-            return parts.filter((p) => p.length > 0);
-          };
-          const parseRow = (rowExpr: string) => {
-            const expr = rowExpr.trim();
-            const ops = ['contains', '==', '!=', '>=', '<=', '>', '<'];
-            let foundOp = '';
-            let left = '';
-            let right = '';
-            for (const op of ops) {
-              const idx = expr.indexOf(op);
-              if (idx > 0) {
-                foundOp = op;
-                left = expr.slice(0, idx).trim();
-                right = expr.slice(idx + op.length).trim();
-                break;
-              }
-            }
-            if (!foundOp) return { type: 'expression', content: expr };
-            const stripQuotes = (s: string) => {
-              const t = s.trim();
-              if (
-                (t.startsWith("'") && t.endsWith("'")) ||
-                (t.startsWith('"') && t.endsWith('"'))
-              ) {
-                return t.slice(1, -1);
-              }
-              return t;
-            };
-            return {
-              type: 'expression',
-              content: '',
-              left: { type: 'constant', content: left },
-              operator: foundOp,
-              right: { type: 'constant', content: stripQuotes(right) },
-            } as any;
-          };
+          const specSwitch = getNodeMappingSpec('switch');
+          const ivMapSwitch = specSwitch
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specSwitch)
+            : ({} as InputsValuesMap);
+          const cases = Array.isArray(ivMapSwitch.cases?.content)
+            ? (ivMapSwitch.cases?.content as any[])
+            : [];
           base.data = {
             title: n.name ?? 'switch',
             positionType: 'middle',
-            cases: cases.map((c: any) => {
-              const expr = String(c.case ?? '');
-              const groupsExpr = splitTopLevel(expr, '||');
-              const groups = groupsExpr.map((ge) => {
-                const rowsExpr = splitTopLevel(ge, '&&');
-                return { operator: 'and', rows: rowsExpr.map(parseRow) };
-              });
-              return { key: String(c.then ?? ''), groups };
-            }),
+            cases,
             ELSE: true,
           };
           break;
         }
         case 'flow': {
           const cfg = n.configuration ?? {};
+          const specFlow = getNodeMappingSpec('flow');
+          const ivMapFlow = specFlow
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFlow)
+            : ({} as InputsValuesMap);
           base.data = {
             title: n.name ?? 'flow',
             positionType: 'middle',
             inputsValues: {
-              targetId: { type: 'constant', content: String(cfg.targetId ?? '') },
-              extend: { type: 'constant', content: !!cfg.extend },
+              targetId: {
+                type: 'constant',
+                content: String(ivMapFlow.targetId?.content ?? cfg.targetId ?? ''),
+              },
+              extend: {
+                type: 'constant',
+                content: !!(ivMapFlow.extend?.content ?? cfg.extend),
+              },
             },
           };
           break;
         }
         case 'transform/multiNodeOutput': {
           const cfg = n.configuration ?? {};
-          const arr = Array.isArray((cfg as any).nodeIds) ? (cfg as any).nodeIds : [];
+          const specMulti = getNodeMappingSpec('transform/multiNodeOutput');
+          const ivMapMulti = specMulti
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specMulti)
+            : ({} as InputsValuesMap);
+          const arr = Array.isArray(ivMapMulti.nodeIds?.content)
+            ? ivMapMulti.nodeIds?.content
+            : Array.isArray((cfg as any).nodeIds)
+            ? (cfg as any).nodeIds
+            : [];
           base.data = {
             title: n.name ?? '获取多节点输出',
             positionType: 'middle',
@@ -1189,7 +1151,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 nodeIds: {
                   type: 'array',
                   items: { type: 'string' },
-                  extra: { formComponent: 'node-selector-multi', label: '节点列表' },
+                  extra: {
+                    formComponent: 'node-selector-multi',
+                    label: '节点列表',
+                  },
                 },
               },
             },
@@ -1201,58 +1166,27 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           break;
         }
         case 'for': {
-          const cfg = n.configuration ?? {};
-          base.data = {
-            title: n.name ?? 'for',
-            positionType: 'middle',
-            note: { type: 'constant', content: String(cfg.range ?? '') },
-            nodeId: { type: 'constant', content: String(cfg.do ?? '') },
-            operationMode: { type: 'constant', content: Number(cfg.mode ?? 0) },
-          };
-          const extra = (cfg as any).extra ?? {};
-          const blocks: any[] = Array.isArray(extra.blocks)
-            ? extra.blocks
-            : [
-                {
-                  id: `block_start_${Math.random().toString(36).slice(2, 7)}`,
-                  type: 'block-start',
-                  meta: { position: { x: 32, y: 0 } },
-                  data: { positionType: 'middle' },
-                },
-                {
-                  id: `block_end_${Math.random().toString(36).slice(2, 7)}`,
-                  type: 'block-end',
-                  meta: { position: { x: 192, y: 0 } },
-                  data: { positionType: 'middle' },
-                },
-              ];
-          const bs = blocks.find((b) => String(b.type) === 'block-start');
-          const be = blocks.find((b) => String(b.type) === 'block-end');
-          let innerEdges: any[] = Array.isArray(extra.edges) ? extra.edges : [];
-          if (!innerEdges || innerEdges.length === 0) {
-            const targetId = String(cfg.do ?? '') || String(base.data?.nodeId?.content ?? '');
-            if (bs && targetId) {
-              innerEdges = [
-                { sourceNodeID: String(bs.id), targetNodeID: targetId },
-                be ? { sourceNodeID: targetId, targetNodeID: String(be.id) } : undefined,
-              ].filter(Boolean) as any[];
-            }
-          }
+          const { data, blocks, edges } = buildForFlowFromDsl(n);
+          base.data = data;
           base.blocks = blocks;
-          base.edges = innerEdges;
+          base.edges = edges;
           break;
         }
         case 'transform/yapi': {
           const cfg = n.configuration ?? {};
+          const specYapi = getNodeMappingSpec('transform/yapi');
+          const ivMapYapi = specYapi
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specYapi)
+            : ({} as InputsValuesMap);
           base.data = {
             title: n.name ?? 'Yapi 接口',
             positionType: 'middle',
             yapiConfig: {
-              baseUrl: String(cfg.baseUrl ?? ''),
-              userName: String(cfg.userName ?? ''),
-              password: String(cfg.password ?? ''),
-              interfacePath: String(cfg.interfacePath ?? ''),
-              loginType: String(cfg.loginType ?? 'ldap'),
+              baseUrl: String(ivMapYapi.baseUrl?.content ?? cfg.baseUrl ?? ''),
+              userName: String(ivMapYapi.userName?.content ?? cfg.userName ?? ''),
+              password: String(ivMapYapi.password?.content ?? cfg.password ?? ''),
+              interfacePath: String(ivMapYapi.interfacePath?.content ?? cfg.interfacePath ?? ''),
+              loginType: String(ivMapYapi.loginType?.content ?? cfg.loginType ?? 'ldap'),
             },
           };
           break;
@@ -1292,40 +1226,11 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
     : [];
   for (const ep of endpoints) {
     if (String(ep.type) === 'endpoint/schedule') {
-      const cron = ep?.routers?.[0]?.from?.path ?? '';
-      const toPath = ep?.routers?.[0]?.to?.path ?? '';
-      const pos = (ep?.additionalInfo as any)?.meta?.position;
-      const x = typeof pos?.x === 'number' ? pos.x : startX - spacingX;
-      const y = typeof pos?.y === 'number' ? pos.y : startY;
-      const cronNode: any = {
-        id: String(ep.id ?? `cron_${Math.random().toString(36).slice(2, 8)}`),
-        type: 'endpoint/schedule',
-        meta: { position: { x, y } },
-        data: {
-          title: ep.name ?? '定时任务',
-          positionType: 'header',
-          inputsValues: {
-            cron: { type: 'constant', content: String(cron ?? '*/10 * * * * *') },
-          },
-          inputs: {
-            type: 'object',
-            required: ['cron'],
-            properties: {
-              cron: {
-                type: 'string',
-                extra: {
-                  label: 'Cron 表达式',
-                  description: '支持秒级（六位）Quartz 表达式，例如：*/10 * * * * *',
-                  formComponent: 'cron-editor',
-                },
-              },
-            },
-          },
-        },
-      };
+      const { cronNode, targetId } = buildScheduleEndpointFlowNode(ep, {
+        fallbackX: startX - spacingX,
+        fallbackY: startY,
+      });
       nodes.unshift(cronNode);
-      const targetId =
-        typeof toPath === 'string' && toPath.includes(':') ? toPath.split(':')[1] : undefined;
       const exists = edges.some(
         (e: any) => e.sourceNodeID === String(cronNode.id) && e.targetNodeID === String(targetId)
       );
