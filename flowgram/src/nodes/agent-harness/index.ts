@@ -7,6 +7,7 @@ import { WorkflowNodeType, OutPutPortType } from '../constants';
 import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconLLM from '../../assets/icon-llm.jpg';
+import { agentHarnessFormMeta } from './form-meta';
 
 let index = 0;
 
@@ -24,10 +25,13 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
       { type: 'output', location: 'bottom', portID: OutPutPortType.FailurePort },
     ],
     size: {
-      width: 380,
-      height: 420,
+      width: 320,
+      height: 280,
     },
+    defaultExpanded: false,
+    expandable: true,
   },
+  formMeta: agentHarnessFormMeta,
   onAdd() {
     return {
       id: `${alphaNanoid(16)}`,
@@ -37,12 +41,12 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
         positionType: 'middle',
         inputsValues: {
           model: { type: 'template', content: '' },
+          userPrompt: { type: 'template', content: '' },
           systemPrompt: {
             type: 'template',
             content:
               'You are a helpful assistant. You may call run_skill and call_mcp_tool when they help answer the user.',
           },
-          userPrompt: { type: 'template', content: '' },
           enableSkillTool: { type: 'constant', content: true },
           enableMcpTool: { type: 'constant', content: true },
           enableUUIDTool: { type: 'constant', content: true },
@@ -57,8 +61,8 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           type: 'object',
           required: [
             'model',
-            'systemPrompt',
             'userPrompt',
+            'systemPrompt',
             'enableSkillTool',
             'enableMcpTool',
             'enableUUIDTool',
@@ -78,13 +82,13 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
                 description: '留空则用配置默认模型；支持 ${} 模板',
               },
             },
-            systemPrompt: {
-              type: 'string',
-              extra: { label: '系统提示词', formComponent: 'prompt-editor' },
-            },
             userPrompt: {
               type: 'string',
               extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+            },
+            systemPrompt: {
+              type: 'string',
+              extra: { label: '系统提示词', formComponent: 'prompt-editor' },
             },
             enableSkillTool: {
               type: 'boolean',

@@ -7,6 +7,7 @@ import { WorkflowNodeType, OutPutPortType } from '../constants';
 import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconLLM from '../../assets/icon-llm.jpg';
+import { llmFormMeta } from './form-meta';
 
 let index = 0;
 export const LLMNodeRegistry: FlowNodeRegistry = {
@@ -17,17 +18,19 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
       'Call the large language model and use variables and prompt words to generate responses.',
   },
   meta: {
-    // 设置端口：一个输入，两个输出（success / failed）
     defaultPorts: [
       { type: 'input', location: 'left' },
       { type: 'output', location: 'right', portID: OutPutPortType.SuccessPort },
       { type: 'output', location: 'bottom', portID: OutPutPortType.FailurePort },
     ],
     size: {
-      width: 360,
-      height: 390,
+      width: 320,
+      height: 260,
     },
+    defaultExpanded: false,
+    expandable: true,
   },
+  formMeta: llmFormMeta,
   onAdd() {
     return {
       id: `${alphaNanoid(16)}`,
@@ -40,6 +43,30 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
             type: 'constant',
             content: 'gpt-3.5-turbo',
           },
+          userPrompt: {
+            type: 'template',
+            content: '',
+          },
+          systemPrompt: {
+            type: 'template',
+            content: '# Role\nYou are an AI assistant.\n',
+          },
+          responseFormat: {
+            type: 'constant',
+            content: 'text',
+          },
+          maxTokens: {
+            type: 'constant',
+            content: null,
+          },
+          temperature: {
+            type: 'constant',
+            content: 0.5,
+          },
+          topP: {
+            type: 'constant',
+            content: 0.5,
+          },
           key: {
             type: 'constant',
             content: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
@@ -47,34 +74,6 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
           url: {
             type: 'constant',
             content: 'https://mock-ai-url/api/v3',
-          },
-          systemPrompt: {
-            type: 'template',
-            content: '# Role\nYou are an AI assistant.\n',
-          },
-          userPrompt: {
-            type: 'template',
-            content: '',
-          },
-          temperature: {
-            // 采样温度控制输出的随机性。范围 [0.0, 2.0]，值越高越随机
-            type: 'constant',
-            content: 0.5,
-          },
-          topP: {
-            // 采样方法范围 [0.0,1.0]，从概率最高的前p%候选词中选取 tokens
-            type: 'constant',
-            content: 0.5,
-          },
-          maxTokens: {
-            // 最大输出长度
-            type: 'constant',
-            content: null,
-          },
-          responseFormat: {
-            // 输出格式枚举：text/json_object/json_schema（默认text）
-            type: 'constant',
-            content: 'text',
           },
         },
         inputs: {
@@ -94,27 +93,6 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
               type: 'string',
               extra: {
                 label: '模型名称',
-                // formComponent: 'enum-select',
-                // options: [
-                //   { label: 'GPT-3.5 通用', value: 'gpt-3.5-turbo' },
-                //   { label: 'GPT-4o Mini', value: 'gpt-4o-mini' },
-                //   { label: '通义·千问 Plus', value: 'qwen-plus' },
-                //   { label: '智谱 GLM-4', value: 'glm-4' },
-                //   { label: 'Moonshot 8K', value: 'moonshot-v1-8k' },
-                // ],
-              },
-            },
-            key: {
-              type: 'string',
-            },
-            url: {
-              type: 'string',
-            },
-            systemPrompt: {
-              type: 'string',
-              extra: {
-                label: '系统提示词',
-                formComponent: 'prompt-editor',
               },
             },
             userPrompt: {
@@ -124,10 +102,11 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
                 formComponent: 'prompt-editor',
               },
             },
-            maxTokens: {
-              type: 'number',
+            systemPrompt: {
+              type: 'string',
               extra: {
-                label: '最大输出长度',
+                label: '系统提示词',
+                formComponent: 'prompt-editor',
               },
             },
             responseFormat: {
@@ -135,19 +114,29 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
               enum: ['text', 'json_object', 'json_schema'],
               extra: { label: '输出格式', formComponent: 'enum-select' },
             },
+            maxTokens: {
+              type: 'number',
+              extra: {
+                label: '最大输出长度',
+              },
+            },
             temperature: {
               type: 'number',
             },
             topP: {
               type: 'number',
             },
+            key: {
+              type: 'string',
+            },
+            url: {
+              type: 'string',
+            },
           },
         },
         outputs: {
           type: 'object',
-          properties: {
-            // result: { type: 'string' },
-          },
+          properties: {},
         },
       },
     };

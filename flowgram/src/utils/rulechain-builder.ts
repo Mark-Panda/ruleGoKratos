@@ -413,6 +413,18 @@ function buildRuleChainMetaNodes(
       base.configuration = mapNodeToDslConfig(n, specRedis) as Record<string, any>;
       break;
     }
+    case 'x/cursorCli': {
+      const specCursorCli = getNodeMappingSpec('x/cursorCli');
+      if (!specCursorCli) break;
+      base.configuration = mapNodeToDslConfig(n, specCursorCli) as Record<string, any>;
+      break;
+    }
+    case 'x/cursorAcp': {
+      const specAcp = getNodeMappingSpec('x/cursorAcp');
+      if (!specAcp) break;
+      base.configuration = mapNodeToDslConfig(n, specAcp) as Record<string, any>;
+      break;
+    }
     case 'transform/multiNodeOutput': {
       const specMulti = getNodeMappingSpec('transform/multiNodeOutput');
       if (!specMulti) break;
@@ -725,6 +737,252 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           } as any;
           break;
         }
+        case 'x/cursorCli': {
+          const cfg = n.configuration ?? {};
+          const specCc = getNodeMappingSpec('x/cursorCli');
+          const ivMapCc = specCc
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specCc)
+            : ({} as InputsValuesMap);
+          const agentPathFallback =
+            (cfg as any).agentPath != null && String((cfg as any).agentPath).trim() !== ''
+              ? String((cfg as any).agentPath)
+              : String((cfg as any).cursorPath ?? 'agent');
+          base.data = {
+            title: n.name ?? 'Cursor CLI (agent)',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['agentPath', 'args', 'log', 'replaceData', 'timeoutMs'],
+              properties: {
+                printMode: {
+                  type: 'boolean',
+                  extra: {
+                    label: '打印模式（-p）',
+                    description: '开启后插入 -p；任务说明、模型用下方独立字段，与 apiKey 同级配置',
+                  },
+                },
+                prompt: {
+                  type: 'string',
+                  extra: {
+                    label: '任务说明（-p 后）',
+                    formComponent: 'prompt-editor',
+                    description: '等价 agent -p "…" 中带引号的那段；支持 ${msg.xxx}',
+                  },
+                },
+                outputFormat: {
+                  type: 'string',
+                  enum: ['text', 'json', 'stream-json'],
+                  default: { type: 'constant', content: 'text' } as any,
+                  extra: {
+                    label: '输出格式（--output-format）',
+                    formComponent: 'enum-select',
+                    description:
+                      '仅在打印模式开启时插入；text / json / stream-json，与官方文档一致；勿写入「额外参数」',
+                  },
+                },
+                model: {
+                  type: 'string',
+                  extra: {
+                    label: '模型（--model）',
+                    formComponent: 'prompt-editor',
+                    description: '非空追加 --model <值>；与 apiKey 一样单独配置',
+                  },
+                },
+                agentPath: {
+                  type: 'string',
+                  extra: {
+                    label: 'agent 可执行文件',
+                    description:
+                      '官方 CLI 为 agent（默认 ~/.local/bin/agent 或 PATH）；后端允许 basename 为 agent 或 cursor',
+                  },
+                },
+                apiKey: {
+                  type: 'string',
+                  extra: {
+                    label: 'API 密钥（--api-key）',
+                    formComponent: 'prompt-editor',
+                    description:
+                      '非空时插入 --api-key；留空则后端读取进程环境变量 CURSOR_API_KEY 并注入。建议 ${metadata.xxx}',
+                  },
+                },
+                workspacePath: {
+                  type: 'string',
+                  extra: {
+                    label: '工作区路径（--workspace）',
+                    formComponent: 'prompt-editor',
+                    description:
+                      '代码仓库根目录，作为 Agent 代码上下文；与 workDir（进程 cwd）不同',
+                  },
+                },
+                workDir: {
+                  type: 'string',
+                  extra: {
+                    label: '进程工作目录（cwd）',
+                    formComponent: 'prompt-editor',
+                    description: '子进程 cmd.Dir；留空用 metadata.workDir',
+                  },
+                },
+                args: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  extra: {
+                    label: '额外命令行参数',
+                    formComponent: 'array-editor',
+                    description:
+                      '在 -p、任务说明、--output-format、--model 之后追加；勿重复写 --output-format',
+                  },
+                },
+                log: {
+                  type: 'boolean',
+                  extra: { label: '输出到调试日志' },
+                },
+                replaceData: {
+                  type: 'boolean',
+                  extra: { label: '用 stdout 替换消息体' },
+                },
+                timeoutMs: {
+                  type: 'number',
+                  extra: { label: '超时(毫秒)' },
+                },
+              },
+            },
+            inputsValues: specCc
+              ? inputsValuesMapToFlowData(ivMapCc, specCc)
+              : {
+                  printMode: { type: 'constant', content: !!(cfg as any).printMode },
+                  prompt: { type: 'template', content: String((cfg as any).prompt ?? '') },
+                  outputFormat: {
+                    type: 'constant',
+                    content: String((cfg as any).outputFormat ?? 'text'),
+                  },
+                  model: { type: 'template', content: String((cfg as any).model ?? '') },
+                  agentPath: {
+                    type: 'constant',
+                    content: agentPathFallback,
+                  },
+                  apiKey: { type: 'template', content: String((cfg as any).apiKey ?? '') },
+                  workspacePath: {
+                    type: 'template',
+                    content: String((cfg as any).workspacePath ?? ''),
+                  },
+                  workDir: { type: 'template', content: String((cfg as any).workDir ?? '') },
+                  args: {
+                    type: 'constant',
+                    content: Array.isArray((cfg as any).args) ? (cfg as any).args : [],
+                  },
+                  log: { type: 'constant', content: !!(cfg as any).log },
+                  replaceData: { type: 'constant', content: (cfg as any).replaceData !== false },
+                  timeoutMs: { type: 'constant', content: Number((cfg as any).timeoutMs ?? 0) },
+                },
+          } as any;
+          break;
+        }
+        case 'x/cursorAcp': {
+          const cfg = n.configuration ?? {};
+          const specAcp = getNodeMappingSpec('x/cursorAcp');
+          const ivMapAcp = specAcp
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specAcp)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'Cursor ACP (agent acp)',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['agentPath', 'args', 'stdinLines', 'timeoutMs'],
+              properties: {
+                stdinLines: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  extra: {
+                    label: 'stdin JSON-RPC（用户指令写在对应行的 JSON 里）',
+                    formComponent: 'array-editor',
+                    description:
+                      '每行一条 JSON-RPC。任务/说明放在 session/prompt（等）那一行的 params 里；支持 ${msg.*}。须至少一行。',
+                  },
+                },
+                apiKey: {
+                  type: 'string',
+                  extra: {
+                    label: 'API 密钥（--api-key）',
+                    formComponent: 'prompt-editor',
+                    description:
+                      '非空时插入 --api-key；留空则使用环境变量 CURSOR_API_KEY。建议 ${metadata.xxx}',
+                  },
+                },
+                workspacePath: {
+                  type: 'string',
+                  extra: {
+                    label: '工作区路径（--workspace）',
+                    formComponent: 'prompt-editor',
+                    description: '非空时插入 --workspace，指定仓库根（代码上下文）',
+                  },
+                },
+                workDir: {
+                  type: 'string',
+                  extra: {
+                    label: '进程工作目录（cwd）',
+                    formComponent: 'prompt-editor',
+                    description: '子进程 cmd.Dir；留空用 metadata.workDir',
+                  },
+                },
+                agentPath: {
+                  type: 'string',
+                  extra: {
+                    label: 'agent 可执行文件',
+                    description: '默认可写 ~/.local/bin/agent 或留空使用 PATH 中的 agent',
+                  },
+                },
+                args: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  extra: {
+                    label: 'argv',
+                    formComponent: 'array-editor',
+                    description: '首项须为 acp，如 ["acp"]；--api-key/--workspace 用下方专用字段',
+                  },
+                },
+                log: { type: 'boolean', extra: { label: '输出到调试日志' } },
+                replaceData: {
+                  type: 'boolean',
+                  extra: { label: '用 stdout 替换消息体' },
+                },
+                timeoutMs: {
+                  type: 'number',
+                  extra: { label: '超时(毫秒)', description: '默认 120000' },
+                },
+              },
+            },
+            inputsValues: specAcp
+              ? inputsValuesMapToFlowData(ivMapAcp, specAcp)
+              : {
+                  stdinLines: {
+                    type: 'constant',
+                    content: Array.isArray((cfg as any).stdinLines) ? (cfg as any).stdinLines : [],
+                  },
+                  apiKey: { type: 'template', content: String((cfg as any).apiKey ?? '') },
+                  workspacePath: {
+                    type: 'template',
+                    content: String((cfg as any).workspacePath ?? ''),
+                  },
+                  workDir: { type: 'template', content: String((cfg as any).workDir ?? '') },
+                  agentPath: {
+                    type: 'constant',
+                    content: String((cfg as any).agentPath ?? 'agent'),
+                  },
+                  args: {
+                    type: 'constant',
+                    content: Array.isArray((cfg as any).args) ? (cfg as any).args : ['acp'],
+                  },
+                  log: { type: 'constant', content: !!(cfg as any).log },
+                  replaceData: { type: 'constant', content: (cfg as any).replaceData !== false },
+                  timeoutMs: {
+                    type: 'constant',
+                    content: Number((cfg as any).timeoutMs ?? 120000),
+                  },
+                },
+          } as any;
+          break;
+        }
         case 'restApiCall': {
           const cfg = n.configuration ?? {};
           const specRest = getNodeMappingSpec('restApiCall');
@@ -783,24 +1041,24 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             ],
             properties: {
               model: { type: 'string', extra: { label: '模型名称' } },
-              key: { type: 'string' },
-              url: { type: 'string' },
-              systemPrompt: {
-                type: 'string',
-                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
-              },
               userPrompt: {
                 type: 'string',
                 extra: { label: '用户提示词', formComponent: 'prompt-editor' },
               },
-              maxTokens: { type: 'number', extra: { label: '最大输出长度' } },
+              systemPrompt: {
+                type: 'string',
+                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
+              },
               responseFormat: {
                 type: 'string',
                 enum: ['text', 'json_object', 'json_schema'],
                 extra: { label: '输出格式', formComponent: 'enum-select' },
               },
+              maxTokens: { type: 'number', extra: { label: '最大输出长度' } },
               temperature: { type: 'number' },
               topP: { type: 'number' },
+              key: { type: 'string' },
+              url: { type: 'string' },
             },
           };
           if (!specLlm) break;
@@ -821,8 +1079,8 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             type: 'object',
             required: [
               'model',
-              'systemPrompt',
               'userPrompt',
+              'systemPrompt',
               'enableSkillTool',
               'enableMcpTool',
               'enableUUIDTool',
@@ -842,13 +1100,13 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   description: '留空则用配置默认模型；支持 ${} 模板',
                 },
               },
-              systemPrompt: {
-                type: 'string',
-                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
-              },
               userPrompt: {
                 type: 'string',
                 extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+              },
+              systemPrompt: {
+                type: 'string',
+                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
               },
               enableSkillTool: {
                 type: 'boolean',

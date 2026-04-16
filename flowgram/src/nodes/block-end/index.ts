@@ -18,8 +18,8 @@ export const BlockEndNodeRegistry: FlowNodeRegistry = {
     nodePanelVisible: false,
     defaultPorts: [{ type: 'input' }],
     size: {
-      width: 100,
-      height: 100,
+      width: 80,
+      height: 80,
     },
     wrapperStyle: {
       minWidth: 'unset',

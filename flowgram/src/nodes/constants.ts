@@ -32,6 +32,8 @@ export enum WorkflowNodeType {
   Flow = 'flow',
   LuaTransform = 'luaTransform',
   RedisClient = 'x/redisClient',
+  CursorCli = 'x/cursorCli',
+  CursorAcp = 'x/cursorAcp',
   Yapi = 'transform/yapi',
 }
 

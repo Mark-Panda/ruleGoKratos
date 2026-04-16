@@ -19,8 +19,8 @@ export const VariableNodeRegistry: FlowNodeRegistry = {
   },
   meta: {
     size: {
-      width: 360,
-      height: 390,
+      width: 275,
+      height: 298,
     },
   },
   onAdd() {

@@ -2,6 +2,7 @@ import type { NodeMappingSpec } from './types';
 import {
   transformAiLlmConfigIn,
   transformAiLlmConfigOut,
+  transformCursorCliConfigIn,
   transformRestApiCallIn,
   transformRestApiCallOut,
   transformSwitchConfigIn,
@@ -25,17 +26,15 @@ export const aiLlmMappingSpec: NodeMappingSpec = {
       valueType: 'constant',
       defaultValue: '',
     },
-    { inputKey: 'key', dslKey: 'key', valueType: 'constant', defaultValue: '' },
-    { inputKey: 'url', dslKey: 'url', valueType: 'constant', defaultValue: '' },
     {
-      inputKey: 'systemPrompt',
-      dslKey: 'systemPrompt',
+      inputKey: 'userPrompt',
+      dslKey: 'userPrompt',
       valueType: 'template',
       defaultValue: '',
     },
     {
-      inputKey: 'userPrompt',
-      dslKey: 'userPrompt',
+      inputKey: 'systemPrompt',
+      dslKey: 'systemPrompt',
       valueType: 'template',
       defaultValue: '',
     },
@@ -63,6 +62,8 @@ export const aiLlmMappingSpec: NodeMappingSpec = {
       valueType: 'constant',
       defaultValue: 'text',
     },
+    { inputKey: 'key', dslKey: 'key', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'url', dslKey: 'url', valueType: 'constant', defaultValue: '' },
   ],
   transformOut: transformAiLlmConfigOut,
   transformIn: transformAiLlmConfigIn,
@@ -79,14 +80,14 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       defaultValue: '',
     },
     {
-      inputKey: 'systemPrompt',
-      dslKey: 'systemPrompt',
+      inputKey: 'userPrompt',
+      dslKey: 'userPrompt',
       valueType: 'template',
       defaultValue: '',
     },
     {
-      inputKey: 'userPrompt',
-      dslKey: 'userPrompt',
+      inputKey: 'systemPrompt',
+      dslKey: 'systemPrompt',
       valueType: 'template',
       defaultValue: '',
     },
@@ -307,6 +308,52 @@ export const luaTransformMappingSpec: NodeMappingSpec = {
   ],
 };
 
+/**
+ * x/cursorCli：调用官方 Cursor CLI（可执行文件为 agent，见安装/概览文档）。
+ * 仍兼容历史 DSL 键 cursorPath（经 transformIn 合并到 agentPath）。
+ * 无头主路径：printMode、prompt、outputFormat（--output-format）、model；args 仅追加额外 argv。
+ */
+export const cursorCliMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/cursorCli',
+  fields: [
+    { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
+    { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: [] },
+    { inputKey: 'printMode', dslKey: 'printMode', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'prompt', dslKey: 'prompt', valueType: 'template', defaultValue: '' },
+    // 与 -p 同时生效；仅允许 text / json / stream-json，缺省由后端按 text 写入 argv。
+    { inputKey: 'outputFormat', dslKey: 'outputFormat', valueType: 'constant', defaultValue: 'text' },
+    { inputKey: 'model', dslKey: 'model', valueType: 'template', defaultValue: '' },
+    // 非空时插入 --api-key；留空则运行时读 CURSOR_API_KEY；可用 ${metadata.xxx}，勿硬编码进仓库。
+    { inputKey: 'apiKey', dslKey: 'apiKey', valueType: 'template', defaultValue: '' },
+    // 非空时插入 --workspace（仓库根 / 代码上下文）；与 workDir（进程 cwd）不同。
+    { inputKey: 'workspacePath', dslKey: 'workspacePath', valueType: 'template', defaultValue: '' },
+    { inputKey: 'log', dslKey: 'log', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
+    { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
+    { inputKey: 'timeoutMs', dslKey: 'timeoutMs', valueType: 'number', defaultValue: 0 },
+  ],
+  transformIn: transformCursorCliConfigIn,
+};
+
+/**
+ * x/cursorAcp：以 stdio 启动 agent acp（JSON-RPC 每行一条）。
+ * 用户任务/说明：写在 stdinLines 中对应 RPC（如 session/prompt）的 JSON 行内，无单独 prompt 键。
+ */
+export const cursorAcpMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/cursorAcp',
+  fields: [
+    { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
+    { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: ['acp'] },
+    { inputKey: 'stdinLines', dslKey: 'stdinLines', valueType: 'json', defaultValue: [] },
+    { inputKey: 'apiKey', dslKey: 'apiKey', valueType: 'template', defaultValue: '' },
+    { inputKey: 'workspacePath', dslKey: 'workspacePath', valueType: 'template', defaultValue: '' },
+    { inputKey: 'log', dslKey: 'log', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
+    { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
+    { inputKey: 'timeoutMs', dslKey: 'timeoutMs', valueType: 'number', defaultValue: 120000 },
+  ],
+};
+
 const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'ai/llm': aiLlmMappingSpec,
   'ai/agentHarness': aiAgentHarnessMappingSpec,
@@ -321,6 +368,8 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   log: logMappingSpec,
   jsFilter: jsFilterMappingSpec,
   luaTransform: luaTransformMappingSpec,
+  'x/cursorCli': cursorCliMappingSpec,
+  'x/cursorAcp': cursorAcpMappingSpec,
 };
 
 export function getNodeMappingSpec(nodeType: string): NodeMappingSpec | undefined {

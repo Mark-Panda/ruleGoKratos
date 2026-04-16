@@ -23,8 +23,8 @@ export const MultiNodeOutputRegistry: FlowNodeRegistry = {
       { type: 'output', location: 'bottom', portID: OutPutPortType.FailurePort },
     ],
     size: {
-      width: 360,
-      height: 260,
+      width: 275,
+      height: 199,
     },
   },
   onAdd() {

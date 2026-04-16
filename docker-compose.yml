@@ -28,6 +28,7 @@ services:
       - AGENT_SKILL_NAMESPACE=
       - AGENT_SKILL_ALLOWLIST=
       - AGENT_SKILL_SCAN_INTERVAL_MS=1000
+      - CURSOR_API_KEY=
     depends_on:
       postgres-db:
         condition: service_healthy

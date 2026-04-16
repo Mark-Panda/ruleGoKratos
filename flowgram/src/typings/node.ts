@@ -54,6 +54,10 @@ export interface FlowNodeMeta extends WorkflowNodeMeta {
   nodePanelHidden?: boolean;
   wrapperStyle?: React.CSSProperties;
   onlyInContainer?: WorkflowNodeType;
+  /** 画布上新建节点时表单体是否默认展开（false 时仅显示折叠摘要，依赖 FormContent.collapsedPreview） */
+  defaultExpanded?: boolean;
+  /** 是否在节点标题栏显示展开/折叠按钮 */
+  expandable?: boolean;
 }
 
 /**

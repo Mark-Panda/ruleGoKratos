@@ -262,3 +262,19 @@ export function transformSwitchConfigIn(config: Record<string, unknown>): Record
   });
   return { ...config, cases };
 }
+
+/** fromDSL：历史 cursorPath 回填为 agentPath（官方 CLI 可执行文件为 agent，参见 Cursor CLI 文档）。 */
+export function transformCursorCliConfigIn(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  const next = { ...config };
+  const ap = next.agentPath;
+  const emptyAp =
+    ap === undefined ||
+    ap === null ||
+    (typeof ap === 'string' && String(ap).trim() === '');
+  if (emptyAp && next.cursorPath != null && String(next.cursorPath).trim() !== '') {
+    next.agentPath = next.cursorPath;
+  }
+  return next;
+}

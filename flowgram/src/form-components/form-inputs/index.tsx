@@ -32,7 +32,10 @@ export function FormInputs() {
         const content = Object.keys(properties).map((key) => {
           const property = properties[key];
 
-          const formComponent = property.extra?.formComponent;
+          const enumList = (property as { enum?: unknown }).enum;
+          const hasEnum = Array.isArray(enumList) && enumList.length > 0;
+          const formComponent =
+            property.extra?.formComponent ?? (hasEnum ? 'enum-select' : undefined);
           const displayLabel = property.extra?.label || key;
 
           const vertical = ['prompt-editor', 'sql-editor'].includes(formComponent || '');

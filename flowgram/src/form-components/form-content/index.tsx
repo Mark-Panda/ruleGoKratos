@@ -12,10 +12,13 @@ import { FormTitleDescription, FormWrapper } from './styles';
 import { PortHints } from '../port-hints';
 
 /**
- * @param props
- * @constructor
+ * @param props.children 展开画布节点或侧栏中的完整表单体
+ * @param props.collapsedPreview 仅画布且折叠时展示的摘要（如 Cursor 节点）
  */
-export function FormContent(props: { children?: React.ReactNode }) {
+export function FormContent(props: {
+  children?: React.ReactNode;
+  collapsedPreview?: React.ReactNode;
+}) {
   const { node, expanded } = useNodeRenderContext();
   const isSidebar = useIsSidebar();
   const registry = node.getNodeRegistry<FlowNodeRegistry>();
@@ -24,6 +27,7 @@ export function FormContent(props: { children?: React.ReactNode }) {
       <>
         {isSidebar && <FormTitleDescription>{registry.info?.description}</FormTitleDescription>}
         {!isSidebar && <PortHints />}
+        {!isSidebar && !expanded && props.collapsedPreview}
         {(expanded || isSidebar) && props.children}
       </>
     </FormWrapper>

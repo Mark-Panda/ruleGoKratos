@@ -5,6 +5,8 @@ import type { NodeMappingSpec } from '../types';
 import {
   aiAgentHarnessMappingSpec,
   aiLlmMappingSpec,
+  cursorAcpMappingSpec,
+  cursorCliMappingSpec,
   dbClientMappingSpec,
   flowMappingSpec,
   jsFilterMappingSpec,
@@ -752,6 +754,90 @@ describe('remaining node specs round-trip', () => {
     );
     expect(redisIv.db?.content).toBe(2);
 
+    const cursorCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            agentPath: { content: '/opt/homebrew/bin/agent' },
+            args: { content: [] },
+            printMode: { content: true },
+            outputFormat: { content: 'json' },
+            prompt: { content: 'find and fix performance issues' },
+            model: { content: 'gpt-5.2' },
+            apiKey: { content: 'sk-from-metadata' },
+            workspacePath: { content: '/data/repo' },
+            log: { content: true },
+            replaceData: { content: false },
+            workDir: { content: '/tmp/wd' },
+            timeoutMs: { content: 5000 },
+          },
+        },
+      },
+      cursorCliMappingSpec
+    );
+    expect(cursorCfg).toMatchObject({
+      agentPath: '/opt/homebrew/bin/agent',
+      args: [],
+      printMode: true,
+      outputFormat: 'json',
+      prompt: 'find and fix performance issues',
+      model: 'gpt-5.2',
+      apiKey: 'sk-from-metadata',
+      workspacePath: '/data/repo',
+      log: true,
+      replaceData: false,
+      workDir: '/tmp/wd',
+      timeoutMs: 5000,
+    });
+    const cursorIv = mapDslToNodeInputsValues(
+      cursorCfg as Record<string, unknown>,
+      cursorCliMappingSpec
+    );
+    expect(cursorIv.args?.content).toEqual([]);
+    expect(cursorIv.outputFormat?.content).toBe('json');
+    expect(cursorIv.printMode?.content).toBe(true);
+    expect(cursorIv.prompt?.content).toBe('find and fix performance issues');
+    expect(cursorIv.model?.content).toBe('gpt-5.2');
+    expect(cursorIv.replaceData?.content).toBe(false);
+
+    const legacyIv = mapDslToNodeInputsValues(
+      {
+        cursorPath: '/legacy/bin/cursor',
+        args: ['x'],
+      } as Record<string, unknown>,
+      cursorCliMappingSpec
+    );
+    expect(legacyIv.agentPath?.content).toBe('/legacy/bin/cursor');
+
+    const acpCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            agentPath: { content: 'agent' },
+            args: { content: ['acp'] },
+            stdinLines: { content: ['{"jsonrpc":"2.0","id":1,"method":"ping"}'] },
+            apiKey: { content: 'k' },
+            workspacePath: { content: '/ws' },
+            log: { content: false },
+            replaceData: { content: true },
+            workDir: { content: '' },
+            timeoutMs: { content: 90000 },
+          },
+        },
+      },
+      cursorAcpMappingSpec
+    );
+    expect(acpCfg).toMatchObject({
+      agentPath: 'agent',
+      args: ['acp'],
+      stdinLines: ['{"jsonrpc":"2.0","id":1,"method":"ping"}'],
+      apiKey: 'k',
+      workspacePath: '/ws',
+      timeoutMs: 90000,
+    });
+    const acpIv = mapDslToNodeInputsValues(acpCfg as Record<string, unknown>, cursorAcpMappingSpec);
+    expect(acpIv.stdinLines?.content).toEqual(['{"jsonrpc":"2.0","id":1,"method":"ping"}']);
+
     const flowCfg = mapNodeToDslConfig(
       { data: { inputsValues: { targetId: { content: 'sub-1' }, extend: { content: true } } } },
       flowMappingSpec
@@ -1046,5 +1132,137 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
       (e: any) => e.sourceNodeID === 'cron_ep' && e.targetNodeID === 'st_first'
     );
     expect(edgeToStart).toBeTruthy();
+  });
+
+  it('x/cursorCli：文档→RuleChain→文档 round-trip 保持 configuration 与 inputsValues', () => {
+    const chainId = 'chain-cursor-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'CursorCliRT',
+        nodes: [
+          {
+            id: 'st',
+            type: 'start',
+            meta: { position: { x: 0, y: 0 } },
+            data: { title: 'S' },
+          },
+          {
+            id: 'cc1',
+            type: 'x/cursorCli',
+            meta: { position: { x: 200, y: 0 } },
+            data: {
+              title: 'RunCursor',
+              positionType: 'middle',
+              inputsValues: {
+                agentPath: { type: 'constant', content: 'agent' },
+                printMode: { type: 'constant', content: false },
+                prompt: { type: 'template', content: '' },
+                model: { type: 'template', content: '' },
+                outputFormat: { type: 'constant', content: 'text' },
+                args: { type: 'constant', content: ['--version'] },
+                apiKey: { type: 'template', content: '' },
+                workspacePath: { type: 'template', content: '/repo/root' },
+                log: { type: 'constant', content: false },
+                replaceData: { type: 'constant', content: true },
+                workDir: { type: 'template', content: '${metadata.proj}' },
+                timeoutMs: { type: 'constant', content: 3000 },
+              },
+              inputs: {
+                type: 'object',
+                required: ['agentPath', 'args'],
+                properties: {
+                  agentPath: { type: 'string' },
+                  args: { type: 'array', items: { type: 'string' } },
+                },
+              },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'cc1', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const nodeMeta = parsed.metadata.nodes.find((n: any) => n.id === 'cc1');
+    expect(nodeMeta?.type).toBe('x/cursorCli');
+    expect(nodeMeta.configuration).toMatchObject({
+      agentPath: 'agent',
+      printMode: false,
+      outputFormat: 'text',
+      args: ['--version'],
+      workspacePath: '/repo/root',
+      log: false,
+      replaceData: true,
+      workDir: '${metadata.proj}',
+      timeoutMs: 3000,
+    });
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const cc = back.nodes.find((n: any) => n.id === 'cc1');
+    expect(cc?.data?.inputsValues?.args?.content).toEqual(['--version']);
+    expect(cc?.data?.inputsValues?.workspacePath?.content).toBe('/repo/root');
+    expect(cc?.data?.inputsValues?.workDir?.content).toBe('${metadata.proj}');
+    expect(cc?.data?.inputsValues?.timeoutMs?.content).toBe(3000);
+    expect(cc?.data?.inputsValues?.replaceData?.content).toBe(true);
+  });
+
+  it('x/cursorAcp：文档→RuleChain→文档 round-trip 保持 configuration', () => {
+    const chainId = 'chain-acp-rt';
+    const initLine =
+      '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientCapabilities":{},"clientInfo":{"name":"t","version":"1"}}}';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'AcpRT',
+        nodes: [
+          {
+            id: 'st',
+            type: 'start',
+            meta: { position: { x: 0, y: 0 } },
+            data: { title: 'S' },
+          },
+          {
+            id: 'acp1',
+            type: 'x/cursorAcp',
+            meta: { position: { x: 220, y: 0 } },
+            data: {
+              title: 'ACP',
+              positionType: 'middle',
+              inputsValues: {
+                agentPath: { type: 'constant', content: 'agent' },
+                args: { type: 'constant', content: ['acp'] },
+                stdinLines: { type: 'constant', content: [initLine] },
+                apiKey: { type: 'template', content: 'test-key' },
+                workspacePath: { type: 'template', content: '/repo/acp' },
+                log: { type: 'constant', content: false },
+                replaceData: { type: 'constant', content: true },
+                workDir: { type: 'template', content: '' },
+                timeoutMs: { type: 'constant', content: 60000 },
+              },
+              inputs: { type: 'object', required: ['stdinLines'], properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'acp1', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'acp1');
+    expect(meta?.type).toBe('x/cursorAcp');
+    expect(meta.configuration.args).toEqual(['acp']);
+    expect(meta.configuration.stdinLines).toEqual([initLine]);
+    expect(meta.configuration.apiKey).toBe('test-key');
+    expect(meta.configuration.workspacePath).toBe('/repo/acp');
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'acp1');
+    expect((node as any)?.data?.inputsValues?.stdinLines?.content).toEqual([initLine]);
+    expect((node as any)?.data?.inputsValues?.apiKey?.content).toBe('test-key');
+    expect((node as any)?.data?.inputsValues?.workspacePath?.content).toBe('/repo/acp');
+    expect((node as any)?.data?.inputsValues?.timeoutMs?.content).toBe(60000);
   });
 });
