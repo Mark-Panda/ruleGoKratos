@@ -496,6 +496,77 @@ func (s *RuleChainUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRul
 	return &v1.UpsertRuleChainReply{}, nil
 }
 
+// asJSONMap 将 interface{} 规范为 map，便于合并 configuration。
+func asJSONMap(v interface{}) map[string]interface{} {
+	if v == nil {
+		return map[string]interface{}{}
+	}
+	if m, ok := v.(map[string]interface{}); ok {
+		return m
+	}
+	return map[string]interface{}{}
+}
+
+func cloneJSONMap(m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		return map[string]interface{}{}
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		cp := make(map[string]interface{}, len(m))
+		for k, v := range m {
+			cp[k] = v
+		}
+		return cp
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(b, &out); err != nil || out == nil {
+		return map[string]interface{}{}
+	}
+	return out
+}
+
+// mergeFlowgramJSON 深度合并 flowgram 下的 io / editor / skill，避免 PATCH 时误删子字段。
+func mergeFlowgramJSON(existing interface{}, patch interface{}) map[string]interface{} {
+	out := cloneJSONMap(asJSONMap(existing))
+	pm := asJSONMap(patch)
+	for k, v := range pm {
+		switch k {
+		case "io", "editor", "skill":
+			sub := cloneJSONMap(asJSONMap(out[k]))
+			for sk, sv := range asJSONMap(v) {
+				sub[sk] = sv
+			}
+			out[k] = sub
+		default:
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// mergeRuleChainConfigurationPatch 将请求中的 configuration 与库中已有合并。
+func mergeRuleChainConfigurationPatch(existing map[string]interface{}, patch map[string]interface{}) map[string]interface{} {
+	base := cloneJSONMap(existing)
+	for k, v := range patch {
+		if k == "flowgram" {
+			base[k] = mergeFlowgramJSON(base["flowgram"], v)
+			continue
+		}
+		if k == "devpilot" {
+			// 兼容旧客户端仍提交 devpilot：合并进 flowgram 并不再保留 devpilot
+			base["flowgram"] = mergeFlowgramJSON(base["flowgram"], v)
+			delete(base, "devpilot")
+			continue
+		}
+		base[k] = v
+	}
+	if _, ok := base["flowgram"]; ok {
+		delete(base, "devpilot")
+	}
+	return base
+}
+
 func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.UpdateRuleChainBaseInfoReq) (*v1.UpdateRuleChainBaseInfoReply, error) {
 	ruleChainInfo, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": in.Id,
@@ -546,11 +617,20 @@ func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.U
 		updateData["additional_info"] = string(additionalInfoBytes)
 	}
 	if in.Configuration != nil {
-		configurationBytes, err := in.Configuration.MarshalJSON()
+		patchBytes, err := in.Configuration.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		updateData["configuration"] = string(configurationBytes)
+		var patch map[string]interface{}
+		if err := json.Unmarshal(patchBytes, &patch); err != nil {
+			return nil, err
+		}
+		merged := mergeRuleChainConfigurationPatch(ruleChain.RuleChain.Configuration, patch)
+		mergedBytes, err := json.Marshal(merged)
+		if err != nil {
+			return nil, err
+		}
+		updateData["configuration"] = string(mergedBytes)
 	}
 	// Update DB
 	err = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{

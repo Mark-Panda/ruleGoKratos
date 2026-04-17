@@ -21,12 +21,18 @@ import {
 } from '@douyinfe/semi-ui';
 
 import { buildDocumentFromRuleChainJSON } from '../utils/rulechain-builder';
+import {
+  buildRuleChainConfigurationWithFlowgram,
+  parseRuleChainFlowgramFromConfiguration,
+} from '../utils/rule-chain-flowgram-dsl';
+import { emptyRuleChainParamsJson } from '../utils/rule-chain-request-params';
 import { FlowDocumentJSON, FlowNodeJSON } from '../typings';
 import { setRuleBaseInfo } from '../services/rule-base-info';
 import { requestJSON } from '../services/http';
 import { createRuleBase, getRuleDetail } from '../services/api-rules';
 import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
+import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
 
 export interface RuleDetailData {
   ruleChain: {
@@ -35,6 +41,8 @@ export interface RuleDetailData {
     debugMode?: boolean;
     root?: boolean;
     disabled?: boolean;
+    /** 规则链 configuration（含 flowgram.io 入参/出参说明等），与 RuleGo DSL 中 ruleChain.configuration 对齐 */
+    configuration?: Record<string, unknown>;
     additionalInfo?: {
       description?: string;
       createTime?: string;
@@ -62,6 +70,34 @@ export const RuleDetail: React.FC<{
   const [root] = useState<boolean>(!!data?.ruleChain?.root);
   const [activeKey, setActiveKey] = useState<string>(initialTab ?? 'workflow');
   const [saving, setSaving] = useState<boolean>(false);
+
+  const [configurationSnapshot, setConfigurationSnapshot] = useState<Record<string, unknown>>(() => {
+    const cfg = (data?.ruleChain as { configuration?: Record<string, unknown> })?.configuration;
+    return cfg && typeof cfg === 'object' ? { ...cfg } : {};
+  });
+  const [requestMetadataParamsJson, setRequestMetadataParamsJson] = useState<string>(emptyRuleChainParamsJson());
+  const [requestMessageBodyParamsJson, setRequestMessageBodyParamsJson] = useState<string>(emptyRuleChainParamsJson());
+  const [responseMessageBodyParamsJson, setResponseMessageBodyParamsJson] = useState<string>(emptyRuleChainParamsJson());
+  const [flowgramEditorJson, setFlowgramEditorJson] = useState<string>('');
+  const [flowgramSkillDirName, setFlowgramSkillDirName] = useState<string>('');
+
+  const configurationSyncKey = useMemo(() => {
+    const id = data?.ruleChain?.id ?? '';
+    const cfg = (data?.ruleChain as { configuration?: unknown })?.configuration;
+    return `${id}|${JSON.stringify(cfg ?? null)}`;
+  }, [data?.ruleChain?.id, (data?.ruleChain as { configuration?: unknown })?.configuration]);
+
+  React.useEffect(() => {
+    const cfg = ((data?.ruleChain as any)?.configuration || {}) as Record<string, unknown>;
+    setConfigurationSnapshot({ ...cfg });
+    const fg = parseRuleChainFlowgramFromConfiguration(cfg);
+    setRequestMetadataParamsJson(fg.requestMetadataParamsJson);
+    setRequestMessageBodyParamsJson(fg.requestMessageBodyParamsJson);
+    setResponseMessageBodyParamsJson(fg.responseMessageBodyParamsJson);
+    setFlowgramEditorJson(fg.editorJson);
+    setFlowgramSkillDirName(fg.skillDirName);
+  }, [configurationSyncKey]);
+
   React.useEffect(() => {
     if (initialTab) setActiveKey(initialTab);
   }, [initialTab]);
@@ -309,6 +345,30 @@ export const RuleDetail: React.FC<{
                       <Input value={desc} onChange={setDesc} placeholder="描述" />
                     </div>
 
+                    <Typography.Title heading={6} style={{ marginTop: 20, marginBottom: 8 }}>
+                      规则链入参 / 出参
+                    </Typography.Title>
+                    <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 12 }}>
+                      入参/出参说明写入{' '}
+                      <Typography.Text code>ruleChain.configuration.flowgram.io</Typography.Text>
+                      ，保存后持久化到数据库 configuration 字段。
+                    </Typography.Paragraph>
+                    <RuleChainRequestParamsEditor
+                      title="请求 — 元数据（metadata）"
+                      value={requestMetadataParamsJson}
+                      onChange={setRequestMetadataParamsJson}
+                    />
+                    <RuleChainRequestParamsEditor
+                      title="请求 — 消息体（data）"
+                      value={requestMessageBodyParamsJson}
+                      onChange={setRequestMessageBodyParamsJson}
+                    />
+                    <RuleChainRequestParamsEditor
+                      title="响应 — 消息体（输出 data 结构说明）"
+                      value={responseMessageBodyParamsJson}
+                      onChange={setResponseMessageBodyParamsJson}
+                    />
+
                     <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
                       <Button
                         theme="solid"
@@ -322,13 +382,21 @@ export const RuleDetail: React.FC<{
                           }
                           try {
                             setSaving(true);
+                            const mergedConfiguration = buildRuleChainConfigurationWithFlowgram(configurationSnapshot, {
+                              description: String(desc ?? '').trim(),
+                              requestMetadataParamsJson,
+                              requestMessageBodyParamsJson,
+                              responseMessageBodyParamsJson,
+                              editorScratchJson: flowgramEditorJson,
+                              skillDirName: flowgramSkillDirName,
+                            });
                             const body = {
                               id,
                               name,
                               debugMode: !!debug,
                               root: !!root,
                               additionalInfo: { description: desc ?? '' },
-                              configuration: { vars: {} },
+                              configuration: mergedConfiguration,
                             };
                             await createRuleBase(id, body);
                             // 保存成功后刷新详情
@@ -336,6 +404,14 @@ export const RuleDetail: React.FC<{
                             const rc = json?.ruleChain || {};
                             setName(String(rc?.name ?? name));
                             setDesc(String(rc?.additionalInfo?.description ?? desc ?? ''));
+                            const cfg = ((rc as any)?.configuration || {}) as Record<string, unknown>;
+                            setConfigurationSnapshot({ ...cfg });
+                            const fg = parseRuleChainFlowgramFromConfiguration(cfg);
+                            setRequestMetadataParamsJson(fg.requestMetadataParamsJson);
+                            setRequestMessageBodyParamsJson(fg.requestMessageBodyParamsJson);
+                            setResponseMessageBodyParamsJson(fg.responseMessageBodyParamsJson);
+                            setFlowgramEditorJson(fg.editorJson);
+                            setFlowgramSkillDirName(fg.skillDirName);
                             try {
                               setRuleBaseInfo(rc);
                             } catch {}
