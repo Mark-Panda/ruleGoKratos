@@ -51,8 +51,8 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           enableMcpTool: { type: 'constant', content: true },
           enableUUIDTool: { type: 'constant', content: true },
           enableWorkspaceTools: { type: 'constant', content: false },
-          skillAllowlist: { type: 'template', content: '' },
-          mcpAllowlist: { type: 'template', content: '' },
+          skillAllowlist: { type: 'constant', content: [] as string[] },
+          mcpAllowlist: { type: 'constant', content: [] as string[] },
           maxIterations: { type: 'constant', content: 0 },
           maxToolCalls: { type: 'constant', content: 0 },
           toolTimeoutSecs: { type: 'constant', content: 0 },
@@ -110,19 +110,19 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               },
             },
             skillAllowlist: {
-              type: 'string',
+              type: 'array',
+              items: { type: 'string' },
               extra: {
                 label: 'Skill 白名单',
-                formComponent: 'prompt-editor',
-                description: '逗号分隔；空=不限制',
+                description: '由侧边栏勾选维护（string[]）；空=不限制',
               },
             },
             mcpAllowlist: {
-              type: 'string',
+              type: 'array',
+              items: { type: 'string' },
               extra: {
                 label: 'MCP 白名单',
-                formComponent: 'prompt-editor',
-                description: '形如 mysrv:tool_a,other:tool_b；空=不限制',
+                description: '勾选 MCP 后写入 server:*；空=不限制',
               },
             },
             maxIterations: {

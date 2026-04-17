@@ -90,6 +90,64 @@ func mcpAllowSet(keys []string) map[string]struct{} {
 	return m
 }
 
+// NormalizeSkillAllowlistInput 解析 DSL / 配置中的 Skill 白名单：逗号分隔字符串或字符串数组。
+func NormalizeSkillAllowlistInput(v interface{}) []string {
+	if v == nil {
+		return nil
+	}
+	if s, ok := v.(string); ok {
+		return ParseCommaSeparated(s)
+	}
+	if arr, ok := v.([]interface{}); ok {
+		out := make([]string, 0, len(arr))
+		for _, e := range arr {
+			if t := strings.TrimSpace(fmt.Sprint(e)); t != "" {
+				out = append(out, t)
+			}
+		}
+		return out
+	}
+	if arr, ok := v.([]string); ok {
+		out := make([]string, 0, len(arr))
+		for _, e := range arr {
+			if t := strings.TrimSpace(e); t != "" {
+				out = append(out, t)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// NormalizeMcpAllowlistInput 解析 MCP 白名单：逗号分隔字符串或元素为 server:tool / server:* 的数组。
+func NormalizeMcpAllowlistInput(v interface{}) []string {
+	if v == nil {
+		return nil
+	}
+	if s, ok := v.(string); ok {
+		return ParseMcpAllowlist(s)
+	}
+	if arr, ok := v.([]interface{}); ok {
+		parts := make([]string, 0, len(arr))
+		for _, e := range arr {
+			if t := strings.TrimSpace(fmt.Sprint(e)); t != "" {
+				parts = append(parts, t)
+			}
+		}
+		return ParseMcpAllowlist(strings.Join(parts, ","))
+	}
+	if arr, ok := v.([]string); ok {
+		parts := make([]string, 0, len(arr))
+		for _, e := range arr {
+			if t := strings.TrimSpace(e); t != "" {
+				parts = append(parts, t)
+			}
+		}
+		return ParseMcpAllowlist(strings.Join(parts, ","))
+	}
+	return nil
+}
+
 func (uc *AgentUsecase) wrapSkillWithAllowlist(base *HarnessTool, allow map[string]struct{}) *HarnessTool {
 	if len(allow) == 0 {
 		return base
@@ -127,10 +185,14 @@ func (uc *AgentUsecase) wrapMcpWithAllowlist(base *HarnessTool, allow map[string
 				return "", err
 			}
 			k := mcpPairKey(args.Server, args.Tool)
-			if _, ok := allow[k]; !ok {
-				return "", fmt.Errorf("MCP server:tool 不在白名单: %s:%s", args.Server, args.Tool)
+			if _, ok := allow[k]; ok {
+				return base.Invoke(ctx, rawArgs)
 			}
-			return base.Invoke(ctx, rawArgs)
+			// 白名单含 server:* 时放行该 server 下任意 tool
+			if _, ok := allow[mcpPairKey(strings.TrimSpace(args.Server), "*")]; ok {
+				return base.Invoke(ctx, rawArgs)
+			}
+			return "", fmt.Errorf("MCP server:tool 不在白名单: %s:%s", args.Server, args.Tool)
 		},
 	}
 }

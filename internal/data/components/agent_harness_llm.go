@@ -1,6 +1,7 @@
 package data
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/rulego/rulego"
 	"github.com/rulego/rulego/api/types"
 	"github.com/rulego/rulego/components/base"
-	"github.com/rulego/rulego/utils/maps"
 	"github.com/rulego/rulego/utils/str"
 )
 
@@ -29,15 +29,15 @@ func init() {
 type AgentHarnessLLM struct {
 	Config AgentHarnessLLMConfig
 
-	modelTpl        str.Template
-	systemTpl       str.Template
-	userTpl         str.Template
-	skillAllowTpl   str.Template
-	mcpAllowTpl     str.Template
-	hasVar          bool
+	modelTpl   str.Template
+	systemTpl  str.Template
+	userTpl    str.Template
+	hasVar     bool
+	skillAllow []string // 从 configuration 解析（支持 string 或 JSON 数组）
+	mcpAllow   []string // 同上；元素为 ParseMcpAllowlist 可识别的 server:tool 或 server:*
 }
 
-// AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）。
+// AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）；白名单见 skillAllow / mcpAllow。
 type AgentHarnessLLMConfig struct {
 	Model                string `json:"model"`
 	SystemPrompt         string `json:"systemPrompt"`
@@ -46,8 +46,6 @@ type AgentHarnessLLMConfig struct {
 	EnableMcpTool        bool   `json:"enableMcpTool"`
 	EnableUUIDTool       bool   `json:"enableUUIDTool"`
 	EnableWorkspaceTools bool   `json:"enableWorkspaceTools"`
-	SkillAllowlist       string `json:"skillAllowlist"`
-	McpAllowlist         string `json:"mcpAllowlist"`
 	MaxIterations        int    `json:"maxIterations"`
 	MaxToolCalls         int    `json:"maxToolCalls"`
 	ToolTimeoutSecs      int    `json:"toolTimeoutSecs"`
@@ -72,10 +70,27 @@ func (x *AgentHarnessLLM) Def() types.ComponentForm {
 	}
 }
 
-func (x *AgentHarnessLLM) Init(ruleConfig types.Config, configuration types.Configuration) error {
-	if err := maps.Map2Struct(configuration, &x.Config); err != nil {
+func (x *AgentHarnessLLM) Init(_ types.Config, configuration types.Configuration) error {
+	b, err := json.Marshal(configuration)
+	if err != nil {
 		return err
 	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	x.skillAllow = biz.NormalizeSkillAllowlistInput(raw["skillAllowlist"])
+	x.mcpAllow = biz.NormalizeMcpAllowlistInput(raw["mcpAllowlist"])
+	delete(raw, "skillAllowlist")
+	delete(raw, "mcpAllowlist")
+	b2, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(b2, &x.Config); err != nil {
+		return err
+	}
+
 	x.hasVar = false
 	track := func(t str.Template) {
 		if !t.IsNotVar() {
@@ -88,10 +103,6 @@ func (x *AgentHarnessLLM) Init(ruleConfig types.Config, configuration types.Conf
 	track(x.systemTpl)
 	x.userTpl = str.NewTemplate(x.Config.UserPrompt)
 	track(x.userTpl)
-	x.skillAllowTpl = str.NewTemplate(x.Config.SkillAllowlist)
-	track(x.skillAllowTpl)
-	x.mcpAllowTpl = str.NewTemplate(x.Config.McpAllowlist)
-	track(x.mcpAllowTpl)
 	return nil
 }
 
@@ -110,23 +121,21 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	modelName := x.modelTpl.Execute(env)
 	systemPrompt := x.systemTpl.Execute(env)
 	userPrompt := x.userTpl.Execute(env)
-	skillAllowRaw := x.skillAllowTpl.Execute(env)
-	mcpAllowRaw := x.mcpAllowTpl.Execute(env)
 
 	toolOpts := &biz.HarnessToolOptions{
 		EnableUUIDTool:       x.Config.EnableUUIDTool,
 		EnableSkillTool:      x.Config.EnableSkillTool,
 		EnableMcpTool:        x.Config.EnableMcpTool,
 		EnableWorkspaceTools: x.Config.EnableWorkspaceTools,
-		SkillAllowlist:       biz.ParseCommaSeparated(skillAllowRaw),
-		McpAllowlist:         biz.ParseMcpAllowlist(mcpAllowRaw),
+		SkillAllowlist:       x.skillAllow,
+		McpAllowlist:         x.mcpAllow,
 	}
 
 	var cfgOverride *biz.HarnessConfig
 	if x.Config.MaxIterations > 0 || x.Config.MaxToolCalls > 0 || x.Config.ToolTimeoutSecs > 0 {
 		cfgOverride = &biz.HarnessConfig{
 			MaxIterations:   x.Config.MaxIterations,
-			MaxToolCalls:      x.Config.MaxToolCalls,
+			MaxToolCalls:    x.Config.MaxToolCalls,
 			ToolTimeoutSecs: x.Config.ToolTimeoutSecs,
 		}
 	}

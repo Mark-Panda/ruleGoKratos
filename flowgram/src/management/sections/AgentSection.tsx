@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Input, Modal, Select, Spin, Table, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 
@@ -9,9 +9,11 @@ import {
   deleteMCPConfig,
   listMCPConfigs,
   listSkills,
+  type SkillItem,
   updateMCPConfig,
   uploadSkill,
 } from '../../services/api-agent';
+import { groupSkillPackages } from '../../utils/skill-packages';
 
 const defaultMCPForm: MCPConfigPayload = {
   name: '',
@@ -24,7 +26,7 @@ const defaultMCPForm: MCPConfigPayload = {
 
 export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' }> = ({ view = 'skills' }) => {
   const [skillRoot, setSkillRoot] = useState('skills');
-  const [skills, setSkills] = useState<any[]>([]);
+  const [skills, setSkills] = useState<SkillItem[]>([]);
   const [skillLoading, setSkillLoading] = useState(false);
   const [skillKeyword, setSkillKeyword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,18 +69,20 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' }> = ({ view = 's
     if (view === 'mcps') fetchMCPs();
   }, [view]);
 
-  const filteredSkills = skills.filter((item) => {
+  const skillPackages = useMemo(() => groupSkillPackages(skills), [skills]);
+
+  const filteredSkillPackages = useMemo(() => {
     const kw = skillKeyword.trim().toLowerCase();
-    if (!kw) return true;
-    return (
-      String(item.path || '')
-        .toLowerCase()
-        .includes(kw) ||
-      String(item.name || '')
-        .toLowerCase()
-        .includes(kw)
-    );
-  });
+    if (!kw) return skillPackages;
+    return skillPackages.filter((pkg) => {
+      if (pkg.id.toLowerCase().includes(kw)) return true;
+      return pkg.files.some((f) => {
+        const p = String(f.path || '').toLowerCase();
+        const n = String(f.name || '').toLowerCase();
+        return p.includes(kw) || n.includes(kw);
+      });
+    });
+  }, [skillPackages, skillKeyword]);
 
   const openCreateMCP = () => {
     setMcpEditing(null);
@@ -153,7 +157,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' }> = ({ view = 's
               <Input
                 value={skillKeyword}
                 onChange={setSkillKeyword}
-                placeholder="搜索 skill 文件名或路径"
+                placeholder="搜索套装 id、路径或文件名"
                 showClear
                 style={{ maxWidth: 360 }}
               />
@@ -168,7 +172,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' }> = ({ view = 's
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                            await uploadSkill(file, file.name);
+                    await uploadSkill(file, file.name);
                     Toast.success({ content: '上传成功' });
                     await fetchSkills();
                   } catch (err) {
@@ -186,21 +190,15 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' }> = ({ view = 's
           </div>
           <Spin spinning={skillLoading}>
             <Table
-              dataSource={filteredSkills}
-              rowKey={(r: any) => String(r.path)}
+              dataSource={filteredSkillPackages}
+              rowKey="id"
               pagination={{ pageSize: 10 }}
               columns={[
-                { title: '文件名', dataIndex: 'name', width: 220 },
-                { title: '相对路径', dataIndex: 'path' },
+                { title: '套装', dataIndex: 'id' },
                 {
-                  title: '大小',
-                  width: 120,
-                  render: (_, r: any) => `${Number(r.size || 0)} B`,
-                },
-                {
-                  title: '更新时间',
-                  width: 220,
-                  render: (_, r: any) => (r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''),
+                  title: '文件数',
+                  width: 100,
+                  render: (_, r) => r.files.length,
                 },
               ]}
             />

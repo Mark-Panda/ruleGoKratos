@@ -426,8 +426,8 @@ describe('ai/agentHarness spec round-trip', () => {
           enableMcpTool: { content: true },
           enableUUIDTool: { content: false },
           enableWorkspaceTools: { content: true },
-          skillAllowlist: { content: 'a,b' },
-          mcpAllowlist: { content: 'srv:t1' },
+          skillAllowlist: { content: ['a', 'b'] },
+          mcpAllowlist: { content: ['srv:t1'] },
           maxIterations: { content: 3 },
           maxToolCalls: { content: 10 },
           toolTimeoutSecs: { content: 30 },
@@ -438,7 +438,7 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.model).toBe('${model}');
     expect(cfg.enableSkillTool).toBe(false);
     expect(cfg.enableWorkspaceTools).toBe(true);
-    expect(cfg.skillAllowlist).toBe('a,b');
+    expect(cfg.skillAllowlist).toEqual(['a', 'b']);
     expect(cfg.maxIterations).toBe(3);
 
     const iv = mapDslToNodeInputsValues(cfg as Record<string, unknown>, aiAgentHarnessMappingSpec);
@@ -449,8 +449,8 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(iv.enableMcpTool?.content).toBe(true);
     expect(iv.enableUUIDTool?.content).toBe(false);
     expect(iv.enableWorkspaceTools?.content).toBe(true);
-    expect(iv.skillAllowlist?.content).toBe('a,b');
-    expect(iv.mcpAllowlist?.content).toBe('srv:t1');
+    expect(iv.skillAllowlist?.content).toEqual(['a', 'b']);
+    expect(iv.mcpAllowlist?.content).toEqual(['srv:t1']);
     expect(iv.maxIterations?.content).toBe(3);
     expect(iv.maxToolCalls?.content).toBe(10);
     expect(iv.toolTimeoutSecs?.content).toBe(30);
@@ -472,11 +472,20 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.enableMcpTool).toBe(true);
     expect(cfg.enableUUIDTool).toBe(true);
     expect(cfg.enableWorkspaceTools).toBe(false);
-    expect(cfg.skillAllowlist).toBe('');
-    expect(cfg.mcpAllowlist).toBe('');
+    expect(cfg.skillAllowlist).toEqual([]);
+    expect(cfg.mcpAllowlist).toEqual([]);
     expect(cfg.maxIterations).toBe(0);
     expect(cfg.maxToolCalls).toBe(0);
     expect(cfg.toolTimeoutSecs).toBe(0);
+  });
+
+  it('fromDSL：字符串白名单转为数组（兼容旧链）', () => {
+    const iv = mapDslToNodeInputsValues(
+      { skillAllowlist: 'a, b', mcpAllowlist: 's1:t1,s2:*' } as Record<string, unknown>,
+      aiAgentHarnessMappingSpec
+    );
+    expect(iv.skillAllowlist?.content).toEqual(['a', 'b']);
+    expect(iv.mcpAllowlist?.content).toEqual(['s1:t1', 's2:*']);
   });
 });
 

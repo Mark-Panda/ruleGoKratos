@@ -2,6 +2,7 @@ import type { NodeMappingSpec } from './types';
 import {
   transformAiLlmConfigIn,
   transformAiLlmConfigOut,
+  transformAgentHarnessConfigIn,
   transformCursorCliConfigIn,
   transformFeishuWebhookConfigIn,
   transformRestApiCallIn,
@@ -119,14 +120,14 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
     {
       inputKey: 'skillAllowlist',
       dslKey: 'skillAllowlist',
-      valueType: 'template',
-      defaultValue: '',
+      valueType: 'json',
+      defaultValue: [],
     },
     {
       inputKey: 'mcpAllowlist',
       dslKey: 'mcpAllowlist',
-      valueType: 'template',
-      defaultValue: '',
+      valueType: 'json',
+      defaultValue: [],
     },
     {
       inputKey: 'maxIterations',
@@ -147,6 +148,7 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       defaultValue: 0,
     },
   ],
+  transformIn: transformAgentHarnessConfigIn,
 };
 
 /**

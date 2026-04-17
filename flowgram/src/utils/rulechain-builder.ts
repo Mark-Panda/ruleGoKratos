@@ -1334,19 +1334,19 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 },
               },
               skillAllowlist: {
-                type: 'string',
+                type: 'array',
+                items: { type: 'string' },
                 extra: {
                   label: 'Skill 白名单',
-                  formComponent: 'prompt-editor',
-                  description: '逗号分隔；空=不限制',
+                  description: 'string[]；空=不限制',
                 },
               },
               mcpAllowlist: {
-                type: 'string',
+                type: 'array',
+                items: { type: 'string' },
                 extra: {
                   label: 'MCP 白名单',
-                  formComponent: 'prompt-editor',
-                  description: '形如 mysrv:tool_a,other:tool_b；空=不限制',
+                  description: '元素如 server:tool 或 server:*；空=不限制',
                 },
               },
               maxIterations: {
