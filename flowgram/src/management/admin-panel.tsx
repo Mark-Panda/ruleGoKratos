@@ -13,6 +13,7 @@ import {
   IconFile,
   IconChevronLeft,
   IconChevronRight,
+  IconBranch,
 } from '@douyinfe/semi-icons';
 
 import { WorkflowSection } from './sections/WorkflowSection';
@@ -22,6 +23,8 @@ import { DocsSection } from './sections/DocsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AgentSection } from './sections/AgentSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
+import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
+import { AgentPlaygroundPage } from '../agent-playground';
 
 type MenuKey =
   | 'intro'
@@ -34,6 +37,8 @@ type MenuKey =
   | 'agent-skills'
   | 'agent-mcp'
   | 'agent-models'
+  | 'agent-playground'
+  | 'agent-profiles'
   | 'engine'
   | 'component'
   | 'agent';
@@ -43,9 +48,11 @@ export const AdminPanel: React.FC = () => {
     try {
       const h = typeof window !== 'undefined' ? window.location.hash : '';
       if (h === '#/' || h === '' || h === '#') return 'intro';
+      if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
       if (h.startsWith('#/agent/skills')) return 'agent-skills';
       if (h.startsWith('#/agent/models')) return 'agent-models';
       if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
+      if (h.startsWith('#/playground')) return 'agent-playground';
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
       if (h.startsWith('#/docs')) return 'docs';
@@ -60,9 +67,11 @@ export const AdminPanel: React.FC = () => {
   useEffect(() => {
     const getMenu = (h: string): MenuKey => {
       if (h === '#/' || h === '' || h === '#') return 'intro';
+      if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
       if (h.startsWith('#/agent/skills')) return 'agent-skills';
       if (h.startsWith('#/agent/models')) return 'agent-models';
       if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
+      if (h.startsWith('#/playground')) return 'agent-playground';
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
       if (h.startsWith('#/docs')) return 'docs';
@@ -82,6 +91,7 @@ export const AdminPanel: React.FC = () => {
 
   const renderContent = () => {
     if (activeMenu === 'intro') return <OverviewChatSection />;
+    if (activeMenu === 'agent-profiles') return <ManagedAgentsSection />;
     if (activeMenu === 'workflow') return <WorkflowSection />;
     if (activeMenu === 'workflow-run') return <WorkflowExecuteSection />;
     if (activeMenu === 'workflow-logs') return <WorkflowRunLogsSection />;
@@ -89,6 +99,7 @@ export const AdminPanel: React.FC = () => {
     if (activeMenu === 'agent-skills') return <AgentSection view="skills" />;
     if (activeMenu === 'agent-models') return <AgentSection view="models" />;
     if (activeMenu === 'agent-mcp') return <AgentSection view="mcps" />;
+    if (activeMenu === 'agent-playground') return <AgentPlaygroundPage />;
     if (activeMenu === 'component-rules') return <ComponentsSection view="rules" />;
     return <ComponentsSection view="installed" />;
   };
@@ -115,6 +126,10 @@ export const AdminPanel: React.FC = () => {
         return 'MCP 配置';
       case 'agent-models':
         return '模型管理';
+      case 'agent-playground':
+        return 'Agent Playground';
+      case 'agent-profiles':
+        return 'Agent 配置';
       default:
         return 'Code 助手';
     }
@@ -132,9 +147,10 @@ export const AdminPanel: React.FC = () => {
       activeMenu === 'agent-mcp' ||
       activeMenu === 'agent-models'
     )
-      return 'Agent 管理';
+      return '模型与工具';
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
     if (activeMenu === 'intro') return '工作台';
+    if (activeMenu === 'agent-playground' || activeMenu === 'agent-profiles') return '智能体';
     return '系统';
   };
 
@@ -184,6 +200,8 @@ export const AdminPanel: React.FC = () => {
             isCollapsed={isCollapsed}
             items={[
               { itemKey: 'intro', text: 'Code 助手', icon: <IconHome /> },
+              { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <IconUser /> },
+              { itemKey: 'agent-playground', text: 'Agent Playground', icon: <IconBranch /> },
               {
                 text: '工作流引擎',
                 itemKey: 'engine',
@@ -203,7 +221,7 @@ export const AdminPanel: React.FC = () => {
                 ],
               },
               {
-                text: 'Agent 管理',
+                text: '模型与工具',
                 itemKey: 'agent',
                 icon: <IconList />,
                 items: [
@@ -229,6 +247,8 @@ export const AdminPanel: React.FC = () => {
               if (key === 'agent-skills') window.location.hash = '#/agent/skills';
               if (key === 'agent-models') window.location.hash = '#/agent/models';
               if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
+              if (key === 'agent-playground') window.location.hash = '#/playground';
+              if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
               if (key === 'docs') window.location.hash = '#/docs';
             }}
             style={{ background: 'transparent' }}
@@ -320,6 +340,8 @@ export const AdminPanel: React.FC = () => {
                   'agent-skills',
                   'agent-mcp',
                   'agent-models',
+                  'agent-playground',
+                  'agent-profiles',
                 ].includes(key)
               ) {
                 setActiveMenu(key as MenuKey);
@@ -332,6 +354,8 @@ export const AdminPanel: React.FC = () => {
                 if (key === 'agent-skills') window.location.hash = '#/agent/skills';
                 if (key === 'agent-models') window.location.hash = '#/agent/models';
                 if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
+                if (key === 'agent-playground') window.location.hash = '#/playground';
+                if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
                 if (key === 'docs') window.location.hash = '#/docs';
               }
             }}

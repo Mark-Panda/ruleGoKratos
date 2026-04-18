@@ -35,6 +35,15 @@ func (m *MCPConfig) FindAll(ctx context.Context) ([]MCPConfig, error) {
 	return list, err
 }
 
+func (m *MCPConfig) FindByIDs(ctx context.Context, ids []int64) ([]MCPConfig, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var list []MCPConfig
+	err := db.WithContext(ctx).Model(m).Where("id IN ?", ids).Find(&list).Error
+	return list, err
+}
+
 func (m *MCPConfig) Updates(ctx context.Context, where map[string]interface{}, data map[string]interface{}) error {
 	return db.WithContext(ctx).Model(m).Where(where).Updates(data).Error
 }

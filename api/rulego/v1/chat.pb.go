@@ -31,6 +31,7 @@ type ChatStreamReq struct {
 	LlmConfigId     int64                  `protobuf:"varint,4,opt,name=llm_config_id,json=llmConfigId,proto3" json:"llm_config_id,omitempty"`               // 模型管理：LLM 配置 ID（与 llm_model_entry_id 成对）
 	LlmModelEntryId int64                  `protobuf:"varint,5,opt,name=llm_model_entry_id,json=llmModelEntryId,proto3" json:"llm_model_entry_id,omitempty"` // 模型管理：模型条目 ID
 	Attachments     []*ChatAttachment      `protobuf:"bytes,6,rep,name=attachments,proto3" json:"attachments,omitempty"`                                     // 上传文件（文本内联或 base64）
+	ManagedAgentId  int64                  `protobuf:"varint,7,opt,name=managed_agent_id,json=managedAgentId,proto3" json:"managed_agent_id,omitempty"`      // 可选；非零时使用「Agent 配置」统一注入系统提示、技能包/MCP、模型站点与模型范围
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -105,6 +106,13 @@ func (x *ChatStreamReq) GetAttachments() []*ChatAttachment {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *ChatStreamReq) GetManagedAgentId() int64 {
+	if x != nil {
+		return x.ManagedAgentId
+	}
+	return 0
 }
 
 // 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。
@@ -292,14 +300,15 @@ var File_api_rulego_v1_chat_proto protoreflect.FileDescriptor
 
 const file_api_rulego_v1_chat_proto_rawDesc = "" +
 	"\n" +
-	"\x18api/rulego/v1/chat.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1copenapi/v3/annotations.proto\"\xff\x01\n" +
+	"\x18api/rulego/v1/chat.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1copenapi/v3/annotations.proto\"\xa9\x02\n" +
 	"\rChatStreamReq\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x120\n" +
 	"\ahistory\x18\x03 \x03(\v2\x16.rulego.v1.ChatMessageR\ahistory\x12\"\n" +
 	"\rllm_config_id\x18\x04 \x01(\x03R\vllmConfigId\x12+\n" +
 	"\x12llm_model_entry_id\x18\x05 \x01(\x03R\x0fllmModelEntryId\x12;\n" +
-	"\vattachments\x18\x06 \x03(\v2\x19.rulego.v1.ChatAttachmentR\vattachments\"\x84\x01\n" +
+	"\vattachments\x18\x06 \x03(\v2\x19.rulego.v1.ChatAttachmentR\vattachments\x12(\n" +
+	"\x10managed_agent_id\x18\a \x01(\x03R\x0emanagedAgentId\"\x84\x01\n" +
 	"\x0eChatAttachment\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1b\n" +
 	"\tmime_type\x18\x02 \x01(\tR\bmimeType\x12\x12\n" +

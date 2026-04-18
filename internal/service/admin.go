@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	v1 "ruleGoKratos/api/rulego/v1"
+	"ruleGoKratos/internal/biz/playground/agentpool"
 	"ruleGoKratos/internal/conf"
 	"ruleGoKratos/internal/data/dao"
 	"sort"
@@ -24,6 +25,8 @@ type AdminService struct {
 	log       *log.Helper
 	config    *conf.Bootstrap
 	skillRoot string
+	// playground Agent 池服务：删除「Agent 配置」前校验是否被池内 Agent 引用
+	poolSvc *agentpool.AgentPoolService
 }
 
 type mcpConfigPayload struct {
@@ -34,7 +37,7 @@ type mcpConfigPayload struct {
 	Description string
 }
 
-func NewAdminService(logger log.Logger, config *conf.Bootstrap) *AdminService {
+func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpool.AgentPoolService) *AdminService {
 	helper := log.NewHelper(logger)
 	root := "skills"
 	if config != nil && config.Agent != nil && config.Agent.Skill != nil && strings.TrimSpace(config.Agent.Skill.Dir) != "" {
@@ -44,6 +47,7 @@ func NewAdminService(logger log.Logger, config *conf.Bootstrap) *AdminService {
 		log:       helper,
 		config:    config,
 		skillRoot: root,
+		poolSvc:   poolSvc,
 	}
 }
 

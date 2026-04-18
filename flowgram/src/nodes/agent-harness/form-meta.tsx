@@ -5,7 +5,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { Checkbox, Divider, Select, Spin, Typography } from '@douyinfe/semi-ui';
+import { Checkbox, Divider, Input, Select, Spin, Typography } from '@douyinfe/semi-ui';
 import { DisplayOutputs } from '@flowgram.ai/form-materials';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
 
@@ -67,6 +67,7 @@ function flowStringList(v: unknown): string[] {
 const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
   'llmConfigId',
   'llmModelEntryId',
+  'managedAgentId',
   'model',
   'userPrompt',
   'systemPrompt',
@@ -81,7 +82,9 @@ const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
 
 const agentFormInputsProps: FormInputsProps = {
   propertyFilter: (k) =>
-    !['skillAllowlist', 'mcpAllowlist', 'llmConfigId', 'llmModelEntryId', 'model'].includes(k),
+    !['skillAllowlist', 'mcpAllowlist', 'llmConfigId', 'llmModelEntryId', 'managedAgentId', 'model'].includes(
+      k
+    ),
   propertyKeyOrder: AGENT_FORM_KEYS_NO_ALLOWLIST,
 };
 
@@ -143,6 +146,24 @@ function AgentHarnessManagedLLMPanel() {
 
   return (
     <div style={{ marginBottom: 12 }}>
+      <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
+        Agent 配置（可选）
+      </Typography.Text>
+      <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 8 }}>
+        填写「Agent 配置」列表中的数字 ID 后，运行时使用该条的系统提示、技能包、MCP 与模型范围；非 0 时下方手工模型与各白名单不生效。
+      </Typography.Paragraph>
+      <Field name="inputsValues.managedAgentId">
+        {({ field }) => (
+          <Input
+            placeholder="managedAgentId，0 表示不用"
+            style={{ width: '100%', marginBottom: 12 }}
+            value={flowNum(field.value) ? String(flowNum(field.value)) : ''}
+            onChange={(v) =>
+              field.onChange({ type: 'constant', content: Number(v) || 0 } as any)
+            }
+          />
+        )}
+      </Field>
       <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
         模型（来自「Agent 管理 → 模型管理」）
       </Typography.Text>

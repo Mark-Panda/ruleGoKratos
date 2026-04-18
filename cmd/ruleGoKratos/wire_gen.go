@@ -10,8 +10,12 @@ import (
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/log"
 	"ruleGoKratos/internal/biz"
+	"ruleGoKratos/internal/biz/playground/agentpool"
+	"ruleGoKratos/internal/biz/playground/trace"
+	"ruleGoKratos/internal/biz/playground/workflow"
 	"ruleGoKratos/internal/conf"
 	"ruleGoKratos/internal/data"
+	data2 "ruleGoKratos/internal/data/playground"
 	"ruleGoKratos/internal/server"
 	"ruleGoKratos/internal/service"
 )
@@ -51,10 +55,17 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 	runLogService := service.NewRunLogService(runLogUsecase)
 	componentService := service.NewComponentService(runLogUsecase, componentUseRuleUsecase)
 	mdWorkflowService := service.NewMdWorkflowService(mdWorkflowUsecase)
-	adminService := service.NewAdminService(logger, bootstrap)
+	agentPoolRepo := data.NewPlaygroundAgentPoolRepo(dataData)
+	agentPoolService := agentpool.NewAgentPoolService(agentPoolRepo)
+	adminService := service.NewAdminService(logger, bootstrap, agentPoolService)
 	chatService := service.NewChatService(agentUsecase)
 	grpcServer := server.NewGRPCServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, adminService, chatService, logger)
-	httpServer := server.NewHTTPServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, adminService, chatService, logger)
+	gormSchemeRepo := data.NewPlaygroundSchemeRepo(dataData)
+	traceRepo := data2.NewTraceRepo()
+	traceEngine := trace.NewTraceEngine(traceRepo)
+	workflowService := workflow.NewWorkflowService(gormSchemeRepo, agentPoolService, traceEngine, agentUsecase)
+	playgroundService := service.NewPlaygroundService(agentPoolService, workflowService, logger)
+	httpServer := server.NewHTTPServer(confServer, ruleGoService, runLogService, componentService, mdWorkflowService, adminService, chatService, playgroundService, logger)
 	app := newApp(logger, grpcServer, httpServer)
 	return app, func() {
 		cleanup()

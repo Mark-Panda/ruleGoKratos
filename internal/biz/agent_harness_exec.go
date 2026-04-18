@@ -276,6 +276,9 @@ func (uc *AgentUsecase) effectiveHarnessConfig(override *HarnessConfig) HarnessC
 	if override.ToolTimeoutSecs > 0 {
 		cfg.ToolTimeoutSecs = override.ToolTimeoutSecs
 	}
+	if override.StreamTimeoutSecs > 0 {
+		cfg.StreamTimeoutSecs = override.StreamTimeoutSecs
+	}
 	if override.ChunkSize > 0 {
 		cfg.ChunkSize = override.ChunkSize
 	}

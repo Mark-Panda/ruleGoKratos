@@ -100,6 +100,12 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       defaultValue: 0,
     },
     {
+      inputKey: 'managedAgentId',
+      dslKey: 'managedAgentId',
+      valueType: 'number',
+      defaultValue: 0,
+    },
+    {
       inputKey: 'model',
       dslKey: 'model',
       valueType: 'template',

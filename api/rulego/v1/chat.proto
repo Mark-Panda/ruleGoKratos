@@ -31,6 +31,7 @@ message ChatStreamReq {
     int64 llm_config_id = 4;      // 模型管理：LLM 配置 ID（与 llm_model_entry_id 成对）
     int64 llm_model_entry_id = 5; // 模型管理：模型条目 ID
     repeated ChatAttachment attachments = 6; // 上传文件（文本内联或 base64）
+    int64 managed_agent_id = 7;   // 可选；非零时使用「Agent 配置」统一注入系统提示、技能包/MCP、模型站点与模型范围
 }
 
 // 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。

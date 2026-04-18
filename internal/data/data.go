@@ -54,6 +54,11 @@ type Data struct {
 	db *gorm.DB
 }
 
+// DB 返回 GORM 客户端（供 Playground 等组件注入）。
+func (d *Data) DB() *gorm.DB {
+	return d.db
+}
+
 // NewData .
 func NewData(c *conf.Data, logger log.Logger) (*Data, func(), error) {
 	cleanup := func() {
@@ -114,6 +119,7 @@ func NewRuleConfig() *types.Config {
 // 初始化规则引擎
 func NewRuleEngine(c *conf.Data, ruleConfig *types.Config, agentUc *biz.AgentUsecase) (*rulego.RuleGo, error) {
 	agentUc.SetManagedLLMResolver(NewManagedLLMResolver())
+	agentUc.SetManagedAgentLoader(NewManagedAgentHarnessLoader())
 	WireRuleGoAgent(agentUc)
 	// 获取所有的规则链信息
 	var ruleChainList []RuleChain

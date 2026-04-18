@@ -42,6 +42,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
         inputsValues: {
           llmConfigId: { type: 'constant', content: 0 },
           llmModelEntryId: { type: 'constant', content: 0 },
+          managedAgentId: { type: 'constant', content: 0 },
           model: { type: 'constant', content: '' },
           userPrompt: { type: 'template', content: '' },
           systemPrompt: {

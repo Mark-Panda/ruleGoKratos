@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"ruleGoKratos/internal/conf"
 	"strings"
@@ -78,6 +79,32 @@ func TestWorkspaceWriteReadAndRejectEscape(t *testing.T) {
 	}
 	if _, err := rt.Invoke(context.Background(), `{"path":"../`+filepath.Base(root)+`_leak.txt"}`); err == nil {
 		t.Fatalf("expected error for escape path")
+	}
+}
+
+func TestWorkspaceToolsUseSessionRootFromContext(t *testing.T) {
+	root := t.TempDir()
+	sess := filepath.Join(root, "playground", "run_test")
+	if err := os.MkdirAll(sess, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	uc := newTestAgentUsecase()
+	uc.config = &conf.Bootstrap{Agent: &conf.Agent{WorkspaceRoot: root}}
+
+	ctx := withHarnessWorkspaceRoot(context.Background(), sess)
+	wt, err := uc.BuildWriteWorkspaceFileTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Invoke(ctx, `{"path":"note.txt","content":"session"}`); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(sess, "note.txt"))
+	if err != nil || string(b) != "session" {
+		t.Fatalf("read session file: err=%v data=%q", err, string(b))
+	}
+	if _, err := os.Stat(filepath.Join(root, "note.txt")); err == nil {
+		t.Fatal("must not write at configured workspace root without session subdirectory")
 	}
 }
 

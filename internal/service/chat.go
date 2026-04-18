@@ -52,13 +52,14 @@ func (s *ChatService) harnessRequestFromProto(req *v1.ChatStreamReq) biz.Harness
 		})
 	}
 	return biz.HarnessRequest{
-		Model:           req.GetModel(),
-		History:         protoHistoryToHarness(req.GetHistory()),
-		Input:           req.GetMessage(),
-		Attachments:     atts,
-		LlmConfigID:     req.GetLlmConfigId(),
-		LlmModelEntryID: req.GetLlmModelEntryId(),
-		ToolOptions:     nil,
+		Model:            req.GetModel(),
+		History:          protoHistoryToHarness(req.GetHistory()),
+		Input:            req.GetMessage(),
+		Attachments:      atts,
+		LlmConfigID:      req.GetLlmConfigId(),
+		LlmModelEntryID:  req.GetLlmModelEntryId(),
+		ManagedAgentID:   req.GetManagedAgentId(),
+		ToolOptions:      nil,
 	}
 }
 

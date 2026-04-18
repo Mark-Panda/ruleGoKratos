@@ -24,6 +24,7 @@ func wireApp(*conf.Bootstrap, log.Logger) (*kratos.App, func(), error) {
 		wire.FieldsOf(new(*conf.Bootstrap), "Server", "Data"),
 		server.ProviderSet,
 		data.ProviderSet,
+		data.PlaygroundProviderSet,
 		biz.ProviderSet,
 		service.ProviderSet,
 		newApp,

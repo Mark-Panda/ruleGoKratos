@@ -19,6 +19,44 @@ const (
 	maxShellCombinedOutput    = 256 << 10
 )
 
+// harnessWorkspaceRootKey 本轮 Harness 内文件/shell 工具的有效 workspace 根（绝对路径）。
+type harnessWorkspaceRootKey struct{}
+
+func withHarnessWorkspaceRoot(ctx context.Context, absRoot string) context.Context {
+	return context.WithValue(ctx, harnessWorkspaceRootKey{}, filepath.Clean(absRoot))
+}
+
+func (uc *AgentUsecase) effectiveWorkspaceRoot(ctx context.Context) (string, error) {
+	if v := ctx.Value(harnessWorkspaceRootKey{}); v != nil {
+		if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+			return filepath.Clean(s), nil
+		}
+	}
+	return uc.resolveAgentWorkspaceRoot()
+}
+
+// sanitizePlaygroundWorkspaceSessionDir 校验相对配置的子路径：禁止绝对路径、..、空段。
+func sanitizePlaygroundWorkspaceSessionDir(sub string) string {
+	sub = strings.TrimSpace(sub)
+	if sub == "" {
+		return ""
+	}
+	if filepath.IsAbs(sub) {
+		return ""
+	}
+	sub = filepath.Clean(sub)
+	sub = strings.TrimPrefix(sub, string(filepath.Separator))
+	if sub == "" || sub == "." {
+		return ""
+	}
+	for _, seg := range strings.Split(sub, string(filepath.Separator)) {
+		if seg == "" || seg == "." || seg == ".." {
+			return ""
+		}
+	}
+	return sub
+}
+
 func (uc *AgentUsecase) resolveAgentWorkspaceRoot() (string, error) {
 	var raw string
 	if uc.config != nil && uc.config.Agent != nil {
@@ -82,7 +120,7 @@ func (uc *AgentUsecase) BuildReadWorkspaceFileTool() (*HarnessTool, error) {
 			if err := json.Unmarshal([]byte(rawArgs), &a); err != nil {
 				return "", err
 			}
-			root, err := uc.resolveAgentWorkspaceRoot()
+			root, err := uc.effectiveWorkspaceRoot(ctx)
 			if err != nil {
 				return "", err
 			}
@@ -162,7 +200,7 @@ func (uc *AgentUsecase) BuildWriteWorkspaceFileTool() (*HarnessTool, error) {
 			if len(a.Content) > maxWorkspaceFileReadBytes {
 				return "", fmt.Errorf("content 过长（>%d 字节）", maxWorkspaceFileReadBytes)
 			}
-			root, err := uc.resolveAgentWorkspaceRoot()
+			root, err := uc.effectiveWorkspaceRoot(ctx)
 			if err != nil {
 				return "", err
 			}
@@ -214,7 +252,7 @@ func (uc *AgentUsecase) BuildRunWorkspaceShellTool() (*HarnessTool, error) {
 			if cmdStr == "" {
 				return "", errors.New("command 不能为空")
 			}
-			root, err := uc.resolveAgentWorkspaceRoot()
+			root, err := uc.effectiveWorkspaceRoot(ctx)
 			if err != nil {
 				return "", err
 			}

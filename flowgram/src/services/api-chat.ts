@@ -19,6 +19,8 @@ export interface ChatStreamPayload {
   history: ChatHistoryItem[];
   llmConfigId: number;
   llmModelEntryId: number;
+  /** 非零时使用「Agent 配置」统一管理模型/SKILL/MCP（与顶部模型选择可同时传，服务端以托管配置为准） */
+  managedAgentId?: number;
   attachments?: ChatAttachmentPayload[];
 }
 
@@ -234,6 +236,9 @@ export async function streamChat(
     llmConfigId: payload.llmConfigId,
     llmModelEntryId: payload.llmModelEntryId,
   };
+  if (payload.managedAgentId != null && payload.managedAgentId > 0) {
+    body.managedAgentId = payload.managedAgentId;
+  }
   if (payload.attachments?.length) {
     // 始终带 mimeType 字段，避免 protojson/网关对「缺省 type」与 application/octet-stream 处理不一致
     body.attachments = payload.attachments.map((a) => {

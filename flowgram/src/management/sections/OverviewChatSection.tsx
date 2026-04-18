@@ -20,6 +20,7 @@ import {
   type ChatAttachmentPayload,
 } from '../../services/api-chat';
 import { listLlmConfigs, type LlmConfigItem } from '../../services/api-agent';
+import { listManagedAgents } from '../../services/api-managed-agents';
 
 marked.use({
   breaks: true,
@@ -27,6 +28,7 @@ marked.use({
 
 const STORAGE_MODEL_KEY = 'flowgram-overview-chat-model-v1';
 const STORAGE_CHAT_STORE_KEY = 'flowgram-overview-chat-store-v1';
+const STORAGE_MANAGED_AGENT_KEY = 'flowgram-overview-chat-managed-agent-v1';
 
 /** 页面引导：能力与「如何提问」（空状态 + 输入区提示） */
 const CHAT_GUIDE = {
@@ -34,7 +36,7 @@ const CHAT_GUIDE = {
   subtitle:
     '对接 RuleGo Agent Harness（与画布「Agent LLM / ai/agentHarness」同源）。在凭证与模型就绪时，可通过工具增强回答（SKILL、MCP、工作区文件与 Shell 等，以服务端实际启用为准）。',
   steps: [
-    '在顶部选择「对话模型」：条目来自「Agent 管理 → 模型管理」中已启用的配置与模型。',
+    '在顶部可选「Agent 配置」托管档案（统一系统提示/SKILL/MCP/模型），或选择「对话模型」：条目来自「Agent 管理 → 模型管理」。二者至少选其一。',
     '输入时尽量包含：要解决什么、当前现象或报错、期望交付物（示例代码 / 步骤列表 / 取舍说明）；可粘贴日志或代码。',
     '「清除上下文」：之后请求不再附带此前对话历史，界面记录仍保留。「重置聊天」：清空本会话消息。',
     '可点击「附件」上传多个文件（文本直接嵌入，二进制以 Base64 交由模型按说明解析）；数据保存在本机浏览器。',
@@ -141,6 +143,26 @@ function saveStoredModel(m: ModelPick) {
   }
 }
 
+function loadStoredManagedAgentId(): number {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_MANAGED_AGENT_KEY) : null;
+    if (!raw) return 0;
+    const n = Number(JSON.parse(raw));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveStoredManagedAgentId(id: number) {
+  try {
+    if (id > 0) window.localStorage.setItem(STORAGE_MANAGED_AGENT_KEY, JSON.stringify(id));
+    else window.localStorage.removeItem(STORAGE_MANAGED_AGENT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 function markdownToHtml(raw: string): string {
   try {
     return String(marked.parse(raw || ''));
@@ -190,8 +212,10 @@ function patchActiveSession(prev: ChatStore, recipe: (s: ChatSession) => ChatSes
 export const OverviewChatSection: React.FC = () => {
   const [store, setStore] = useState<ChatStore>(() => loadChatStore());
   const [configs, setConfigs] = useState<LlmConfigItem[]>([]);
+  const [managedProfiles, setManagedProfiles] = useState<{ id: number; name: string }[]>([]);
   const [loadingModels, setLoadingModels] = useState(true);
   const [modelPick, setModelPick] = useState<ModelPick | null>(() => loadStoredModel());
+  const [managedAgentId, setManagedAgentId] = useState<number>(() => loadStoredManagedAgentId());
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -220,8 +244,13 @@ export const OverviewChatSection: React.FC = () => {
   const fetchConfigs = useCallback(async () => {
     setLoadingModels(true);
     try {
-      const rows = await listLlmConfigs();
+      const [rows, agents] = await Promise.all([listLlmConfigs(), listManagedAgents()]);
       setConfigs(Array.isArray(rows) ? rows : []);
+      setManagedProfiles(
+        Array.isArray(agents)
+          ? agents.filter((a) => a.enabled !== false).map((a) => ({ id: a.id, name: a.name }))
+          : []
+      );
     } catch (e) {
       Toast.error({ content: String((e as Error)?.message ?? e) });
     } finally {
@@ -260,6 +289,15 @@ export const OverviewChatSection: React.FC = () => {
     );
     if (!ok) setModelPick(null);
   }, [modelOptions, modelPick]);
+
+  useEffect(() => {
+    if (managedAgentId <= 0 || managedProfiles.length === 0) return;
+    const ok = managedProfiles.some((p) => p.id === managedAgentId);
+    if (!ok) {
+      setManagedAgentId(0);
+      saveStoredManagedAgentId(0);
+    }
+  }, [managedProfiles, managedAgentId]);
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -327,8 +365,11 @@ export const OverviewChatSection: React.FC = () => {
     const text = input.trim();
     const hasFiles = pendingFiles.length > 0;
     if ((!text && !hasFiles) || streaming) return;
-    if (!modelPick) {
-      Toast.warning({ content: '请先在顶部选择模型（需在「Agent 管理 → 模型管理」中配置并启用）' });
+    if (!managedAgentId && !modelPick) {
+      Toast.warning({
+        content:
+          '请在顶部选择对话模型（模型管理），或选择「Agent 配置」托管配置其一',
+      });
       return;
     }
 
@@ -372,8 +413,9 @@ export const OverviewChatSection: React.FC = () => {
           message: text,
           attachments: attachments.length ? attachments : undefined,
           history,
-          llmConfigId: modelPick.configId,
-          llmModelEntryId: modelPick.entryId,
+          llmConfigId: modelPick?.configId ?? 0,
+          llmModelEntryId: modelPick?.entryId ?? 0,
+          ...(managedAgentId > 0 ? { managedAgentId } : {}),
         },
         (chunk, done, err) => {
           if (err) {
@@ -501,6 +543,30 @@ export const OverviewChatSection: React.FC = () => {
           flexShrink: 0,
         }}
       >
+        <Typography.Text strong style={{ marginRight: 8 }}>
+          Agent 配置
+        </Typography.Text>
+        <Select
+          placeholder={
+            loadingModels ? '加载中…' : managedProfiles.length ? '可选：托管 Agent 配置' : '暂无托管配置'
+          }
+          style={{ minWidth: 200, maxWidth: 320 }}
+          loading={loadingModels}
+          value={managedAgentId > 0 ? String(managedAgentId) : ''}
+          optionList={[
+            { value: '', label: '不使用（仅模型管理）' },
+            ...managedProfiles.map((p) => ({
+              value: String(p.id),
+              label: `${p.name} (#${p.id})`,
+            })),
+          ]}
+          onChange={(v) => {
+            const n = v ? Number(v) : 0;
+            const id = Number.isFinite(n) && n > 0 ? n : 0;
+            setManagedAgentId(id);
+            saveStoredManagedAgentId(id);
+          }}
+        />
         <Typography.Text strong style={{ marginRight: 8 }}>
           对话模型
         </Typography.Text>

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"ruleGoKratos/internal/conf"
 	"strconv"
 	"strings"
@@ -19,10 +21,12 @@ import (
 )
 
 const (
-	defaultMaxIterations   = 8
-	defaultMaxToolCalls    = 16
+	defaultMaxIterations   = 32
+	defaultMaxToolCalls    = 64
 	defaultToolTimeoutSecs = 5
-	defaultChunkSize       = 120
+	// LLM HTTP 流式读取超时（OpenAI SDK Client.Timeout）；规划/长推理需显著大于旧版 60s。
+	defaultStreamTimeoutSecs = 600
+	defaultChunkSize         = 120
 	// 与 Harness / 管理端聊天共用；工具是否可用以运行时为准。
 	defaultSystemPrompt = `You are the Code Assistant for this RuleGo / Flowgram deployment. Deliver accurate, actionable engineering help: runnable code when appropriate, concrete shell or API steps, real file paths, and ordered reasoning—avoid vague platitudes.
 
@@ -60,7 +64,9 @@ type HarnessConfig struct {
 	MaxIterations   int
 	MaxToolCalls    int
 	ToolTimeoutSecs int
-	ChunkSize       int
+	// StreamTimeoutSecs LLM 流式请求整体读超时（秒）；单轮 Stream.Recv 受底层 HTTP Client 超时约束。
+	StreamTimeoutSecs int
+	ChunkSize         int
 }
 
 type HarnessAttachment struct {
@@ -81,6 +87,24 @@ type HarnessRequest struct {
 	// LlmConfigID / LlmModelEntryID 非零时从模型管理加载凭证与模型名，不再读取环境变量或 YAML ai.* 配置。
 	LlmConfigID     int64
 	LlmModelEntryID int64
+	// ManagedAgentID 非零时由 enrichHarnessWithManagedAgent 注入 Agent 配置（覆盖 ToolOptions / 模型对与系统提示中的 SKILL 目录）。
+	ManagedAgentID int64
+	// SkillCatalogFilter 为 nil 时 SKILL 目录列出全部可用技能；非 nil 且 len=0 不附目录；非 nil 且 len>0 仅列出这些 skill id。
+	SkillCatalogFilter *[]string
+
+	// WorkspaceSessionDir 相对于配置的 workspace 根的子路径；非空时本轮 Harness 内 read/write/shell 工具仅在该目录下操作（运行前会 MkdirAll）。
+	WorkspaceSessionDir string
+
+	// Playground 协作：将 Harness 内工具调用写入 Trace（可选）。
+	PlaygroundRunID   string
+	PlaygroundAgentID string
+	TraceSink         HarnessTraceSink
+}
+
+// HarnessTraceSink Playground 注入，映射到 TraceEngine 的工具事件。
+type HarnessTraceSink interface {
+	EmitToolCall(runID, agentID, toolName, args string)
+	EmitToolResult(runID, agentID, toolName, result string, success bool)
 }
 
 type SkillExecutor interface {
@@ -104,14 +128,15 @@ func (n *NoopMcpExecutor) Call(ctx context.Context, server string, tool string, 
 }
 
 type AgentUsecase struct {
-	log             *log.Helper
-	config          *conf.Bootstrap
-	harnessLogger   *HarnessLogger
-	harnessConfig   HarnessConfig
-	skillExecutor   SkillExecutor
-	mcpExecutor     McpExecutor
-	managedLLM      ManagedLLMResolver
-	chatModelFunc   func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error)
+	log                *log.Helper
+	config             *conf.Bootstrap
+	harnessLogger      *HarnessLogger
+	harnessConfig      HarnessConfig
+	skillExecutor      SkillExecutor
+	mcpExecutor        McpExecutor
+	managedLLM         ManagedLLMResolver
+	managedAgentLoader ManagedAgentLoader
+	chatModelFunc      func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error)
 }
 
 func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
@@ -193,25 +218,31 @@ func (uc *AgentUsecase) newChatModel(ctx context.Context, req HarnessRequest) (m
 		if err != nil {
 			return nil, err
 		}
+		cfgEff := uc.effectiveHarnessConfig(req.ConfigOverride)
+		streamTimeout := time.Duration(cfgEff.StreamTimeoutSecs) * time.Second
+		if streamTimeout <= 0 {
+			streamTimeout = defaultStreamTimeoutSecs * time.Second
+		}
 		return einoopenai.NewChatModel(ctx, &einoopenai.ChatModelConfig{
 			APIKey:  key,
 			BaseURL: defaultOpenAIBaseURL(base),
 			Model:   name,
-			Timeout: 60 * time.Second,
+			Timeout: streamTimeout,
 		})
 	}
 	return nil, errors.New("请在流程节点中选择模型管理中的 LLM 配置与模型（已不再使用环境变量 AI 密钥）")
 }
 
 func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) []*schema.Message {
-	return uc.composeMessages(uc.getSystemPrompt(), history, userMessage, nil)
+	req := &HarnessRequest{History: history}
+	return uc.composeMessages(req, uc.getSystemPrompt(), history, userMessage, nil)
 }
 
-func (uc *AgentUsecase) composeMessages(systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) []*schema.Message {
+func (uc *AgentUsecase) composeMessages(req *HarnessRequest, systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) []*schema.Message {
 	if strings.TrimSpace(systemPrompt) == "" {
 		systemPrompt = uc.getSystemPrompt()
 	}
-	systemPrompt = uc.appendSkillCatalogToSystem(systemPrompt)
+	systemPrompt = uc.appendSkillCatalogToSystemWithFilter(systemPrompt, req.SkillCatalogFilter)
 	msgs := make([]*schema.Message, 0, len(history)+2)
 	msgs = append(msgs, schema.SystemMessage(systemPrompt))
 	for _, item := range history {
@@ -237,12 +268,20 @@ func (uc *AgentUsecase) getSystemPrompt() string {
 // 将技能 id 目录附在系统提示后，使模型知悉可调用 run_skill 的精确名称（与 FileSkillExecutor 扫描结果一致）。
 const skillCatalogMaxBytes = 32000
 
-func (uc *AgentUsecase) appendSkillCatalogToSystem(systemPrompt string) string {
-	fe, ok := uc.skillExecutor.(*FileSkillExecutor)
-	if !ok {
+func (uc *AgentUsecase) appendSkillCatalogToSystemWithFilter(systemPrompt string, filter *[]string) string {
+	if filter != nil && len(*filter) == 0 {
 		return systemPrompt
 	}
-	names := fe.ListAvailableSkillNames()
+	var names []string
+	if filter == nil {
+		fe, ok := uc.skillExecutor.(*FileSkillExecutor)
+		if !ok {
+			return systemPrompt
+		}
+		names = fe.ListAvailableSkillNames()
+	} else {
+		names = *filter
+	}
 	if len(names) == 0 {
 		return systemPrompt
 	}
@@ -281,6 +320,9 @@ func (uc *AgentUsecase) sanitizeConfig() HarnessConfig {
 	if cfg.ToolTimeoutSecs <= 0 {
 		cfg.ToolTimeoutSecs = defaultToolTimeoutSecs
 	}
+	if cfg.StreamTimeoutSecs <= 0 {
+		cfg.StreamTimeoutSecs = defaultStreamTimeoutSecs
+	}
 	if cfg.ChunkSize <= 0 {
 		cfg.ChunkSize = defaultChunkSize
 	}
@@ -305,7 +347,15 @@ func (uc *AgentUsecase) StreamHarness(ctx context.Context, req HarnessRequest) S
 func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) StreamGenerator {
 	return func(yield func(*StreamMessage, error) bool) {
 		requestID := uuid.NewString()
+		enriched, err := uc.enrichHarnessWithManagedAgent(ctx, req)
+		if err != nil {
+			uc.harnessLogger.LogError(requestID, "managed_agent", err)
+			yield(nil, sanitizeExternalError(err))
+			return
+		}
+		req = enriched
 		start := time.Now()
+		var assistantAcc strings.Builder
 		logModel := req.Model
 		if req.LlmConfigID > 0 && req.LlmModelEntryID > 0 {
 			if n, _, _, err := uc.ResolveManagedLLM(ctx, req.LlmConfigID, req.LlmModelEntryID); err == nil && n != "" {
@@ -314,13 +364,44 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				logModel = fmt.Sprintf("managed:%d:%d", req.LlmConfigID, req.LlmModelEntryID)
 			}
 		}
+		if req.ManagedAgentID > 0 {
+			logModel = fmt.Sprintf("profile:%d:%s", req.ManagedAgentID, logModel)
+		}
 		uc.harnessLogger.LogRunStart(requestID, logModel, len(req.History), req.Input)
 		defer func() {
 			uc.harnessLogger.LogRunFinish(requestID, time.Since(start))
 		}()
 		cfg := uc.effectiveHarnessConfig(req.ConfigOverride)
 
-		einoModel, err := uc.newChatModel(ctx, req)
+		workCtx := ctx
+		if sub := strings.TrimSpace(req.WorkspaceSessionDir); sub != "" {
+			sub = sanitizePlaygroundWorkspaceSessionDir(sub)
+			if sub != "" {
+				baseRoot, err := uc.resolveAgentWorkspaceRoot()
+				if err != nil {
+					uc.harnessLogger.LogError(requestID, "workspace_root", err)
+					yield(nil, sanitizeExternalError(err))
+					return
+				}
+				sessionRoot := filepath.Join(baseRoot, sub)
+				sessionRoot = filepath.Clean(sessionRoot)
+				baseClean := filepath.Clean(baseRoot)
+				rel, relErr := filepath.Rel(baseClean, sessionRoot)
+				if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					uc.harnessLogger.LogError(requestID, "workspace_session_dir", errors.New("invalid session path"))
+					yield(nil, sanitizeExternalError(errors.New("会话目录无效")))
+					return
+				}
+				if err := os.MkdirAll(sessionRoot, 0o755); err != nil {
+					uc.harnessLogger.LogError(requestID, "workspace_mkdir", err)
+					yield(nil, sanitizeExternalError(err))
+					return
+				}
+				workCtx = withHarnessWorkspaceRoot(ctx, sessionRoot)
+			}
+		}
+
+		einoModel, err := uc.newChatModel(workCtx, req)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "init_model", err)
 			yield(nil, sanitizeExternalError(err))
@@ -350,14 +431,19 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 
 		systemPrompt := strings.TrimSpace(req.SystemPrompt)
 		if systemPrompt == "" {
-			systemPrompt = uc.getSystemPrompt()
+			// 已选托管 Agent 时，系统提示以主站配置为准；留空则使用轻量默认，避免退回到服务级「Code Assistant」大段说明
+			if req.ManagedAgentID > 0 {
+				systemPrompt = "你是一个由管理员配置的 Agent；请遵循用户任务，并在可用时使用工具。"
+			} else {
+				systemPrompt = uc.getSystemPrompt()
+			}
 		}
-		msgs := uc.composeMessages(systemPrompt, req.History, req.Input, req.Attachments)
+		msgs := uc.composeMessages(&req, systemPrompt, req.History, req.Input, req.Attachments)
 		toolCallCount := 0
 		for i := 0; i < cfg.MaxIterations; i++ {
 			modelStart := time.Now()
 			// 是否调用工具由模型通过流式 chunk 中的 tool_calls 决定。
-			stream, genErr := modelRunner.Stream(ctx, msgs)
+			stream, genErr := modelRunner.Stream(workCtx, msgs)
 			uc.harnessLogger.LogModelRound(requestID, i+1, time.Since(modelStart), genErr)
 			if genErr != nil {
 				uc.harnessLogger.LogError(requestID, "model_stream", genErr)
@@ -407,9 +493,13 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				yield(nil, sanitizeExternalError(errors.New("模型返回为空")))
 				return
 			}
+			if resp.Content != "" {
+				assistantAcc.WriteString(resp.Content)
+			}
 			msgs = append(msgs, resp)
 
 			if len(resp.ToolCalls) == 0 {
+				uc.harnessLogger.LogHarnessOutput(requestID, assistantAcc.String())
 				if !yield(&StreamMessage{Done: true}, nil) {
 					return
 				}
@@ -445,12 +535,27 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				}
 				uc.harnessLogger.LogSandboxDecision(requestID, call.Function.Name, true, "tool_allowed")
 
+				argsStr := call.Function.Arguments
+				if req.TraceSink != nil && req.PlaygroundRunID != "" && req.PlaygroundAgentID != "" {
+					req.TraceSink.EmitToolCall(req.PlaygroundRunID, req.PlaygroundAgentID, call.Function.Name, argsStr)
+				}
+
 				// 工具调用设置独立超时，防止单个工具阻塞整轮执行。
-				toolCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.ToolTimeoutSecs)*time.Second)
+				toolCtx, cancel := context.WithTimeout(workCtx, time.Duration(cfg.ToolTimeoutSecs)*time.Second)
 				toolStart := time.Now()
-				toolOutput, toolErr := toolImpl.Invoke(toolCtx, call.Function.Arguments)
+				toolOutput, toolErr := toolImpl.Invoke(toolCtx, argsStr)
 				cancel()
-				uc.harnessLogger.LogToolCall(requestID, call.Function.Name, time.Since(toolStart), toolErr)
+				if req.TraceSink != nil && req.PlaygroundRunID != "" && req.PlaygroundAgentID != "" {
+					out := toolOutput
+					if len(out) > 24000 {
+						out = out[:24000] + "...(truncated)"
+					}
+					if toolErr != nil {
+						out = out + "\nerror: " + toolErr.Error()
+					}
+					req.TraceSink.EmitToolResult(req.PlaygroundRunID, req.PlaygroundAgentID, call.Function.Name, out, toolErr == nil)
+				}
+				uc.harnessLogger.LogToolCallIO(requestID, call.Function.Name, time.Since(toolStart), argsStr, toolOutput, toolErr)
 				if toolErr != nil {
 					uc.harnessLogger.LogError(requestID, "tool_invoke", toolErr)
 					yield(nil, sanitizeExternalError(toolErr))
@@ -466,7 +571,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			}
 		}
 
-		err = errors.New("超过最大迭代次数，Agent提前终止")
+		err = fmt.Errorf("超过最大迭代次数（maxIterations=%d），Agent 提前终止；多轮工具调用场景请在协作方案 config 中提高 maxIterations/maxToolCalls", cfg.MaxIterations)
 		uc.harnessLogger.LogError(requestID, "max_iterations", err)
 		yield(nil, sanitizeExternalError(err))
 	}
@@ -503,12 +608,12 @@ func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.
 		return nil, nil, err
 	}
 	registry := map[string]*HarnessTool{
-		uuidTool.Info.Name:         uuidTool,
-		skillTool.Info.Name:        skillTool,
-		mcpTool.Info.Name:          mcpTool,
-		readFileTool.Info.Name:     readFileTool,
-		writeFileTool.Info.Name:    writeFileTool,
-		shellTool.Info.Name:        shellTool,
+		uuidTool.Info.Name:      uuidTool,
+		skillTool.Info.Name:     skillTool,
+		mcpTool.Info.Name:       mcpTool,
+		readFileTool.Info.Name:  readFileTool,
+		writeFileTool.Info.Name: writeFileTool,
+		shellTool.Info.Name:     shellTool,
 	}
 	infos := []*schema.ToolInfo{
 		uuidTool.Info, skillTool.Info, mcpTool.Info,

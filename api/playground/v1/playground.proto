@@ -1,0 +1,311 @@
+syntax = "proto3";
+
+package playground.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "validate/validate.proto";
+import "openapi/v3/annotations.proto";
+
+option go_package = "ruleGoKratos/api/playground/v1;v1";
+
+// Agent Playground 服务定义
+service AgentPlayground {
+    // 获取 Agent 池列表
+    rpc ListAgentPools(ListAgentPoolsReq) returns (ListAgentPoolsReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/pools"
+        };
+    }
+
+    // 获取单个 Agent 池
+    rpc GetAgentPool(GetAgentPoolReq) returns (GetAgentPoolReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/pools/{id}"
+        };
+    }
+
+    // 创建 Agent 池
+    rpc CreateAgentPool(CreateAgentPoolReq) returns (CreateAgentPoolReply) {
+        option (google.api.http) = {
+            post: "/api/v1/playground/pools"
+            body: "*"
+        };
+    }
+
+    // 更新 Agent 池
+    rpc UpdateAgentPool(UpdateAgentPoolReq) returns (UpdateAgentPoolReply) {
+        option (google.api.http) = {
+            put: "/api/v1/playground/pools/{id}"
+            body: "*"
+        };
+    }
+
+    // 获取协作方案列表
+    rpc ListSchemes(ListSchemesReq) returns (ListSchemesReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/schemes"
+        };
+    }
+
+    // 获取单个协作方案
+    rpc GetScheme(GetSchemeReq) returns (GetSchemeReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/schemes/{id}"
+        };
+    }
+
+    // 创建协作方案
+    rpc CreateScheme(CreateSchemeReq) returns (CreateSchemeReply) {
+        option (google.api.http) = {
+            post: "/api/v1/playground/schemes"
+            body: "*"
+        };
+    }
+
+    // 更新协作方案
+    rpc UpdateScheme(UpdateSchemeReq) returns (UpdateSchemeReply) {
+        option (google.api.http) = {
+            put: "/api/v1/playground/schemes/{id}"
+            body: "*"
+        };
+    }
+
+    // 删除协作方案
+    rpc DeleteScheme(DeleteSchemeReq) returns (DeleteSchemeReply) {
+        option (google.api.http) = {
+            delete: "/api/v1/playground/schemes/{id}"
+        };
+    }
+
+    // 运行工作流
+    rpc RunWorkflow(RunWorkflowReq) returns (RunWorkflowReply) {
+        option (google.api.http) = {
+            post: "/api/v1/playground/run"
+            body: "*"
+        };
+    }
+
+    // 获取运行结果
+    rpc GetRun(GetRunReq) returns (GetRunReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/run/{runId}"
+        };
+    }
+
+    // 获取运行事件（用于 Trace）
+    rpc GetRunEvents(GetRunEventsReq) returns (GetRunEventsReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/run/{runId}/events"
+        };
+    }
+
+    // 获取可用协作模式
+    rpc GetCollaborationModes(GetCollaborationModesReq) returns (GetCollaborationModesReply) {
+        option (google.api.http) = {
+            get: "/api/v1/playground/modes"
+        };
+    }
+}
+
+// ========== Agent Pool 相关 ==========
+
+message ListAgentPoolsReq {}
+
+message ListAgentPoolsReply {
+    repeated AgentPool pools = 1;
+}
+
+message GetAgentPoolReq {
+    string id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message GetAgentPoolReply {
+    AgentPool pool = 1;
+}
+
+message CreateAgentPoolReq {
+    string name = 1 [(validate.rules).string.min_len = 1];
+    string description = 2;
+    repeated AgentDefinition agents = 3;
+}
+
+message CreateAgentPoolReply {
+    AgentPool pool = 1;
+}
+
+message UpdateAgentPoolReq {
+    string id = 1 [(validate.rules).string.min_len = 1];
+    string name = 2;
+    string description = 3;
+    repeated AgentDefinition agents = 4;
+}
+
+message UpdateAgentPoolReply {
+    AgentPool pool = 1;
+}
+
+message AgentPool {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    repeated AgentDefinition agents = 4;
+    string created_at = 5;
+    string updated_at = 6;
+}
+
+message AgentDefinition {
+    string id = 1;
+    string name = 2;
+    string role = 3;
+    string desc = 4;
+    string model = 5;
+    repeated string tools = 6;
+    bool enabled = 7;
+    int32 priority = 8;
+    int64 managed_agent_id = 9; // 关联 Admin「Agent 配置」表 id；非零时与 model/tools 并存以托管配置为运行时依据
+}
+
+// ========== Scheme 相关 ==========
+
+message ListSchemesReq {}
+
+message ListSchemesReply {
+    repeated CollaborationScheme schemes = 1;
+}
+
+message GetSchemeReq {
+    string id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message GetSchemeReply {
+    CollaborationScheme scheme = 1;
+}
+
+message CreateSchemeReq {
+    string name = 1 [(validate.rules).string.min_len = 1];
+    string description = 2;
+    string mode = 3 [(validate.rules).string.min_len = 1];
+    repeated AgentBinding bind_agents = 4;
+    SchemeConfig config = 5;
+    bool enable_finalizer = 6;
+}
+
+message CreateSchemeReply {
+    CollaborationScheme scheme = 1;
+}
+
+message UpdateSchemeReq {
+    string id = 1 [(validate.rules).string.min_len = 1];
+    string name = 2;
+    string description = 3;
+    string mode = 4;
+    repeated AgentBinding bind_agents = 5;
+    SchemeConfig config = 6;
+    bool enable_finalizer = 7;
+}
+
+message UpdateSchemeReply {
+    CollaborationScheme scheme = 1;
+}
+
+message DeleteSchemeReq {
+    string id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message DeleteSchemeReply {}
+
+message CollaborationScheme {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string mode = 4;
+    repeated AgentBinding bind_agents = 5;
+    SchemeConfig config = 6;
+    bool enabled = 7;
+    bool enable_finalizer = 8;
+    string created_at = 9;
+    string updated_at = 10;
+}
+
+message AgentBinding {
+    string agent_id = 1;
+    string role = 2;
+    string model = 3;
+    repeated string tools = 4;
+}
+
+message SchemeConfig {
+    int32 max_iterations = 1;
+    int32 max_tool_calls = 2;
+    int32 timeout_seconds = 3;
+    string finalizer_prompt = 4;
+}
+
+// ========== Run 相关 ==========
+
+message RunWorkflowReq {
+    string scheme_id = 1 [(validate.rules).string.min_len = 1];
+    string user_input = 2 [(validate.rules).string.min_len = 1];
+}
+
+message RunWorkflowReply {
+    string run_id = 1;
+}
+
+message GetRunReq {
+    string run_id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message GetRunReply {
+    TraceRun run = 1;
+}
+
+message GetRunEventsReq {
+    string run_id = 1 [(validate.rules).string.min_len = 1];
+    int32 limit = 2;
+    int32 offset = 3;
+}
+
+message GetRunEventsReply {
+    repeated TraceEvent events = 1;
+}
+
+message TraceRun {
+    string id = 1;
+    string run_id = 2;
+    string scheme_id = 3;
+    string user_input = 4;
+    string status = 5;
+    string start_time = 6;
+    string end_time = 7;
+    int64 total_ms = 8;
+    repeated TraceEvent events = 9;
+    string final_output = 10;
+}
+
+message TraceEvent {
+    string id = 1;
+    string run_id = 2;
+    int64 timestamp = 3;
+    string type = 4;
+    string agent_id = 5;
+    string node_id = 6;
+    string task_desc = 7;
+    string message = 8;
+    map<string, string> metadata = 9;
+}
+
+// ========== Mode 相关 ==========
+
+message GetCollaborationModesReq {}
+
+message GetCollaborationModesReply {
+    repeated CollaborationMode modes = 1;
+}
+
+message CollaborationMode {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+}
