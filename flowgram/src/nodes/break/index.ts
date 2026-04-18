@@ -20,7 +20,7 @@ export const BreakNodeRegistry: FlowNodeRegistry = {
       height: 54,
     },
     expandable: false,
-    onlyInContainer: WorkflowNodeType.Loop,
+    onlyInContainerTypes: [WorkflowNodeType.Loop, WorkflowNodeType.For],
   },
   info: {
     icon: iconBreak,

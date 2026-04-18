@@ -25,7 +25,18 @@ import { ForNodeRegistry } from './for';
 import { FlowSubChainNodeRegistry } from './flow';
 import { FetchNodeOutputRegistry } from './fetch-node-output';
 import { EndNodeRegistry } from './end';
+import { InclusiveNodeRegistry } from './inclusive';
+import { WhileNodeRegistry } from './while';
+import { ExecNodeRegistry } from './exec';
+import { FileReadNodeRegistry } from './file-read';
+import { FileWriteNodeRegistry } from './file-write';
+import { FileDeleteNodeRegistry } from './file-delete';
+import { FileListNodeRegistry } from './file-list';
+import { CiGitCloneNodeRegistry } from './ci-git-clone';
+import { CiGitCommitNodeRegistry } from './ci-git-commit';
+import { CiGitPushNodeRegistry } from './ci-git-push';
 import { DBClientNodeRegistry } from './dbClient';
+import { BreakNodeRegistry } from './break';
 import { CronNodeRegistry } from './cron';
 import { CommentNodeRegistry } from './comment';
 import { CaseConditionNodeRegistry } from './case-condition';
@@ -42,11 +53,22 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   JsFilterNodeRegistry,
   LogStringNodeRegistry,
   CaseConditionNodeRegistry,
+  InclusiveNodeRegistry,
   StartNodeRegistry,
   EndNodeRegistry,
+  WhileNodeRegistry,
+  ExecNodeRegistry,
+  FileReadNodeRegistry,
+  FileWriteNodeRegistry,
+  FileDeleteNodeRegistry,
+  FileListNodeRegistry,
+  CiGitCloneNodeRegistry,
+  CiGitCommitNodeRegistry,
+  CiGitPushNodeRegistry,
   LLMNodeRegistry,
   AgentHarnessNodeRegistry,
   ForNodeRegistry,
+  BreakNodeRegistry,
   ForkNodeRegistry,
   JoinNodeRegistry,
   FetchNodeOutputRegistry,

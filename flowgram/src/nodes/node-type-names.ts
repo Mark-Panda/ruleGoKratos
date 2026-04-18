@@ -17,8 +17,10 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   // 逻辑控制节点
   [WorkflowNodeType.Condition]: '条件判断',
   [WorkflowNodeType.CaseCondition]: '条件分支',
+  [WorkflowNodeType.Inclusive]: '包容分支',
   [WorkflowNodeType.Loop]: '循环',
   [WorkflowNodeType.For]: '遍历循环',
+  [WorkflowNodeType.While]: 'While 循环',
   [WorkflowNodeType.Fork]: '并发分支',
   [WorkflowNodeType.Join]: '合并分支',
   [WorkflowNodeType.Continue]: '继续',
@@ -41,6 +43,14 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   [WorkflowNodeType.FeishuWebhook]: '飞书 Webhook',
   [WorkflowNodeType.Cron]: '定时触发',
   [WorkflowNodeType.Flow]: '子规则链',
+  [WorkflowNodeType.Exec]: '执行命令',
+  [WorkflowNodeType.FileRead]: '文件读取',
+  [WorkflowNodeType.FileWrite]: '文件写入',
+  [WorkflowNodeType.FileDelete]: '文件删除',
+  [WorkflowNodeType.FileList]: '文件列表',
+  [WorkflowNodeType.GitClone]: 'Git 拉取',
+  [WorkflowNodeType.GitCommit]: 'Git 提交',
+  [WorkflowNodeType.GitPush]: 'Git 推送',
 
   // 辅助节点
   [WorkflowNodeType.LogString]: '日志输出',

@@ -17,7 +17,10 @@ import {
   multiNodeOutputMappingSpec,
   redisClientMappingSpec,
   restApiCallMappingSpec,
+  inclusiveMappingSpec,
   switchMappingSpec,
+  whileMappingSpec,
+  execMappingSpec,
   yapiMappingSpec,
 } from '../specs';
 import { mapDslToNodeInputsValues, mapNodeToDslConfig } from '../engine';
@@ -1019,6 +1022,83 @@ describe('remaining node specs round-trip', () => {
       luaTransformMappingSpec
     );
     expect(luaCfg.luaScript).toBe('return msg');
+  });
+
+  it('inclusive mapping uses same cases shape as switch', () => {
+    const inclusiveCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            cases: {
+              content: [
+                {
+                  key: 'C1',
+                  groups: [
+                    {
+                      operator: 'and',
+                      rows: [{ type: 'expression', content: 'msg.ok == true' }],
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+      inclusiveMappingSpec
+    );
+    expect(inclusiveCfg.cases).toEqual([{ case: 'msg.ok == true', then: 'C1' }]);
+  });
+
+  it('while / exec map bidirectionally via inputsValues', () => {
+    const whileCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            condition: { content: 'msg.n < 3', type: 'template' },
+            do: { content: 'node_a', type: 'constant' },
+          },
+        },
+      },
+      whileMappingSpec
+    );
+    expect(whileCfg.condition).toBe('msg.n < 3');
+    expect(whileCfg.do).toBe('node_a');
+    const ivW = mapDslToNodeInputsValues(
+      whileCfg as Record<string, unknown>,
+      whileMappingSpec
+    );
+    expect(ivW.condition?.content).toBe('msg.n < 3');
+    expect(ivW.do?.content).toBe('node_a');
+
+    const whileChainCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            condition: { content: 'msg.ok', type: 'template' },
+            do: { content: 'chain:sub_chain_1', type: 'constant' },
+          },
+        },
+      },
+      whileMappingSpec
+    );
+    expect(whileChainCfg.do).toBe('chain:sub_chain_1');
+
+    const execCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            cmd: { content: 'echo', type: 'template' },
+            args: { content: ['hi'], type: 'constant' },
+            log: { content: true, type: 'constant' },
+            replaceData: { content: false, type: 'constant' },
+          },
+        },
+      },
+      execMappingSpec
+    );
+    expect(execCfg.cmd).toBe('echo');
+    expect(execCfg.args).toEqual(['hi']);
   });
 });
 

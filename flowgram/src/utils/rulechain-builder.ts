@@ -401,6 +401,34 @@ function buildRuleChainMetaNodes(
       base.configuration = mapNodeToDslConfig(synthetic, specSwitch) as Record<string, any>;
       break;
     }
+    case 'inclusive': {
+      const specInc = getNodeMappingSpec('inclusive');
+      if (!specInc) break;
+      const synthetic = {
+        data: { inputsValues: { cases: { content: n.data?.cases ?? [] } } },
+      };
+      base.configuration = mapNodeToDslConfig(synthetic, specInc) as Record<string, any>;
+      break;
+    }
+    case 'end':
+    case 'break': {
+      base.configuration = {};
+      break;
+    }
+    case 'while':
+    case 'exec':
+    case 'x/fileRead':
+    case 'x/fileWrite':
+    case 'x/fileDelete':
+    case 'x/fileList':
+    case 'ci/gitClone':
+    case 'ci/gitCommit':
+    case 'ci/gitPush': {
+      const specExtra = getNodeMappingSpec(nodeType);
+      if (!specExtra) break;
+      base.configuration = mapNodeToDslConfig(n, specExtra) as Record<string, any>;
+      break;
+    }
     case 'dbClient': {
       const specDb = getNodeMappingSpec('dbClient');
       if (!specDb) break;
@@ -1563,6 +1591,498 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             positionType: 'middle',
             cases,
             ELSE: true,
+          };
+          break;
+        }
+        case 'inclusive': {
+          const cfg = n.configuration ?? {};
+          const specIncl = getNodeMappingSpec('inclusive');
+          const ivMapIncl = specIncl
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specIncl)
+            : ({} as InputsValuesMap);
+          const cases = Array.isArray(ivMapIncl.cases?.content)
+            ? (ivMapIncl.cases?.content as any[])
+            : [];
+          base.data = {
+            title: n.name ?? '包容分支',
+            positionType: 'middle',
+            cases,
+            ELSE: true,
+          };
+          break;
+        }
+        case 'end': {
+          base.data = {
+            title: n.name ?? 'End',
+            positionType: 'tail',
+            inputs: { type: 'object', properties: {} },
+            inputsValues: {},
+          };
+          break;
+        }
+        case 'break': {
+          base.data = {
+            title: n.name ?? '中断',
+            positionType: 'middle',
+          };
+          break;
+        }
+        case 'while': {
+          const cfg = n.configuration ?? {};
+          const specW = getNodeMappingSpec('while');
+          const ivMapW = specW
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specW)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'While',
+            positionType: 'middle',
+            inputsValues: {
+              condition: {
+                type: 'template',
+                content: String(ivMapW.condition?.content ?? (cfg as any).condition ?? ''),
+              },
+              do: {
+                type: 'constant',
+                content: String(ivMapW.do?.content ?? (cfg as any).do ?? ''),
+              },
+            },
+            inputs: {
+              type: 'object',
+              required: ['condition', 'do'],
+              properties: {
+                condition: {
+                  type: 'string',
+                  extra: {
+                    label: '循环条件',
+                    formComponent: 'prompt-editor',
+                  },
+                },
+                do: {
+                  type: 'string',
+                  extra: { label: '执行目标节点 ID' },
+                },
+              },
+            },
+          };
+          break;
+        }
+        case 'exec': {
+          const cfg = n.configuration ?? {};
+          const specEx = getNodeMappingSpec('exec');
+          const ivMapEx = specEx
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specEx)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'Exec',
+            positionType: 'middle',
+            inputsValues: {
+              cmd: {
+                type: 'template',
+                content: String(ivMapEx.cmd?.content ?? (cfg as any).cmd ?? ''),
+              },
+              args: {
+                type: 'constant',
+                content: Array.isArray(ivMapEx.args?.content)
+                  ? ivMapEx.args?.content
+                  : Array.isArray((cfg as any).args)
+                  ? (cfg as any).args
+                  : [],
+              },
+              log: {
+                type: 'constant',
+                content: !!(ivMapEx.log?.content ?? (cfg as any).log),
+              },
+              replaceData: {
+                type: 'constant',
+                content: !!(ivMapEx.replaceData?.content ?? (cfg as any).replaceData),
+              },
+            },
+            inputs: {
+              type: 'object',
+              required: ['cmd'],
+              properties: {
+                cmd: {
+                  type: 'string',
+                  extra: { label: '命令', formComponent: 'prompt-editor' },
+                },
+                args: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  extra: { label: '参数', formComponent: 'array-editor' },
+                },
+                log: { type: 'boolean', extra: { label: '记录 stdout' } },
+                replaceData: {
+                  type: 'boolean',
+                  extra: { label: '替换 msg.Data' },
+                },
+              },
+            },
+          };
+          break;
+        }
+        case 'x/fileRead': {
+          const cfg = n.configuration ?? {};
+          const specFr = getNodeMappingSpec('x/fileRead');
+          const ivMapFr = specFr
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFr)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '读取文件',
+            positionType: 'middle',
+            inputsValues: {
+              path: {
+                type: 'template',
+                content: String(ivMapFr.path?.content ?? (cfg as any).path ?? ''),
+              },
+              dataType: {
+                type: 'constant',
+                content: String(ivMapFr.dataType?.content ?? (cfg as any).dataType ?? 'text'),
+              },
+              recursive: {
+                type: 'constant',
+                content: !!(ivMapFr.recursive?.content ?? (cfg as any).recursive),
+              },
+            },
+            inputs: {
+              type: 'object',
+              required: ['path', 'dataType'],
+              properties: {
+                path: {
+                  type: 'string',
+                  extra: { label: '路径或 Glob', formComponent: 'prompt-editor' },
+                },
+                dataType: {
+                  type: 'string',
+                  enum: ['text', 'base64'],
+                  extra: { label: '数据类型', formComponent: 'enum-select' },
+                },
+                recursive: { type: 'boolean', extra: { label: '递归' } },
+              },
+            },
+          };
+          break;
+        }
+        case 'x/fileWrite': {
+          const cfg = n.configuration ?? {};
+          const specFw = getNodeMappingSpec('x/fileWrite');
+          const ivMapFw = specFw
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFw)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '写入文件',
+            positionType: 'middle',
+            inputsValues: {
+              path: {
+                type: 'template',
+                content: String(ivMapFw.path?.content ?? (cfg as any).path ?? ''),
+              },
+              content: {
+                type: 'template',
+                content: String(ivMapFw.content?.content ?? (cfg as any).content ?? '${data}'),
+              },
+              append: {
+                type: 'constant',
+                content: !!(ivMapFw.append?.content ?? (cfg as any).append),
+              },
+            },
+            inputs: {
+              type: 'object',
+              required: ['path'],
+              properties: {
+                path: {
+                  type: 'string',
+                  extra: { label: '文件路径', formComponent: 'prompt-editor' },
+                },
+                content: {
+                  type: 'string',
+                  extra: { label: '写入内容', formComponent: 'prompt-editor' },
+                },
+                append: { type: 'boolean', extra: { label: '追加' } },
+              },
+            },
+          };
+          break;
+        }
+        case 'x/fileDelete': {
+          const cfg = n.configuration ?? {};
+          const specFd = getNodeMappingSpec('x/fileDelete');
+          const ivMapFd = specFd
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFd)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '删除文件',
+            positionType: 'middle',
+            inputsValues: {
+              path: {
+                type: 'template',
+                content: String(ivMapFd.path?.content ?? (cfg as any).path ?? ''),
+              },
+            },
+            inputs: {
+              type: 'object',
+              required: ['path'],
+              properties: {
+                path: {
+                  type: 'string',
+                  extra: { label: '路径或 Glob', formComponent: 'prompt-editor' },
+                },
+              },
+            },
+          };
+          break;
+        }
+        case 'x/fileList': {
+          const cfg = n.configuration ?? {};
+          const specFl = getNodeMappingSpec('x/fileList');
+          const ivMapFl = specFl
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFl)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '文件列表',
+            positionType: 'middle',
+            inputsValues: {
+              path: {
+                type: 'template',
+                content: String(ivMapFl.path?.content ?? (cfg as any).path ?? ''),
+              },
+              recursive: {
+                type: 'constant',
+                content: !!(ivMapFl.recursive?.content ?? (cfg as any).recursive),
+              },
+            },
+            inputs: {
+              type: 'object',
+              required: ['path'],
+              properties: {
+                path: {
+                  type: 'string',
+                  extra: { label: '路径模式', formComponent: 'prompt-editor' },
+                },
+                recursive: { type: 'boolean', extra: { label: '递归' } },
+              },
+            },
+          };
+          break;
+        }
+        case 'ci/gitClone': {
+          const cfg = n.configuration ?? {};
+          const specGc = getNodeMappingSpec('ci/gitClone');
+          const ivMapGc = specGc
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specGc)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'Git拉取',
+            positionType: 'middle',
+            inputsValues: {
+              repository: {
+                type: 'template',
+                content: String(ivMapGc.repository?.content ?? (cfg as any).repository ?? ''),
+              },
+              directory: {
+                type: 'template',
+                content: String(ivMapGc.directory?.content ?? (cfg as any).directory ?? ''),
+              },
+              reference: {
+                type: 'constant',
+                content: String(
+                  ivMapGc.reference?.content ?? (cfg as any).reference ?? 'refs/heads/main'
+                ),
+              },
+              authType: {
+                type: 'constant',
+                content: String(ivMapGc.authType?.content ?? (cfg as any).authType ?? 'token'),
+              },
+              authUser: {
+                type: 'constant',
+                content: String(ivMapGc.authUser?.content ?? (cfg as any).authUser ?? ''),
+              },
+              authPassword: {
+                type: 'template',
+                content: String(ivMapGc.authPassword?.content ?? (cfg as any).authPassword ?? ''),
+              },
+              authPemFile: {
+                type: 'constant',
+                content: String(ivMapGc.authPemFile?.content ?? (cfg as any).authPemFile ?? ''),
+              },
+              proxyUrl: {
+                type: 'constant',
+                content: String(ivMapGc.proxyUrl?.content ?? (cfg as any).proxyUrl ?? ''),
+              },
+              proxyUsername: {
+                type: 'constant',
+                content: String(ivMapGc.proxyUsername?.content ?? (cfg as any).proxyUsername ?? ''),
+              },
+              proxyPassword: {
+                type: 'constant',
+                content: String(ivMapGc.proxyPassword?.content ?? (cfg as any).proxyPassword ?? ''),
+              },
+            },
+            inputs: {
+              type: 'object',
+              properties: {
+                repository: {
+                  type: 'string',
+                  extra: { label: '仓库 URL', formComponent: 'prompt-editor' },
+                },
+                directory: { type: 'string', extra: { label: '本地目录' } },
+                reference: { type: 'string', extra: { label: '分支/引用' } },
+                authType: {
+                  type: 'string',
+                  enum: ['ssh', 'password', 'token'],
+                  extra: { formComponent: 'enum-select', label: '认证类型' },
+                },
+                authUser: { type: 'string', extra: { label: '用户名' } },
+                authPassword: {
+                  type: 'string',
+                  extra: { label: '密码/token', formComponent: 'prompt-editor' },
+                },
+                authPemFile: { type: 'string', extra: { label: 'SSH 密钥路径' } },
+                proxyUrl: { type: 'string', extra: { label: '代理地址' } },
+                proxyUsername: { type: 'string', extra: { label: '代理用户' } },
+                proxyPassword: { type: 'string', extra: { label: '代理密码' } },
+              },
+            },
+          };
+          break;
+        }
+        case 'ci/gitCommit': {
+          const cfg = n.configuration ?? {};
+          const specGcm = getNodeMappingSpec('ci/gitCommit');
+          const ivMapGcm = specGcm
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specGcm)
+            : ({} as InputsValuesMap);
+          let sig: Record<string, unknown> = {};
+          if (
+            ivMapGcm.signature?.content &&
+            typeof ivMapGcm.signature.content === 'object' &&
+            !Array.isArray(ivMapGcm.signature.content)
+          ) {
+            sig = ivMapGcm.signature.content as Record<string, unknown>;
+          } else if ((cfg as any).signature && typeof (cfg as any).signature === 'object') {
+            sig = (cfg as any).signature as Record<string, unknown>;
+          }
+          base.data = {
+            title: n.name ?? 'Git提交',
+            positionType: 'middle',
+            inputsValues: {
+              directory: {
+                type: 'template',
+                content: String(ivMapGcm.directory?.content ?? (cfg as any).directory ?? ''),
+              },
+              pattern: {
+                type: 'constant',
+                content: String(ivMapGcm.pattern?.content ?? (cfg as any).pattern ?? ''),
+              },
+              message: {
+                type: 'template',
+                content: String(ivMapGcm.message?.content ?? (cfg as any).message ?? ''),
+              },
+              signature: {
+                type: 'json',
+                content: {
+                  authorName: String(sig.authorName ?? ''),
+                  authorEmail: String(sig.authorEmail ?? ''),
+                },
+              },
+            },
+            inputs: {
+              type: 'object',
+              properties: {
+                directory: {
+                  type: 'string',
+                  extra: { label: '本地仓库目录', formComponent: 'prompt-editor' },
+                },
+                pattern: { type: 'string', extra: { label: '添加文件 Glob' } },
+                message: {
+                  type: 'string',
+                  extra: { label: '提交说明', formComponent: 'prompt-editor' },
+                },
+                signature: { type: 'object', extra: { label: '作者' } },
+              },
+            },
+          };
+          break;
+        }
+        case 'ci/gitPush': {
+          const cfg = n.configuration ?? {};
+          const specGp = getNodeMappingSpec('ci/gitPush');
+          const ivMapGp = specGp
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specGp)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'Git推送',
+            positionType: 'middle',
+            inputsValues: {
+              repository: {
+                type: 'template',
+                content: String(ivMapGp.repository?.content ?? (cfg as any).repository ?? ''),
+              },
+              directory: {
+                type: 'template',
+                content: String(ivMapGp.directory?.content ?? (cfg as any).directory ?? ''),
+              },
+              refSpecs: {
+                type: 'constant',
+                content: String(
+                  ivMapGp.refSpecs?.content ??
+                    (cfg as any).refSpecs ??
+                    'refs/heads/main:refs/heads/main'
+                ),
+              },
+              authType: {
+                type: 'constant',
+                content: String(ivMapGp.authType?.content ?? (cfg as any).authType ?? 'token'),
+              },
+              authUser: {
+                type: 'constant',
+                content: String(ivMapGp.authUser?.content ?? (cfg as any).authUser ?? ''),
+              },
+              authPassword: {
+                type: 'template',
+                content: String(ivMapGp.authPassword?.content ?? (cfg as any).authPassword ?? ''),
+              },
+              authPemFile: {
+                type: 'constant',
+                content: String(ivMapGp.authPemFile?.content ?? (cfg as any).authPemFile ?? ''),
+              },
+              proxyUrl: {
+                type: 'constant',
+                content: String(ivMapGp.proxyUrl?.content ?? (cfg as any).proxyUrl ?? ''),
+              },
+              proxyUsername: {
+                type: 'constant',
+                content: String(ivMapGp.proxyUsername?.content ?? (cfg as any).proxyUsername ?? ''),
+              },
+              proxyPassword: {
+                type: 'constant',
+                content: String(ivMapGp.proxyPassword?.content ?? (cfg as any).proxyPassword ?? ''),
+              },
+            },
+            inputs: {
+              type: 'object',
+              properties: {
+                repository: {
+                  type: 'string',
+                  extra: { label: '远程仓库 URL', formComponent: 'prompt-editor' },
+                },
+                directory: { type: 'string', extra: { label: '本地目录' } },
+                refSpecs: { type: 'string', extra: { label: 'ref 映射' } },
+                authType: {
+                  type: 'string',
+                  enum: ['ssh', 'password', 'token'],
+                  extra: { formComponent: 'enum-select', label: '认证类型' },
+                },
+                authUser: { type: 'string', extra: { label: '用户名' } },
+                authPassword: {
+                  type: 'string',
+                  extra: { label: '密码/token', formComponent: 'prompt-editor' },
+                },
+                authPemFile: { type: 'string', extra: { label: 'SSH 密钥路径' } },
+                proxyUrl: { type: 'string', extra: { label: '代理地址' } },
+                proxyUsername: { type: 'string', extra: { label: '代理用户' } },
+                proxyPassword: { type: 'string', extra: { label: '代理密码' } },
+              },
+            },
           };
           break;
         }

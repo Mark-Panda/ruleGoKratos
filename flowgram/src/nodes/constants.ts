@@ -36,6 +36,20 @@ export enum WorkflowNodeType {
   CursorAcp = 'x/cursorAcp',
   FeishuWebhook = 'x/feishuWebhook',
   Yapi = 'transform/yapi',
+
+  /** RuleGo：包容分支（多分支同时命中） */
+  Inclusive = 'inclusive',
+  /** RuleGo：While 条件循环 */
+  While = 'while',
+  /** RuleGo：执行本地命令 */
+  Exec = 'exec',
+  FileRead = 'x/fileRead',
+  FileWrite = 'x/fileWrite',
+  FileDelete = 'x/fileDelete',
+  FileList = 'x/fileList',
+  GitClone = 'ci/gitClone',
+  GitCommit = 'ci/gitCommit',
+  GitPush = 'ci/gitPush',
 }
 
 export enum OutPutPortType {

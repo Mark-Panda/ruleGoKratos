@@ -89,6 +89,11 @@ export const NodeList: FC<NodeListProps> = (props) => {
       {nodeRegistries
         .filter((register) => register.meta.nodePanelVisible !== false)
         .filter((register) => {
+          if (register.meta.onlyInContainerTypes?.length) {
+            return register.meta.onlyInContainerTypes.includes(
+              containerNode?.flowNodeType as any
+            );
+          }
           if (register.meta.onlyInContainer) {
             return register.meta.onlyInContainer === containerNode?.flowNodeType;
           }

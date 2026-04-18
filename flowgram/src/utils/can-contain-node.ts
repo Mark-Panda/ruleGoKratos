@@ -39,7 +39,8 @@ export function canContainNode(
     [WorkflowNodeType.Continue, WorkflowNodeType.Break].includes(
       childNodeType as WorkflowNodeType
     ) &&
-    parentNodeType !== WorkflowNodeType.Loop
+    parentNodeType !== WorkflowNodeType.Loop &&
+    parentNodeType !== WorkflowNodeType.For
   ) {
     return false;
   }

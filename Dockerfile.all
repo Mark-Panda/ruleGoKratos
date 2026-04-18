@@ -23,7 +23,8 @@ WORKDIR /src
 RUN GOPROXY=https://goproxy.cn make build
 
 # Stage 3: Feishu / Lark CLI (@larksuite/cli, npm global)
-FROM docker.m.daocloud.io/node:22-slim AS lark-cli-installer
+# 使用与 frontend-builder 相同的 node:22，便于复用镜像层并避免单独拉 node:*-slim 时偶发的镜像站 EOF
+FROM docker.m.daocloud.io/node:22 AS lark-cli-installer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \

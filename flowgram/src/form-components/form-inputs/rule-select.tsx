@@ -10,6 +10,24 @@ import { Select } from '@douyinfe/semi-ui';
 
 import { getRuleList } from '../../services/api-rules';
 
+function mapRuleListRow(x: unknown): { id: string; name?: string } | null {
+  const raw = x as Record<string, unknown> | null | undefined;
+  const rc = (raw?.ruleChain ?? raw?.rule_chain) as Record<string, unknown> | undefined;
+  if (!rc || typeof rc !== 'object') return null;
+  const id =
+    (rc.id as string | undefined) ??
+    (rc.ruleChainId as string | undefined) ??
+    (rc.rule_chain_id as string | undefined) ??
+    (rc.rule_chainId as string | undefined) ??
+    '';
+  if (!id) return null;
+  const name = rc.name as string | undefined;
+  return {
+    id: String(id),
+    name: name != null && String(name).trim() !== '' ? String(name) : undefined,
+  };
+}
+
 interface RuleSelectProps {
   value?: IFlowValue;
   onChange: (next: IFlowValue) => void;
@@ -20,7 +38,7 @@ interface RuleSelectProps {
 export const RuleSelect: React.FC<RuleSelectProps> = ({ value, onChange, readonly, hasError }) => {
   const [items, setItems] = useState<Array<{ id: string; name?: string }>>([]);
   const [page, setPage] = useState(1);
-  const [size] = useState(5);
+  const [size] = useState(50);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [keywords, setKeywords] = useState<string>('');
@@ -30,22 +48,22 @@ export const RuleSelect: React.FC<RuleSelectProps> = ({ value, onChange, readonl
   const fetchList = async (nextPage: number, kw?: string, append = false) => {
     setLoading(true);
     try {
-      const resp = await getRuleList({ page: nextPage, size, keywords: kw, root: false });
+      const resp = await getRuleList({
+        page: nextPage,
+        size,
+        keywords: kw?.trim() || undefined,
+        root: false,
+        disabled: false,
+      });
       const list = Array.isArray((resp as any)?.items) ? (resp as any).items : [];
-      const mapped: Array<{ id: string; name?: string }> = list
-        .map((x: any) => ({ id: String(x?.ruleChain?.id ?? ''), name: x?.ruleChain?.name }))
-        .filter((x: { id: string; name?: string }) => !!x.id);
+      const mapped = list
+        .map((row: unknown) => mapRuleListRow(row))
+        .filter(
+          (x: { id: string; name?: string } | null): x is { id: string; name?: string } => x != null
+        );
       setItems((prev) => (append ? [...prev, ...mapped] : mapped));
       setTotal(Number((resp as any)?.total ?? mapped.length));
       setPage(nextPage);
-      const selectedId =
-        (value?.type === 'constant' ? (value.content as string) : undefined) ?? undefined;
-      if (selectedId) {
-        const hit =
-          mapped.find((i: { id: string }) => i.id === selectedId) ||
-          (append ? items.find((i: { id: string }) => i.id === selectedId) : undefined);
-        if (hit) setSelectedLabel(hit.name ? String(hit.name) : hit.id);
-      }
     } catch (e) {
       if (!append) setItems([]);
     } finally {
@@ -57,14 +75,41 @@ export const RuleSelect: React.FC<RuleSelectProps> = ({ value, onChange, readonl
     fetchList(1, keywords, false);
   }, []);
 
-  const options = useMemo(() => {
-    const base = items.map((n) => ({ label: n.name ? String(n.name) : n.id, value: n.id }));
-    const canLoadMore = items.length < total;
-    return canLoadMore ? [...base, { label: '加载更多…', value: '__LOAD_MORE__' }] : base;
-  }, [items, total]);
-
   const selectedValue =
     (value?.type === 'constant' ? (value.content as string) : undefined) ?? undefined;
+
+  const optionsWithOrphan = useMemo(() => {
+    const base = items.map((n) => ({ label: n.name ? String(n.name) : n.id, value: n.id }));
+    if (!selectedValue || base.some((o) => o.value === selectedValue)) {
+      return base;
+    }
+    return [
+      {
+        label: `${selectedValue}（当前值，未在已加载列表中）`,
+        value: selectedValue,
+      },
+      ...base,
+    ];
+  }, [items, selectedValue]);
+
+  useEffect(() => {
+    const id =
+      value?.type === 'constant' && value.content != null && String(value.content).trim() !== ''
+        ? String(value.content)
+        : '';
+    if (!id) {
+      setSelectedLabel(undefined);
+      return;
+    }
+    const hit = items.find((i) => i.id === id);
+    setSelectedLabel(hit ? (hit.name ? String(hit.name) : hit.id) : id);
+  }, [value, items]);
+
+  const options = useMemo(() => {
+    const base = optionsWithOrphan;
+    const canLoadMore = items.length < total;
+    return canLoadMore ? [...base, { label: '加载更多…', value: '__LOAD_MORE__' }] : base;
+  }, [optionsWithOrphan, items.length, total]);
 
   const handleSearch = (kw: string) => {
     setKeywords(kw);
@@ -80,9 +125,10 @@ export const RuleSelect: React.FC<RuleSelectProps> = ({ value, onChange, readonl
       await fetchList(nextPage, keywords, true);
       return;
     }
-    const opt = items.find((i: { id: string }) => i.id === String(val));
-    setSelectedLabel(opt ? (opt.name ? String(opt.name) : opt.id) : undefined);
-    onChange({ type: 'constant', content: String(val) });
+    const id = String(val);
+    const hit = items.find((i: { id: string }) => i.id === id);
+    setSelectedLabel(hit ? (hit.name ? String(hit.name) : hit.id) : id);
+    onChange({ type: 'constant', content: id });
   };
 
   return (
@@ -97,8 +143,12 @@ export const RuleSelect: React.FC<RuleSelectProps> = ({ value, onChange, readonl
         style={{ width: '100%' }}
         showClear
         loading={loading}
+        remote
         onSearch={handleSearch}
         filter
+        onDropdownVisibleChange={(open) => {
+          if (open) fetchList(1, keywords, false);
+        }}
         renderSelectedItem={() => (selectedLabel ? selectedLabel : selectedValue)}
       />
     </div>

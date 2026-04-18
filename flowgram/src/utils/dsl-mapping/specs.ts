@@ -313,6 +313,125 @@ export const switchMappingSpec: NodeMappingSpec = {
   transformIn: transformSwitchConfigIn,
 };
 
+/** 包容分支：DSL 形状与 switch 相同（cases），路由语义由引擎区分。 */
+export const inclusiveMappingSpec: NodeMappingSpec = {
+  nodeType: 'inclusive',
+  fields: [{ inputKey: 'cases', dslKey: 'cases', valueType: 'json', defaultValue: [] }],
+  transformOut: transformSwitchConfigOut,
+  transformIn: transformSwitchConfigIn,
+};
+
+export const whileMappingSpec: NodeMappingSpec = {
+  nodeType: 'while',
+  fields: [
+    {
+      inputKey: 'condition',
+      dslKey: 'condition',
+      valueType: 'template',
+      defaultValue: '',
+    },
+    { inputKey: 'do', dslKey: 'do', valueType: 'constant', defaultValue: '' },
+  ],
+};
+
+export const execMappingSpec: NodeMappingSpec = {
+  nodeType: 'exec',
+  fields: [
+    { inputKey: 'cmd', dslKey: 'cmd', valueType: 'template', defaultValue: '' },
+    { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: [] },
+    { inputKey: 'log', dslKey: 'log', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: false },
+  ],
+};
+
+export const fileReadMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/fileRead',
+  fields: [
+    { inputKey: 'path', dslKey: 'path', valueType: 'template', defaultValue: '' },
+    { inputKey: 'dataType', dslKey: 'dataType', valueType: 'constant', defaultValue: 'text' },
+    { inputKey: 'recursive', dslKey: 'recursive', valueType: 'boolean', defaultValue: false },
+  ],
+};
+
+export const fileWriteMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/fileWrite',
+  fields: [
+    { inputKey: 'path', dslKey: 'path', valueType: 'template', defaultValue: '' },
+    { inputKey: 'content', dslKey: 'content', valueType: 'template', defaultValue: '${data}' },
+    { inputKey: 'append', dslKey: 'append', valueType: 'boolean', defaultValue: false },
+  ],
+};
+
+export const fileDeleteMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/fileDelete',
+  fields: [{ inputKey: 'path', dslKey: 'path', valueType: 'template', defaultValue: '' }],
+};
+
+export const fileListMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/fileList',
+  fields: [
+    { inputKey: 'path', dslKey: 'path', valueType: 'template', defaultValue: '' },
+    { inputKey: 'recursive', dslKey: 'recursive', valueType: 'boolean', defaultValue: false },
+  ],
+};
+
+export const gitCloneMappingSpec: NodeMappingSpec = {
+  nodeType: 'ci/gitClone',
+  fields: [
+    { inputKey: 'repository', dslKey: 'repository', valueType: 'template', defaultValue: '' },
+    { inputKey: 'directory', dslKey: 'directory', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'reference',
+      dslKey: 'reference',
+      valueType: 'constant',
+      defaultValue: 'refs/heads/main',
+    },
+    { inputKey: 'authType', dslKey: 'authType', valueType: 'constant', defaultValue: 'token' },
+    { inputKey: 'authUser', dslKey: 'authUser', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'authPassword', dslKey: 'authPassword', valueType: 'template', defaultValue: '' },
+    { inputKey: 'authPemFile', dslKey: 'authPemFile', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'proxyUrl', dslKey: 'proxyUrl', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'proxyUsername', dslKey: 'proxyUsername', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'proxyPassword', dslKey: 'proxyPassword', valueType: 'constant', defaultValue: '' },
+  ],
+};
+
+export const gitCommitMappingSpec: NodeMappingSpec = {
+  nodeType: 'ci/gitCommit',
+  fields: [
+    { inputKey: 'directory', dslKey: 'directory', valueType: 'template', defaultValue: '' },
+    { inputKey: 'pattern', dslKey: 'pattern', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'message', dslKey: 'message', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'signature',
+      dslKey: 'signature',
+      valueType: 'json',
+      defaultValue: { authorName: '', authorEmail: '' },
+    },
+  ],
+};
+
+export const gitPushMappingSpec: NodeMappingSpec = {
+  nodeType: 'ci/gitPush',
+  fields: [
+    { inputKey: 'repository', dslKey: 'repository', valueType: 'template', defaultValue: '' },
+    { inputKey: 'directory', dslKey: 'directory', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'refSpecs',
+      dslKey: 'refSpecs',
+      valueType: 'constant',
+      defaultValue: 'refs/heads/main:refs/heads/main',
+    },
+    { inputKey: 'authType', dslKey: 'authType', valueType: 'constant', defaultValue: 'token' },
+    { inputKey: 'authUser', dslKey: 'authUser', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'authPassword', dslKey: 'authPassword', valueType: 'template', defaultValue: '' },
+    { inputKey: 'authPemFile', dslKey: 'authPemFile', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'proxyUrl', dslKey: 'proxyUrl', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'proxyUsername', dslKey: 'proxyUsername', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'proxyPassword', dslKey: 'proxyPassword', valueType: 'constant', defaultValue: '' },
+  ],
+};
+
 export const jsTransformMappingSpec: NodeMappingSpec = {
   nodeType: 'jsTransform',
   fields: [{ inputKey: 'scriptBody', dslKey: 'jsScript', valueType: 'template', defaultValue: '' }],
@@ -430,6 +549,16 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'x/redisClient': redisClientMappingSpec,
   'transform/multiNodeOutput': multiNodeOutputMappingSpec,
   switch: switchMappingSpec,
+  inclusive: inclusiveMappingSpec,
+  while: whileMappingSpec,
+  exec: execMappingSpec,
+  'x/fileRead': fileReadMappingSpec,
+  'x/fileWrite': fileWriteMappingSpec,
+  'x/fileDelete': fileDeleteMappingSpec,
+  'x/fileList': fileListMappingSpec,
+  'ci/gitClone': gitCloneMappingSpec,
+  'ci/gitCommit': gitCommitMappingSpec,
+  'ci/gitPush': gitPushMappingSpec,
   jsTransform: jsTransformMappingSpec,
   log: logMappingSpec,
   jsFilter: jsFilterMappingSpec,

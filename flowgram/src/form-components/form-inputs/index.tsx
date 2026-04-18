@@ -14,6 +14,7 @@ import { useNodeRenderContext, useIsSidebar } from '../../hooks';
 import { SqlTemplateEditor } from './sql-template-editor';
 import { RuleSelect } from './rule-select';
 import { NodeIdSelect } from './node-id-select';
+import { WhileDoTargetSelect } from './while-do-target';
 import { NodeIdMultiSelect } from './node-id-multi-select';
 import { CronEditor } from './cron-editor';
 
@@ -54,7 +55,9 @@ export function FormInputs(props?: FormInputsProps) {
             property.extra?.formComponent ?? (hasEnum ? 'enum-select' : undefined);
           const displayLabel = property.extra?.label || key;
 
-          const vertical = ['prompt-editor', 'sql-editor'].includes(formComponent || '');
+          const vertical = ['prompt-editor', 'sql-editor', 'while-do-target'].includes(
+            formComponent || ''
+          );
 
           return (
             <Field key={key} name={`inputsValues.${key}`} defaultValue={property.default}>
@@ -195,13 +198,59 @@ export function FormInputs(props?: FormInputsProps) {
                       </div>
                     );
                   }
+                  if (formComponent === 'while-do-target') {
+                    const extra = (property as { extra?: Record<string, unknown> }).extra;
+                    if (!isSidebar) {
+                      const c =
+                        typeof (field.value as any)?.content === 'string'
+                          ? String((field.value as any).content)
+                          : '';
+                      const preview =
+                        c.trim() === ''
+                          ? '(未选择)'
+                          : c.startsWith('chain:')
+                          ? `子规则链：${c.slice('chain:'.length)}`
+                          : `节点：${c}`;
+                      return (
+                        <div
+                          style={{
+                            padding: '8px',
+                            background: '#f5f5f5',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            color: '#666',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {preview}
+                        </div>
+                      );
+                    }
+                    return (
+                      <WhileDoTargetSelect
+                        value={field.value}
+                        onChange={field.onChange}
+                        readonly={readonly}
+                        hasError={Object.keys(fieldState?.errors || {}).length > 0}
+                        excludeSelf={extra?.nodeSelectorExcludeSelf === true}
+                        excludeTypes={extra?.nodeSelectorExcludeTypes as string[] | undefined}
+                        excludeIds={extra?.nodeSelectorExcludeIds as string[] | undefined}
+                        preferSuccessDownstream={extra?.nodeSelectorPreferSuccessDownstream === true}
+                      />
+                    );
+                  }
                   if (formComponent === 'node-selector') {
+                    const extra = (property as { extra?: Record<string, unknown> }).extra;
                     return (
                       <NodeIdSelect
                         value={field.value}
                         onChange={field.onChange}
                         readonly={readonly}
                         hasError={Object.keys(fieldState?.errors || {}).length > 0}
+                        excludeSelf={extra?.nodeSelectorExcludeSelf === true}
+                        excludeTypes={extra?.nodeSelectorExcludeTypes as string[] | undefined}
+                        excludeIds={extra?.nodeSelectorExcludeIds as string[] | undefined}
+                        preferSuccessDownstream={extra?.nodeSelectorPreferSuccessDownstream === true}
                       />
                     );
                   }
