@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"ruleGoKratos/internal/conf"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +23,20 @@ const (
 	defaultMaxToolCalls    = 16
 	defaultToolTimeoutSecs = 5
 	defaultChunkSize       = 120
-	defaultSystemPrompt    = "You are Claude Code, an AI coding assistant focused on accurate, actionable engineering help. Think step by step, follow user intent, and prefer concrete execution over vague advice. Use available tools when they improve correctness. If information is uncertain, state assumptions briefly instead of fabricating details. Keep responses concise, practical, and implementation-oriented."
+	// 与 Harness / 管理端聊天共用；工具是否可用以运行时为准。
+	defaultSystemPrompt = `You are the Code Assistant for this RuleGo / Flowgram deployment. Deliver accurate, actionable engineering help: runnable code when appropriate, concrete shell or API steps, real file paths, and ordered reasoning—avoid vague platitudes.
+
+Tools: When the runtime exposes tools (SKILL invocation, MCP, workspace file read/write/shell), call them only through real execution; never invent tool outputs, logs, or claim success when a tool did not run. If a tool errors or is unavailable, report it briefly.
+
+Language: Match the user's language (reply in Chinese when they write Chinese).
+
+Facts: Do not invent repository layout, configs, or command results; when unsure, say what you infer and what you need from the user.
+
+Vision & multimodal: User turns may include images attached via the chat multimodal API; interpret them directly with your vision abilities. Do not claim you lack image understanding or use shell/download/workspace tools solely to «view» images already supplied in this conversation—unless the user asks to persist files to workspace or analyze them offline.
+
+Image URLs: If the user pastes HTTPS links to images in the message, the server may fetch them into the same multimodal payload you receive—treat those as viewable images, not as links you must open yourself. Still do not claim you can browse arbitrary sites beyond what is supplied in the conversation payload.
+
+Style: Stay concise; use Markdown with fenced code blocks for code and log excerpts.`
 )
 
 type StreamMessage struct {
@@ -49,15 +63,23 @@ type HarnessConfig struct {
 	ChunkSize       int
 }
 
+type HarnessAttachment struct {
+	Filename      string
+	MimeType      string
+	Text          string
+	ContentBase64 string
+}
+
 type HarnessRequest struct {
-	Model           string
-	History         []HistoryMessage
-	Input           string
-	SystemPrompt    string
-	ToolOptions     *HarnessToolOptions
-	ConfigOverride  *HarnessConfig
+	Model          string
+	History        []HistoryMessage
+	Input          string
+	Attachments    []HarnessAttachment // 可选；图片/音视频走 Eino UserInputMultiContent 多模态
+	SystemPrompt   string
+	ToolOptions    *HarnessToolOptions
+	ConfigOverride *HarnessConfig
 	// LlmConfigID / LlmModelEntryID 非零时从模型管理加载凭证与模型名，不再读取环境变量或 YAML ai.* 配置。
-	LlmConfigID      int64
+	LlmConfigID     int64
 	LlmModelEntryID int64
 }
 
@@ -182,13 +204,14 @@ func (uc *AgentUsecase) newChatModel(ctx context.Context, req HarnessRequest) (m
 }
 
 func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) []*schema.Message {
-	return uc.composeMessages(uc.getSystemPrompt(), history, userMessage)
+	return uc.composeMessages(uc.getSystemPrompt(), history, userMessage, nil)
 }
 
-func (uc *AgentUsecase) composeMessages(systemPrompt string, history []HistoryMessage, userMessage string) []*schema.Message {
+func (uc *AgentUsecase) composeMessages(systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) []*schema.Message {
 	if strings.TrimSpace(systemPrompt) == "" {
 		systemPrompt = uc.getSystemPrompt()
 	}
+	systemPrompt = uc.appendSkillCatalogToSystem(systemPrompt)
 	msgs := make([]*schema.Message, 0, len(history)+2)
 	msgs = append(msgs, schema.SystemMessage(systemPrompt))
 	for _, item := range history {
@@ -199,7 +222,8 @@ func (uc *AgentUsecase) composeMessages(systemPrompt string, history []HistoryMe
 			msgs = append(msgs, schema.UserMessage(item.Content))
 		}
 	}
-	msgs = append(msgs, schema.UserMessage(userMessage))
+	parts := buildHarnessInputParts(userText, attachments)
+	msgs = append(msgs, lastUserMessageFromParts(parts))
 	return msgs
 }
 
@@ -208,6 +232,34 @@ func (uc *AgentUsecase) getSystemPrompt() string {
 		return uc.config.Agent.SystemPrompt
 	}
 	return defaultSystemPrompt
+}
+
+// 将技能 id 目录附在系统提示后，使模型知悉可调用 run_skill 的精确名称（与 FileSkillExecutor 扫描结果一致）。
+const skillCatalogMaxBytes = 32000
+
+func (uc *AgentUsecase) appendSkillCatalogToSystem(systemPrompt string) string {
+	fe, ok := uc.skillExecutor.(*FileSkillExecutor)
+	if !ok {
+		return systemPrompt
+	}
+	names := fe.ListAvailableSkillNames()
+	if len(names) == 0 {
+		return systemPrompt
+	}
+	var b strings.Builder
+	b.Grow(len(systemPrompt) + 256 + min(len(names)*32, skillCatalogMaxBytes))
+	b.WriteString(systemPrompt)
+	b.WriteString("\n\n---\n## SKILL 目录（工具 run_skill 的 skill_name 须与下列 id 完全一致，共 ")
+	b.WriteString(strconv.Itoa(len(names)))
+	b.WriteString(" 项；按逗号分隔）\n")
+	joined := strings.Join(names, ", ")
+	if len(joined) > skillCatalogMaxBytes {
+		b.WriteString(joined[:skillCatalogMaxBytes])
+		b.WriteString("\n…（目录过长已截断；完整 id 仍可通过「技能文件路径」推断，或调用 run_skill 使用完整 skill_name。）")
+	} else {
+		b.WriteString(joined)
+	}
+	return b.String()
 }
 
 func sanitizeExternalError(err error) error {
@@ -242,6 +294,11 @@ func (uc *AgentUsecase) ExecuteStream(ctx context.Context, modelName string, his
 		History: history,
 		Input:   userMessage,
 	}
+	return uc.executeHarness(req, ctx)
+}
+
+// StreamHarness 供 Chat 网关等场景使用：全量工具（nil ToolOptions）与完整 HarnessRequest（含托管模型 ID）。
+func (uc *AgentUsecase) StreamHarness(ctx context.Context, req HarnessRequest) StreamGenerator {
 	return uc.executeHarness(req, ctx)
 }
 
@@ -295,7 +352,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		if systemPrompt == "" {
 			systemPrompt = uc.getSystemPrompt()
 		}
-		msgs := uc.composeMessages(systemPrompt, req.History, req.Input)
+		msgs := uc.composeMessages(systemPrompt, req.History, req.Input, req.Attachments)
 		toolCallCount := 0
 		for i := 0; i < cfg.MaxIterations; i++ {
 			modelStart := time.Now()
@@ -481,13 +538,28 @@ func (uc *AgentUsecase) BuildUUIDTool() (*HarnessTool, error) {
 }
 
 func (uc *AgentUsecase) BuildSkillTool() (*HarnessTool, error) {
+	desc := "执行 SKILL：读取磁盘上的技能文件（Markdown/YAML 等）。skill_name 必须与系统提示中「SKILL 目录」里的某一 id 完全一致。"
+	if fe, ok := uc.skillExecutor.(*FileSkillExecutor); ok {
+		names := fe.ListAvailableSkillNames()
+		if n := len(names); n > 0 {
+			desc += fmt.Sprintf(" 当前可用 %d 个。", n)
+			head := 48
+			if len(names) < head {
+				head = len(names)
+			}
+			desc += " 示例：" + strings.Join(names[:head], ", ")
+			if len(names) > head {
+				desc += fmt.Sprintf(" …（另有 %d 项见系统提示 SKILL 目录）", len(names)-head)
+			}
+		}
+	}
 	toolInfo := &schema.ToolInfo{
 		Name: "run_skill",
-		Desc: "执行技能，输入技能名与负载内容",
+		Desc: desc,
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"skill_name": {
 				Type:     schema.String,
-				Desc:     "技能名称",
+				Desc:     "技能 id，与 SKILL 目录中某项完全一致",
 				Required: true,
 			},
 			"payload": {

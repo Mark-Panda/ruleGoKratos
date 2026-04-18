@@ -241,6 +241,21 @@ func (e *FileSkillExecutor) tryReload() {
 	e.fingerprint = fingerprint
 }
 
+// ListAvailableSkillNames 返回当前目录中已加载且通过白名单的技能 id（与 run_skill 的 skill_name 一致），已排序。
+func (e *FileSkillExecutor) ListAvailableSkillNames() []string {
+	e.tryReload()
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	out := make([]string, 0, len(e.skills))
+	for name := range e.skills {
+		if e.isAllowed(name) {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Execute 执行技能：先做热更新与权限校验，再读取内容并注入 payload。
 func (e *FileSkillExecutor) Execute(ctx context.Context, skillName string, payload string) (string, error) {
 	e.tryReload()

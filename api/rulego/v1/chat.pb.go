@@ -24,12 +24,15 @@ const (
 )
 
 type ChatStreamReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // 用户消息
-	Model         string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`     // 模型名称，可选，默认使用配置中的模型
-	History       []*ChatMessage         `protobuf:"bytes,3,rep,name=history,proto3" json:"history,omitempty"` // 对话历史
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Message         string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`                                             // 用户消息
+	Model           string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`                                                 // 模型名称（托管模式下可留空，由模型条目解析）
+	History         []*ChatMessage         `protobuf:"bytes,3,rep,name=history,proto3" json:"history,omitempty"`                                             // 对话历史
+	LlmConfigId     int64                  `protobuf:"varint,4,opt,name=llm_config_id,json=llmConfigId,proto3" json:"llm_config_id,omitempty"`               // 模型管理：LLM 配置 ID（与 llm_model_entry_id 成对）
+	LlmModelEntryId int64                  `protobuf:"varint,5,opt,name=llm_model_entry_id,json=llmModelEntryId,proto3" json:"llm_model_entry_id,omitempty"` // 模型管理：模型条目 ID
+	Attachments     []*ChatAttachment      `protobuf:"bytes,6,rep,name=attachments,proto3" json:"attachments,omitempty"`                                     // 上传文件（文本内联或 base64）
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ChatStreamReq) Reset() {
@@ -83,6 +86,96 @@ func (x *ChatStreamReq) GetHistory() []*ChatMessage {
 	return nil
 }
 
+func (x *ChatStreamReq) GetLlmConfigId() int64 {
+	if x != nil {
+		return x.LlmConfigId
+	}
+	return 0
+}
+
+func (x *ChatStreamReq) GetLlmModelEntryId() int64 {
+	if x != nil {
+		return x.LlmModelEntryId
+	}
+	return 0
+}
+
+func (x *ChatStreamReq) GetAttachments() []*ChatAttachment {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+// 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。
+type ChatAttachment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	MimeType      string                 `protobuf:"bytes,2,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`                                        // 可直接嵌入提示词的文本内容
+	ContentBase64 string                 `protobuf:"bytes,4,opt,name=content_base64,json=contentBase64,proto3" json:"content_base64,omitempty"` // 可选，原始字节 base64（图片/压缩包等）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChatAttachment) Reset() {
+	*x = ChatAttachment{}
+	mi := &file_api_rulego_v1_chat_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChatAttachment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatAttachment) ProtoMessage() {}
+
+func (x *ChatAttachment) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_chat_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatAttachment.ProtoReflect.Descriptor instead.
+func (*ChatAttachment) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_chat_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ChatAttachment) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *ChatAttachment) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *ChatAttachment) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *ChatAttachment) GetContentBase64() string {
+	if x != nil {
+		return x.ContentBase64
+	}
+	return ""
+}
+
 type ChatMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`       // "user" 或 "assistant"
@@ -93,7 +186,7 @@ type ChatMessage struct {
 
 func (x *ChatMessage) Reset() {
 	*x = ChatMessage{}
-	mi := &file_api_rulego_v1_chat_proto_msgTypes[1]
+	mi := &file_api_rulego_v1_chat_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -105,7 +198,7 @@ func (x *ChatMessage) String() string {
 func (*ChatMessage) ProtoMessage() {}
 
 func (x *ChatMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_chat_proto_msgTypes[1]
+	mi := &file_api_rulego_v1_chat_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -118,7 +211,7 @@ func (x *ChatMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMessage.ProtoReflect.Descriptor instead.
 func (*ChatMessage) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_chat_proto_rawDescGZIP(), []int{1}
+	return file_api_rulego_v1_chat_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ChatMessage) GetRole() string {
@@ -146,7 +239,7 @@ type ChatStreamReply struct {
 
 func (x *ChatStreamReply) Reset() {
 	*x = ChatStreamReply{}
-	mi := &file_api_rulego_v1_chat_proto_msgTypes[2]
+	mi := &file_api_rulego_v1_chat_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -158,7 +251,7 @@ func (x *ChatStreamReply) String() string {
 func (*ChatStreamReply) ProtoMessage() {}
 
 func (x *ChatStreamReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_chat_proto_msgTypes[2]
+	mi := &file_api_rulego_v1_chat_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -171,7 +264,7 @@ func (x *ChatStreamReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatStreamReply.ProtoReflect.Descriptor instead.
 func (*ChatStreamReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_chat_proto_rawDescGZIP(), []int{2}
+	return file_api_rulego_v1_chat_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ChatStreamReply) GetContent() string {
@@ -199,11 +292,19 @@ var File_api_rulego_v1_chat_proto protoreflect.FileDescriptor
 
 const file_api_rulego_v1_chat_proto_rawDesc = "" +
 	"\n" +
-	"\x18api/rulego/v1/chat.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1copenapi/v3/annotations.proto\"q\n" +
+	"\x18api/rulego/v1/chat.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1copenapi/v3/annotations.proto\"\xff\x01\n" +
 	"\rChatStreamReq\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x14\n" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x120\n" +
-	"\ahistory\x18\x03 \x03(\v2\x16.rulego.v1.ChatMessageR\ahistory\";\n" +
+	"\ahistory\x18\x03 \x03(\v2\x16.rulego.v1.ChatMessageR\ahistory\x12\"\n" +
+	"\rllm_config_id\x18\x04 \x01(\x03R\vllmConfigId\x12+\n" +
+	"\x12llm_model_entry_id\x18\x05 \x01(\x03R\x0fllmModelEntryId\x12;\n" +
+	"\vattachments\x18\x06 \x03(\v2\x19.rulego.v1.ChatAttachmentR\vattachments\"\x84\x01\n" +
+	"\x0eChatAttachment\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1b\n" +
+	"\tmime_type\x18\x02 \x01(\tR\bmimeType\x12\x12\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\x12%\n" +
+	"\x0econtent_base64\x18\x04 \x01(\tR\rcontentBase64\";\n" +
 	"\vChatMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\"U\n" +
@@ -229,21 +330,23 @@ func file_api_rulego_v1_chat_proto_rawDescGZIP() []byte {
 	return file_api_rulego_v1_chat_proto_rawDescData
 }
 
-var file_api_rulego_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_api_rulego_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_api_rulego_v1_chat_proto_goTypes = []any{
 	(*ChatStreamReq)(nil),   // 0: rulego.v1.ChatStreamReq
-	(*ChatMessage)(nil),     // 1: rulego.v1.ChatMessage
-	(*ChatStreamReply)(nil), // 2: rulego.v1.ChatStreamReply
+	(*ChatAttachment)(nil),  // 1: rulego.v1.ChatAttachment
+	(*ChatMessage)(nil),     // 2: rulego.v1.ChatMessage
+	(*ChatStreamReply)(nil), // 3: rulego.v1.ChatStreamReply
 }
 var file_api_rulego_v1_chat_proto_depIdxs = []int32{
-	1, // 0: rulego.v1.ChatStreamReq.history:type_name -> rulego.v1.ChatMessage
-	0, // 1: rulego.v1.Chat.ChatStream:input_type -> rulego.v1.ChatStreamReq
-	2, // 2: rulego.v1.Chat.ChatStream:output_type -> rulego.v1.ChatStreamReply
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: rulego.v1.ChatStreamReq.history:type_name -> rulego.v1.ChatMessage
+	1, // 1: rulego.v1.ChatStreamReq.attachments:type_name -> rulego.v1.ChatAttachment
+	0, // 2: rulego.v1.Chat.ChatStream:input_type -> rulego.v1.ChatStreamReq
+	3, // 3: rulego.v1.Chat.ChatStream:output_type -> rulego.v1.ChatStreamReply
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_rulego_v1_chat_proto_init() }
@@ -257,7 +360,7 @@ func file_api_rulego_v1_chat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_rulego_v1_chat_proto_rawDesc), len(file_api_rulego_v1_chat_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

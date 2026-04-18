@@ -21,7 +21,7 @@ import { WorkflowExecuteSection } from './sections/WorkflowExecuteSection';
 import { DocsSection } from './sections/DocsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AgentSection } from './sections/AgentSection';
-import { IntroPage } from '../landing/IntroPage';
+import { OverviewChatSection } from './sections/OverviewChatSection';
 
 type MenuKey =
   | 'intro'
@@ -81,7 +81,7 @@ export const AdminPanel: React.FC = () => {
   }, []);
 
   const renderContent = () => {
-    if (activeMenu === 'intro') return <IntroPage />;
+    if (activeMenu === 'intro') return <OverviewChatSection />;
     if (activeMenu === 'workflow') return <WorkflowSection />;
     if (activeMenu === 'workflow-run') return <WorkflowExecuteSection />;
     if (activeMenu === 'workflow-logs') return <WorkflowRunLogsSection />;
@@ -96,7 +96,7 @@ export const AdminPanel: React.FC = () => {
   const getPageTitle = () => {
     switch (activeMenu) {
       case 'intro':
-        return '概览';
+        return 'Code 助手';
       case 'workflow':
         return '流程管理';
       case 'workflow-run':
@@ -116,7 +116,7 @@ export const AdminPanel: React.FC = () => {
       case 'agent-models':
         return '模型管理';
       default:
-        return '概览';
+        return 'Code 助手';
     }
   };
 
@@ -134,6 +134,7 @@ export const AdminPanel: React.FC = () => {
     )
       return 'Agent 管理';
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
+    if (activeMenu === 'intro') return '工作台';
     return '系统';
   };
 
@@ -182,7 +183,7 @@ export const AdminPanel: React.FC = () => {
             mode="vertical"
             isCollapsed={isCollapsed}
             items={[
-              { itemKey: 'intro', text: '概览', icon: <IconHome /> },
+              { itemKey: 'intro', text: 'Code 助手', icon: <IconHome /> },
               {
                 text: '工作流引擎',
                 itemKey: 'engine',
@@ -336,7 +337,7 @@ export const AdminPanel: React.FC = () => {
             }}
             tabBarExtraContent={null}
           >
-            <TabPane tab="概览" itemKey="intro" />
+            <TabPane tab="Code 助手" itemKey="intro" />
             {activeMenu !== 'intro' && (
               <TabPane tab={getPageTitle()} itemKey={activeMenu} closable />
             )}

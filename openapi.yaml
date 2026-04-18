@@ -696,6 +696,18 @@ components:
                  The JSON representation for `ListValue` is JSON array.
         google.protobuf.Value:
             description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        rulego.v1.ChatAttachment:
+            type: object
+            properties:
+                filename:
+                    type: string
+                mimeType:
+                    type: string
+                text:
+                    type: string
+                contentBase64:
+                    type: string
+            description: 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。
         rulego.v1.ChatMessage:
             type: object
             properties:
@@ -723,6 +735,14 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.ChatMessage'
+                llmConfigId:
+                    type: string
+                llmModelEntryId:
+                    type: string
+                attachments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ChatAttachment'
         rulego.v1.ComponentUseRuleItem:
             type: object
             properties:

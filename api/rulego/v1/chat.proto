@@ -26,8 +26,19 @@ service Chat {
 
 message ChatStreamReq {
     string message = 1;           // 用户消息
-    string model = 2;             // 模型名称，可选，默认使用配置中的模型
+    string model = 2;             // 模型名称（托管模式下可留空，由模型条目解析）
     repeated ChatMessage history = 3; // 对话历史
+    int64 llm_config_id = 4;      // 模型管理：LLM 配置 ID（与 llm_model_entry_id 成对）
+    int64 llm_model_entry_id = 5; // 模型管理：模型条目 ID
+    repeated ChatAttachment attachments = 6; // 上传文件（文本内联或 base64）
+}
+
+// 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。
+message ChatAttachment {
+    string filename = 1;
+    string mime_type = 2;
+    string text = 3;             // 可直接嵌入提示词的文本内容
+    string content_base64 = 4;   // 可选，原始字节 base64（图片/压缩包等）
 }
 
 message ChatMessage {
