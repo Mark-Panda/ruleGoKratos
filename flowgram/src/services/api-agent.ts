@@ -102,11 +102,58 @@ export interface LlmModelEntryPayload {
   enabled: boolean;
 }
 
+/**
+ * 后端 JSON 来自 protobuf 生成结构体的 `encoding/json` 标签，嵌套字段多为 snake_case（如 model_name、base_url）。
+ * 前端约定 camelCase，不映射则下拉选项文案为空、enabled 判断异常。
+ */
+function normalizeLlmModelEntryItem(raw: Record<string, unknown>): LlmModelEntryItem {
+  const created =
+    raw.created_at != null ? String(raw.created_at) : raw.createdAt != null ? String(raw.createdAt) : undefined;
+  const updated =
+    raw.updated_at != null ? String(raw.updated_at) : raw.updatedAt != null ? String(raw.updatedAt) : undefined;
+  return {
+    id: Number(raw.id ?? 0),
+    configId: Number(raw.config_id ?? raw.configId ?? 0),
+    modelName: String(raw.model_name ?? raw.modelName ?? '').trim(),
+    description: String(raw.description ?? ''),
+    enabled: raw.enabled === true,
+    ...(created != null ? { createdAt: created } : {}),
+    ...(updated != null ? { updatedAt: updated } : {}),
+  };
+}
+
+function normalizeLlmConfigItem(raw: Record<string, unknown>): LlmConfigItem {
+  const modelsRaw = raw.models;
+  const models = Array.isArray(modelsRaw)
+    ? modelsRaw.map((m) => normalizeLlmModelEntryItem(m as Record<string, unknown>))
+    : [];
+  const created =
+    raw.created_at != null ? String(raw.created_at) : raw.createdAt != null ? String(raw.createdAt) : undefined;
+  const updated =
+    raw.updated_at != null ? String(raw.updated_at) : raw.updatedAt != null ? String(raw.updatedAt) : undefined;
+  return {
+    id: Number(raw.id ?? 0),
+    name: String(raw.name ?? ''),
+    provider: String(raw.provider ?? ''),
+    baseUrl: String(raw.base_url ?? raw.baseUrl ?? ''),
+    apiKey: String(raw.api_key ?? raw.apiKey ?? ''),
+    enabled: raw.enabled === true,
+    description: String(raw.description ?? ''),
+    models,
+    ...(created != null ? { createdAt: created } : {}),
+    ...(updated != null ? { updatedAt: updated } : {}),
+  };
+}
+
 export const listLlmConfigs = () =>
-  requestJSON<{ items: LlmConfigItem[] }>('/admin/llm-configs').then((r) => r.items || []);
+  requestJSON<{ items: unknown[] }>('/admin/llm-configs').then((r) =>
+    (Array.isArray(r.items) ? r.items : []).map((row) => normalizeLlmConfigItem(row as Record<string, unknown>))
+  );
 
 export const createLlmConfig = (payload: LlmConfigPayload) =>
-  requestJSON<LlmConfigItem>('/admin/llm-configs', { method: 'POST', body: payload });
+  requestJSON<unknown>('/admin/llm-configs', { method: 'POST', body: payload }).then((row) =>
+    normalizeLlmConfigItem(row as Record<string, unknown>)
+  );
 
 export const updateLlmConfig = (id: number, payload: LlmConfigPayload) =>
   requestJSON(`/admin/llm-configs/${id}`, { method: 'PUT', body: payload });
@@ -115,11 +162,12 @@ export const deleteLlmConfig = (id: number) =>
   requestJSON(`/admin/llm-configs/${id}`, { method: 'DELETE' });
 
 export const createLlmModelEntry = (configId: number, payload: LlmModelEntryPayload) =>
-  requestJSON<LlmModelEntryItem>(`/admin/llm-configs/${configId}/models`, {
+  requestJSON<unknown>(`/admin/llm-configs/${configId}/models`, {
     method: 'POST',
     body: payload,
-  });
+  }).then((row) => normalizeLlmModelEntryItem(row as Record<string, unknown>));
 
+/** 服务端返回空的 UpdateLlmModelEntryReply，不做 normalize */
 export const updateLlmModelEntry = (id: number, payload: LlmModelEntryPayload) =>
   requestJSON(`/admin/llm-model-entries/${id}`, { method: 'PUT', body: payload });
 

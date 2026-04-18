@@ -39,6 +39,8 @@ type AgentHarnessLLM struct {
 
 // AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）；白名单见 skillAllow / mcpAllow。
 type AgentHarnessLLMConfig struct {
+	LlmConfigID      int64 `json:"llmConfigId"`
+	LlmModelEntryID int64 `json:"llmModelEntryId"`
 	Model                string `json:"model"`
 	SystemPrompt         string `json:"systemPrompt"`
 	UserPrompt           string `json:"userPrompt"`
@@ -147,6 +149,10 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		SystemPrompt:   systemPrompt,
 		ToolOptions:    toolOpts,
 		ConfigOverride: cfgOverride,
+	}
+	if x.Config.LlmConfigID > 0 && x.Config.LlmModelEntryID > 0 {
+		req.LlmConfigID = x.Config.LlmConfigID
+		req.LlmModelEntryID = x.Config.LlmModelEntryID
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)

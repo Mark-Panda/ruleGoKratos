@@ -194,7 +194,7 @@ func (f *fakeToolCallingModel) WithTools(tools []*schema.ToolInfo) (model.ToolCa
 
 func TestExecuteHarnessShouldYieldErrorWhenModelStreamFailed(t *testing.T) {
 	uc := newTestAgentUsecase()
-	uc.chatModelFunc = func(ctx context.Context, modelName string) (model.ToolCallingChatModel, error) {
+	uc.chatModelFunc = func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error) {
 		return &fakeToolCallingModel{streamErr: errors.New("stream init failed")}, nil
 	}
 	gen := uc.ExecuteStream(context.Background(), "", nil, "hello")

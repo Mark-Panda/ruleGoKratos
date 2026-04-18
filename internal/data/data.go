@@ -109,6 +109,7 @@ func NewRuleConfig() *types.Config {
 
 // 初始化规则引擎
 func NewRuleEngine(c *conf.Data, ruleConfig *types.Config, agentUc *biz.AgentUsecase) (*rulego.RuleGo, error) {
+	agentUc.SetManagedLLMResolver(NewManagedLLMResolver())
 	WireRuleGoAgent(agentUc)
 	// 获取所有的规则链信息
 	var ruleChainList []RuleChain

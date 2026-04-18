@@ -40,7 +40,9 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
         title: `AgentLLM_${++index}`,
         positionType: 'middle',
         inputsValues: {
-          model: { type: 'template', content: '' },
+          llmConfigId: { type: 'constant', content: 0 },
+          llmModelEntryId: { type: 'constant', content: 0 },
+          model: { type: 'constant', content: '' },
           userPrompt: { type: 'template', content: '' },
           systemPrompt: {
             type: 'template',

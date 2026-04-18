@@ -39,9 +39,11 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
         title: `LLM_${++index}`,
         positionType: 'middle',
         inputsValues: {
+          llmConfigId: { type: 'constant', content: 0 },
+          llmModelEntryId: { type: 'constant', content: 0 },
           model: {
             type: 'constant',
-            content: 'gpt-3.5-turbo',
+            content: '',
           },
           userPrompt: {
             type: 'template',
@@ -69,11 +71,11 @@ export const LLMNodeRegistry: FlowNodeRegistry = {
           },
           key: {
             type: 'constant',
-            content: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+            content: '',
           },
           url: {
             type: 'constant',
-            content: 'https://mock-ai-url/api/v3',
+            content: '',
           },
         },
         inputs: {

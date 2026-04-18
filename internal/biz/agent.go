@@ -56,6 +56,9 @@ type HarnessRequest struct {
 	SystemPrompt    string
 	ToolOptions     *HarnessToolOptions
 	ConfigOverride  *HarnessConfig
+	// LlmConfigID / LlmModelEntryID 非零时从模型管理加载凭证与模型名，不再读取环境变量或 YAML ai.* 配置。
+	LlmConfigID      int64
+	LlmModelEntryID int64
 }
 
 type SkillExecutor interface {
@@ -79,13 +82,14 @@ func (n *NoopMcpExecutor) Call(ctx context.Context, server string, tool string, 
 }
 
 type AgentUsecase struct {
-	log           *log.Helper
-	config        *conf.Bootstrap
-	harnessLogger *HarnessLogger
-	harnessConfig HarnessConfig
-	skillExecutor SkillExecutor
-	mcpExecutor   McpExecutor
-	chatModelFunc func(ctx context.Context, modelName string) (model.ToolCallingChatModel, error)
+	log             *log.Helper
+	config          *conf.Bootstrap
+	harnessLogger   *HarnessLogger
+	harnessConfig   HarnessConfig
+	skillExecutor   SkillExecutor
+	mcpExecutor     McpExecutor
+	managedLLM      ManagedLLMResolver
+	chatModelFunc   func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error)
 }
 
 func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
@@ -139,66 +143,42 @@ func (uc *AgentUsecase) SetHarnessConfig(cfg HarnessConfig) {
 	uc.harnessConfig = cfg
 }
 
-type resolvedModel struct {
-	name    string
-	apiKey  string
-	baseURL string
+func (uc *AgentUsecase) SetManagedLLMResolver(r ManagedLLMResolver) {
+	uc.managedLLM = r
 }
 
-func (uc *AgentUsecase) resolveModel(modelName string) (*resolvedModel, error) {
-	if uc.config == nil || uc.config.Ai == nil {
-		return nil, errors.New("未配置AI模型")
+func (uc *AgentUsecase) ResolveManagedLLM(ctx context.Context, configID int64, entryID int64) (modelName string, apiKey string, baseURL string, err error) {
+	if uc.managedLLM == nil {
+		return "", "", "", errors.New("LLM 管理服务未就绪")
 	}
-
-	if modelName == "" {
-		if uc.config.Ai.Doubao != nil && uc.config.Ai.Doubao.Model != "" {
-			return &resolvedModel{
-				name:    uc.config.Ai.Doubao.Model,
-				apiKey:  uc.config.Ai.Doubao.ApiKey,
-				baseURL: uc.config.Ai.Doubao.ApiBaseUrl,
-			}, nil
-		}
-		if uc.config.Ai.Openai != nil && uc.config.Ai.Openai.Model != "" {
-			return &resolvedModel{
-				name:    uc.config.Ai.Openai.Model,
-				apiKey:  uc.config.Ai.Openai.ApiKey,
-				baseURL: uc.config.Ai.Openai.ApiBaseUrl,
-			}, nil
-		}
-		return nil, errors.New("未配置AI模型")
-	}
-
-	if uc.config.Ai.Doubao != nil && uc.config.Ai.Doubao.Model == modelName {
-		return &resolvedModel{
-			name:    modelName,
-			apiKey:  uc.config.Ai.Doubao.ApiKey,
-			baseURL: uc.config.Ai.Doubao.ApiBaseUrl,
-		}, nil
-	}
-	if uc.config.Ai.Openai != nil {
-		return &resolvedModel{
-			name:    modelName,
-			apiKey:  uc.config.Ai.Openai.ApiKey,
-			baseURL: uc.config.Ai.Openai.ApiBaseUrl,
-		}, nil
-	}
-	return nil, fmt.Errorf("未找到模型配置: %s", modelName)
+	return uc.managedLLM.ResolveManagedLLM(ctx, configID, entryID)
 }
 
-func (uc *AgentUsecase) newChatModel(ctx context.Context, modelName string) (model.ToolCallingChatModel, error) {
+func defaultOpenAIBaseURL(base string) string {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return "https://api.openai.com/v1"
+	}
+	return base
+}
+
+func (uc *AgentUsecase) newChatModel(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error) {
 	if uc.chatModelFunc != nil {
-		return uc.chatModelFunc(ctx, modelName)
+		return uc.chatModelFunc(ctx, req)
 	}
-	resolved, err := uc.resolveModel(modelName)
-	if err != nil {
-		return nil, err
+	if req.LlmConfigID > 0 && req.LlmModelEntryID > 0 {
+		name, key, base, err := uc.ResolveManagedLLM(ctx, req.LlmConfigID, req.LlmModelEntryID)
+		if err != nil {
+			return nil, err
+		}
+		return einoopenai.NewChatModel(ctx, &einoopenai.ChatModelConfig{
+			APIKey:  key,
+			BaseURL: defaultOpenAIBaseURL(base),
+			Model:   name,
+			Timeout: 60 * time.Second,
+		})
 	}
-	return einoopenai.NewChatModel(ctx, &einoopenai.ChatModelConfig{
-		APIKey:  resolved.apiKey,
-		BaseURL: resolved.baseURL,
-		Model:   resolved.name,
-		Timeout: 60 * time.Second,
-	})
+	return nil, errors.New("请在流程节点中选择模型管理中的 LLM 配置与模型（已不再使用环境变量 AI 密钥）")
 }
 
 func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) []*schema.Message {
@@ -269,13 +249,21 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 	return func(yield func(*StreamMessage, error) bool) {
 		requestID := uuid.NewString()
 		start := time.Now()
-		uc.harnessLogger.LogRunStart(requestID, req.Model, len(req.History), req.Input)
+		logModel := req.Model
+		if req.LlmConfigID > 0 && req.LlmModelEntryID > 0 {
+			if n, _, _, err := uc.ResolveManagedLLM(ctx, req.LlmConfigID, req.LlmModelEntryID); err == nil && n != "" {
+				logModel = n
+			} else {
+				logModel = fmt.Sprintf("managed:%d:%d", req.LlmConfigID, req.LlmModelEntryID)
+			}
+		}
+		uc.harnessLogger.LogRunStart(requestID, logModel, len(req.History), req.Input)
 		defer func() {
 			uc.harnessLogger.LogRunFinish(requestID, time.Since(start))
 		}()
 		cfg := uc.effectiveHarnessConfig(req.ConfigOverride)
 
-		einoModel, err := uc.newChatModel(ctx, req.Model)
+		einoModel, err := uc.newChatModel(ctx, req)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "init_model", err)
 			yield(nil, sanitizeExternalError(err))

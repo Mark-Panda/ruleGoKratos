@@ -23,6 +23,18 @@ export const aiLlmMappingSpec: NodeMappingSpec = {
   nodeType: 'ai/llm',
   fields: [
     {
+      inputKey: 'llmConfigId',
+      dslKey: 'llmConfigId',
+      valueType: 'number',
+      defaultValue: 0,
+    },
+    {
+      inputKey: 'llmModelEntryId',
+      dslKey: 'llmModelEntryId',
+      valueType: 'number',
+      defaultValue: 0,
+    },
+    {
       inputKey: 'model',
       dslKey: 'model',
       valueType: 'constant',
@@ -75,6 +87,18 @@ export const aiLlmMappingSpec: NodeMappingSpec = {
 export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
   nodeType: 'ai/agentHarness',
   fields: [
+    {
+      inputKey: 'llmConfigId',
+      dslKey: 'llmConfigId',
+      valueType: 'number',
+      defaultValue: 0,
+    },
+    {
+      inputKey: 'llmModelEntryId',
+      dslKey: 'llmModelEntryId',
+      valueType: 'number',
+      defaultValue: 0,
+    },
     {
       inputKey: 'model',
       dslKey: 'model',
