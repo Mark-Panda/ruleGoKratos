@@ -44,6 +44,11 @@ function Router() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  const hashPath = hash.split('?')[0];
+  /** 全局执行日志与 `#/workflow/:id` 路由区分，避免 id 被解析为 `logs` */
+  if (hashPath === '#/workflow/logs') {
+    return <AdminPanel />;
+  }
   const match = hash.match(/^#\/workflow\/([^/]+)(?:\/(design))?$/);
   if (match) {
     const id = decodeURIComponent(match[1]);

@@ -33,6 +33,7 @@ import { createRuleBase, getRuleDetail } from '../services/api-rules';
 import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
 import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
+import { runLogChainDisplay } from '../utils/run-log-display';
 
 export interface RuleDetailData {
   ruleChain: {
@@ -479,12 +480,12 @@ export const RuleDetail: React.FC<{
                         columns={[
                           {
                             title: '工作流名称',
-                            dataIndex: 'ruleChain.name',
+                            render: (_: unknown, r: any) => runLogChainDisplay(r).name || '—',
                             width: 200,
                           },
                           {
                             title: '规则链ID',
-                            dataIndex: 'ruleChain.id',
+                            render: (_: unknown, r: any) => runLogChainDisplay(r).id || '—',
                             width: 160,
                           },
                           {
@@ -533,11 +534,12 @@ export const RuleDetail: React.FC<{
                                 size="small"
                                 onClick={() => {
                                   try {
-                                    const rcjson = {
-                                      ruleChain: r?.ruleChain,
-                                      metadata: r?.metadata,
-                                    } as any;
-                                    const doc = buildDocumentFromRuleChainJSON(rcjson) as any;
+                                    const dslRoot = r?.ruleChain;
+                                    const doc = buildDocumentFromRuleChainJSON(
+                                      dslRoot && typeof dslRoot === 'object'
+                                        ? dslRoot
+                                        : ({ ruleChain: {}, metadata: {} } as any)
+                                    ) as any;
                                     setViewerDoc(doc);
                                     const logs = Array.isArray(r?.logs) ? r.logs : [];
                                     setViewerLogs({
@@ -593,9 +595,18 @@ export const RuleDetail: React.FC<{
         title="运行日志查看"
         onCancel={() => setViewerOpen(false)}
         footer={null}
-        width={1200}
+        width="98vw"
+        centered
+        style={{ maxWidth: '100vw' }}
+        bodyStyle={{
+          height: 'calc(100vh - 96px)',
+          maxHeight: 'calc(100vh - 96px)',
+          padding: 8,
+          overflow: 'hidden',
+          boxSizing: 'border-box',
+        }}
       >
-        <div style={{ height: '70vh' }}>
+        <div style={{ height: '100%', width: '100%', minHeight: 0 }}>
           <Editor
             initialDoc={viewerDoc}
             showTopToolbar={true}
