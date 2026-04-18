@@ -46,6 +46,52 @@ service Admin {
       delete: "/api/v1/admin/mcps/{id}"
     };
   }
+
+  rpc ListLlmConfigs (ListLlmConfigsRequest) returns (ListLlmConfigsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/llm-configs"
+    };
+  }
+
+  rpc CreateLlmConfig (CreateLlmConfigRequest) returns (LlmConfigItem) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/llm-configs"
+      body: "*"
+    };
+  }
+
+  rpc UpdateLlmConfig (UpdateLlmConfigRequest) returns (UpdateLlmConfigReply) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/llm-configs/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteLlmConfig (DeleteLlmConfigRequest) returns (DeleteLlmConfigReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/admin/llm-configs/{id}"
+    };
+  }
+
+  rpc CreateLlmModelEntry (CreateLlmModelEntryRequest) returns (LlmModelEntryItem) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/llm-configs/{config_id}/models"
+      body: "*"
+    };
+  }
+
+  rpc UpdateLlmModelEntry (UpdateLlmModelEntryRequest) returns (UpdateLlmModelEntryReply) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/llm-model-entries/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteLlmModelEntry (DeleteLlmModelEntryRequest) returns (DeleteLlmModelEntryReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/admin/llm-model-entries/{id}"
+    };
+  }
 }
 
 message ListSkillsRequest {}
@@ -115,3 +161,88 @@ message DeleteMcpConfigRequest {
 }
 
 message DeleteMcpConfigReply {}
+
+message ListLlmConfigsRequest {}
+
+message LlmModelEntryItem {
+  int64 id = 1;
+  int64 config_id = 2 [json_name = "configId"];
+  string model_name = 3 [json_name = "modelName"];
+  string description = 4;
+  bool enabled = 5;
+  string created_at = 6 [json_name = "createdAt"];
+  string updated_at = 7 [json_name = "updatedAt"];
+}
+
+message LlmConfigItem {
+  int64 id = 1;
+  string name = 2;
+  string provider = 3;
+  string base_url = 4 [json_name = "baseUrl"];
+  bool enabled = 5;
+  string api_key = 6 [json_name = "apiKey"];
+  string description = 7;
+  repeated LlmModelEntryItem models = 8;
+  string created_at = 9 [json_name = "createdAt"];
+  string updated_at = 10 [json_name = "updatedAt"];
+}
+
+message ListLlmConfigsReply {
+  repeated LlmConfigItem items = 1;
+}
+
+message LlmModelEntryDraft {
+  string model_name = 1 [json_name = "modelName"];
+  string description = 2;
+  bool enabled = 3;
+}
+
+message CreateLlmConfigRequest {
+  string name = 1;
+  string provider = 2;
+  string base_url = 3 [json_name = "baseUrl"];
+  string api_key = 4 [json_name = "apiKey"];
+  bool enabled = 5;
+  string description = 6;
+  repeated LlmModelEntryDraft models = 7;
+}
+
+message UpdateLlmConfigRequest {
+  int64 id = 1;
+  string name = 2;
+  string provider = 3;
+  string base_url = 4 [json_name = "baseUrl"];
+  string api_key = 5 [json_name = "apiKey"];
+  bool enabled = 6;
+  string description = 7;
+}
+
+message UpdateLlmConfigReply {}
+
+message DeleteLlmConfigRequest {
+  int64 id = 1;
+}
+
+message DeleteLlmConfigReply {}
+
+message CreateLlmModelEntryRequest {
+  int64 config_id = 1 [json_name = "configId"];
+  string model_name = 2 [json_name = "modelName"];
+  string description = 3;
+  bool enabled = 4;
+}
+
+message UpdateLlmModelEntryRequest {
+  int64 id = 1;
+  string model_name = 2 [json_name = "modelName"];
+  string description = 3;
+  bool enabled = 4;
+}
+
+message UpdateLlmModelEntryReply {}
+
+message DeleteLlmModelEntryRequest {
+  int64 id = 1;
+}
+
+message DeleteLlmModelEntryReply {}

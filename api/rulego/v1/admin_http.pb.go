@@ -19,18 +19,32 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationAdminCreateLlmConfig = "/rulego.v1.Admin/CreateLlmConfig"
+const OperationAdminCreateLlmModelEntry = "/rulego.v1.Admin/CreateLlmModelEntry"
 const OperationAdminCreateMcpConfig = "/rulego.v1.Admin/CreateMcpConfig"
+const OperationAdminDeleteLlmConfig = "/rulego.v1.Admin/DeleteLlmConfig"
+const OperationAdminDeleteLlmModelEntry = "/rulego.v1.Admin/DeleteLlmModelEntry"
 const OperationAdminDeleteMcpConfig = "/rulego.v1.Admin/DeleteMcpConfig"
+const OperationAdminListLlmConfigs = "/rulego.v1.Admin/ListLlmConfigs"
 const OperationAdminListMcpConfigs = "/rulego.v1.Admin/ListMcpConfigs"
 const OperationAdminListSkills = "/rulego.v1.Admin/ListSkills"
+const OperationAdminUpdateLlmConfig = "/rulego.v1.Admin/UpdateLlmConfig"
+const OperationAdminUpdateLlmModelEntry = "/rulego.v1.Admin/UpdateLlmModelEntry"
 const OperationAdminUpdateMcpConfig = "/rulego.v1.Admin/UpdateMcpConfig"
 const OperationAdminUploadSkill = "/rulego.v1.Admin/UploadSkill"
 
 type AdminHTTPServer interface {
+	CreateLlmConfig(context.Context, *CreateLlmConfigRequest) (*LlmConfigItem, error)
+	CreateLlmModelEntry(context.Context, *CreateLlmModelEntryRequest) (*LlmModelEntryItem, error)
 	CreateMcpConfig(context.Context, *CreateMcpConfigRequest) (*McpConfigItem, error)
+	DeleteLlmConfig(context.Context, *DeleteLlmConfigRequest) (*DeleteLlmConfigReply, error)
+	DeleteLlmModelEntry(context.Context, *DeleteLlmModelEntryRequest) (*DeleteLlmModelEntryReply, error)
 	DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error)
+	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
 	ListMcpConfigs(context.Context, *ListMcpConfigsRequest) (*ListMcpConfigsReply, error)
 	ListSkills(context.Context, *ListSkillsRequest) (*ListSkillsReply, error)
+	UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error)
+	UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error)
 	UpdateMcpConfig(context.Context, *UpdateMcpConfigRequest) (*UpdateMcpConfigReply, error)
 	UploadSkill(context.Context, *UploadSkillRequest) (*UploadSkillReply, error)
 }
@@ -43,6 +57,13 @@ func RegisterAdminHTTPServer(s *http.Server, srv AdminHTTPServer) {
 	r.POST("/api/v1/admin/mcps", _Admin_CreateMcpConfig0_HTTP_Handler(srv))
 	r.PUT("/api/v1/admin/mcps/{id}", _Admin_UpdateMcpConfig0_HTTP_Handler(srv))
 	r.DELETE("/api/v1/admin/mcps/{id}", _Admin_DeleteMcpConfig0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/llm-configs", _Admin_ListLlmConfigs0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/llm-configs", _Admin_CreateLlmConfig0_HTTP_Handler(srv))
+	r.PUT("/api/v1/admin/llm-configs/{id}", _Admin_UpdateLlmConfig0_HTTP_Handler(srv))
+	r.DELETE("/api/v1/admin/llm-configs/{id}", _Admin_DeleteLlmConfig0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/llm-configs/{config_id}/models", _Admin_CreateLlmModelEntry0_HTTP_Handler(srv))
+	r.PUT("/api/v1/admin/llm-model-entries/{id}", _Admin_UpdateLlmModelEntry0_HTTP_Handler(srv))
+	r.DELETE("/api/v1/admin/llm-model-entries/{id}", _Admin_DeleteLlmModelEntry0_HTTP_Handler(srv))
 }
 
 func _Admin_ListSkills0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
@@ -174,11 +195,178 @@ func _Admin_DeleteMcpConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Con
 	}
 }
 
+func _Admin_ListLlmConfigs0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListLlmConfigsRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminListLlmConfigs)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListLlmConfigs(ctx, req.(*ListLlmConfigsRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListLlmConfigsReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_CreateLlmConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateLlmConfigRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminCreateLlmConfig)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateLlmConfig(ctx, req.(*CreateLlmConfigRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*LlmConfigItem)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_UpdateLlmConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateLlmConfigRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminUpdateLlmConfig)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateLlmConfig(ctx, req.(*UpdateLlmConfigRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UpdateLlmConfigReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_DeleteLlmConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in DeleteLlmConfigRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminDeleteLlmConfig)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.DeleteLlmConfig(ctx, req.(*DeleteLlmConfigRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*DeleteLlmConfigReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_CreateLlmModelEntry0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateLlmModelEntryRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminCreateLlmModelEntry)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateLlmModelEntry(ctx, req.(*CreateLlmModelEntryRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*LlmModelEntryItem)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_UpdateLlmModelEntry0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateLlmModelEntryRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminUpdateLlmModelEntry)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateLlmModelEntry(ctx, req.(*UpdateLlmModelEntryRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UpdateLlmModelEntryReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_DeleteLlmModelEntry0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in DeleteLlmModelEntryRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminDeleteLlmModelEntry)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.DeleteLlmModelEntry(ctx, req.(*DeleteLlmModelEntryRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*DeleteLlmModelEntryReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type AdminHTTPClient interface {
+	CreateLlmConfig(ctx context.Context, req *CreateLlmConfigRequest, opts ...http.CallOption) (rsp *LlmConfigItem, err error)
+	CreateLlmModelEntry(ctx context.Context, req *CreateLlmModelEntryRequest, opts ...http.CallOption) (rsp *LlmModelEntryItem, err error)
 	CreateMcpConfig(ctx context.Context, req *CreateMcpConfigRequest, opts ...http.CallOption) (rsp *McpConfigItem, err error)
+	DeleteLlmConfig(ctx context.Context, req *DeleteLlmConfigRequest, opts ...http.CallOption) (rsp *DeleteLlmConfigReply, err error)
+	DeleteLlmModelEntry(ctx context.Context, req *DeleteLlmModelEntryRequest, opts ...http.CallOption) (rsp *DeleteLlmModelEntryReply, err error)
 	DeleteMcpConfig(ctx context.Context, req *DeleteMcpConfigRequest, opts ...http.CallOption) (rsp *DeleteMcpConfigReply, err error)
+	ListLlmConfigs(ctx context.Context, req *ListLlmConfigsRequest, opts ...http.CallOption) (rsp *ListLlmConfigsReply, err error)
 	ListMcpConfigs(ctx context.Context, req *ListMcpConfigsRequest, opts ...http.CallOption) (rsp *ListMcpConfigsReply, err error)
 	ListSkills(ctx context.Context, req *ListSkillsRequest, opts ...http.CallOption) (rsp *ListSkillsReply, err error)
+	UpdateLlmConfig(ctx context.Context, req *UpdateLlmConfigRequest, opts ...http.CallOption) (rsp *UpdateLlmConfigReply, err error)
+	UpdateLlmModelEntry(ctx context.Context, req *UpdateLlmModelEntryRequest, opts ...http.CallOption) (rsp *UpdateLlmModelEntryReply, err error)
 	UpdateMcpConfig(ctx context.Context, req *UpdateMcpConfigRequest, opts ...http.CallOption) (rsp *UpdateMcpConfigReply, err error)
 	UploadSkill(ctx context.Context, req *UploadSkillRequest, opts ...http.CallOption) (rsp *UploadSkillReply, err error)
 }
@@ -189,6 +377,32 @@ type AdminHTTPClientImpl struct {
 
 func NewAdminHTTPClient(client *http.Client) AdminHTTPClient {
 	return &AdminHTTPClientImpl{client}
+}
+
+func (c *AdminHTTPClientImpl) CreateLlmConfig(ctx context.Context, in *CreateLlmConfigRequest, opts ...http.CallOption) (*LlmConfigItem, error) {
+	var out LlmConfigItem
+	pattern := "/api/v1/admin/llm-configs"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminCreateLlmConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *AdminHTTPClientImpl) CreateLlmModelEntry(ctx context.Context, in *CreateLlmModelEntryRequest, opts ...http.CallOption) (*LlmModelEntryItem, error) {
+	var out LlmModelEntryItem
+	pattern := "/api/v1/admin/llm-configs/{config_id}/models"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminCreateLlmModelEntry))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 func (c *AdminHTTPClientImpl) CreateMcpConfig(ctx context.Context, in *CreateMcpConfigRequest, opts ...http.CallOption) (*McpConfigItem, error) {
@@ -204,6 +418,32 @@ func (c *AdminHTTPClientImpl) CreateMcpConfig(ctx context.Context, in *CreateMcp
 	return &out, nil
 }
 
+func (c *AdminHTTPClientImpl) DeleteLlmConfig(ctx context.Context, in *DeleteLlmConfigRequest, opts ...http.CallOption) (*DeleteLlmConfigReply, error) {
+	var out DeleteLlmConfigReply
+	pattern := "/api/v1/admin/llm-configs/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminDeleteLlmConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *AdminHTTPClientImpl) DeleteLlmModelEntry(ctx context.Context, in *DeleteLlmModelEntryRequest, opts ...http.CallOption) (*DeleteLlmModelEntryReply, error) {
+	var out DeleteLlmModelEntryReply
+	pattern := "/api/v1/admin/llm-model-entries/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminDeleteLlmModelEntry))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *AdminHTTPClientImpl) DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRequest, opts ...http.CallOption) (*DeleteMcpConfigReply, error) {
 	var out DeleteMcpConfigReply
 	pattern := "/api/v1/admin/mcps/{id}"
@@ -211,6 +451,19 @@ func (c *AdminHTTPClientImpl) DeleteMcpConfig(ctx context.Context, in *DeleteMcp
 	opts = append(opts, http.Operation(OperationAdminDeleteMcpConfig))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *AdminHTTPClientImpl) ListLlmConfigs(ctx context.Context, in *ListLlmConfigsRequest, opts ...http.CallOption) (*ListLlmConfigsReply, error) {
+	var out ListLlmConfigsReply
+	pattern := "/api/v1/admin/llm-configs"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminListLlmConfigs))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +490,32 @@ func (c *AdminHTTPClientImpl) ListSkills(ctx context.Context, in *ListSkillsRequ
 	opts = append(opts, http.Operation(OperationAdminListSkills))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *AdminHTTPClientImpl) UpdateLlmConfig(ctx context.Context, in *UpdateLlmConfigRequest, opts ...http.CallOption) (*UpdateLlmConfigReply, error) {
+	var out UpdateLlmConfigReply
+	pattern := "/api/v1/admin/llm-configs/{id}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminUpdateLlmConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *AdminHTTPClientImpl) UpdateLlmModelEntry(ctx context.Context, in *UpdateLlmModelEntryRequest, opts ...http.CallOption) (*UpdateLlmModelEntryReply, error) {
+	var out UpdateLlmModelEntryReply
+	pattern := "/api/v1/admin/llm-model-entries/{id}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminUpdateLlmModelEntry))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

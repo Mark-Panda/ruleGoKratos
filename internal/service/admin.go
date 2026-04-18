@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
+	"gorm.io/gorm"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -190,6 +191,255 @@ func (s *AdminService) DeleteMcpConfig(ctx context.Context, req *v1.DeleteMcpCon
 		return nil, err
 	}
 	return &v1.DeleteMcpConfigReply{}, nil
+}
+
+func (s *AdminService) ListLlmConfigs(ctx context.Context, _ *v1.ListLlmConfigsRequest) (*v1.ListLlmConfigsReply, error) {
+	configs, err := dao.NewLLMConfig().FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(configs))
+	for _, c := range configs {
+		ids = append(ids, c.ID)
+	}
+	entries, err := dao.NewLLMModelEntry().FindByConfigIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	byCfg := make(map[int64][]dao.LLMModelEntry)
+	for _, e := range entries {
+		byCfg[e.ConfigID] = append(byCfg[e.ConfigID], e)
+	}
+	items := make([]*v1.LlmConfigItem, 0, len(configs))
+	for _, c := range configs {
+		items = append(items, toLlmConfigProto(c, byCfg[c.ID]))
+	}
+	return &v1.ListLlmConfigsReply{Items: items}, nil
+}
+
+func (s *AdminService) CreateLlmConfig(ctx context.Context, req *v1.CreateLlmConfigRequest) (*v1.LlmConfigItem, error) {
+	if err := validateLlmConfigName(req.GetName()); err != nil {
+		return nil, err
+	}
+	prov := strings.TrimSpace(req.GetProvider())
+	if prov == "" {
+		prov = "openai"
+	}
+	now := time.Now()
+	var created dao.LLMConfig
+	err := dao.Transaction(ctx, func(tx *gorm.DB) error {
+		row := dao.LLMConfig{
+			Name:        strings.TrimSpace(req.GetName()),
+			Provider:    prov,
+			BaseURL:     strings.TrimSpace(req.GetBaseUrl()),
+			APIKey:      req.GetApiKey(),
+			Enabled:     req.GetEnabled(),
+			Description: strings.TrimSpace(req.GetDescription()),
+			CreatedAt:   &now,
+			UpdatedAt:   &now,
+		}
+		if err := tx.Create(&row).Error; err != nil {
+			return err
+		}
+		created = row
+		seen := make(map[string]struct{})
+		for _, d := range req.GetModels() {
+			name := strings.TrimSpace(d.GetModelName())
+			if name == "" {
+				continue
+			}
+			if _, ok := seen[name]; ok {
+				return errors.New("模型列表中存在重复的 modelName: " + name)
+			}
+			seen[name] = struct{}{}
+			ent := dao.LLMModelEntry{
+				ConfigID:    row.ID,
+				ModelName:   name,
+				Description: strings.TrimSpace(d.GetDescription()),
+				Enabled:     d.GetEnabled(),
+				CreatedAt:   &now,
+				UpdatedAt:   &now,
+			}
+			if err := tx.Create(&ent).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	list, err := dao.NewLLMModelEntry().FindByConfigIDs(ctx, []int64{created.ID})
+	if err != nil {
+		return nil, err
+	}
+	return toLlmConfigProto(created, list), nil
+}
+
+func (s *AdminService) UpdateLlmConfig(ctx context.Context, req *v1.UpdateLlmConfigRequest) (*v1.UpdateLlmConfigReply, error) {
+	if req.GetId() <= 0 {
+		return nil, errors.New("id不合法")
+	}
+	if err := validateLlmConfigName(req.GetName()); err != nil {
+		return nil, err
+	}
+	prov := strings.TrimSpace(req.GetProvider())
+	if prov == "" {
+		prov = "openai"
+	}
+	data := map[string]interface{}{
+		"name":        strings.TrimSpace(req.GetName()),
+		"provider":    prov,
+		"base_url":    strings.TrimSpace(req.GetBaseUrl()),
+		"enabled":     req.GetEnabled(),
+		"description": strings.TrimSpace(req.GetDescription()),
+		"updated_at":  time.Now(),
+	}
+	if strings.TrimSpace(req.GetApiKey()) != "" {
+		data["api_key"] = req.GetApiKey()
+	}
+	err := dao.NewLLMConfig().Updates(ctx, map[string]interface{}{"id": req.GetId()}, data)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.UpdateLlmConfigReply{}, nil
+}
+
+func (s *AdminService) DeleteLlmConfig(ctx context.Context, req *v1.DeleteLlmConfigRequest) (*v1.DeleteLlmConfigReply, error) {
+	if req.GetId() <= 0 {
+		return nil, errors.New("id不合法")
+	}
+	if err := dao.NewLLMConfig().Delete(ctx, map[string]interface{}{"id": req.GetId()}); err != nil {
+		return nil, err
+	}
+	return &v1.DeleteLlmConfigReply{}, nil
+}
+
+func (s *AdminService) CreateLlmModelEntry(ctx context.Context, req *v1.CreateLlmModelEntryRequest) (*v1.LlmModelEntryItem, error) {
+	if req.GetConfigId() <= 0 {
+		return nil, errors.New("configId不合法")
+	}
+	if strings.TrimSpace(req.GetModelName()) == "" {
+		return nil, errors.New("modelName不能为空")
+	}
+	if _, err := dao.NewLLMConfig().FindByID(ctx, req.GetConfigId()); err != nil {
+		return nil, errors.New("配置不存在")
+	}
+	dup, err := dao.NewLLMModelEntry().CountByConfigAndModelName(ctx, req.GetConfigId(), strings.TrimSpace(req.GetModelName()), 0)
+	if err != nil {
+		return nil, err
+	}
+	if dup > 0 {
+		return nil, errors.New("该配置下已存在同名模型")
+	}
+	now := time.Now()
+	enabled := req.GetEnabled()
+	row := dao.LLMModelEntry{
+		ConfigID:    req.GetConfigId(),
+		ModelName:   strings.TrimSpace(req.GetModelName()),
+		Description: strings.TrimSpace(req.GetDescription()),
+		Enabled:     enabled,
+		CreatedAt:   &now,
+		UpdatedAt:   &now,
+	}
+	if err := row.Create(ctx); err != nil {
+		return nil, err
+	}
+	return toLlmModelEntryProto(row), nil
+}
+
+func (s *AdminService) UpdateLlmModelEntry(ctx context.Context, req *v1.UpdateLlmModelEntryRequest) (*v1.UpdateLlmModelEntryReply, error) {
+	if req.GetId() <= 0 {
+		return nil, errors.New("id不合法")
+	}
+	if strings.TrimSpace(req.GetModelName()) == "" {
+		return nil, errors.New("modelName不能为空")
+	}
+	prev, err := dao.NewLLMModelEntry().FindByID(ctx, req.GetId())
+	if err != nil {
+		return nil, errors.New("模型不存在")
+	}
+	dup, err := dao.NewLLMModelEntry().CountByConfigAndModelName(ctx, prev.ConfigID, strings.TrimSpace(req.GetModelName()), req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	if dup > 0 {
+		return nil, errors.New("该配置下已存在同名模型")
+	}
+	err = dao.NewLLMModelEntry().Updates(ctx, map[string]interface{}{"id": req.GetId()}, map[string]interface{}{
+		"model_name":  strings.TrimSpace(req.GetModelName()),
+		"description": strings.TrimSpace(req.GetDescription()),
+		"enabled":     req.GetEnabled(),
+		"updated_at":  time.Now(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &v1.UpdateLlmModelEntryReply{}, nil
+}
+
+func (s *AdminService) DeleteLlmModelEntry(ctx context.Context, req *v1.DeleteLlmModelEntryRequest) (*v1.DeleteLlmModelEntryReply, error) {
+	if req.GetId() <= 0 {
+		return nil, errors.New("id不合法")
+	}
+	if err := dao.NewLLMModelEntry().Delete(ctx, map[string]interface{}{"id": req.GetId()}); err != nil {
+		return nil, err
+	}
+	return &v1.DeleteLlmModelEntryReply{}, nil
+}
+
+func validateLlmConfigName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return errors.New("name不能为空")
+	}
+	return nil
+}
+
+func toLlmModelEntryProto(it dao.LLMModelEntry) *v1.LlmModelEntryItem {
+	createdAt := ""
+	updatedAt := ""
+	if it.CreatedAt != nil {
+		createdAt = it.CreatedAt.Format(time.RFC3339Nano)
+	}
+	if it.UpdatedAt != nil {
+		updatedAt = it.UpdatedAt.Format(time.RFC3339Nano)
+	}
+	return &v1.LlmModelEntryItem{
+		Id:          it.ID,
+		ConfigId:    it.ConfigID,
+		ModelName:   it.ModelName,
+		Description: it.Description,
+		Enabled:     it.Enabled,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+	}
+}
+
+func toLlmConfigProto(c dao.LLMConfig, entries []dao.LLMModelEntry) *v1.LlmConfigItem {
+	createdAt := ""
+	updatedAt := ""
+	if c.CreatedAt != nil {
+		createdAt = c.CreatedAt.Format(time.RFC3339Nano)
+	}
+	if c.UpdatedAt != nil {
+		updatedAt = c.UpdatedAt.Format(time.RFC3339Nano)
+	}
+	models := make([]*v1.LlmModelEntryItem, 0, len(entries))
+	for _, e := range entries {
+		models = append(models, toLlmModelEntryProto(e))
+	}
+	return &v1.LlmConfigItem{
+		Id:          c.ID,
+		Name:        c.Name,
+		Provider:    c.Provider,
+		BaseUrl:     c.BaseURL,
+		Enabled:     c.Enabled,
+		ApiKey:      c.APIKey,
+		Description: c.Description,
+		Models:      models,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+	}
 }
 
 func validateMCPPayload(req mcpConfigPayload) error {

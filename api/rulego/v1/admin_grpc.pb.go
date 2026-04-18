@@ -19,12 +19,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Admin_ListSkills_FullMethodName      = "/rulego.v1.Admin/ListSkills"
-	Admin_UploadSkill_FullMethodName     = "/rulego.v1.Admin/UploadSkill"
-	Admin_ListMcpConfigs_FullMethodName  = "/rulego.v1.Admin/ListMcpConfigs"
-	Admin_CreateMcpConfig_FullMethodName = "/rulego.v1.Admin/CreateMcpConfig"
-	Admin_UpdateMcpConfig_FullMethodName = "/rulego.v1.Admin/UpdateMcpConfig"
-	Admin_DeleteMcpConfig_FullMethodName = "/rulego.v1.Admin/DeleteMcpConfig"
+	Admin_ListSkills_FullMethodName          = "/rulego.v1.Admin/ListSkills"
+	Admin_UploadSkill_FullMethodName         = "/rulego.v1.Admin/UploadSkill"
+	Admin_ListMcpConfigs_FullMethodName      = "/rulego.v1.Admin/ListMcpConfigs"
+	Admin_CreateMcpConfig_FullMethodName     = "/rulego.v1.Admin/CreateMcpConfig"
+	Admin_UpdateMcpConfig_FullMethodName     = "/rulego.v1.Admin/UpdateMcpConfig"
+	Admin_DeleteMcpConfig_FullMethodName     = "/rulego.v1.Admin/DeleteMcpConfig"
+	Admin_ListLlmConfigs_FullMethodName      = "/rulego.v1.Admin/ListLlmConfigs"
+	Admin_CreateLlmConfig_FullMethodName     = "/rulego.v1.Admin/CreateLlmConfig"
+	Admin_UpdateLlmConfig_FullMethodName     = "/rulego.v1.Admin/UpdateLlmConfig"
+	Admin_DeleteLlmConfig_FullMethodName     = "/rulego.v1.Admin/DeleteLlmConfig"
+	Admin_CreateLlmModelEntry_FullMethodName = "/rulego.v1.Admin/CreateLlmModelEntry"
+	Admin_UpdateLlmModelEntry_FullMethodName = "/rulego.v1.Admin/UpdateLlmModelEntry"
+	Admin_DeleteLlmModelEntry_FullMethodName = "/rulego.v1.Admin/DeleteLlmModelEntry"
 )
 
 // AdminClient is the client API for Admin service.
@@ -37,6 +44,13 @@ type AdminClient interface {
 	CreateMcpConfig(ctx context.Context, in *CreateMcpConfigRequest, opts ...grpc.CallOption) (*McpConfigItem, error)
 	UpdateMcpConfig(ctx context.Context, in *UpdateMcpConfigRequest, opts ...grpc.CallOption) (*UpdateMcpConfigReply, error)
 	DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRequest, opts ...grpc.CallOption) (*DeleteMcpConfigReply, error)
+	ListLlmConfigs(ctx context.Context, in *ListLlmConfigsRequest, opts ...grpc.CallOption) (*ListLlmConfigsReply, error)
+	CreateLlmConfig(ctx context.Context, in *CreateLlmConfigRequest, opts ...grpc.CallOption) (*LlmConfigItem, error)
+	UpdateLlmConfig(ctx context.Context, in *UpdateLlmConfigRequest, opts ...grpc.CallOption) (*UpdateLlmConfigReply, error)
+	DeleteLlmConfig(ctx context.Context, in *DeleteLlmConfigRequest, opts ...grpc.CallOption) (*DeleteLlmConfigReply, error)
+	CreateLlmModelEntry(ctx context.Context, in *CreateLlmModelEntryRequest, opts ...grpc.CallOption) (*LlmModelEntryItem, error)
+	UpdateLlmModelEntry(ctx context.Context, in *UpdateLlmModelEntryRequest, opts ...grpc.CallOption) (*UpdateLlmModelEntryReply, error)
+	DeleteLlmModelEntry(ctx context.Context, in *DeleteLlmModelEntryRequest, opts ...grpc.CallOption) (*DeleteLlmModelEntryReply, error)
 }
 
 type adminClient struct {
@@ -107,6 +121,76 @@ func (c *adminClient) DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRe
 	return out, nil
 }
 
+func (c *adminClient) ListLlmConfigs(ctx context.Context, in *ListLlmConfigsRequest, opts ...grpc.CallOption) (*ListLlmConfigsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListLlmConfigsReply)
+	err := c.cc.Invoke(ctx, Admin_ListLlmConfigs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) CreateLlmConfig(ctx context.Context, in *CreateLlmConfigRequest, opts ...grpc.CallOption) (*LlmConfigItem, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LlmConfigItem)
+	err := c.cc.Invoke(ctx, Admin_CreateLlmConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) UpdateLlmConfig(ctx context.Context, in *UpdateLlmConfigRequest, opts ...grpc.CallOption) (*UpdateLlmConfigReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateLlmConfigReply)
+	err := c.cc.Invoke(ctx, Admin_UpdateLlmConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) DeleteLlmConfig(ctx context.Context, in *DeleteLlmConfigRequest, opts ...grpc.CallOption) (*DeleteLlmConfigReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteLlmConfigReply)
+	err := c.cc.Invoke(ctx, Admin_DeleteLlmConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) CreateLlmModelEntry(ctx context.Context, in *CreateLlmModelEntryRequest, opts ...grpc.CallOption) (*LlmModelEntryItem, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LlmModelEntryItem)
+	err := c.cc.Invoke(ctx, Admin_CreateLlmModelEntry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) UpdateLlmModelEntry(ctx context.Context, in *UpdateLlmModelEntryRequest, opts ...grpc.CallOption) (*UpdateLlmModelEntryReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateLlmModelEntryReply)
+	err := c.cc.Invoke(ctx, Admin_UpdateLlmModelEntry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) DeleteLlmModelEntry(ctx context.Context, in *DeleteLlmModelEntryRequest, opts ...grpc.CallOption) (*DeleteLlmModelEntryReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteLlmModelEntryReply)
+	err := c.cc.Invoke(ctx, Admin_DeleteLlmModelEntry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServer is the server API for Admin service.
 // All implementations must embed UnimplementedAdminServer
 // for forward compatibility.
@@ -117,6 +201,13 @@ type AdminServer interface {
 	CreateMcpConfig(context.Context, *CreateMcpConfigRequest) (*McpConfigItem, error)
 	UpdateMcpConfig(context.Context, *UpdateMcpConfigRequest) (*UpdateMcpConfigReply, error)
 	DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error)
+	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
+	CreateLlmConfig(context.Context, *CreateLlmConfigRequest) (*LlmConfigItem, error)
+	UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error)
+	DeleteLlmConfig(context.Context, *DeleteLlmConfigRequest) (*DeleteLlmConfigReply, error)
+	CreateLlmModelEntry(context.Context, *CreateLlmModelEntryRequest) (*LlmModelEntryItem, error)
+	UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error)
+	DeleteLlmModelEntry(context.Context, *DeleteLlmModelEntryRequest) (*DeleteLlmModelEntryReply, error)
 	mustEmbedUnimplementedAdminServer()
 }
 
@@ -144,6 +235,27 @@ func (UnimplementedAdminServer) UpdateMcpConfig(context.Context, *UpdateMcpConfi
 }
 func (UnimplementedAdminServer) DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMcpConfig not implemented")
+}
+func (UnimplementedAdminServer) ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListLlmConfigs not implemented")
+}
+func (UnimplementedAdminServer) CreateLlmConfig(context.Context, *CreateLlmConfigRequest) (*LlmConfigItem, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateLlmConfig not implemented")
+}
+func (UnimplementedAdminServer) UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateLlmConfig not implemented")
+}
+func (UnimplementedAdminServer) DeleteLlmConfig(context.Context, *DeleteLlmConfigRequest) (*DeleteLlmConfigReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteLlmConfig not implemented")
+}
+func (UnimplementedAdminServer) CreateLlmModelEntry(context.Context, *CreateLlmModelEntryRequest) (*LlmModelEntryItem, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateLlmModelEntry not implemented")
+}
+func (UnimplementedAdminServer) UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateLlmModelEntry not implemented")
+}
+func (UnimplementedAdminServer) DeleteLlmModelEntry(context.Context, *DeleteLlmModelEntryRequest) (*DeleteLlmModelEntryReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteLlmModelEntry not implemented")
 }
 func (UnimplementedAdminServer) mustEmbedUnimplementedAdminServer() {}
 func (UnimplementedAdminServer) testEmbeddedByValue()               {}
@@ -274,6 +386,132 @@ func _Admin_DeleteMcpConfig_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Admin_ListLlmConfigs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListLlmConfigsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).ListLlmConfigs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_ListLlmConfigs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).ListLlmConfigs(ctx, req.(*ListLlmConfigsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_CreateLlmConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateLlmConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).CreateLlmConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_CreateLlmConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).CreateLlmConfig(ctx, req.(*CreateLlmConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_UpdateLlmConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateLlmConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).UpdateLlmConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_UpdateLlmConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).UpdateLlmConfig(ctx, req.(*UpdateLlmConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_DeleteLlmConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteLlmConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).DeleteLlmConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_DeleteLlmConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).DeleteLlmConfig(ctx, req.(*DeleteLlmConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_CreateLlmModelEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateLlmModelEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).CreateLlmModelEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_CreateLlmModelEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).CreateLlmModelEntry(ctx, req.(*CreateLlmModelEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_UpdateLlmModelEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateLlmModelEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).UpdateLlmModelEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_UpdateLlmModelEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).UpdateLlmModelEntry(ctx, req.(*UpdateLlmModelEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_DeleteLlmModelEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteLlmModelEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).DeleteLlmModelEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_DeleteLlmModelEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).DeleteLlmModelEntry(ctx, req.(*DeleteLlmModelEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Admin_ServiceDesc is the grpc.ServiceDesc for Admin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +542,34 @@ var Admin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMcpConfig",
 			Handler:    _Admin_DeleteMcpConfig_Handler,
+		},
+		{
+			MethodName: "ListLlmConfigs",
+			Handler:    _Admin_ListLlmConfigs_Handler,
+		},
+		{
+			MethodName: "CreateLlmConfig",
+			Handler:    _Admin_CreateLlmConfig_Handler,
+		},
+		{
+			MethodName: "UpdateLlmConfig",
+			Handler:    _Admin_UpdateLlmConfig_Handler,
+		},
+		{
+			MethodName: "DeleteLlmConfig",
+			Handler:    _Admin_DeleteLlmConfig_Handler,
+		},
+		{
+			MethodName: "CreateLlmModelEntry",
+			Handler:    _Admin_CreateLlmModelEntry_Handler,
+		},
+		{
+			MethodName: "UpdateLlmModelEntry",
+			Handler:    _Admin_UpdateLlmModelEntry_Handler,
+		},
+		{
+			MethodName: "DeleteLlmModelEntry",
+			Handler:    _Admin_DeleteLlmModelEntry_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

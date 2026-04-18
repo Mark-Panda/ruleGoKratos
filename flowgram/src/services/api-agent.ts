@@ -59,3 +59,69 @@ export const updateMCPConfig = (id: number, payload: MCPConfigPayload) =>
 
 export const deleteMCPConfig = (id: number) =>
   requestJSON(`/admin/mcps/${id}`, { method: 'DELETE' });
+
+/** 一条模型记录（隶属于某个 LLM 配置，共享凭证） */
+export interface LlmModelEntryItem {
+  id: number;
+  configId: number;
+  modelName: string;
+  description: string;
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** LLM 配置（名称、厂商、BaseURL、API Key 等），其下可挂多条模型 ID */
+export interface LlmConfigItem {
+  id: number;
+  name: string;
+  provider: string;
+  baseUrl: string;
+  apiKey: string;
+  enabled: boolean;
+  description: string;
+  models: LlmModelEntryItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LlmConfigPayload {
+  name: string;
+  provider: string;
+  baseUrl: string;
+  apiKey: string;
+  enabled: boolean;
+  description: string;
+  /** 仅创建配置时提交，可一次写入多条模型 ID */
+  models?: LlmModelEntryPayload[];
+}
+
+export interface LlmModelEntryPayload {
+  modelName: string;
+  description: string;
+  enabled: boolean;
+}
+
+export const listLlmConfigs = () =>
+  requestJSON<{ items: LlmConfigItem[] }>('/admin/llm-configs').then((r) => r.items || []);
+
+export const createLlmConfig = (payload: LlmConfigPayload) =>
+  requestJSON<LlmConfigItem>('/admin/llm-configs', { method: 'POST', body: payload });
+
+export const updateLlmConfig = (id: number, payload: LlmConfigPayload) =>
+  requestJSON(`/admin/llm-configs/${id}`, { method: 'PUT', body: payload });
+
+export const deleteLlmConfig = (id: number) =>
+  requestJSON(`/admin/llm-configs/${id}`, { method: 'DELETE' });
+
+export const createLlmModelEntry = (configId: number, payload: LlmModelEntryPayload) =>
+  requestJSON<LlmModelEntryItem>(`/admin/llm-configs/${configId}/models`, {
+    method: 'POST',
+    body: payload,
+  });
+
+export const updateLlmModelEntry = (id: number, payload: LlmModelEntryPayload) =>
+  requestJSON(`/admin/llm-model-entries/${id}`, { method: 'PUT', body: payload });
+
+export const deleteLlmModelEntry = (id: number) =>
+  requestJSON(`/admin/llm-model-entries/${id}`, { method: 'DELETE' });

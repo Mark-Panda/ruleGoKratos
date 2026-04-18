@@ -6,6 +6,141 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/admin/llm-configs:
+        get:
+            tags:
+                - Admin
+            operationId: Admin_ListLlmConfigs
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListLlmConfigsReply'
+        post:
+            tags:
+                - Admin
+            operationId: Admin_CreateLlmConfig
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateLlmConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.LlmConfigItem'
+    /api/v1/admin/llm-configs/{configId}/models:
+        post:
+            tags:
+                - Admin
+            operationId: Admin_CreateLlmModelEntry
+            parameters:
+                - name: configId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateLlmModelEntryRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.LlmModelEntryItem'
+    /api/v1/admin/llm-configs/{id}:
+        put:
+            tags:
+                - Admin
+            operationId: Admin_UpdateLlmConfig
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateLlmConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateLlmConfigReply'
+        delete:
+            tags:
+                - Admin
+            operationId: Admin_DeleteLlmConfig
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteLlmConfigReply'
+    /api/v1/admin/llm-model-entries/{id}:
+        put:
+            tags:
+                - Admin
+            operationId: Admin_UpdateLlmModelEntry
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateLlmModelEntryRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateLlmModelEntryReply'
+        delete:
+            tags:
+                - Admin
+            operationId: Admin_DeleteLlmModelEntry
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteLlmModelEntryReply'
     /api/v1/admin/mcps:
         get:
             tags:
@@ -623,6 +758,36 @@ components:
                     type: string
                 useRuleDesc:
                     type: string
+        rulego.v1.CreateLlmConfigRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                provider:
+                    type: string
+                baseUrl:
+                    type: string
+                apiKey:
+                    type: string
+                enabled:
+                    type: boolean
+                description:
+                    type: string
+                models:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.LlmModelEntryDraft'
+        rulego.v1.CreateLlmModelEntryRequest:
+            type: object
+            properties:
+                configId:
+                    type: string
+                modelName:
+                    type: string
+                description:
+                    type: string
+                enabled:
+                    type: boolean
         rulego.v1.CreateMcpConfigRequest:
             type: object
             properties:
@@ -649,6 +814,12 @@ components:
                     type: string
                 chainId:
                     type: string
+        rulego.v1.DeleteLlmConfigReply:
+            type: object
+            properties: {}
+        rulego.v1.DeleteLlmModelEntryReply:
+            type: object
+            properties: {}
         rulego.v1.DeleteMcpConfigReply:
             type: object
             properties: {}
@@ -714,6 +885,13 @@ components:
                         $ref: '#/components/schemas/rulego.v1.ComponentUseRuleItem'
                 total:
                     type: string
+        rulego.v1.ListLlmConfigsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.LlmConfigItem'
         rulego.v1.ListMcpConfigsReply:
             type: object
             properties:
@@ -761,6 +939,57 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.SkillItem'
+        rulego.v1.LlmConfigItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                provider:
+                    type: string
+                baseUrl:
+                    type: string
+                enabled:
+                    type: boolean
+                apiKey:
+                    type: string
+                description:
+                    type: string
+                models:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.LlmModelEntryItem'
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        rulego.v1.LlmModelEntryDraft:
+            type: object
+            properties:
+                modelName:
+                    type: string
+                description:
+                    type: string
+                enabled:
+                    type: boolean
+        rulego.v1.LlmModelEntryItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                configId:
+                    type: string
+                modelName:
+                    type: string
+                description:
+                    type: string
+                enabled:
+                    type: boolean
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
         rulego.v1.McpConfigItem:
             type: object
             properties:
@@ -850,6 +1079,40 @@ components:
                     type: string
                 useRuleDesc:
                     type: string
+        rulego.v1.UpdateLlmConfigReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateLlmConfigRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                provider:
+                    type: string
+                baseUrl:
+                    type: string
+                apiKey:
+                    type: string
+                enabled:
+                    type: boolean
+                description:
+                    type: string
+        rulego.v1.UpdateLlmModelEntryReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateLlmModelEntryRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                modelName:
+                    type: string
+                description:
+                    type: string
+                enabled:
+                    type: boolean
         rulego.v1.UpdateMcpConfigReply:
             type: object
             properties: {}

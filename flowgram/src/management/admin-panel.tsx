@@ -29,6 +29,7 @@ type MenuKey =
   | 'docs'
   | 'agent-skills'
   | 'agent-mcp'
+  | 'agent-models'
   | 'engine'
   | 'component'
   | 'agent';
@@ -39,6 +40,7 @@ export const AdminPanel: React.FC = () => {
       const h = typeof window !== 'undefined' ? window.location.hash : '';
       if (h === '#/' || h === '' || h === '#') return 'intro';
       if (h.startsWith('#/agent/skills')) return 'agent-skills';
+      if (h.startsWith('#/agent/models')) return 'agent-models';
       if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
@@ -53,6 +55,7 @@ export const AdminPanel: React.FC = () => {
     const getMenu = (h: string): MenuKey => {
       if (h === '#/' || h === '' || h === '#') return 'intro';
       if (h.startsWith('#/agent/skills')) return 'agent-skills';
+      if (h.startsWith('#/agent/models')) return 'agent-models';
       if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
@@ -74,6 +77,7 @@ export const AdminPanel: React.FC = () => {
     if (activeMenu === 'workflow') return <WorkflowSection />;
     if (activeMenu === 'docs') return <DocsSection />;
     if (activeMenu === 'agent-skills') return <AgentSection view="skills" />;
+    if (activeMenu === 'agent-models') return <AgentSection view="models" />;
     if (activeMenu === 'agent-mcp') return <AgentSection view="mcps" />;
     if (activeMenu === 'component-rules') return <ComponentsSection view="rules" />;
     return <ComponentsSection view="installed" />;
@@ -95,6 +99,8 @@ export const AdminPanel: React.FC = () => {
         return 'SKILL 管理';
       case 'agent-mcp':
         return 'MCP 配置';
+      case 'agent-models':
+        return '模型管理';
       default:
         return '概览';
     }
@@ -102,7 +108,12 @@ export const AdminPanel: React.FC = () => {
 
   const getParentTitle = () => {
     if (activeMenu === 'workflow') return '工作流引擎';
-    if (activeMenu === 'agent-skills' || activeMenu === 'agent-mcp') return 'Agent 管理';
+    if (
+      activeMenu === 'agent-skills' ||
+      activeMenu === 'agent-mcp' ||
+      activeMenu === 'agent-models'
+    )
+      return 'Agent 管理';
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
     return '系统';
   };
@@ -175,6 +186,7 @@ export const AdminPanel: React.FC = () => {
                 icon: <IconList />,
                 items: [
                   { itemKey: 'agent-skills', text: 'SKILL 管理' },
+                  { itemKey: 'agent-models', text: '模型管理' },
                   { itemKey: 'agent-mcp', text: 'MCP 配置' },
                 ],
               },
@@ -191,6 +203,7 @@ export const AdminPanel: React.FC = () => {
               if (key === 'component-installed') window.location.hash = '#/components';
               if (key === 'component-rules') window.location.hash = '#/components/rules';
               if (key === 'agent-skills') window.location.hash = '#/agent/skills';
+              if (key === 'agent-models') window.location.hash = '#/agent/models';
               if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
               if (key === 'docs') window.location.hash = '#/docs';
             }}
@@ -280,6 +293,7 @@ export const AdminPanel: React.FC = () => {
                   'docs',
                   'agent-skills',
                   'agent-mcp',
+                  'agent-models',
                 ].includes(key)
               ) {
                 setActiveMenu(key as MenuKey);
@@ -288,6 +302,7 @@ export const AdminPanel: React.FC = () => {
                 if (key === 'component-installed') window.location.hash = '#/components';
                 if (key === 'component-rules') window.location.hash = '#/components/rules';
                 if (key === 'agent-skills') window.location.hash = '#/agent/skills';
+                if (key === 'agent-models') window.location.hash = '#/agent/models';
                 if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
                 if (key === 'docs') window.location.hash = '#/docs';
               }
