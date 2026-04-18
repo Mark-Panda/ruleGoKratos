@@ -17,6 +17,7 @@ import {
 
 import { WorkflowSection } from './sections/WorkflowSection';
 import { WorkflowRunLogsSection } from './sections/WorkflowRunLogsSection';
+import { WorkflowExecuteSection } from './sections/WorkflowExecuteSection';
 import { DocsSection } from './sections/DocsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AgentSection } from './sections/AgentSection';
@@ -25,6 +26,7 @@ import { IntroPage } from '../landing/IntroPage';
 type MenuKey =
   | 'intro'
   | 'workflow'
+  | 'workflow-run'
   | 'workflow-logs'
   | 'component-installed'
   | 'component-rules'
@@ -47,6 +49,7 @@ export const AdminPanel: React.FC = () => {
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
       if (h.startsWith('#/docs')) return 'docs';
+      if (h.startsWith('#/workflow/run')) return 'workflow-run';
       if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
       return 'workflow';
     } catch {
@@ -63,6 +66,7 @@ export const AdminPanel: React.FC = () => {
       if (h.startsWith('#/components/rules')) return 'component-rules';
       if (h.startsWith('#/components')) return 'component-installed';
       if (h.startsWith('#/docs')) return 'docs';
+      if (h.startsWith('#/workflow/run')) return 'workflow-run';
       if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
       return 'workflow';
     };
@@ -79,6 +83,7 @@ export const AdminPanel: React.FC = () => {
   const renderContent = () => {
     if (activeMenu === 'intro') return <IntroPage />;
     if (activeMenu === 'workflow') return <WorkflowSection />;
+    if (activeMenu === 'workflow-run') return <WorkflowExecuteSection />;
     if (activeMenu === 'workflow-logs') return <WorkflowRunLogsSection />;
     if (activeMenu === 'docs') return <DocsSection />;
     if (activeMenu === 'agent-skills') return <AgentSection view="skills" />;
@@ -94,6 +99,8 @@ export const AdminPanel: React.FC = () => {
         return '概览';
       case 'workflow':
         return '流程管理';
+      case 'workflow-run':
+        return '工作流执行';
       case 'workflow-logs':
         return '执行日志';
       case 'component-installed':
@@ -114,7 +121,12 @@ export const AdminPanel: React.FC = () => {
   };
 
   const getParentTitle = () => {
-    if (activeMenu === 'workflow' || activeMenu === 'workflow-logs') return '工作流引擎';
+    if (
+      activeMenu === 'workflow' ||
+      activeMenu === 'workflow-run' ||
+      activeMenu === 'workflow-logs'
+    )
+      return '工作流引擎';
     if (
       activeMenu === 'agent-skills' ||
       activeMenu === 'agent-mcp' ||
@@ -177,6 +189,7 @@ export const AdminPanel: React.FC = () => {
                 icon: <IconList />,
                 items: [
                   { itemKey: 'workflow', text: '流程管理' },
+                  { itemKey: 'workflow-run', text: '工作流执行' },
                   { itemKey: 'workflow-logs', text: '执行日志' },
                   {
                     text: '组件管理',
@@ -208,6 +221,7 @@ export const AdminPanel: React.FC = () => {
               setActiveMenu(key);
               if (key === 'intro') window.location.hash = '#/';
               if (key === 'workflow') window.location.hash = '#/admin';
+              if (key === 'workflow-run') window.location.hash = '#/workflow/run';
               if (key === 'workflow-logs') window.location.hash = '#/workflow/logs';
               if (key === 'component-installed') window.location.hash = '#/components';
               if (key === 'component-rules') window.location.hash = '#/components/rules';
@@ -297,6 +311,7 @@ export const AdminPanel: React.FC = () => {
                 [
                   'intro',
                   'workflow',
+                  'workflow-run',
                   'workflow-logs',
                   'component-installed',
                   'component-rules',
@@ -309,6 +324,7 @@ export const AdminPanel: React.FC = () => {
                 setActiveMenu(key as MenuKey);
                 if (key === 'intro') window.location.hash = '#/';
                 if (key === 'workflow') window.location.hash = '#/admin';
+                if (key === 'workflow-run') window.location.hash = '#/workflow/run';
                 if (key === 'workflow-logs') window.location.hash = '#/workflow/logs';
                 if (key === 'component-installed') window.location.hash = '#/components';
                 if (key === 'component-rules') window.location.hash = '#/components/rules';

@@ -40,6 +40,8 @@ function parseParamsArrayFromIO(raw: unknown): string {
 
 export type RuleChainFlowgramParsed = {
   description: string;
+  /** 异步/同步触发使用的消息类型提示，可选；对应 DSL 键 entry_msg_type */
+  entryMsgType: string;
   requestMetadataParamsJson: string;
   requestMessageBodyParamsJson: string;
   responseMessageBodyParamsJson: string;
@@ -61,8 +63,12 @@ function parseFlowgramBlock(block: Record<string, unknown>): RuleChainFlowgramPa
       ? (block.skill as Record<string, unknown>)
       : {};
   const scratch = asString(editor.scratch_json);
+  const entryRaw =
+    (block as Record<string, unknown>).entry_msg_type ??
+    (block as Record<string, unknown>).entryMsgType;
   return {
     description: asString(block.description),
+    entryMsgType: typeof entryRaw === 'string' ? entryRaw.trim() : '',
     requestMetadataParamsJson: parseParamsArrayFromIO(io.request_metadata_params),
     requestMessageBodyParamsJson: parseParamsArrayFromIO(io.request_message_body_params),
     responseMessageBodyParamsJson: parseParamsArrayFromIO(io.response_message_body_params),
@@ -72,7 +78,9 @@ function parseFlowgramBlock(block: Record<string, unknown>): RuleChainFlowgramPa
 }
 
 /** 从 ruleChain.configuration 解析 flowgram 块（优先 flowgram，其次兼容旧键 devpilot） */
-export function parseRuleChainFlowgramFromConfiguration(configuration: unknown): RuleChainFlowgramParsed {
+export function parseRuleChainFlowgramFromConfiguration(
+  configuration: unknown
+): RuleChainFlowgramParsed {
   if (!configuration || typeof configuration !== 'object' || Array.isArray(configuration)) {
     return emptyParsed();
   }
@@ -94,6 +102,7 @@ export function parseRuleChainFlowgramFromConfiguration(configuration: unknown):
 function emptyParsed(): RuleChainFlowgramParsed {
   return {
     description: '',
+    entryMsgType: '',
     requestMetadataParamsJson: emptyRuleChainParamsJson(),
     requestMessageBodyParamsJson: emptyRuleChainParamsJson(),
     responseMessageBodyParamsJson: emptyRuleChainParamsJson(),
@@ -145,7 +154,9 @@ export function buildRuleChainConfigurationWithFlowgram(
   input: BuildRuleChainFlowgramConfigurationInput
 ): Record<string, unknown> {
   const base =
-    existingConfiguration && typeof existingConfiguration === 'object' && !Array.isArray(existingConfiguration)
+    existingConfiguration &&
+    typeof existingConfiguration === 'object' &&
+    !Array.isArray(existingConfiguration)
       ? { ...existingConfiguration }
       : {};
   delete base[LEGACY_RULE_CHAIN_CONFIG_KEY];

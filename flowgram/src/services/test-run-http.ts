@@ -30,9 +30,19 @@ export async function executeTestRun(params: {
   return requestRaw(url, { method: 'POST', headers: hdrs, body });
 }
 
-export async function fetchRunLogs(msgId: string): Promise<any> {
+/** GET /api/v1/logs/runs/msgId（含 HTTP 状态，便于区分 404 / 写入延迟） */
+export async function fetchRunLogsDetailed(msgId: string): Promise<{
+  ok: boolean;
+  status: number;
+  data?: unknown;
+}> {
   const url = `/logs/runs/msgId?msgId=${encodeURIComponent(msgId)}`;
   const resp = await requestRaw(url, { method: 'GET' });
-  if (resp.ok) return resp.data;
-  return {};
+  return { ok: resp.ok, status: resp.status, data: resp.data };
+}
+
+/** 兼容旧调用：失败时返回 undefined（勿与「空对象」混淆） */
+export async function fetchRunLogs(msgId: string): Promise<any> {
+  const r = await fetchRunLogsDetailed(msgId);
+  return r.ok ? r.data : undefined;
 }

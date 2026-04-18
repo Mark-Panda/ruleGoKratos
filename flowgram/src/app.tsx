@@ -45,8 +45,8 @@ function Router() {
   }, []);
 
   const hashPath = hash.split('?')[0];
-  /** 全局执行日志与 `#/workflow/:id` 路由区分，避免 id 被解析为 `logs` */
-  if (hashPath === '#/workflow/logs') {
+  /** 全局执行日志 / 工作流执行页与 `#/workflow/:id` 路由区分，避免 id 被解析为 `logs` / `run` */
+  if (hashPath === '#/workflow/logs' || hashPath === '#/workflow/run') {
     return <AdminPanel />;
   }
   const match = hash.match(/^#\/workflow\/([^/]+)(?:\/(design))?$/);
