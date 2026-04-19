@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   Button,
   ButtonGroup,
+  CheckboxGroup,
   Input,
   InputNumber,
   Select,
@@ -41,6 +42,7 @@ import {
 } from '@douyinfe/semi-icons';
 
 import {
+  AgentDefinition,
   AgentPool,
   CollaborationScheme,
   CollaborationMode,
@@ -75,7 +77,7 @@ import { AgentManager } from '../components/agent-manager';
 import { ModeSelector } from '../components/mode-selector';
 import { WorkflowGraph } from '../components/workflow-graph';
 import { TracePanel } from '../components/trace-panel';
-import { RunConsole } from '../components/run-console';
+import { RunConsole, PreviousRunSnapshot } from '../components/run-console';
 import { buildRuntimeViewModel } from '../utils/runtime-view-model';
 import {
   createRequestGuardSnapshot,
@@ -101,6 +103,33 @@ function joinCommaSeparated(values?: string[]): string {
 
 function coerceInteger(value: number | string | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+/** 服务端持久化的 userInput 可能是「关联块 + 本轮正文」；快照里只保留最后一轮真实提问，避免链式膨胀 */
+function extractLatestRoundUserOnly(storedUserInput: string): string {
+  const marker = '【本轮说明 / Bug / 追问】\n';
+  const idx = storedUserInput.indexOf(marker);
+  if (idx >= 0) {
+    return storedUserInput.slice(idx + marker.length).trim();
+  }
+  return storedUserInput.trim();
+}
+
+/** 将上一轮 run 摘要拼入下一轮 userInput，避免新区间无法理解 Bug 语义 */
+function buildPlaygroundFollowUpUserPayload(snapshot: PreviousRunSnapshot, roundText: string): string {
+  const tail =
+    snapshot.finalOutput.length > 4500
+      ? `${snapshot.finalOutput.slice(-4500)}\n…（产出仅保留末尾 4500 字符）`
+      : snapshot.finalOutput;
+  return (
+    `【Playground 关联上一轮运行】\n` +
+    `上一轮 runId: ${snapshot.runId}\n` +
+    `上一轮状态: ${snapshot.runStatus}\n` +
+    `上一轮用户任务（末轮正文）:\n${snapshot.userInput || '（无）'}\n\n` +
+    `上一轮产出摘录:\n${tail || '（无）'}\n\n` +
+    `（说明：服务端每轮 run 使用独立 workspace 子目录 playground/run_<runId>/，新一轮默认无法读取上一轮目录中的文件；以下为你补充的追问。）\n\n` +
+    `---\n【本轮说明 / Bug / 追问】\n${roundText}`
+  );
 }
 
 type SchemeFormState = {
@@ -170,6 +199,27 @@ export const AgentPlaygroundPage: React.FC = () => {
   const [error, setError] = useState<string | undefined>();
   const [schemes, setSchemes] = useState<CollaborationScheme[]>([]);
   const [pools, setPools] = useState<AgentPool[]>([]);
+  /** 协作运行固定使用服务端 default 池；无则退回列表首项兼容旧数据 */
+  const defaultAgentPool = useMemo(
+    () => pools.find(p => p.id === 'default') ?? pools[0],
+    [pools],
+  );
+
+  /** default 池中已启用成员，用于方案编辑里下拉 / 勾选 */
+  const poolAgentsSelectable = useMemo(() => {
+    const list = defaultAgentPool?.agents || [];
+    return list.filter(a => a && a.enabled !== false);
+  }, [defaultAgentPool]);
+
+  const poolAgentIdOptions = useMemo(
+    () =>
+      poolAgentsSelectable.map(a => ({
+        value: a.id,
+        label: `${a.name} (${a.id})`,
+      })),
+    [poolAgentsSelectable],
+  );
+
   const [selectedScheme, setSelectedScheme] = useState<CollaborationScheme | undefined>();
   const [currentRunDetail, setCurrentRunDetail] = useState<RuntimeRunDetail | undefined>();
   const [currentRunSchemeId, setCurrentRunSchemeId] = useState<string | undefined>();
@@ -178,6 +228,9 @@ export const AgentPlaygroundPage: React.FC = () => {
   const [lang, setLang] = useState<PlaygroundLang>('zh');
   const [running, setRunning] = useState(false);
   const [applyingRecoveryActionId, setApplyingRecoveryActionId] = useState<string | undefined>();
+  /** 最近一次已完成/失败的 run，用于下一轮附带上下文 */
+  const [previousRunSnapshot, setPreviousRunSnapshot] = useState<PreviousRunSnapshot | null>(null);
+  const [attachPreviousRunContext, setAttachPreviousRunContext] = useState(true);
 
   // Scheme CRUD Modal
   const [showSchemeModal, setShowSchemeModal] = useState(false);
@@ -322,6 +375,24 @@ export const AgentPlaygroundPage: React.FC = () => {
       });
     }
   }, [currentRunDetail?.run.runId, currentRunDetail?.run.status, currentRunDetail?.run.finalOutput, runtimeViewModel]);
+
+  // 记录「可附带的上一轮」：完成、失败或进入恢复时均可能需基于该 run 报 Bug
+  useEffect(() => {
+    const d = currentRunDetail;
+    if (!d?.run?.runId) {
+      return;
+    }
+    const st = d.run.status;
+    if (st !== 'completed' && st !== 'failed' && st !== 'waiting_recovery') {
+      return;
+    }
+    setPreviousRunSnapshot({
+      runId: d.run.runId,
+      userInput: extractLatestRoundUserOnly(d.run.userInput || ''),
+      finalOutput: (d.run.finalOutput || '').trim(),
+      runStatus: st,
+    });
+  }, [currentRunDetail]);
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -470,11 +541,11 @@ export const AgentPlaygroundPage: React.FC = () => {
         mode: schemeForm.mode,
         originalMode: schemeForm.originalMode,
         existingBindAgents: editingScheme.bindAgents,
-        pool: pools[0],
+        pool: defaultAgentPool,
       });
     }
-    return buildSchemeBindAgents(schemeForm.mode, pools[0]);
-  }, [editingScheme, pools, schemeForm.mode, schemeModalMode]);
+    return buildSchemeBindAgents(schemeForm.mode, defaultAgentPool);
+  }, [editingScheme, defaultAgentPool, schemeForm.mode, schemeModalMode]);
 
   const schemeBindAgentHint = useMemo(() => {
     if (!schemeFormBindAgents.length) {
@@ -498,27 +569,53 @@ export const AgentPlaygroundPage: React.FC = () => {
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>兜底 Agent</Text>
-              <Input
-                style={{ width: '100%' }}
-                value={routerConfig?.fallbackAgent ?? ''}
-                onChange={value =>
-                  updateSchemeConfig(config => {
-                    const normalized = normalizeSchemeConfig('router_expert', config);
-                    return {
-                      ...normalized,
-                      modeConfig: {
-                        routerConfig: {
-                          ...normalized.modeConfig?.routerConfig,
-                          fallbackAgent: value,
+              {poolAgentIdOptions.length > 0 ? (
+                <Select
+                  style={{ width: '100%' }}
+                  showClear
+                  filter
+                  optionList={poolAgentIdOptions}
+                  value={routerConfig?.fallbackAgent || undefined}
+                  placeholder="从 default 池内选择"
+                  onChange={v =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('router_expert', config);
+                      const id = typeof v === 'string' ? v : '';
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          routerConfig: {
+                            ...normalized.modeConfig?.routerConfig,
+                            fallbackAgent: id,
+                          },
                         },
-                      },
-                    };
-                  })
-                }
-                placeholder="例如：engineer"
-              />
+                      };
+                    })
+                  }
+                />
+              ) : (
+                <Input
+                  style={{ width: '100%' }}
+                  value={routerConfig?.fallbackAgent ?? ''}
+                  onChange={value =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('router_expert', config);
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          routerConfig: {
+                            ...normalized.modeConfig?.routerConfig,
+                            fallbackAgent: value,
+                          },
+                        },
+                      };
+                    })
+                  }
+                  placeholder="暂无池数据，可直接输入 agentId，例如：engineer"
+                />
+              )}
               <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
-                {schemeBindAgentHint}
+                {schemeBindAgentHint}。单选下拉与池内 id 一致，避免手输错误。
               </Text>
             </div>
             <div style={{ width: '100%' }}>
@@ -553,33 +650,86 @@ export const AgentPlaygroundPage: React.FC = () => {
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>规划 Agent</Text>
-              <Input
-                style={{ width: '100%' }}
-                value={planExecConfig?.plannerAgent ?? ''}
-                onChange={value =>
-                  updateSchemeConfig(config => {
-                    const normalized = normalizeSchemeConfig('plan_exec', config);
-                    return {
-                      ...normalized,
-                      modeConfig: {
-                        planExecConfig: {
-                          ...normalized.modeConfig?.planExecConfig,
-                          plannerAgent: value,
+              {poolAgentIdOptions.length > 0 ? (
+                <Select
+                  style={{ width: '100%' }}
+                  showClear
+                  filter
+                  optionList={poolAgentIdOptions}
+                  value={planExecConfig?.plannerAgent || undefined}
+                  placeholder="从 default 池内选择"
+                  onChange={v =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('plan_exec', config);
+                      const id = typeof v === 'string' ? v : '';
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          planExecConfig: {
+                            ...normalized.modeConfig?.planExecConfig,
+                            plannerAgent: id,
+                          },
                         },
-                      },
-                    };
-                  })
-                }
-                placeholder="例如：planner"
-              />
+                      };
+                    })
+                  }
+                />
+              ) : (
+                <Input
+                  style={{ width: '100%' }}
+                  value={planExecConfig?.plannerAgent ?? ''}
+                  onChange={value =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('plan_exec', config);
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          planExecConfig: {
+                            ...normalized.modeConfig?.planExecConfig,
+                            plannerAgent: value,
+                          },
+                        },
+                      };
+                    })
+                  }
+                  placeholder="例如：planner"
+                />
+              )}
               <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
                 {schemeBindAgentHint}
               </Text>
             </div>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>执行顺序</Text>
+              {poolAgentIdOptions.length > 0 ? (
+                <Select
+                  multiple
+                  style={{ width: '100%' }}
+                  filter
+                  maxTagCount={3}
+                  showRestTagsPopover
+                  optionList={poolAgentIdOptions}
+                  value={planExecConfig?.executionOrder || []}
+                  placeholder="多选：按点击选择顺序作为执行顺序"
+                  onChange={v => {
+                    const arr = Array.isArray(v) ? v.map(x => String(x)).filter(Boolean) : [];
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('plan_exec', config);
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          planExecConfig: {
+                            ...normalized.modeConfig?.planExecConfig,
+                            executionOrder: arr,
+                          },
+                        },
+                      };
+                    });
+                  }}
+                />
+              ) : null}
               <Input
-                style={{ width: '100%' }}
+                style={{ width: '100%', marginTop: poolAgentIdOptions.length > 0 ? 8 : 0 }}
                 value={joinCommaSeparated(planExecConfig?.executionOrder)}
                 onChange={value =>
                   updateSchemeConfig(config => {
@@ -595,7 +745,11 @@ export const AgentPlaygroundPage: React.FC = () => {
                     };
                   })
                 }
-                placeholder="按逗号分隔，例如：planner, designer, engineer"
+                placeholder={
+                  poolAgentIdOptions.length > 0
+                    ? '或手动输入逗号分隔顺序（与上方多选二选一即可）'
+                    : '按逗号分隔，例如：designer, engineer'
+                }
               />
             </div>
           </Space>
@@ -607,33 +761,89 @@ export const AgentPlaygroundPage: React.FC = () => {
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>监督 Agent</Text>
-              <Input
-                style={{ width: '100%' }}
-                value={supervisionConfig?.supervisorAgent ?? ''}
-                onChange={value =>
-                  updateSchemeConfig(config => {
-                    const normalized = normalizeSchemeConfig('supervision', config);
-                    return {
-                      ...normalized,
-                      modeConfig: {
-                        supervisionConfig: {
-                          ...normalized.modeConfig?.supervisionConfig,
-                          supervisorAgent: value,
+              {poolAgentIdOptions.length > 0 ? (
+                <Select
+                  style={{ width: '100%' }}
+                  showClear
+                  filter
+                  optionList={poolAgentIdOptions}
+                  value={supervisionConfig?.supervisorAgent || undefined}
+                  placeholder="从 default 池内选择"
+                  onChange={v =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('supervision', config);
+                      const id = typeof v === 'string' ? v : '';
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          supervisionConfig: {
+                            ...normalized.modeConfig?.supervisionConfig,
+                            supervisorAgent: id,
+                          },
                         },
-                      },
-                    };
-                  })
-                }
-                placeholder="例如：supervisor"
-              />
+                      };
+                    })
+                  }
+                />
+              ) : (
+                <Input
+                  style={{ width: '100%' }}
+                  value={supervisionConfig?.supervisorAgent ?? ''}
+                  onChange={value =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('supervision', config);
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          supervisionConfig: {
+                            ...normalized.modeConfig?.supervisionConfig,
+                            supervisorAgent: value,
+                          },
+                        },
+                      };
+                    })
+                  }
+                  placeholder="例如：supervisor"
+                />
+              )}
               <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
                 {schemeBindAgentHint}
               </Text>
             </div>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>Worker Agents</Text>
+              {poolAgentsSelectable.length > 0 ? (
+                <>
+                  <CheckboxGroup
+                    direction="vertical"
+                    value={supervisionConfig?.workerAgents || []}
+                    onChange={list => {
+                      const ids = (Array.isArray(list) ? list : []).map(x => String(x)).filter(Boolean);
+                      updateSchemeConfig(config => {
+                        const normalized = normalizeSchemeConfig('supervision', config);
+                        return {
+                          ...normalized,
+                          modeConfig: {
+                            supervisionConfig: {
+                              ...normalized.modeConfig?.supervisionConfig,
+                              workerAgents: ids,
+                            },
+                          },
+                        };
+                      });
+                    }}
+                    options={poolAgentsSelectable.map((a: AgentDefinition) => ({
+                      value: a.id,
+                      label: `${a.name} (${a.id})`,
+                    }))}
+                  />
+                  <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
+                    勾选参与并行协作的池内 Agent（unordered，与监督逻辑一致即可）。
+                  </Text>
+                </>
+              ) : null}
               <Input
-                style={{ width: '100%' }}
+                style={{ width: '100%', marginTop: poolAgentsSelectable.length > 0 ? 10 : 0 }}
                 value={joinCommaSeparated(supervisionConfig?.workerAgents)}
                 onChange={value =>
                   updateSchemeConfig(config => {
@@ -649,7 +859,11 @@ export const AgentPlaygroundPage: React.FC = () => {
                     };
                   })
                 }
-                placeholder="按逗号分隔，例如：designer, engineer"
+                placeholder={
+                  poolAgentsSelectable.length > 0
+                    ? '或手动输入逗号分隔（可与勾选同步）'
+                    : '按逗号分隔，例如：designer, engineer'
+                }
               />
             </div>
             <div style={{ width: '100%' }}>
@@ -685,33 +899,89 @@ export const AgentPlaygroundPage: React.FC = () => {
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>入口 Agent</Text>
-              <Input
-                style={{ width: '100%' }}
-                value={peerHandoffConfig?.entryAgent ?? ''}
-                onChange={value =>
-                  updateSchemeConfig(config => {
-                    const normalized = normalizeSchemeConfig('peer_handoff', config);
-                    return {
-                      ...normalized,
-                      modeConfig: {
-                        peerHandoffConfig: {
-                          ...normalized.modeConfig?.peerHandoffConfig,
-                          entryAgent: value,
+              {poolAgentIdOptions.length > 0 ? (
+                <Select
+                  style={{ width: '100%' }}
+                  showClear
+                  filter
+                  optionList={poolAgentIdOptions}
+                  value={peerHandoffConfig?.entryAgent || undefined}
+                  placeholder="从 default 池内选择"
+                  onChange={v =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('peer_handoff', config);
+                      const id = typeof v === 'string' ? v : '';
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          peerHandoffConfig: {
+                            ...normalized.modeConfig?.peerHandoffConfig,
+                            entryAgent: id,
+                          },
                         },
-                      },
-                    };
-                  })
-                }
-                placeholder="例如：designer"
-              />
+                      };
+                    })
+                  }
+                />
+              ) : (
+                <Input
+                  style={{ width: '100%' }}
+                  value={peerHandoffConfig?.entryAgent ?? ''}
+                  onChange={value =>
+                    updateSchemeConfig(config => {
+                      const normalized = normalizeSchemeConfig('peer_handoff', config);
+                      return {
+                        ...normalized,
+                        modeConfig: {
+                          peerHandoffConfig: {
+                            ...normalized.modeConfig?.peerHandoffConfig,
+                            entryAgent: value,
+                          },
+                        },
+                      };
+                    })
+                  }
+                  placeholder="例如：designer"
+                />
+              )}
               <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
                 {schemeBindAgentHint}
               </Text>
             </div>
             <div style={{ width: '100%' }}>
               <Text strong style={{ display: 'block', marginBottom: 8 }}>Mesh Agents</Text>
+              {poolAgentsSelectable.length > 0 ? (
+                <>
+                  <CheckboxGroup
+                    direction="vertical"
+                    value={peerHandoffConfig?.meshAgents || []}
+                    onChange={list => {
+                      const ids = (Array.isArray(list) ? list : []).map(x => String(x)).filter(Boolean);
+                      updateSchemeConfig(config => {
+                        const normalized = normalizeSchemeConfig('peer_handoff', config);
+                        return {
+                          ...normalized,
+                          modeConfig: {
+                            peerHandoffConfig: {
+                              ...normalized.modeConfig?.peerHandoffConfig,
+                              meshAgents: ids,
+                            },
+                          },
+                        };
+                      });
+                    }}
+                    options={poolAgentsSelectable.map((a: AgentDefinition) => ({
+                      value: a.id,
+                      label: `${a.name} (${a.id})`,
+                    }))}
+                  />
+                  <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
+                    勾选可参与交接的同伴；与方案绑定的候选范围一致。
+                  </Text>
+                </>
+              ) : null}
               <Input
-                style={{ width: '100%' }}
+                style={{ width: '100%', marginTop: poolAgentsSelectable.length > 0 ? 10 : 0 }}
                 value={joinCommaSeparated(peerHandoffConfig?.meshAgents)}
                 onChange={value =>
                   updateSchemeConfig(config => {
@@ -727,7 +997,11 @@ export const AgentPlaygroundPage: React.FC = () => {
                     };
                   })
                 }
-                placeholder="按逗号分隔，例如：designer, pm, engineer"
+                placeholder={
+                  poolAgentsSelectable.length > 0
+                    ? '或手动输入逗号分隔（可与勾选同步）'
+                    : '按逗号分隔，例如：designer, pm, engineer'
+                }
               />
             </div>
             <div style={{ width: '100%' }}>
@@ -789,7 +1063,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     try {
       const config = normalizeSchemeConfig(schemeForm.mode, schemeForm.config);
       if (schemeModalMode === 'create') {
-        const pool = pools[0];
+        const pool = defaultAgentPool;
         const bindAgents = buildSchemeBindAgents(schemeForm.mode, pool);
         if (schemeForm.mode === 'plan_exec' && !bindAgents.some(b => b.agentId === 'planner')) {
           Toast.warning(
@@ -810,7 +1084,7 @@ export const AgentPlaygroundPage: React.FC = () => {
           mode: schemeForm.mode,
           originalMode: schemeForm.originalMode,
           existingBindAgents: editingScheme.bindAgents,
-          pool: pools[0],
+          pool: defaultAgentPool,
         });
         await updateScheme(editingScheme.id, {
           name: schemeForm.name,
@@ -848,6 +1122,10 @@ export const AgentPlaygroundPage: React.FC = () => {
       Toast.error('请输入任务描述');
       return;
     }
+    let payload = userInput.trim();
+    if (attachPreviousRunContext && previousRunSnapshot?.runId) {
+      payload = buildPlaygroundFollowUpUserPayload(previousRunSnapshot, userInput.trim());
+    }
     invalidateActiveRunRequests();
     setRunning(true);
     setCurrentRunDetail(undefined);
@@ -856,7 +1134,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     setActiveTab('run');
 
     try {
-      const res = await runWorkflow({ schemeId: scheme.id, userInput });
+      const res = await runWorkflow({ schemeId: scheme.id, userInput: payload });
       const runId = res.runId;
       activeRunIdRef.current = runId;
       await refreshRunState(runId);
@@ -963,7 +1241,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     },
   ];
 
-  const totalAgents = pools.reduce((acc, p) => acc + (p.agents?.length || 0), 0);
+  const totalAgents = defaultAgentPool?.agents?.length ?? 0;
   const ui = PLAYGROUND_UI[lang];
 
   const graphFooterLine = useMemo(() => {
@@ -1192,14 +1470,14 @@ export const AgentPlaygroundPage: React.FC = () => {
                     <Text strong style={{ fontSize: 22 }}>{totalAgents}</Text>
                     <Text type="tertiary" style={{ marginLeft: 8 }}>个 Agent</Text>
                     <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
-                      {pools.length} 个池 · 点此进入管理
+                      协作使用 default 池 · 点此进入管理
                     </Text>
                     <Divider margin="12px" />
                     <Space wrap>
-                      {pools.flatMap(p => p.agents || []).slice(0, 6).map((a, i) => (
+                      {(defaultAgentPool?.agents || []).slice(0, 6).map((a, i) => (
                         <Tag key={`${a.id}-${i}`}>{a.name}</Tag>
                       ))}
-                      {totalAgents === 0 ? <Text type="tertiary" size="small">暂无 Agent，请先创建池</Text> : null}
+                      {totalAgents === 0 ? <Text type="tertiary" size="small">暂无 Agent，请在默认池中绑定托管配置</Text> : null}
                     </Space>
                   </Card>
                 </div>
@@ -1440,6 +1718,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                   applyingRecoveryActionId={applyingRecoveryActionId}
                   running={displayedRuntimeState.running}
                   runtimeViewModel={runtimeViewModel}
+                  attachPreviousRunContext={attachPreviousRunContext}
+                  onAttachPreviousRunContextChange={setAttachPreviousRunContext}
+                  previousRunSnapshot={previousRunSnapshot}
                 />
               </Col>
 
@@ -1470,7 +1751,7 @@ export const AgentPlaygroundPage: React.FC = () => {
         title={schemeModalMode === 'create' ? '新建协作方案' : '编辑协作方案'}
         okText="保存"
         maskClosable={false}
-        width={560}
+        width={640}
       >
         <Space vertical align="start" spacing="loose" style={{ width: '100%' }}>
           <div style={{ width: '100%' }}>

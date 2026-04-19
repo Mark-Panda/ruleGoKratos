@@ -97,6 +97,10 @@ type agentDefResp struct {
 }
 
 func (s *PlaygroundService) listAgentPools(ctx khttp.Context) error {
+	// 空库或删库后：首次拉取池列表前幂等创建 default 池（Run 之外也应可见）
+	if _, err := s.agentPoolSvc.CreateDefaultAgentPool(ctx); err != nil {
+		return err
+	}
 	pools, err := s.agentPoolSvc.ListPools(ctx)
 	if err != nil {
 		return err
@@ -118,6 +122,11 @@ func (s *PlaygroundService) getAgentPool(ctx khttp.Context) error {
 		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	id := req.ID
+	if strings.TrimSpace(id) == "default" {
+		if _, err := s.agentPoolSvc.CreateDefaultAgentPool(ctx); err != nil {
+			return err
+		}
+	}
 	pool, err := s.agentPoolSvc.GetPool(ctx, id)
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "pool not found"})
@@ -153,12 +162,6 @@ func (s *PlaygroundService) getAgentPool(ctx khttp.Context) error {
 	return ctx.JSON(http.StatusOK, map[string]interface{}{"pool": resp})
 }
 
-type createPoolReq struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Agents      []*agentDefReq `json:"agents"`
-}
-
 type agentDefReq struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
@@ -172,34 +175,10 @@ type agentDefReq struct {
 }
 
 func (s *PlaygroundService) createAgentPool(ctx khttp.Context) error {
-	var req createPoolReq
-	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-
-	agents := make([]*entity.AgentDefinition, 0)
-	if req.Agents != nil {
-		for _, a := range req.Agents {
-			agents = append(agents, &entity.AgentDefinition{
-				ID:             a.ID,
-				Name:           a.Name,
-				Role:           a.Role,
-				Desc:           a.Desc,
-				Model:          a.Model,
-				Tools:          a.Tools,
-				Enabled:        a.Enabled,
-				Priority:       a.Priority,
-				ManagedAgentID: a.ManagedAgentID,
-			})
-		}
-	}
-
-	pool, err := s.agentPoolSvc.CreatePool(ctx, req.Name, req.Description, agents)
-	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	return ctx.JSON(http.StatusCreated, map[string]interface{}{"pool": s.poolToResp(pool)})
+	// 协作运行固定使用 id=default 的池（见 WorkflowService.Run）；不提供再建其它池。
+	return ctx.JSON(http.StatusBadRequest, map[string]string{
+		"error": "协作仅使用内置 default Agent 池，不支持新建其它池；请通过 PUT /playground/pools/default 维护成员与绑定",
+	})
 }
 
 type updatePoolReq struct {

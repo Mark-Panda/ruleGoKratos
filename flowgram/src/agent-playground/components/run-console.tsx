@@ -1,12 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { IconClear, IconCopy, IconSend, IconUndo } from '@douyinfe/semi-icons';
-import { Button, Card, Space, Spin, Tag, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Checkbox, Space, Spin, Tag, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 
 import { CollaborationScheme, MODE_NAME_MAP, RecoveryAction } from '../../services/api-playground';
 import { RuntimeViewModel } from '../utils/runtime-view-model';
 import { canApplyRecoveryAction, recoveryActionButtonLabel } from '../utils/recovery-actions';
 
 const { Text } = Typography;
+
+/** 上一轮已结束的运行摘要，用于下一轮输入时附带上下文（避免新 run 丢失 Bug 语义） */
+export interface PreviousRunSnapshot {
+  runId: string;
+  userInput: string;
+  finalOutput: string;
+  runStatus: string;
+}
 
 interface RunConsoleProps {
   scheme?: CollaborationScheme;
@@ -16,6 +24,10 @@ interface RunConsoleProps {
   applyingRecoveryActionId?: string;
   running: boolean;
   runtimeViewModel: RuntimeViewModel;
+  /** 存在上一轮快照时，是否在发送时自动拼入完整上下文 */
+  attachPreviousRunContext?: boolean;
+  onAttachPreviousRunContextChange?: (value: boolean) => void;
+  previousRunSnapshot?: PreviousRunSnapshot | null;
 }
 
 const STATUS_COLOR_MAP: Record<RuntimeViewModel['run']['status'], 'blue' | 'green' | 'red' | 'orange' | 'grey'> = {
@@ -37,6 +49,9 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
   applyingRecoveryActionId,
   running,
   runtimeViewModel,
+  attachPreviousRunContext = true,
+  onAttachPreviousRunContextChange,
+  previousRunSnapshot,
 }) => {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -313,6 +328,18 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
       </div>
 
       <div style={{ flexShrink: 0, marginTop: 'auto' }}>
+        {previousRunSnapshot && onAttachPreviousRunContextChange != null ? (
+          <div style={{ marginBottom: 8 }}>
+            <Checkbox
+              checked={attachPreviousRunContext}
+              onChange={e => onAttachPreviousRunContextChange(!!(e?.target as HTMLInputElement).checked)}
+            >
+              <Text size="small">
+                附带上一轮运行上下文（runId、原任务、产出摘录），便于反馈 Bug；关闭则仅发送下方正文（新区间可能无法理解上一轮）
+              </Text>
+            </Checkbox>
+          </div>
+        ) : null}
         <TextArea
           ref={inputRef as never}
           value={input}

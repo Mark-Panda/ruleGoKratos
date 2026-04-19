@@ -371,10 +371,6 @@ export const getAgentPool = async (id: string) => {
   return requestJSON<{ pool: AgentPool }>(`/playground/pools/${encodeURIComponent(id)}`);
 };
 
-export const createAgentPool = async (data: { name: string; description: string; agents?: AgentDefinition[] }) => {
-  return requestJSON<{ pool: AgentPool }>('/playground/pools', { method: 'POST', body: data });
-};
-
 export const updateAgentPool = async (id: string, data: { name?: string; description?: string; agents?: AgentDefinition[] }) => {
   return requestJSON<{ pool: AgentPool }>(`/playground/pools/${encodeURIComponent(id)}`, { method: 'PUT', body: data });
 };

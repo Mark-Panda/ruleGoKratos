@@ -1,8 +1,8 @@
 /**
- * Agent 管理：Agent 池的新建、删除与池信息维护；池内 Agent 只读展示（不可单独编辑/删除）
+ * Agent 管理：维护内置 default Agent 池的成员与托管绑定（协作运行仅使用该池）。
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Typography,
@@ -12,46 +12,19 @@ import {
   Toast,
   Card,
   Switch,
-  Modal,
   Input,
   Divider,
   Select,
-  Spin,
-  CheckboxGroup,
 } from '@douyinfe/semi-ui';
-import {
-  IconPlus,
-  IconDelete,
-} from '@douyinfe/semi-icons';
 
 import {
   AgentPool,
   AgentDefinition,
-  createAgentPool,
   updateAgentPool,
-  deleteAgentPool,
 } from '../../services/api-playground';
 import { listManagedAgents, type ManagedAgentItem } from '../../services/api-managed-agents';
 
 const { Text } = Typography;
-
-/** 根据主站「Agent 配置」勾选结果生成池内 Agent（托管关联） */
-function agentsFromManagedSelection(ids: number[], catalog: ManagedAgentItem[]): AgentDefinition[] {
-  return ids.map((mid, i) => {
-    const m = catalog.find(x => x.id === mid);
-    return {
-      id: '',
-      name: (m?.name || '').trim() || `Agent-${mid}`,
-      role: '',
-      desc: (m?.description || '').trim(),
-      model: '',
-      tools: [],
-      enabled: m?.enabled !== false,
-      priority: i,
-      managedAgentId: mid,
-    };
-  });
-}
 
 interface AgentManagerProps {
   pools: AgentPool[];
@@ -59,7 +32,8 @@ interface AgentManagerProps {
 }
 
 export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange }) => {
-  const [selectedPool, setSelectedPool] = useState<AgentPool | undefined>(() => pools[0]);
+  /** 协作运行固定使用 default；兼容旧库中仅剩其它 id 的首项 */
+  const displayPool = useMemo(() => pools.find(p => p.id === 'default') ?? pools[0], [pools]);
 
   const [poolName, setPoolName] = useState('');
   const [poolDesc, setPoolDesc] = useState('');
@@ -67,13 +41,6 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [managedCatalog, setManagedCatalog] = useState<ManagedAgentItem[]>([]);
 
-  const [createPoolModalVisible, setCreatePoolModalVisible] = useState(false);
-  const [newPoolName, setNewPoolName] = useState('');
-  const [newPoolDesc, setNewPoolDesc] = useState('');
-  /** 新建池时预置：勾选的「Agent 配置」id（主站 Agent 管理菜单） */
-  const [bootstrapManagedIds, setBootstrapManagedIds] = useState<number[]>([]);
-
-  // 主站「Agent 配置」列表（Agent 管理菜单）
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -93,24 +60,14 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
   }, []);
 
   useEffect(() => {
-    if (!pools.length) {
-      setSelectedPool(undefined);
+    if (displayPool) {
+      setPoolName(displayPool.name);
+      setPoolDesc(displayPool.description);
+    } else {
       setPoolName('');
       setPoolDesc('');
-      return;
     }
-    setSelectedPool(prev => {
-      const still = pools.find(p => p.id === prev?.id);
-      return still ?? pools[0];
-    });
-  }, [pools]);
-
-  useEffect(() => {
-    if (selectedPool) {
-      setPoolName(selectedPool.name);
-      setPoolDesc(selectedPool.description);
-    }
-  }, [selectedPool?.id, selectedPool?.name, selectedPool?.description]);
+  }, [displayPool?.id, displayPool?.name, displayPool?.description]);
 
   const persistPool = useCallback(async (pool: AgentPool) => {
     await updateAgentPool(pool.id, {
@@ -122,43 +79,8 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
     await onPoolsChange();
   }, [onPoolsChange]);
 
-  const openCreatePoolModal = () => {
-    setNewPoolName(`Agent池-${Date.now()}`);
-    setNewPoolDesc('');
-    setBootstrapManagedIds([]);
-    setCreatePoolModalVisible(true);
-  };
-
-  const submitCreatePool = async () => {
-    const name = newPoolName.trim();
-    if (!name) {
-      Toast.warning({ content: '请填写池名称' });
-      return;
-    }
-    if (bootstrapManagedIds.length === 0) {
-      Toast.warning({ content: '请至少勾选一项主站「Agent 配置」' });
-      return;
-    }
-    try {
-      const agents = agentsFromManagedSelection(bootstrapManagedIds, managedCatalog);
-      const r = await createAgentPool({
-        name,
-        description: newPoolDesc.trim() || '新建的 Agent 池',
-        agents,
-      });
-      Toast.success({ content: '创建成功' });
-      setCreatePoolModalVisible(false);
-      await onPoolsChange();
-      if (r.pool) {
-        setSelectedPool(r.pool);
-      }
-    } catch (err) {
-      Toast.error({ content: `创建失败: ${err}` });
-    }
-  };
-
   const handleSavePoolMeta = async () => {
-    if (!selectedPool) return;
+    if (!displayPool) return;
     const name = poolName.trim();
     if (!name) {
       Toast.error('请填写池名称');
@@ -166,36 +88,13 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
     }
     try {
       await persistPool({
-        ...selectedPool,
+        ...displayPool,
         name,
         description: poolDesc,
       });
     } catch (err) {
       Toast.error(`保存失败: ${err}`);
     }
-  };
-
-  const handleDeletePool = (pool: AgentPool) => {
-    if (pool.id === 'default') {
-      Toast.warning('默认 Agent 池不可删除');
-      return;
-    }
-    Modal.confirm({
-      title: '删除 Agent 池',
-      content: `确定删除「${pool.name}」吗？池内 Agent 定义将一并删除。`,
-      onOk: async () => {
-        try {
-          await deleteAgentPool(pool.id);
-          Toast.success('已删除');
-          if (selectedPool?.id === pool.id) {
-            setSelectedPool(undefined);
-          }
-          onPoolsChange();
-        } catch (err) {
-          Toast.error(`删除失败: ${err}`);
-        }
-      },
-    });
   };
 
   const handleToggleAgent = async (pool: AgentPool, agentId: string, enabled: boolean) => {
@@ -270,9 +169,9 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
           value={r.managedAgentId && r.managedAgentId > 0 ? String(r.managedAgentId) : ''}
           disabled={catalogLoading}
           onChange={(v) =>
-            selectedPool &&
+            displayPool &&
             handleBindManagedAgent(
-              selectedPool,
+              displayPool,
               r.id,
               typeof v === 'string' || typeof v === 'number' ? v : undefined
             )}
@@ -314,7 +213,7 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
         <Switch
           checked={enabled}
           onChange={checked =>
-            selectedPool && handleToggleAgent(selectedPool, record.id, checked)
+            displayPool && handleToggleAgent(displayPool, record.id, checked)
           }
         />
       ),
@@ -324,61 +223,20 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
 
   return (
     <div>
-      <Card
-        title="Agent 池"
-        headerExtraContent={
-          <Button type="primary" theme="solid" icon={<IconPlus />} onClick={openCreatePoolModal}>
-            新建 Agent 池
-          </Button>
-        }
-      >
+      <Card title="默认 Agent 池">
         <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 16, lineHeight: 1.65 }}>
-          <strong style={{ color: 'var(--semi-color-text-1)' }}>默认池</strong>
-          里的「设计师」「规划师」等是 Playground 预置
+          <strong style={{ color: 'var(--semi-color-text-1)' }}>协作运行仅使用本池（id=default）</strong>
+          。下方的「设计师」「规划师」等是预置
           <strong style={{ color: 'var(--semi-color-text-1)' }}>角色槽位</strong>
-          ，不会在主站「Agent 配置」列表里自动出现同名条目。请在下方「绑定托管 Agent」列为每个槽位选择一项已在主站创建的配置，模型与工具以托管为准。
+          ，请在「绑定托管 Agent」列为每个槽位选择主站「Agent 配置」；模型与工具以托管为准。
           若下拉为空，请先到顶部菜单 <strong>Agent 管理 → Agent 配置</strong> 新建并启用。
         </Text>
-        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 16, lineHeight: 1.65 }}>
-          自定义新建池仍可在「新建 Agent 池」向导中勾选多条主站配置一键生成成员；任意池内也可在本表修改绑定或仅用启用/禁用开关。
-        </Text>
 
-        <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-          <Text type="tertiary" size="small" style={{ flexShrink: 0 }}>当前池</Text>
-          {pools.length === 0 ? (
-            <Text type="warning" size="small">暂无 Agent 池，请先新建</Text>
-          ) : (
-            <>
-              <Select
-                placeholder="选择 Agent 池"
-                style={{ minWidth: 260, maxWidth: 420 }}
-                value={selectedPool?.id}
-                onChange={id => {
-                  const p = pools.find(x => x.id === id);
-                  if (p) setSelectedPool(p);
-                }}
-              >
-                {pools.map(pool => (
-                  <Select.Option key={pool.id} value={pool.id}>
-                    {pool.name} · {pool.agents?.length || 0} 个 Agent
-                  </Select.Option>
-                ))}
-              </Select>
-              {selectedPool && selectedPool.id !== 'default' ? (
-                <Button
-                  type="danger"
-                  theme="borderless"
-                  icon={<IconDelete />}
-                  onClick={() => handleDeletePool(selectedPool)}
-                >
-                  删除当前池
-                </Button>
-              ) : null}
-            </>
-          )}
-        </div>
-
-        {selectedPool ? (
+        {!displayPool ? (
+          <Text type="warning" size="small">
+            暂无默认 Agent 池。请刷新页面；首次请求池列表时服务会自动创建 default。
+          </Text>
+        ) : (
           <>
             <Divider margin="12px" align="center">
               池信息
@@ -414,90 +272,13 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
             </Divider>
             <Table
               columns={columns}
-              dataSource={selectedPool.agents || []}
+              dataSource={displayPool.agents || []}
               rowKey="id"
               pagination={false}
             />
           </>
-        ) : (
-          <Text type="tertiary">暂无 Agent 池，请先新建</Text>
         )}
       </Card>
-
-      <Modal
-        title="新建 Agent 池"
-        visible={createPoolModalVisible}
-        onCancel={() => setCreatePoolModalVisible(false)}
-        onOk={() => void submitCreatePool()}
-        okText="创建"
-        okButtonProps={{
-          disabled: !newPoolName.trim() || bootstrapManagedIds.length === 0,
-        }}
-        maskClosable={false}
-        width={520}
-      >
-        <Space vertical align="start" style={{ width: '100%' }}>
-          <div style={{ width: '100%' }}>
-            <Text type="tertiary" style={{ display: 'block', marginBottom: 8 }}>
-              池名称 *
-            </Text>
-            <Input
-              value={newPoolName}
-              onChange={setNewPoolName}
-              placeholder="例如：产品评审池"
-            />
-          </div>
-          <div style={{ width: '100%' }}>
-            <Text type="tertiary" style={{ display: 'block', marginBottom: 8 }}>
-              描述
-            </Text>
-            <Input value={newPoolDesc} onChange={setNewPoolDesc} placeholder="可选" />
-          </div>
-          <Divider margin="8px" />
-          <Text strong style={{ display: 'block' }}>
-            关联主站 Agent 配置 *
-          </Text>
-          <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-            与顶部菜单「Agent 管理 → Agent 配置」中已创建的条目对应；须至少勾选一项，可多选，创建后池内会自动生成带托管关联的
-            Agent。
-          </Text>
-          <Spin spinning={catalogLoading} style={{ width: '100%' }}>
-            {managedCatalog.filter(m => m.enabled !== false).length === 0 ? (
-              <Text type="warning" size="small">
-                暂无可用配置。请先在主站「Agent 管理 → Agent 配置」中新建并启用。
-              </Text>
-            ) : (
-              <div
-                style={{
-                  maxHeight: 220,
-                  overflow: 'auto',
-                  border: '1px solid var(--semi-color-border)',
-                  borderRadius: 8,
-                  padding: 12,
-                  width: '100%',
-                }}
-              >
-                <CheckboxGroup
-                  direction="vertical"
-                  value={bootstrapManagedIds.map(String)}
-                  onChange={v => {
-                    const arr = Array.isArray(v) ? v : [];
-                    setBootstrapManagedIds(
-                      arr.map(x => Number(x)).filter(n => Number.isFinite(n) && n > 0)
-                    );
-                  }}
-                  options={managedCatalog
-                    .filter(m => m.enabled !== false)
-                    .map(m => ({
-                      label: `${m.name} (#${m.id})`,
-                      value: String(m.id),
-                    }))}
-                />
-              </div>
-            )}
-          </Spin>
-        </Space>
-      </Modal>
     </div>
   );
 };
