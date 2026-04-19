@@ -20,7 +20,7 @@ import { FlowDocumentJSON } from '../../typings';
 import { requestJSON } from '../../services/http';
 import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
 import { Editor } from '../../editor';
-import { runLogChainDisplay } from '../../utils/run-log-display';
+import { runLogChainDisplay, runLogTableRowKey } from '../../utils/run-log-display';
 
 export const WorkflowRunLogsSection: React.FC = () => {
   const [timeRange, setTimeRange] = useState<[Date | null, Date | null]>([null, null]);
@@ -179,6 +179,7 @@ export const WorkflowRunLogsSection: React.FC = () => {
         <Spin spinning={loading}>
           <Table
             dataSource={runs}
+            rowKey={runLogTableRowKey}
             columns={[
               {
                 title: '工作流名称',

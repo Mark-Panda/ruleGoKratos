@@ -33,7 +33,7 @@ import { createRuleBase, getRuleDetail } from '../services/api-rules';
 import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
 import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
-import { runLogChainDisplay } from '../utils/run-log-display';
+import { runLogChainDisplay, runLogTableRowKey } from '../utils/run-log-display';
 
 export interface RuleDetailData {
   ruleChain: {
@@ -477,6 +477,7 @@ export const RuleDetail: React.FC<{
                     <Spin spinning={loadingRuns}>
                       <Table
                         dataSource={runs}
+                        rowKey={runLogTableRowKey}
                         columns={[
                           {
                             title: '工作流名称',

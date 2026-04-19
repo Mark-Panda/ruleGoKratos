@@ -90,6 +90,9 @@ func (h *PeerHandoffHandler) Execute(ctx context.Context, runID string, input st
 		currentAgent = nextAgent
 	}
 
+	if strings.TrimSpace(currentAgent.Output) == "" && strings.TrimSpace(lastOutput) != "" {
+		currentAgent.Output = lastOutput
+	}
 	return currentAgent, nil
 }
 

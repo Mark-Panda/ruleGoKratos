@@ -10,11 +10,13 @@ import {
   Space,
   Card,
   Spin,
+  Toast,
 } from '@douyinfe/semi-ui';
 import {
   IconSend,
   IconClear,
   IconUndo,
+  IconCopy,
 } from '@douyinfe/semi-icons';
 
 import {
@@ -146,7 +148,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
       {currentRun && currentRun.status !== 'running' ? (
         <div
           style={{
-            padding: '12px 14px',
+            padding: '14px 16px',
             background:
               currentRun.status === 'completed'
                 ? 'var(--semi-color-success-light-active)'
@@ -156,12 +158,65 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             border: `1px solid ${currentRun.status === 'completed' ? 'var(--semi-color-success)' : 'var(--semi-color-danger)'}`,
           }}
         >
-          <Space vertical align="start">
-            <Text strong>{currentRun.status === 'completed' ? '运行完成' : '运行失败'}</Text>
-            {currentRun.finalOutput ? (
-              <Text type="tertiary" size="small" style={{ maxHeight: 200, overflow: 'auto', display: 'block' }}>
-                {currentRun.finalOutput}
+          <Space vertical align="start" style={{ width: '100%' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                width: '100%',
+              }}
+            >
+              <Text strong style={{ fontSize: 15 }}>
+                {currentRun.status === 'completed' ? '最终结果' : '运行失败'}
               </Text>
+              {currentRun.status === 'completed' &&
+              currentRun.finalOutput &&
+              currentRun.finalOutput.trim().length > 0 ? (
+                <Button
+                  size="small"
+                  type="tertiary"
+                  theme="borderless"
+                  icon={<IconCopy />}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(currentRun.finalOutput || '').then(
+                      () => Toast.success({ content: '已复制完整结果', duration: 2 }),
+                      () => Toast.warning({ content: '复制失败，请手动选中复制', duration: 3 }),
+                    );
+                  }}
+                >
+                  复制全文
+                </Button>
+              ) : null}
+            </div>
+            <Text type="tertiary" size="small" style={{ display: 'block', lineHeight: 1.5 }}>
+              {currentRun.status === 'completed'
+                ? currentRun.finalOutput?.trim()
+                  ? '以下为本次协作返回的汇总输出；详细步骤见右侧 Trace。'
+                  : '本次运行未写入汇总文本，请右侧 Trace 查看各步骤产出。'
+                : '协作提前结束，请在右侧 Trace 查看 ERROR 等事件定位原因。'}
+            </Text>
+            {currentRun.finalOutput?.trim() ? (
+              <div
+                style={{
+                  width: '100%',
+                  maxHeight: 'min(52vh, 440px)',
+                  overflow: 'auto',
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: 'var(--semi-color-bg-0)',
+                  border: '1px solid rgba(28,31,35,0.08)',
+                  fontSize: 13,
+                  lineHeight: 1.65,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'var(--semi-font-family-regular)',
+                  color: 'var(--semi-color-text-0)',
+                }}
+              >
+                {currentRun.finalOutput}
+              </div>
             ) : null}
           </Space>
         </div>

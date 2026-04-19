@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"ruleGoKratos/internal/biz/entity"
+	"strings"
 	"sync"
 	"time"
 
@@ -111,17 +112,46 @@ func (e *TraceEngine) EndRun(ctx context.Context, runID, finalOutput string, sta
 		return fmt.Errorf("update run: %w", err)
 	}
 
-	// 记录结束事件
-	e.EmitEvent(ctx, entity.NewTraceEvent(
+	// 记录结束事件：消息中带可读摘要，完整文本在 TraceRun.finalOutput 与 metadata
+	endMsg := workflowEndMessage(status, finalOutput)
+	ev := entity.NewTraceEvent(
 		runID,
 		entity.TraceEventWorkflowEnd,
 		"",
 		"",
 		"",
-		fmt.Sprintf("工作流结束: %s", status),
-	))
+		endMsg,
+	)
+	if strings.TrimSpace(finalOutput) != "" {
+		ev = ev.WithMetadata("finalOutput", finalOutput)
+	}
+	e.EmitEvent(ctx, ev)
 
 	return nil
+}
+
+// workflowEndMessage 生成 WORKFLOW_END 展示文案（Trace 列表与 SSE 即时可读）。
+func workflowEndMessage(status, finalOutput string) string {
+	switch status {
+	case "completed":
+		out := strings.TrimSpace(finalOutput)
+		if out == "" {
+			return "工作流已完成（无汇总文本产出，请查看各步骤事件）。"
+		}
+		return "工作流已完成。最终结果摘要：\n" + truncatePreviewRunes(out, 400)
+	case "failed":
+		return "工作流失败。"
+	default:
+		return fmt.Sprintf("工作流结束: %s", status)
+	}
+}
+
+func truncatePreviewRunes(s string, maxRunes int) string {
+	r := []rune(s)
+	if len(r) <= maxRunes {
+		return s
+	}
+	return string(r[:maxRunes]) + "…"
 }
 
 // EmitEvent 发送事件

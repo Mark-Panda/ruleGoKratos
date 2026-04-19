@@ -345,65 +345,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetComponentsReply'
-    /api/v1/doc/create:
-        post:
-            tags:
-                - MdWorkflow
-            operationId: MdWorkflow_Create
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/rulego.v1.CreateMdRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.MdItem'
-    /api/v1/doc/edit:
-        post:
-            tags:
-                - MdWorkflow
-            operationId: MdWorkflow_Update
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/rulego.v1.UpdateMdRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.MdItem'
-    /api/v1/doc/list:
-        get:
-            tags:
-                - MdWorkflow
-            operationId: MdWorkflow_List
-            parameters:
-                - name: page
-                  in: query
-                  schema:
-                    type: integer
-                    format: int32
-                - name: size
-                  in: query
-                  schema:
-                    type: integer
-                    format: int32
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.ListMdReply'
     /api/v1/logs/runs:
         get:
             tags:

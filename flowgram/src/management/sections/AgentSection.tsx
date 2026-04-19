@@ -503,7 +503,9 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                   <Table
                     size="small"
                     dataSource={record.models || []}
-                    rowKey="id"
+                    rowKey={(r: LlmModelEntryItem, i: number) =>
+                      String(r?.id ?? r?.modelName ?? `model-${i}`)
+                    }
                     pagination={false}
                     columns={[
                       { title: '模型 ID', dataIndex: 'modelName', width: 200 },

@@ -10,7 +10,6 @@ import {
   IconUser,
   IconHome,
   IconList,
-  IconFile,
   IconChevronLeft,
   IconChevronRight,
   IconBranch,
@@ -19,7 +18,6 @@ import {
 import { WorkflowSection } from './sections/WorkflowSection';
 import { WorkflowRunLogsSection } from './sections/WorkflowRunLogsSection';
 import { WorkflowExecuteSection } from './sections/WorkflowExecuteSection';
-import { DocsSection } from './sections/DocsSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AgentSection } from './sections/AgentSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
@@ -33,7 +31,6 @@ type MenuKey =
   | 'workflow-logs'
   | 'component-installed'
   | 'component-rules'
-  | 'docs'
   | 'agent-skills'
   | 'agent-mcp'
   | 'agent-models'
@@ -43,69 +40,98 @@ type MenuKey =
   | 'component'
   | 'agent';
 
+/** 与路由对应的菜单页 itemKey（不含 Nav 分组占位 key） */
+const MENU_KEYS: MenuKey[] = [
+  'intro',
+  'workflow',
+  'workflow-run',
+  'workflow-logs',
+  'component-installed',
+  'component-rules',
+  'agent-skills',
+  'agent-mcp',
+  'agent-models',
+  'agent-playground',
+  'agent-profiles',
+];
+
+function getMenuFromHash(h: string): MenuKey {
+  if (h === '#/' || h === '' || h === '#') return 'intro';
+  if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
+  if (h.startsWith('#/agent/skills')) return 'agent-skills';
+  if (h.startsWith('#/agent/models')) return 'agent-models';
+  if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
+  if (h.startsWith('#/playground')) return 'agent-playground';
+  if (h.startsWith('#/components/rules')) return 'component-rules';
+  if (h.startsWith('#/components')) return 'component-installed';
+  if (h.startsWith('#/workflow/run')) return 'workflow-run';
+  if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
+  return 'workflow';
+}
+
+function setHashForMenu(key: MenuKey) {
+  if (key === 'intro') window.location.hash = '#/';
+  else if (key === 'workflow') window.location.hash = '#/admin';
+  else if (key === 'workflow-run') window.location.hash = '#/workflow/run';
+  else if (key === 'workflow-logs') window.location.hash = '#/workflow/logs';
+  else if (key === 'component-installed') window.location.hash = '#/components';
+  else if (key === 'component-rules') window.location.hash = '#/components/rules';
+  else if (key === 'agent-skills') window.location.hash = '#/agent/skills';
+  else if (key === 'agent-models') window.location.hash = '#/agent/models';
+  else if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
+  else if (key === 'agent-playground') window.location.hash = '#/playground';
+  else if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
+}
+
 export const AdminPanel: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<MenuKey>(() => {
     try {
       const h = typeof window !== 'undefined' ? window.location.hash : '';
-      if (h === '#/' || h === '' || h === '#') return 'intro';
-      if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
-      if (h.startsWith('#/agent/skills')) return 'agent-skills';
-      if (h.startsWith('#/agent/models')) return 'agent-models';
-      if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
-      if (h.startsWith('#/playground')) return 'agent-playground';
-      if (h.startsWith('#/components/rules')) return 'component-rules';
-      if (h.startsWith('#/components')) return 'component-installed';
-      if (h.startsWith('#/docs')) return 'docs';
-      if (h.startsWith('#/workflow/run')) return 'workflow-run';
-      if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
-      return 'workflow';
+      return getMenuFromHash(h || '#/');
     } catch {
       return 'intro';
     }
   });
 
+  const [openTabs, setOpenTabs] = useState<MenuKey[]>(() => {
+    try {
+      const h = typeof window !== 'undefined' ? window.location.hash : '';
+      const menu = getMenuFromHash(h || '#/');
+      return menu === 'intro' ? ['intro'] : ['intro', menu];
+    } catch {
+      return ['intro'];
+    }
+  });
+
   useEffect(() => {
-    const getMenu = (h: string): MenuKey => {
-      if (h === '#/' || h === '' || h === '#') return 'intro';
-      if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
-      if (h.startsWith('#/agent/skills')) return 'agent-skills';
-      if (h.startsWith('#/agent/models')) return 'agent-models';
-      if (h.startsWith('#/agent/mcp')) return 'agent-mcp';
-      if (h.startsWith('#/playground')) return 'agent-playground';
-      if (h.startsWith('#/components/rules')) return 'component-rules';
-      if (h.startsWith('#/components')) return 'component-installed';
-      if (h.startsWith('#/docs')) return 'docs';
-      if (h.startsWith('#/workflow/run')) return 'workflow-run';
-      if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
-      return 'workflow';
-    };
     const onHash = () => {
       try {
         const h = typeof window !== 'undefined' ? window.location.hash : '';
-        setActiveMenu(getMenu(h || '#/'));
+        const menu = getMenuFromHash(h || '#/');
+        setActiveMenu(menu);
+        setOpenTabs((prev) => (prev.includes(menu) ? prev : [...prev, menu]));
       } catch {}
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const renderContent = () => {
-    if (activeMenu === 'intro') return <OverviewChatSection />;
-    if (activeMenu === 'agent-profiles') return <ManagedAgentsSection />;
-    if (activeMenu === 'workflow') return <WorkflowSection />;
-    if (activeMenu === 'workflow-run') return <WorkflowExecuteSection />;
-    if (activeMenu === 'workflow-logs') return <WorkflowRunLogsSection />;
-    if (activeMenu === 'docs') return <DocsSection />;
-    if (activeMenu === 'agent-skills') return <AgentSection view="skills" />;
-    if (activeMenu === 'agent-models') return <AgentSection view="models" />;
-    if (activeMenu === 'agent-mcp') return <AgentSection view="mcps" />;
-    if (activeMenu === 'agent-playground') return <AgentPlaygroundPage />;
-    if (activeMenu === 'component-rules') return <ComponentsSection view="rules" />;
+  const renderPage = (key: MenuKey) => {
+    if (key === 'intro') return <OverviewChatSection />;
+    if (key === 'agent-profiles') return <ManagedAgentsSection />;
+    if (key === 'workflow') return <WorkflowSection />;
+    if (key === 'workflow-run') return <WorkflowExecuteSection />;
+    if (key === 'workflow-logs') return <WorkflowRunLogsSection />;
+    if (key === 'agent-skills') return <AgentSection view="skills" />;
+    if (key === 'agent-models') return <AgentSection view="models" />;
+    if (key === 'agent-mcp') return <AgentSection view="mcps" />;
+    if (key === 'agent-playground') return <AgentPlaygroundPage />;
+    if (key === 'component-rules') return <ComponentsSection view="rules" />;
     return <ComponentsSection view="installed" />;
   };
 
-  const getPageTitle = () => {
-    switch (activeMenu) {
+  const getPageTitle = (menu: MenuKey = activeMenu) => {
+    switch (menu) {
       case 'intro':
         return 'Code 助手';
       case 'workflow':
@@ -118,8 +144,6 @@ export const AdminPanel: React.FC = () => {
         return '已安装组件';
       case 'component-rules':
         return '组件规则';
-      case 'docs':
-        return '开发文档';
       case 'agent-skills':
         return 'SKILL 管理';
       case 'agent-mcp':
@@ -152,6 +176,29 @@ export const AdminPanel: React.FC = () => {
     if (activeMenu === 'intro') return '工作台';
     if (activeMenu === 'agent-playground' || activeMenu === 'agent-profiles') return '智能体';
     return '系统';
+  };
+
+  const openMenu = (key: MenuKey) => {
+    setActiveMenu(key);
+    setHashForMenu(key);
+    setOpenTabs((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  };
+
+  const handleTabClose = (tabKey: string) => {
+    const key = tabKey as MenuKey;
+    setOpenTabs((prev) => {
+      if (prev.length <= 1) return prev;
+      const idx = prev.indexOf(key);
+      if (idx < 0) return prev;
+      const nextTabs = prev.filter((k) => k !== key);
+      setActiveMenu((am) => {
+        if (am !== key) return am;
+        const fallback = nextTabs[Math.max(0, idx - 1)] ?? nextTabs[0];
+        setHashForMenu(fallback);
+        return fallback;
+      });
+      return nextTabs;
+    });
   };
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -230,26 +277,13 @@ export const AdminPanel: React.FC = () => {
                   { itemKey: 'agent-mcp', text: 'MCP 配置' },
                 ],
               },
-              { itemKey: 'docs', text: '开发文档', icon: <IconFile /> },
             ]}
             selectedKeys={[activeMenu]}
             defaultOpenKeys={['engine', 'component', 'agent']}
             onSelect={(data) => {
               const key = data.itemKey as MenuKey;
               if (key === 'engine' || key === 'component' || key === 'agent') return;
-              setActiveMenu(key);
-              if (key === 'intro') window.location.hash = '#/';
-              if (key === 'workflow') window.location.hash = '#/admin';
-              if (key === 'workflow-run') window.location.hash = '#/workflow/run';
-              if (key === 'workflow-logs') window.location.hash = '#/workflow/logs';
-              if (key === 'component-installed') window.location.hash = '#/components';
-              if (key === 'component-rules') window.location.hash = '#/components/rules';
-              if (key === 'agent-skills') window.location.hash = '#/agent/skills';
-              if (key === 'agent-models') window.location.hash = '#/agent/models';
-              if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
-              if (key === 'agent-playground') window.location.hash = '#/playground';
-              if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
-              if (key === 'docs') window.location.hash = '#/docs';
+              openMenu(key);
             }}
             style={{ background: 'transparent' }}
           />
@@ -315,61 +349,48 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs + 各页内容（keepDOM 保留未焦点页状态） */}
         <div
           style={{
-            padding: '6px 12px 0',
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
             background: '#fff',
-            borderBottom: '1px solid rgba(6,7,9,0.08)',
+            padding: '6px 12px 0',
           }}
         >
           <Tabs
             type="card"
+            collapsible
             activeKey={activeMenu}
             onChange={(key) => {
-              // Only handle tab clicks if they correspond to actual routes
-              if (
-                [
-                  'intro',
-                  'workflow',
-                  'workflow-run',
-                  'workflow-logs',
-                  'component-installed',
-                  'component-rules',
-                  'docs',
-                  'agent-skills',
-                  'agent-mcp',
-                  'agent-models',
-                  'agent-playground',
-                  'agent-profiles',
-                ].includes(key)
-              ) {
-                setActiveMenu(key as MenuKey);
-                if (key === 'intro') window.location.hash = '#/';
-                if (key === 'workflow') window.location.hash = '#/admin';
-                if (key === 'workflow-run') window.location.hash = '#/workflow/run';
-                if (key === 'workflow-logs') window.location.hash = '#/workflow/logs';
-                if (key === 'component-installed') window.location.hash = '#/components';
-                if (key === 'component-rules') window.location.hash = '#/components/rules';
-                if (key === 'agent-skills') window.location.hash = '#/agent/skills';
-                if (key === 'agent-models') window.location.hash = '#/agent/models';
-                if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
-                if (key === 'agent-playground') window.location.hash = '#/playground';
-                if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
-                if (key === 'docs') window.location.hash = '#/docs';
-              }
+              if (MENU_KEYS.includes(key as MenuKey)) openMenu(key as MenuKey);
             }}
+            onTabClose={handleTabClose}
             tabBarExtraContent={null}
+            style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+            contentStyle={{
+              flex: 1,
+              minHeight: 0,
+              overflow: 'auto',
+              padding: 0,
+              background: '#F7F8FA',
+            }}
+            keepDOM
           >
-            <TabPane tab="Code 助手" itemKey="intro" />
-            {activeMenu !== 'intro' && (
-              <TabPane tab={getPageTitle()} itemKey={activeMenu} closable />
-            )}
+            {openTabs.map((tabKey) => (
+              <TabPane
+                key={tabKey}
+                itemKey={tabKey}
+                tab={getPageTitle(tabKey)}
+                closable={openTabs.length > 1}
+              >
+                <div style={{ flex: 1, minHeight: '100%', padding: 0 }}>{renderPage(tabKey)}</div>
+              </TabPane>
+            ))}
           </Tabs>
         </div>
-
-        {/* Content Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 0 }}>{renderContent()}</div>
       </div>
     </div>
   );

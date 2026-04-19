@@ -2,6 +2,16 @@
  * ListRunLogs 返回的 ruleChain 为 RuleGo RuleChain DSL（含嵌套 ruleChain / metadata），
  * 工作流展示名与规则链 ID 在内层 ruleChain.ruleChain。
  */
+/** Semi Table：运行日志列表行主键（优先 msgId / id，否则链路与时间戳兜底） */
+export function runLogTableRowKey(row: unknown, index: number): string {
+  const r = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
+  const rawId = r.id ?? r.Id;
+  if (rawId != null && String(rawId).length > 0) return String(rawId);
+  const { id: chainId } = runLogChainDisplay(row);
+  const ts = coerceRunLogTs(r.startTs ?? (r as { start_ts?: unknown }).start_ts);
+  return `${chainId}-${ts}-${index}`;
+}
+
 export function runLogChainDisplay(row: any): { id: string; name: string } {
   const pack = row?.ruleChain;
   const inner = pack?.ruleChain;

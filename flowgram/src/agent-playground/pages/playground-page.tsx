@@ -165,6 +165,37 @@ export const AgentPlaygroundPage: React.FC = () => {
   /** SSE EventSource（实时 Trace）；失败时用 fallback 定时拉取 */
   const eventSourceRef = useRef<EventSource | null>(null);
   const sseFallbackPollRef = useRef<number | null>(null);
+  /** 单次运行完成/失败仅弹出一次 Toast（SSE 与轮询路径共用） */
+  const completionToastRunIdRef = useRef<string | null>(null);
+
+  // 运行结束后 Toast 告知用户最终结果摘要（与中间栏「最终结果」一致）
+  useEffect(() => {
+    if (!currentRun?.runId) return;
+    const { runId, status } = currentRun;
+    if (status !== 'completed' && status !== 'failed') return;
+    if (completionToastRunIdRef.current === runId) return;
+    completionToastRunIdRef.current = runId;
+
+    if (status === 'completed') {
+      const raw = (currentRun.finalOutput || '').trim();
+      const preview =
+        raw.length > 0
+          ? [...raw].slice(0, 220).join('') + (raw.length > 220 ? '…' : '')
+          : '';
+      Toast.success({
+        content:
+          preview.length > 0
+            ? `运行完成\n${preview}`
+            : '运行完成。\n请在中间栏查看「最终结果」，或右侧 Trace 了解步骤详情。',
+        duration: 6,
+      });
+    } else {
+      Toast.error({
+        content: '运行失败。\n请在右侧 Trace 查看错误相关事件。',
+        duration: 6,
+      });
+    }
+  }, [currentRun?.runId, currentRun?.status, currentRun?.finalOutput]);
 
   // 加载数据
   const loadData = useCallback(async () => {
