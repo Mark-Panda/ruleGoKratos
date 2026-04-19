@@ -11,7 +11,7 @@ import (
 
 type managedLLMResolver struct{}
 
-// NewManagedLLMResolver 从 llm_config / llm_model_entry 表解析凭证（供 Agent 与 ai/llm 节点使用）。
+// NewManagedLLMResolver 从 llm_config / llm_model_entry 表解析凭证（供 Agent / Agent Harness 等使用）。
 func NewManagedLLMResolver() biz.ManagedLLMResolver {
 	return &managedLLMResolver{}
 }

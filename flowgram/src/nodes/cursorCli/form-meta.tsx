@@ -32,12 +32,12 @@ function CursorCliCollapsedPreview() {
       }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 6 }}>
-        <Field name="inputsValues.printMode">
+        <Field name="inputsValues.model">
           {({ field }) => (
             <span style={{ color: '#86909c' }}>
-              打印模式{' '}
+              模型{' '}
               <strong style={{ color: '#1d2129' }}>
-                {(field.value as { content?: unknown })?.content ? '开' : '关'}
+                {truncOneLine(String((field.value as { content?: unknown })?.content ?? 'auto'), 28)}
               </strong>
             </span>
           )}
@@ -52,12 +52,12 @@ function CursorCliCollapsedPreview() {
             </span>
           )}
         </Field>
-        <Field name="inputsValues.model">
+        <Field name="inputsValues.printMode">
           {({ field }) => (
             <span style={{ color: '#86909c' }}>
-              模型{' '}
+              打印模式{' '}
               <strong style={{ color: '#1d2129' }}>
-                {truncOneLine(String((field.value as { content?: unknown })?.content ?? ''), 28)}
+                {(field.value as { content?: unknown })?.content ? '开' : '关'}
               </strong>
             </span>
           )}

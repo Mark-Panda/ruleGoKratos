@@ -6,4 +6,5 @@
 export { useEditorProps } from './use-editor-props';
 export { useNodeRenderContext } from './use-node-render-context';
 export { useIsSidebar } from './use-is-sidebar';
+export { useEffectiveReadonly } from './use-effective-readonly';
 export { usePortClick } from './use-port-click';

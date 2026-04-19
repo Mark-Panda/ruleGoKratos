@@ -18,7 +18,7 @@ import { Input, Select } from '@douyinfe/semi-ui';
 
 import { defaultFormMeta } from '../default-form-meta';
 import { WorkflowNodeType } from '../constants';
-import { useIsSidebar, useNodeRenderContext } from '../../hooks';
+import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
 import { VariablePicker } from '../../form-components/variable-picker';
 import { FormHeader, FormContent, FormItem, Feedback } from '../../form-components';
 
@@ -27,7 +27,8 @@ type ForNodeJSON = FlowNodeJSON;
 
 export const ForFormRender = ({ form }: FormRenderProps<ForNodeJSON>) => {
   const isSidebar = useIsSidebar();
-  const { readonly, node } = useNodeRenderContext();
+  const { node } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
   const formHeight = 115;
 
   // 移除 forFor 输入框

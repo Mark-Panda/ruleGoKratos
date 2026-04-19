@@ -5,7 +5,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { Checkbox, Divider, Input, Select, Spin, Typography } from '@douyinfe/semi-ui';
+import { Checkbox, Divider, Spin, Typography } from '@douyinfe/semi-ui';
 import { DisplayOutputs } from '@flowgram.ai/form-materials';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
 
@@ -13,14 +13,7 @@ import { FlowNodeJSON } from '../../typings';
 import { FormContent, FormHeader, FormInputs } from '../../form-components';
 import type { FormInputsProps } from '../../form-components';
 import { defaultFormMeta } from '../default-form-meta';
-import {
-  listLlmConfigs,
-  listMCPConfigs,
-  listSkills,
-  type LlmConfigItem,
-  type MCPConfigItem,
-  type SkillItem,
-} from '../../services/api-agent';
+import { listMCPConfigs, listSkills, type MCPConfigItem, type SkillItem } from '../../services/api-agent';
 import { groupSkillPackages } from '../../utils/skill-packages';
 
 function truncOneLine(s: string, max: number) {
@@ -41,13 +34,6 @@ function flowBool(v: unknown): boolean {
   return (v as { content?: unknown }).content === true;
 }
 
-function flowNum(v: unknown): number {
-  if (v == null || typeof v !== 'object' || !('content' in (v as object))) return 0;
-  const c = (v as { content?: unknown }).content;
-  const n = Number(c);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function flowStringList(v: unknown): string[] {
   if (v == null || typeof v !== 'object' || !('content' in (v as object))) return [];
   const c = (v as { content?: unknown }).content;
@@ -63,17 +49,13 @@ function flowStringList(v: unknown): string[] {
   return [];
 }
 
-/** 不渲染白名单字段（由下方勾选区维护） */
+/** 不渲染白名单字段（由下方勾选区维护）；模型名仅在上方表单项填写（不经「Agent 托管 / 模型管理」）。 */
 const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
-  'llmConfigId',
-  'llmModelEntryId',
-  'managedAgentId',
   'model',
   'userPrompt',
   'systemPrompt',
   'enableSkillTool',
   'enableMcpTool',
-  'enableUUIDTool',
   'enableWorkspaceTools',
   'maxIterations',
   'maxToolCalls',
@@ -81,10 +63,7 @@ const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
 ];
 
 const agentFormInputsProps: FormInputsProps = {
-  propertyFilter: (k) =>
-    !['skillAllowlist', 'mcpAllowlist', 'llmConfigId', 'llmModelEntryId', 'managedAgentId', 'model'].includes(
-      k
-    ),
+  propertyFilter: (k) => !['skillAllowlist', 'mcpAllowlist'].includes(k),
   propertyKeyOrder: AGENT_FORM_KEYS_NO_ALLOWLIST,
 };
 
@@ -116,127 +95,6 @@ function setAllowlistForPackageKeys(selected: string[], keys: string[], on: bool
     for (const k of keys) set.delete(k);
   }
   return Array.from(set).sort();
-}
-
-function AgentHarnessManagedLLMPanel() {
-  const [configs, setConfigs] = useState<LlmConfigItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await listLlmConfigs();
-        if (!cancelled) setConfigs(Array.isArray(rows) ? rows : []);
-      } catch {
-        if (!cancelled) setConfigs([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const enabledConfigs = useMemo(
-    () => configs.filter((c) => c.enabled && Array.isArray(c.models)),
-    [configs]
-  );
-
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
-        Agent 配置（可选）
-      </Typography.Text>
-      <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 8 }}>
-        填写「Agent 配置」列表中的数字 ID 后，运行时使用该条的系统提示、技能包、MCP 与模型范围；非 0 时下方手工模型与各白名单不生效。
-      </Typography.Paragraph>
-      <Field name="inputsValues.managedAgentId">
-        {({ field }) => (
-          <Input
-            placeholder="managedAgentId，0 表示不用"
-            style={{ width: '100%', marginBottom: 12 }}
-            value={flowNum(field.value) ? String(flowNum(field.value)) : ''}
-            onChange={(v) =>
-              field.onChange({ type: 'constant', content: Number(v) || 0 } as any)
-            }
-          />
-        )}
-      </Field>
-      <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
-        模型（来自「Agent 管理 → 模型管理」）
-      </Typography.Text>
-      <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 10 }}>
-        先选启用中的配置，再选该配置下的模型；运行时从服务端读取 Base URL 与 API Key，不再使用环境变量。
-      </Typography.Paragraph>
-      {loading ? (
-        <Spin size="small" />
-      ) : enabledConfigs.length === 0 ? (
-        <Typography.Text type="warning" size="small">
-          暂无启用的 LLM 配置，请先在管理页创建并启用。
-        </Typography.Text>
-      ) : (
-        <Field name="inputsValues.llmConfigId">
-          {({ field: cfgField }) => (
-            <Field name="inputsValues.llmModelEntryId">
-              {({ field: entField }) => (
-                <Field name="inputsValues.model">
-                  {({ field: modelField }) => {
-                    const cid = flowNum(cfgField.value);
-                    const selCfg = enabledConfigs.find((c) => c.id === cid);
-                    const models = (selCfg?.models || []).filter((m) => m.enabled);
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <Select
-                          placeholder="选择 LLM 配置"
-                          style={{ width: '100%' }}
-                          value={cid ? String(cid) : ''}
-                          onChange={(v) => {
-                            const next = Number(v);
-                            cfgField.onChange({ type: 'constant', content: next } as any);
-                            entField.onChange({ type: 'constant', content: 0 } as any);
-                            modelField.onChange({ type: 'constant', content: '' } as any);
-                          }}
-                        >
-                          {enabledConfigs.map((c) => (
-                            <Select.Option key={c.id} value={String(c.id)}>
-                              {c.name}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                        <Select
-                          placeholder="选择模型"
-                          style={{ width: '100%' }}
-                          value={flowNum(entField.value) ? String(flowNum(entField.value)) : ''}
-                          disabled={!cid}
-                          onChange={(v) => {
-                            const eid = Number(v);
-                            entField.onChange({ type: 'constant', content: eid } as any);
-                            const row = models.find((m) => m.id === eid);
-                            modelField.onChange({
-                              type: 'constant',
-                              content: row?.modelName ?? '',
-                            } as any);
-                          }}
-                        >
-                          {models.map((m) => (
-                            <Select.Option key={m.id} value={String(m.id)}>
-                              {m.modelName}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </div>
-                    );
-                  }}
-                </Field>
-              )}
-            </Field>
-          )}
-        </Field>
-      )}
-    </div>
-  );
 }
 
 function AgentHarnessToolAllowlists() {
@@ -409,24 +267,14 @@ function AgentHarnessCollapsedPreview() {
         lineHeight: 1.55,
       }}
     >
-      <Field name="inputsValues.llmConfigId">
-        {({ field: cf }) => (
-          <Field name="inputsValues.llmModelEntryId">
-            {({ field: ef }) => (
-              <Field name="inputsValues.model">
-                {({ field: mf }) => (
-                  <div style={{ marginBottom: 6 }}>
-                    <span style={{ color: '#86909c' }}>模型 </span>
-                    <strong style={{ color: '#1d2129' }}>
-                      {flowNum(cf.value) && flowNum(ef.value)
-                        ? `#${flowNum(cf.value)} / ${truncOneLine(flowStr(mf.value), 36)}`
-                        : '未选择'}
-                    </strong>
-                  </div>
-                )}
-              </Field>
-            )}
-          </Field>
+      <Field name="inputsValues.model">
+        {({ field }) => (
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ color: '#86909c' }}>模型 </span>
+            <strong style={{ color: '#1d2129' }}>
+              {truncOneLine(flowStr(field.value), 40) || '（默认）'}
+            </strong>
+          </div>
         )}
       </Field>
       <Field name="inputsValues.userPrompt">
@@ -443,9 +291,6 @@ function AgentHarnessCollapsedPreview() {
         </Field>
         <Field name="inputsValues.enableMcpTool">
           {({ field }) => <span>MCP {flowBool(field.value) ? '开' : '关'}</span>}
-        </Field>
-        <Field name="inputsValues.enableUUIDTool">
-          {({ field }) => <span>UUID {flowBool(field.value) ? '开' : '关'}</span>}
         </Field>
         <Field name="inputsValues.enableWorkspaceTools">
           {({ field }) => <span>WS {flowBool(field.value) ? '开' : '关'}</span>}
@@ -472,8 +317,10 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
   <>
     <FormHeader />
     <FormContent collapsedPreview={<AgentHarnessCollapsedPreview />}>
-      <AgentHarnessManagedLLMPanel />
-      <Divider />
+      <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 10px' }}>
+        此处仅填写模型名与用户/系统提示及工具选项；不再关联后台「Agent 托管配置」或模型管理下拉。generate_uuid
+        由服务端固定启用，无需勾选。
+      </Typography.Paragraph>
       <FormInputs {...agentFormInputsProps} />
       <Divider />
       <AgentHarnessToolAllowlists />

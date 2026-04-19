@@ -16,7 +16,7 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLaptop,
     description:
-      '无头调用：打印模式 + 任务说明 + 输出格式（text/json/stream-json）+ 模型，对应 agent -p "…" --output-format … --model …。密钥用 apiKey 或环境变量；仓库根用 workspacePath。「额外参数」仅作补充。',
+      '无头调用：打印模式 + 任务说明 + 输出格式（text/json/stream-json）+ 模型下拉，对应 agent -p "…" --output-format …；除 auto 外追加 --model。密钥用 apiKey 或环境变量；仓库根用 workspacePath。「额外参数」仅作补充。',
   },
   meta: {
     defaultPorts: [
@@ -40,63 +40,26 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
         title: `Cursor_CLI_${++index}`,
         positionType: 'middle',
         inputsValues: {
-          printMode: { type: 'constant', content: true },
+          agentPath: { type: 'constant', content: 'agent' },
+          apiKey: { type: 'template', content: '' },
+          model: { type: 'constant', content: 'auto' },
           prompt: {
             type: 'template',
             content: 'find and fix performance issues',
           },
-          outputFormat: { type: 'constant', content: 'text' },
-          model: { type: 'template', content: 'gpt-5.2' },
-          agentPath: { type: 'constant', content: 'agent' },
-          apiKey: { type: 'template', content: '' },
           workspacePath: { type: 'template', content: '' },
           workDir: { type: 'template', content: '' },
-          args: { type: 'constant', content: [] },
-          log: { type: 'constant', content: false },
+          outputFormat: { type: 'constant', content: 'text' },
+          printMode: { type: 'constant', content: true },
           replaceData: { type: 'constant', content: true },
           timeoutMs: { type: 'constant', content: 0 },
+          args: { type: 'constant', content: [] },
+          log: { type: 'constant', content: false },
         },
         inputs: {
           type: 'object',
           required: ['agentPath', 'args', 'log', 'replaceData', 'timeoutMs'],
           properties: {
-            printMode: {
-              type: 'boolean',
-              extra: {
-                label: '打印模式（-p）',
-                description:
-                  '开启后由后端插入 -p（无头 agent），与官方 agent -p 一致；任务说明请填「任务说明」字段，勿再手写到「额外参数」里。',
-              },
-            },
-            prompt: {
-              type: 'string',
-              extra: {
-                label: '任务说明（-p 后的内容）',
-                formComponent: 'prompt-editor',
-                description:
-                  '对应命令行中带引号的提示部分，例如 agent -p "find and fix ..." 中的双引号内文案。支持 ${msg.body} 等模板；仅在「打印模式」开启时生效。',
-              },
-            },
-            outputFormat: {
-              type: 'string',
-              enum: ['text', 'json', 'stream-json'],
-              default: { type: 'constant', content: 'text' } as any,
-              extra: {
-                label: '输出格式（--output-format）',
-                formComponent: 'enum-select',
-                description:
-                  '仅在「打印模式」开启时由后端插入 --output-format；可选 text、json、stream-json（与官方 CLI 文档一致，默认 text）。勿再写入「额外参数」。',
-              },
-            },
-            model: {
-              type: 'string',
-              extra: {
-                label: '模型（--model）',
-                formComponent: 'prompt-editor',
-                description:
-                  '非空时追加 --model <值>，例如 gpt-5.2；与 apiKey 一样为独立配置项，勿拆进「额外参数」。',
-              },
-            },
             agentPath: {
               type: 'string',
               extra: {
@@ -112,6 +75,34 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
                 formComponent: 'prompt-editor',
                 description:
                   '非空时插入 --api-key；留空则由运行进程读取环境变量 CURSOR_API_KEY 并同样以 --api-key 传入。建议用 ${metadata.xxx} 注入，避免明文落库。',
+              },
+            },
+            model: {
+              type: 'string',
+              enum: [
+                'auto',
+                'composer-2',
+                'gpt-5.4',
+                'gpt-5.3-codex',
+                'gemini-3-pro',
+                'claude-4-6-sonnet',
+                'claude-4-6-opus',
+              ],
+              default: { type: 'constant', content: 'auto' } as any,
+              extra: {
+                label: '模型（--model）',
+                formComponent: 'enum-select',
+                description:
+                  '默认 auto：不追加 --model，由 Cursor CLI 自行选用模型；选择其它项时传入 --model <值>；勿写入「额外参数」。',
+              },
+            },
+            prompt: {
+              type: 'string',
+              extra: {
+                label: '任务说明（-p 后的内容）',
+                formComponent: 'prompt-editor',
+                description:
+                  '对应命令行中带引号的提示部分，例如 agent -p "find and fix ..." 中的双引号内文案。支持 ${msg.body} 等模板；仅在「打印模式」开启时生效。',
               },
             },
             workspacePath: {
@@ -132,6 +123,39 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
                   '子进程当前工作目录（cmd.Dir）；留空则用 metadata.workDir。与「工作区路径」不同：后者对应 agent 的 --workspace，用于指定仓库根以加载规则与代码上下文。',
               },
             },
+            outputFormat: {
+              type: 'string',
+              enum: ['text', 'json', 'stream-json'],
+              default: { type: 'constant', content: 'text' } as any,
+              extra: {
+                label: '输出格式（--output-format）',
+                formComponent: 'enum-select',
+                description:
+                  '仅在「打印模式」开启时由后端插入 --output-format；可选 text、json、stream-json（与官方 CLI 文档一致，默认 text）。勿再写入「额外参数」。',
+              },
+            },
+            printMode: {
+              type: 'boolean',
+              extra: {
+                label: '打印模式（-p）',
+                description:
+                  '开启后由后端插入 -p（无头 agent），与官方 agent -p 一致；任务说明请填「任务说明」字段，勿再手写到「额外参数」里。',
+              },
+            },
+            replaceData: {
+              type: 'boolean',
+              extra: {
+                label: '用 stdout 替换消息体',
+                description: '成功时以标准输出（若为空则用 stderr）覆盖下游 msg 数据',
+              },
+            },
+            timeoutMs: {
+              type: 'number',
+              extra: {
+                label: '超时(毫秒)',
+                description: '0 表示不额外限制',
+              },
+            },
             args: {
               type: 'array',
               items: { type: 'string' },
@@ -147,20 +171,6 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '输出到调试日志',
                 description: '开启时将子进程 stdout/stderr 写入规则引擎调试回调',
-              },
-            },
-            replaceData: {
-              type: 'boolean',
-              extra: {
-                label: '用 stdout 替换消息体',
-                description: '成功时以标准输出（若为空则用 stderr）覆盖下游 msg 数据',
-              },
-            },
-            timeoutMs: {
-              type: 'number',
-              extra: {
-                label: '超时(毫秒)',
-                description: '0 表示不额外限制',
               },
             },
           },

@@ -14,7 +14,6 @@ import { FeishuWebhookNodeRegistry } from './feishuWebhook';
 import { MultiNodeOutputRegistry } from './multi-node-output';
 import { LuaTransformNodeRegistry } from './luaTransform';
 import { LogStringNodeRegistry } from './logString';
-import { LLMNodeRegistry } from './llm';
 import { AgentHarnessNodeRegistry } from './agent-harness';
 import { JsFilterNodeRegistry } from './jsFilter';
 import { JoinNodeRegistry } from './join';
@@ -65,7 +64,6 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   CiGitCloneNodeRegistry,
   CiGitCommitNodeRegistry,
   CiGitPushNodeRegistry,
-  LLMNodeRegistry,
   AgentHarnessNodeRegistry,
   ForNodeRegistry,
   BreakNodeRegistry,

@@ -21,6 +21,8 @@ interface FormItemProps {
   labelWidth?: number;
   labelStyle?: React.CSSProperties;
   vertical?: boolean;
+  /** 布尔开关行：标签占满左侧可用宽度，控件右对齐，避免窄标签列裁切文案 */
+  switchRow?: boolean;
   style?: React.CSSProperties;
 }
 export function FormItem({
@@ -32,6 +34,7 @@ export function FormItem({
   labelWidth,
   labelStyle,
   vertical,
+  switchRow,
   style,
 }: FormItemProps): JSX.Element {
   const renderTitle = useCallback(
@@ -45,6 +48,51 @@ export function FormItem({
     ),
     []
   );
+
+  if (switchRow && !vertical) {
+    return (
+      <div
+        style={{
+          fontSize: 12,
+          marginBottom: 6,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+          ...style,
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              columnGap: 4,
+              color: 'var(--semi-color-text-0)',
+            }}
+          >
+            {type && <DisplaySchemaTag value={{ type }} />}
+            {description ? (
+              <Tooltip content={description}>{renderTitle()}</Tooltip>
+            ) : (
+              renderTitle(true)
+            )}
+          </div>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{children}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{

@@ -5,12 +5,13 @@
 
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { DynamicValueInput, PromptEditorWithVariables } from '@flowgram.ai/form-materials';
+import { Switch } from '@douyinfe/semi-ui';
 
 import { VariablePicker } from '../variable-picker';
 import { FormItem } from '../form-item';
 import { Feedback } from '../feedback';
 import { JsonSchema } from '../../typings';
-import { useNodeRenderContext, useIsSidebar } from '../../hooks';
+import { useEffectiveReadonly, useIsSidebar } from '../../hooks';
 import { SqlTemplateEditor } from './sql-template-editor';
 import { RuleSelect } from './rule-select';
 import { NodeIdSelect } from './node-id-select';
@@ -26,7 +27,7 @@ export type FormInputsProps = {
 };
 
 export function FormInputs(props?: FormInputsProps) {
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
   const isSidebar = useIsSidebar();
   const propertyFilter = props?.propertyFilter;
   const propertyKeyOrder = props?.propertyKeyOrder;
@@ -63,7 +64,68 @@ export function FormInputs(props?: FormInputsProps) {
             <Field key={key} name={`inputsValues.${key}`} defaultValue={property.default}>
               {({ field, fieldState }) => {
                 const isTemplate = (field.value as any)?.type === 'template';
+                const switchRow = property.type === 'boolean' && !isTemplate;
                 const renderCore = () => {
+                  if (property.type === 'boolean') {
+                    if (isTemplate) {
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ flex: 1 }}>
+                            <DynamicValueInput
+                              value={field.value}
+                              onChange={field.onChange}
+                              readonly={readonly}
+                              hasError={Object.keys(fieldState?.errors || {}).length > 0}
+                              schema={property}
+                            />
+                          </div>
+                          <VariablePicker
+                            size="small"
+                            disabled={readonly}
+                            onInsert={(text) => {
+                              const oldText =
+                                typeof (field.value as any)?.content === 'string'
+                                  ? String((field.value as any)?.content)
+                                  : '';
+                              const nextText = oldText ? `${oldText}${text}` : text;
+                              field.onChange({ type: 'template', content: nextText } as any);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+                    const constantVal = (field.value as { type?: string; content?: unknown }) ?? {};
+                    const defVal = property.default as { type?: string; content?: unknown } | undefined;
+                    const on =
+                      constantVal.type === 'constant'
+                        ? Boolean(constantVal.content)
+                        : defVal?.type === 'constant'
+                          ? Boolean(defVal.content)
+                          : false;
+                    if (!isSidebar) {
+                      return (
+                        <div
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 4,
+                            fontSize: 12,
+                            color: '#4e5969',
+                            background: '#f7f8fa',
+                            display: 'inline-block',
+                          }}
+                        >
+                          {on ? '开' : '关'}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Switch
+                        checked={on}
+                        disabled={readonly}
+                        onChange={(c) => field.onChange({ type: 'constant', content: c })}
+                      />
+                    );
+                  }
                   if (formComponent === 'prompt-editor') {
                     // 在画布视图中只显示截断的文本预览
                     if (!isSidebar) {
@@ -241,6 +303,32 @@ export function FormInputs(props?: FormInputsProps) {
                   }
                   if (formComponent === 'node-selector') {
                     const extra = (property as { extra?: Record<string, unknown> }).extra;
+                    if (!isSidebar) {
+                      const c =
+                        typeof (field.value as any)?.content === 'string'
+                          ? String((field.value as any).content)
+                          : '';
+                      const preview =
+                        c.trim() === ''
+                          ? '(未选择)'
+                          : c.startsWith('chain:')
+                          ? `子规则链：${c.slice('chain:'.length)}`
+                          : `节点：${c}`;
+                      return (
+                        <div
+                          style={{
+                            padding: '8px',
+                            background: '#f5f5f5',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            color: '#666',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {preview}
+                        </div>
+                      );
+                    }
                     return (
                       <NodeIdSelect
                         value={field.value}
@@ -324,17 +412,29 @@ export function FormInputs(props?: FormInputsProps) {
                 };
 
                 return (
-                  <FormItem
-                    name={displayLabel}
-                    vertical={vertical}
-                    type={property.type as string}
-                    required={required.includes(key)}
-                    description={property.extra?.description}
-                  >
-                    {null}
-                    {renderCore()}
-                    <Feedback errors={fieldState?.errors} warnings={fieldState?.warnings} />
-                  </FormItem>
+                  <>
+                    <FormItem
+                      name={displayLabel}
+                      vertical={vertical}
+                      switchRow={switchRow}
+                      type={property.type as string}
+                      required={required.includes(key)}
+                      description={property.extra?.description}
+                    >
+                      {switchRow ? (
+                        renderCore()
+                      ) : (
+                        <>
+                          {null}
+                          {renderCore()}
+                          <Feedback errors={fieldState?.errors} warnings={fieldState?.warnings} />
+                        </>
+                      )}
+                    </FormItem>
+                    {switchRow ? (
+                      <Feedback errors={fieldState?.errors} warnings={fieldState?.warnings} />
+                    ) : null}
+                  </>
                 );
               }}
             </Field>

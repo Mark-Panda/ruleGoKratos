@@ -1,7 +1,9 @@
 package data
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,7 +25,9 @@ func init() {
 }
 
 // CursorAcpDsl 启动官方文档中的 agent acp（stdio、按行 JSON-RPC）。
-// stdinLines 每条渲染后作为一行写入子进程 stdin；stdout 在进程结束后汇总（适合短请求/探测）。
+// 简易模式：按 https://cursor.com/cn/docs/cli/acp 自动完成 initialize → authenticate(cursor_login) → session/new → session/prompt，
+// 身份由 ApiKey/--api-key 与环境变量 CURSOR_API_KEY 提供。
+// 高级模式：stdinLines 每条渲染后一次性写入 stdin（兼容历史规则链）。
 type CursorAcpDsl struct {
 	Config        CursorAcpConfiguration
 	pathTpl       el.Template
@@ -32,6 +36,7 @@ type CursorAcpDsl struct {
 	apiKeyTpl     el.Template // 非空则注入 --api-key（与 CLI 一致）
 	workspaceTpl  el.Template // 非空则注入 --workspace（代码仓根 / 上下文）
 	workTpl       el.Template
+	taskTpl       el.Template // 简易模式 session/prompt 文案
 	hasVar        bool
 }
 
@@ -52,6 +57,10 @@ type CursorAcpConfiguration struct {
 	// WorkDir 子进程 cwd；留空则用 metadata.workDir。
 	WorkDir   string `json:"workDir"`
 	TimeoutMs int    `json:"timeoutMs"`
+	// AcpSimpleMode 为 true 时使用交互式 JSON-RPC（忽略 StdinLines）。
+	AcpSimpleMode bool `json:"acpSimpleMode"`
+	// AcpTask 简易模式下传给 session/prompt 的自然语言任务，支持 ${msg.*}/${metadata.*}。
+	AcpTask string `json:"acpTask"`
 }
 
 func pickAcpAgentPath(c *CursorAcpConfiguration) string {
@@ -83,7 +92,7 @@ func (c *CursorAcpDsl) Type() string {
 func (c *CursorAcpDsl) Def() types.ComponentForm {
 	return types.ComponentForm{
 		Label: "cursorAcp",
-		Desc:  "启动 agent acp（stdio JSON-RPC），stdinLines 为逐行 JSON-RPC",
+		Desc:  "agent acp：简易模式自动生成 ACP JSON-RPC；高级模式逐行 stdinLines",
 	}
 }
 
@@ -114,14 +123,26 @@ func (c *CursorAcpDsl) Init(_ types.Config, configuration types.Configuration) e
 			c.hasVar = true
 		}
 	}
-	for _, line := range c.Config.StdinLines {
-		t, err := el.NewTemplate(line)
+	if c.Config.AcpSimpleMode {
+		taskStr := strings.TrimSpace(c.Config.AcpTask)
+		taskTpl, err := el.NewTemplate(taskStr)
 		if err != nil {
 			return err
 		}
-		c.stdinLinesTpl = append(c.stdinLinesTpl, t)
-		if t.HasVar() {
+		c.taskTpl = taskTpl
+		if taskTpl.HasVar() {
 			c.hasVar = true
+		}
+	} else {
+		for _, line := range c.Config.StdinLines {
+			t, err := el.NewTemplate(line)
+			if err != nil {
+				return err
+			}
+			c.stdinLinesTpl = append(c.stdinLinesTpl, t)
+			if t.HasVar() {
+				c.hasVar = true
+			}
 		}
 	}
 	akTpl, err := el.NewTemplate(c.Config.ApiKey)
@@ -158,6 +179,10 @@ func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	}
 	if evn == nil {
 		evn = map[string]interface{}{}
+	}
+	if c.Config.AcpSimpleMode {
+		c.onMsgSimpleMode(ctx, msg, evn)
+		return
 	}
 	bin := strings.TrimSpace(c.pathTpl.ExecuteAsString(evn))
 	if bin == "" || strings.Contains(bin, "..") || !allowCliExecutable(bin) {
@@ -278,6 +303,236 @@ func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		if out != "" {
 			msg.SetData(out)
 		} else {
+			msg.SetData(stderrBuf.String())
+		}
+	}
+	ctx.TellSuccess(msg)
+}
+
+func readAcpLine(br *bufio.Reader) (string, error) {
+	line, err := br.ReadString('\n')
+	return strings.TrimSpace(line), err
+}
+
+// readJSONRPCResult 读取 stdout 直至出现带 id 的响应（跳过无 id 的通知等行）。
+func readJSONRPCResult(br *bufio.Reader, wantID int64) (json.RawMessage, error) {
+	for {
+		line, err := readAcpLine(br)
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		if line == "" {
+			if err == io.EOF {
+				return nil, errors.New("stdout 在未收到响应前结束")
+			}
+			continue
+		}
+		var env struct {
+			ID     *float64        `json:"id"`
+			Method string          `json:"method"`
+			Result json.RawMessage `json:"result"`
+			Err    json.RawMessage `json:"error"`
+		}
+		if jsonErr := json.Unmarshal([]byte(line), &env); jsonErr != nil {
+			if err == io.EOF {
+				return nil, errors.New("stdout 在未收到响应前结束")
+			}
+			continue
+		}
+		if env.Method != "" && env.ID == nil {
+			continue
+		}
+		if env.ID != nil && int64(*env.ID) == wantID {
+			if len(env.Err) > 0 {
+				return nil, fmt.Errorf("rpc error: %s", strings.TrimSpace(string(env.Err)))
+			}
+			return env.Result, nil
+		}
+		if err == io.EOF {
+			return nil, errors.New("stdout 在未收到响应前结束")
+		}
+	}
+}
+
+func (c *CursorAcpDsl) onMsgSimpleMode(ctx types.RuleContext, msg types.RuleMsg, evn map[string]interface{}) {
+	bin := strings.TrimSpace(c.pathTpl.ExecuteAsString(evn))
+	if bin == "" || strings.Contains(bin, "..") || !allowCliExecutable(bin) {
+		ctx.TellFailure(msg, errors.New("cursorAcp: 非法的可执行路径，仅允许 basename 为 agent 或 cursor"))
+		return
+	}
+	userArgs := make([]string, 0, len(c.argsTpl))
+	for _, t := range c.argsTpl {
+		userArgs = append(userArgs, t.ExecuteAsString(evn))
+	}
+	if len(userArgs) == 0 || !strings.EqualFold(strings.TrimSpace(userArgs[0]), "acp") {
+		ctx.TellFailure(msg, errors.New("cursorAcp: args 首项须为 acp"))
+		return
+	}
+	args := buildAgentArgv(evn, c.apiKeyTpl, c.workspaceTpl, userArgs)
+	task := strings.TrimSpace(c.taskTpl.ExecuteAsString(evn))
+	if task == "" {
+		ctx.TellFailure(msg, errors.New("cursorAcp: 简易模式下请填写「任务说明」（或关闭简易模式自行配置 JSON-RPC 行）"))
+		return
+	}
+	workDir := strings.TrimSpace(c.workTpl.ExecuteAsString(evn))
+	if workDir == "" {
+		workDir = msg.Metadata.GetValue(action.KeyWorkDir)
+	}
+	timeout := c.Config.TimeoutMs
+	if timeout <= 0 {
+		timeout = 120000
+	}
+	runCtx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Millisecond)
+	defer cancel()
+	cmd := exec.CommandContext(runCtx, bin, args...)
+	cmd.Dir = workDir
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	var stderrBuf strings.Builder
+	var stderrWg sync.WaitGroup
+	stderrWg.Add(1)
+	go func() {
+		defer stderrWg.Done()
+		if c.Config.Log {
+			chainID := ""
+			if ctx.RuleChain() != nil {
+				chainID = ctx.RuleChain().GetNodeId().Id
+			}
+			msgCopy := msg.Copy()
+			_, _ = io.Copy(
+				io.MultiWriter(&stderrBuf, &agentCliDebugWriter{ctx: ctx, msg: msgCopy, relationType: "error", chainID: chainID}),
+				stderrPipe,
+			)
+		} else {
+			_, _ = io.Copy(&stderrBuf, stderrPipe)
+		}
+	}()
+	br := bufio.NewReaderSize(stdoutPipe, 1024*1024)
+	writeRPC := func(id int64, method string, params interface{}) error {
+		payload, err := json.Marshal(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"method":  method,
+			"params":  params,
+		})
+		if err != nil {
+			return err
+		}
+		_, err = stdinPipe.Write(append(payload, '\n'))
+		return err
+	}
+	initParams := map[string]interface{}{
+		"protocolVersion": 1,
+		"clientCapabilities": map[string]interface{}{
+			"fs":       map[string]bool{"readTextFile": false, "writeTextFile": false},
+			"terminal": false,
+		},
+		"clientInfo": map[string]string{"name": "rulego-cursorAcp", "version": "1.0"},
+	}
+	cwd := strings.TrimSpace(c.workspaceTpl.ExecuteAsString(evn))
+	if cwd == "" {
+		cwd = "."
+	}
+	if err := cmd.Start(); err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	if err := writeRPC(1, "initialize", initParams); err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	if _, err := readJSONRPCResult(br, 1); err != nil {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: initialize: %w", err))
+		return
+	}
+	if err := writeRPC(2, "authenticate", map[string]interface{}{"methodId": "cursor_login"}); err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	if _, err := readJSONRPCResult(br, 2); err != nil {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: authenticate: %w", err))
+		return
+	}
+	if err := writeRPC(3, "session/new", map[string]interface{}{
+		"cwd":        cwd,
+		"mcpServers": []interface{}{},
+	}); err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	res3, err := readJSONRPCResult(br, 3)
+	if err != nil {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: session/new: %w", err))
+		return
+	}
+	var sn struct {
+		SessionID string `json:"sessionId"`
+	}
+	if err := json.Unmarshal(res3, &sn); err != nil {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: 解析 session/new 结果: %w", err))
+		return
+	}
+	sid := strings.TrimSpace(sn.SessionID)
+	if sid == "" {
+		var loose map[string]interface{}
+		if json.Unmarshal(res3, &loose) == nil {
+			if v, ok := loose["sessionId"].(string); ok {
+				sid = strings.TrimSpace(v)
+			}
+		}
+	}
+	if sid == "" {
+		ctx.TellFailure(msg, errors.New("cursorAcp: session/new 未返回 sessionId"))
+		return
+	}
+	promptParams := map[string]interface{}{
+		"sessionId": sid,
+		"prompt": []map[string]string{
+			{"type": "text", "text": task},
+		},
+	}
+	if err := writeRPC(4, "session/prompt", promptParams); err != nil {
+		ctx.TellFailure(msg, err)
+		return
+	}
+	res4, err := readJSONRPCResult(br, 4)
+	if err != nil {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: session/prompt: %w", err))
+		return
+	}
+	_ = stdinPipe.Close()
+	rest, _ := io.ReadAll(br)
+	out := string(res4)
+	if len(rest) > 0 {
+		out += "\n" + string(rest)
+	}
+	waitErr := cmd.Wait()
+	stderrWg.Wait()
+	if waitErr != nil {
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			ctx.TellFailure(msg, fmt.Errorf("cursorAcp: 超时 (%d ms): %w", timeout, waitErr))
+			return
+		}
+		ctx.TellFailure(msg, waitErr)
+		return
+	}
+	if c.Config.ReplaceData {
+		if out != "" {
+			msg.SetData(out)
+		} else if stderrBuf.Len() > 0 {
 			msg.SetData(stderrBuf.String())
 		}
 	}

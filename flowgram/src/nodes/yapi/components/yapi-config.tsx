@@ -8,12 +8,12 @@ import React from 'react';
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { Input, Select } from '@douyinfe/semi-ui';
 
-import { useIsSidebar, useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly, useIsSidebar } from '../../../hooks';
 import { FormItem } from '../../../form-components/form-item';
 
 export function YapiConfig() {
   const isSidebar = useIsSidebar();
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
 
   if (!isSidebar) {
     return null;

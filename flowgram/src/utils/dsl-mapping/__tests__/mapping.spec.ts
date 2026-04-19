@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { NodeMappingSpec } from '../types';
 import {
   aiAgentHarnessMappingSpec,
-  aiLlmMappingSpec,
   cursorAcpMappingSpec,
   cursorCliMappingSpec,
   feishuWebhookMappingSpec,
@@ -317,103 +316,6 @@ describe('mapDslToNodeInputsValues', () => {
     expect(iv.a?.content).toBe(7);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
-  });
-});
-
-describe('ai/llm spec round-trip', () => {
-  it('maps messages/params on toDSL and restores inputsValues on fromDSL', () => {
-    const node = {
-      data: {
-        inputsValues: {
-          model: { content: 'gpt-test' },
-          key: { content: 'k1' },
-          url: { content: 'https://api.example/v1' },
-          systemPrompt: { content: 'sys' },
-          userPrompt: { content: 'hello ${x}' },
-          temperature: { content: 0.2 },
-          topP: { content: 0.9 },
-          maxTokens: { content: 128 },
-          responseFormat: { content: 'json_object' },
-        },
-      },
-    };
-    const cfg = mapNodeToDslConfig(node, aiLlmMappingSpec);
-    expect(cfg.messages).toEqual([{ role: 'user', content: 'hello ${x}' }]);
-    expect(cfg.params).toMatchObject({
-      temperature: 0.2,
-      topP: 0.9,
-      maxTokens: 128,
-      responseFormat: 'json_object',
-    });
-    expect(cfg.model).toBe('gpt-test');
-    expect(cfg.key).toBe('k1');
-    expect(cfg.url).toBe('https://api.example/v1');
-    expect(cfg.systemPrompt).toBe('sys');
-
-    const iv = mapDslToNodeInputsValues(cfg as Record<string, unknown>, aiLlmMappingSpec);
-    expect(iv.userPrompt?.content).toBe('hello ${x}');
-    expect(iv.model?.content).toBe('gpt-test');
-    expect(iv.temperature?.content).toBe(0.2);
-    expect(iv.responseFormat?.content).toBe('json_object');
-  });
-
-  it('applies numeric defaults when DSL params omit keys', () => {
-    const iv = mapDslToNodeInputsValues(
-      {
-        model: 'm',
-        messages: [{ role: 'user', content: 'u' }],
-        params: {},
-      } as Record<string, unknown>,
-      aiLlmMappingSpec
-    );
-    expect(iv.temperature?.content).toBe(0.5);
-    expect(iv.topP?.content).toBe(0.5);
-    expect(iv.maxTokens?.content).toBe(0);
-    expect(iv.responseFormat?.content).toBe('text');
-  });
-
-  it('toDSL: missing inputsValues keys use aiLlm spec defaults in flat fields and params', () => {
-    const node = {
-      data: {
-        inputsValues: {
-          userPrompt: { content: 'only user' },
-        },
-      },
-    };
-    const cfg = mapNodeToDslConfig(node, aiLlmMappingSpec);
-    expect(cfg.model).toBe('');
-    expect(cfg.key).toBe('');
-    expect(cfg.url).toBe('');
-    expect(cfg.systemPrompt).toBe('');
-    expect(cfg.messages).toEqual([{ role: 'user', content: 'only user' }]);
-    expect(cfg.params).toMatchObject({
-      temperature: 0.5,
-      topP: 0.5,
-      maxTokens: 0,
-      responseFormat: 'text',
-    });
-  });
-
-  it('toDSL: partial inputsValues (model/key only) leaves other keys at spec defaults', () => {
-    const node = {
-      data: {
-        inputsValues: {
-          model: { content: 'm' },
-          key: { content: 'k' },
-        },
-      },
-    };
-    const cfg = mapNodeToDslConfig(node, aiLlmMappingSpec);
-    expect(cfg.model).toBe('m');
-    expect(cfg.key).toBe('k');
-    expect(cfg.url).toBe('');
-    expect(cfg.params).toMatchObject({
-      temperature: 0.5,
-      topP: 0.5,
-      maxTokens: 0,
-      responseFormat: 'text',
-    });
-    expect(cfg.messages).toEqual([{ role: 'user', content: '' }]);
   });
 });
 

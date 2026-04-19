@@ -25,42 +25,6 @@ function parseQueryStringPairs(qs: string): Record<string, string> {
   return queryValues;
 }
 
-/** toDSL：将扁平字段折叠为 messages + params（与历史 rulechain-builder 行为对齐）。 */
-export function transformAiLlmConfigOut(config: Record<string, unknown>): Record<string, unknown> {
-  const { userPrompt, temperature, topP, maxTokens, responseFormat, ...rest } = config;
-  return {
-    ...rest,
-    messages: [{ role: 'user', content: userPrompt ?? '' }],
-    params: {
-      temperature,
-      topP,
-      maxTokens,
-      responseFormat,
-    },
-  };
-}
-
-/** fromDSL：从 messages / params 展开为引擎可读扁平 configuration。 */
-export function transformAiLlmConfigIn(config: Record<string, unknown>): Record<string, unknown> {
-  const next = { ...config };
-  const params =
-    next.params && typeof next.params === 'object' && !Array.isArray(next.params)
-      ? (next.params as Record<string, unknown>)
-      : {};
-  const messages = Array.isArray(next.messages) ? next.messages : [];
-  const first = messages[0];
-  const userContent =
-    first && typeof first === 'object' && first !== null && 'content' in first
-      ? (first as { content?: unknown }).content
-      : '';
-  next.userPrompt = userContent ?? '';
-  if (params.temperature !== undefined) next.temperature = params.temperature;
-  if (params.topP !== undefined) next.topP = params.topP;
-  if (params.maxTokens !== undefined) next.maxTokens = params.maxTokens;
-  if (params.responseFormat !== undefined) next.responseFormat = params.responseFormat;
-  return next;
-}
-
 /**
  * toDSL：在 restUrlBase 上拼接 params 的 query，得到 restEndpointUrlPattern（与历史 rulechain-builder
  * restApiCall 分支一致：pattern 已有 `?` 时用 `&` 追加）。

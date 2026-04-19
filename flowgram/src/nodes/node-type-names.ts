@@ -34,7 +34,6 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
 
   // 外部调用节点
   [WorkflowNodeType.HTTP]: 'HTTP请求',
-  [WorkflowNodeType.LLM]: 'LLM大模型',
   [WorkflowNodeType.AgentHarness]: 'Agent LLM(Skill/MCP)',
   [WorkflowNodeType.DBClient]: '数据库客户端',
   [WorkflowNodeType.RedisClient]: 'Redis客户端',

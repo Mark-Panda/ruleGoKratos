@@ -15,7 +15,7 @@ import {
 } from '@flowgram.ai/form-materials';
 
 import { defaultFormMeta } from '../default-form-meta';
-import { useIsSidebar, useNodeRenderContext } from '../../hooks';
+import { useEffectiveReadonly, useIsSidebar } from '../../hooks';
 import { FormHeader, FormContent, FormItem, Feedback } from '../../form-components';
 
 interface LoopNodeJSON extends FlowNodeJSON {
@@ -26,7 +26,7 @@ interface LoopNodeJSON extends FlowNodeJSON {
 
 export const LoopFormRender = ({ form }: FormRenderProps<LoopNodeJSON>) => {
   const isSidebar = useIsSidebar();
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
   const formHeight = 115;
 
   const loopFor = (

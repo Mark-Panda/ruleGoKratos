@@ -16,7 +16,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLLM,
     description:
-      'Agent LLM：与 Chat Harness 一致的工具调用能力，可按节点配置 Skill / MCP / Workspace 工具与白名单；提示词与模型名支持 ${}。',
+      'Agent LLM：按节点配置模型名与 Skill / MCP / Workspace 工具及白名单（不关联「Agent 托管配置」）；提示词与模型名支持 ${}。generate_uuid 由运行时固定启用。',
   },
   meta: {
     defaultPorts: [
@@ -40,9 +40,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
         title: `AgentLLM_${++index}`,
         positionType: 'middle',
         inputsValues: {
-          llmConfigId: { type: 'constant', content: 0 },
-          llmModelEntryId: { type: 'constant', content: 0 },
-          managedAgentId: { type: 'constant', content: 0 },
           model: { type: 'constant', content: '' },
           userPrompt: { type: 'template', content: '' },
           systemPrompt: {
@@ -52,7 +49,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           },
           enableSkillTool: { type: 'constant', content: true },
           enableMcpTool: { type: 'constant', content: true },
-          enableUUIDTool: { type: 'constant', content: true },
           enableWorkspaceTools: { type: 'constant', content: false },
           skillAllowlist: { type: 'constant', content: [] as string[] },
           mcpAllowlist: { type: 'constant', content: [] as string[] },
@@ -68,7 +64,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             'systemPrompt',
             'enableSkillTool',
             'enableMcpTool',
-            'enableUUIDTool',
             'enableWorkspaceTools',
             'skillAllowlist',
             'mcpAllowlist',
@@ -100,10 +95,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             enableMcpTool: {
               type: 'boolean',
               extra: { label: '启用 call_mcp_tool', description: '允许模型调用 MCP' },
-            },
-            enableUUIDTool: {
-              type: 'boolean',
-              extra: { label: '启用 generate_uuid' },
             },
             enableWorkspaceTools: {
               type: 'boolean',

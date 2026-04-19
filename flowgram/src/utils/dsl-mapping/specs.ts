@@ -1,7 +1,5 @@
 import type { NodeMappingSpec } from './types';
 import {
-  transformAiLlmConfigIn,
-  transformAiLlmConfigOut,
   transformAgentHarnessConfigIn,
   transformCursorCliConfigIn,
   transformFeishuWebhookConfigIn,
@@ -17,71 +15,6 @@ import {
  * 缺字段 / 空值时的回填以各字段 `defaultValue` 为准（与 `engine.ts` 中「spec 默认值语义」一致）；
  * 勿在调用方另写一套隐式默认。
  */
-
-/** ai/llm：画布 inputsValues 与 DSL configuration（含 messages、params）之间的字段规格。 */
-export const aiLlmMappingSpec: NodeMappingSpec = {
-  nodeType: 'ai/llm',
-  fields: [
-    {
-      inputKey: 'llmConfigId',
-      dslKey: 'llmConfigId',
-      valueType: 'number',
-      defaultValue: 0,
-    },
-    {
-      inputKey: 'llmModelEntryId',
-      dslKey: 'llmModelEntryId',
-      valueType: 'number',
-      defaultValue: 0,
-    },
-    {
-      inputKey: 'model',
-      dslKey: 'model',
-      valueType: 'constant',
-      defaultValue: '',
-    },
-    {
-      inputKey: 'userPrompt',
-      dslKey: 'userPrompt',
-      valueType: 'template',
-      defaultValue: '',
-    },
-    {
-      inputKey: 'systemPrompt',
-      dslKey: 'systemPrompt',
-      valueType: 'template',
-      defaultValue: '',
-    },
-    {
-      inputKey: 'temperature',
-      dslKey: 'temperature',
-      valueType: 'number',
-      defaultValue: 0.5,
-    },
-    {
-      inputKey: 'topP',
-      dslKey: 'topP',
-      valueType: 'number',
-      defaultValue: 0.5,
-    },
-    {
-      inputKey: 'maxTokens',
-      dslKey: 'maxTokens',
-      valueType: 'number',
-      defaultValue: 0,
-    },
-    {
-      inputKey: 'responseFormat',
-      dslKey: 'responseFormat',
-      valueType: 'constant',
-      defaultValue: 'text',
-    },
-    { inputKey: 'key', dslKey: 'key', valueType: 'constant', defaultValue: '' },
-    { inputKey: 'url', dslKey: 'url', valueType: 'constant', defaultValue: '' },
-  ],
-  transformOut: transformAiLlmConfigOut,
-  transformIn: transformAiLlmConfigIn,
-};
 
 /** ai/agentHarness：与 buildDocumentFromRuleChainJSON 中回显默认值一致。 */
 export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
@@ -533,6 +466,8 @@ export const feishuWebhookMappingSpec: NodeMappingSpec = {
 export const cursorAcpMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorAcp',
   fields: [
+    { inputKey: 'acpSimpleMode', dslKey: 'acpSimpleMode', valueType: 'boolean', defaultValue: true },
+    { inputKey: 'acpTask', dslKey: 'acpTask', valueType: 'template', defaultValue: '' },
     { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
     { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: ['acp'] },
     { inputKey: 'stdinLines', dslKey: 'stdinLines', valueType: 'json', defaultValue: [] },
@@ -546,7 +481,6 @@ export const cursorAcpMappingSpec: NodeMappingSpec = {
 };
 
 const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
-  'ai/llm': aiLlmMappingSpec,
   'ai/agentHarness': aiAgentHarnessMappingSpec,
   restApiCall: restApiCallMappingSpec,
   flow: flowMappingSpec,

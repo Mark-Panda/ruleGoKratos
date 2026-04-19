@@ -11,7 +11,7 @@ import {
 } from '@flowgram.ai/form-materials';
 import { Select } from '@douyinfe/semi-ui';
 
-import { useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly } from '../../../hooks';
 import { VariablePicker } from '../../../form-components/variable-picker';
 import { FormItem } from '../../../form-components';
 
@@ -31,7 +31,7 @@ const BODY_TYPE_OPTIONS = [
 ];
 
 export function Body() {
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
 
   const renderBodyEditor = (bodyType: string) => {
     switch (bodyType) {

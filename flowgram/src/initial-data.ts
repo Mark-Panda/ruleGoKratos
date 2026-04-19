@@ -5,6 +5,116 @@
 
 import { FlowDocumentJSON } from './typings';
 
+/** 与 `AgentHarnessNodeRegistry.onAdd` 对齐；示例画布在移除独立 LLM 组件后改用本结构。 */
+function demoAgentHarnessNodeData(opts: {
+  title: string;
+  userPrompt: string;
+  systemPrompt?: string;
+}) {
+  const defaultSys =
+    'You are a helpful assistant. You may call run_skill and call_mcp_tool when they help answer the user.';
+  return {
+    title: opts.title,
+    positionType: 'middle',
+    inputsValues: {
+      model: { type: 'constant' as const, content: '' },
+      userPrompt: { type: 'template' as const, content: opts.userPrompt },
+      systemPrompt: { type: 'template' as const, content: opts.systemPrompt ?? defaultSys },
+      enableSkillTool: { type: 'constant' as const, content: true },
+      enableMcpTool: { type: 'constant' as const, content: true },
+      enableWorkspaceTools: { type: 'constant' as const, content: false },
+      skillAllowlist: { type: 'constant' as const, content: [] as string[] },
+      mcpAllowlist: { type: 'constant' as const, content: [] as string[] },
+      maxIterations: { type: 'constant' as const, content: 0 },
+      maxToolCalls: { type: 'constant' as const, content: 0 },
+      toolTimeoutSecs: { type: 'constant' as const, content: 0 },
+    },
+    inputs: {
+      type: 'object',
+      required: [
+        'model',
+        'userPrompt',
+        'systemPrompt',
+        'enableSkillTool',
+        'enableMcpTool',
+        'enableWorkspaceTools',
+        'skillAllowlist',
+        'mcpAllowlist',
+        'maxIterations',
+        'maxToolCalls',
+        'toolTimeoutSecs',
+      ],
+      properties: {
+        model: {
+          type: 'string',
+          extra: {
+            label: '模型名称',
+            formComponent: 'prompt-editor',
+            description: '留空则用配置默认模型；支持 ${} 模板',
+          },
+        },
+        userPrompt: {
+          type: 'string',
+          extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+        },
+        systemPrompt: {
+          type: 'string',
+          extra: { label: '系统提示词', formComponent: 'prompt-editor' },
+        },
+        enableSkillTool: {
+          type: 'boolean',
+          extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
+        },
+        enableMcpTool: {
+          type: 'boolean',
+          extra: { label: '启用 call_mcp_tool', description: '允许模型调用 MCP' },
+        },
+        enableWorkspaceTools: {
+          type: 'boolean',
+          extra: {
+            label: '启用 Workspace 工具',
+            description: '读/写文件与 shell（与 Chat Agent 一致）',
+          },
+        },
+        skillAllowlist: {
+          type: 'array',
+          items: { type: 'string' },
+          extra: {
+            label: 'Skill 白名单',
+            description: '由侧边栏勾选维护（string[]）；空=不限制',
+          },
+        },
+        mcpAllowlist: {
+          type: 'array',
+          items: { type: 'string' },
+          extra: {
+            label: 'MCP 白名单',
+            description: '勾选 MCP 后写入 server:*；空=不限制',
+          },
+        },
+        maxIterations: {
+          type: 'number',
+          extra: { label: '最大迭代轮次', description: '0 表示使用服务默认' },
+        },
+        maxToolCalls: {
+          type: 'number',
+          extra: { label: '最大工具调用次数', description: '0 表示使用服务默认' },
+        },
+        toolTimeoutSecs: {
+          type: 'number',
+          extra: { label: '单次工具超时(秒)', description: '0 表示使用服务默认' },
+        },
+      },
+    },
+    outputs: {
+      type: 'object',
+      properties: {
+        result: { type: 'string' },
+      },
+    },
+  };
+}
+
 export const initialData: FlowDocumentJSON = {
   nodes: [
     {
@@ -307,157 +417,33 @@ export const initialData: FlowDocumentJSON = {
       blocks: [
         {
           id: 'llm_6aSyo',
-          type: 'llm',
+          type: 'ai/agentHarness',
           meta: {
             position: {
               x: 344,
               y: 0,
             },
           },
-          data: {
-            title: 'LLM_3',
-            inputsValues: {
-              modelName: {
-                type: 'constant',
-                content: 'gpt-3.5-turbo',
-              },
-              apiKey: {
-                type: 'constant',
-                content: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-              },
-              apiHost: {
-                type: 'constant',
-                content: 'https://mock-ai-url/api/v3',
-              },
-              temperature: {
-                type: 'constant',
-                content: 0.5,
-              },
-              systemPrompt: {
-                type: 'template',
-                content: '# Role\nYou are an AI assistant.\n',
-              },
-              prompt: {
-                type: 'template',
-                content: '',
-              },
-            },
-            inputs: {
-              type: 'object',
-              required: ['modelName', 'apiKey', 'apiHost', 'temperature', 'prompt'],
-              properties: {
-                modelName: {
-                  type: 'string',
-                },
-                apiKey: {
-                  type: 'string',
-                },
-                apiHost: {
-                  type: 'string',
-                },
-                temperature: {
-                  type: 'number',
-                },
-                systemPrompt: {
-                  type: 'string',
-                  extra: {
-                    formComponent: 'prompt-editor',
-                  },
-                },
-                prompt: {
-                  type: 'string',
-                  extra: {
-                    formComponent: 'prompt-editor',
-                  },
-                },
-              },
-            },
-            outputs: {
-              type: 'object',
-              properties: {
-                result: {
-                  type: 'string',
-                },
-              },
-            },
-          },
+          data: demoAgentHarnessNodeData({
+            title: 'AgentLLM_3',
+            userPrompt: '',
+            systemPrompt: '# Role\nYou are an AI assistant.\n',
+          }),
         },
         {
           id: 'llm_ZqKlP',
-          type: 'ai/llm',
+          type: 'ai/agentHarness',
           meta: {
             position: {
               x: 804,
               y: 0,
             },
           },
-          data: {
-            title: 'LLM_4',
-            inputsValues: {
-              modelName: {
-                type: 'constant',
-                content: 'gpt-3.5-turbo',
-              },
-              apiKey: {
-                type: 'constant',
-                content: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-              },
-              apiHost: {
-                type: 'constant',
-                content: 'https://mock-ai-url/api/v3',
-              },
-              temperature: {
-                type: 'constant',
-                content: 0.5,
-              },
-              systemPrompt: {
-                type: 'template',
-                content: '# Role\nYou are an AI assistant.\n',
-              },
-              prompt: {
-                type: 'template',
-                content: '',
-              },
-            },
-            inputs: {
-              type: 'object',
-              required: ['modelName', 'apiKey', 'apiHost', 'temperature', 'prompt'],
-              properties: {
-                modelName: {
-                  type: 'string',
-                },
-                apiKey: {
-                  type: 'string',
-                },
-                apiHost: {
-                  type: 'string',
-                },
-                temperature: {
-                  type: 'number',
-                },
-                systemPrompt: {
-                  type: 'string',
-                  extra: {
-                    formComponent: 'prompt-editor',
-                  },
-                },
-                prompt: {
-                  type: 'string',
-                  extra: {
-                    formComponent: 'prompt-editor',
-                  },
-                },
-              },
-            },
-            outputs: {
-              type: 'object',
-              properties: {
-                result: {
-                  type: 'string',
-                },
-              },
-            },
-          },
+          data: demoAgentHarnessNodeData({
+            title: 'AgentLLM_4',
+            userPrompt: '',
+            systemPrompt: '# Role\nYou are an AI assistant.\n',
+          }),
         },
         {
           id: 'block_start_PUDtS',
@@ -513,157 +499,33 @@ export const initialData: FlowDocumentJSON = {
     },
     {
       id: 'llm_8--A3',
-      type: 'llm',
+      type: 'ai/agentHarness',
       meta: {
         position: {
           x: 180,
           y: 0,
         },
       },
-      data: {
-        title: 'LLM_1',
-        inputsValues: {
-          modelName: {
-            type: 'constant',
-            content: 'gpt-3.5-turbo',
-          },
-          apiKey: {
-            type: 'constant',
-            content: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-          },
-          apiHost: {
-            type: 'constant',
-            content: 'https://mock-ai-url/api/v3',
-          },
-          temperature: {
-            type: 'constant',
-            content: 0.5,
-          },
-          systemPrompt: {
-            type: 'template',
-            content: '# Role\nYou are an AI assistant.\n',
-          },
-          prompt: {
-            type: 'template',
-            content: '# User Input\nquery:{{start_0.query}}\nenable:{{start_0.enable}}',
-          },
-        },
-        inputs: {
-          type: 'object',
-          required: ['modelName', 'apiKey', 'apiHost', 'temperature', 'prompt'],
-          properties: {
-            modelName: {
-              type: 'string',
-            },
-            apiKey: {
-              type: 'string',
-            },
-            apiHost: {
-              type: 'string',
-            },
-            temperature: {
-              type: 'number',
-            },
-            systemPrompt: {
-              type: 'string',
-              extra: {
-                formComponent: 'prompt-editor',
-              },
-            },
-            prompt: {
-              type: 'string',
-              extra: {
-                formComponent: 'prompt-editor',
-              },
-            },
-          },
-        },
-        outputs: {
-          type: 'object',
-          properties: {
-            result: {
-              type: 'string',
-            },
-          },
-        },
-      },
+      data: demoAgentHarnessNodeData({
+        title: 'AgentLLM_1',
+        userPrompt: '# User Input\nquery:{{start_0.query}}\nenable:{{start_0.enable}}',
+        systemPrompt: '# Role\nYou are an AI assistant.\n',
+      }),
     },
     {
       id: 'llm_vTyMa',
-      type: 'llm',
+      type: 'ai/agentHarness',
       meta: {
         position: {
           x: 640,
           y: 10,
         },
       },
-      data: {
-        title: 'LLM_2',
-        inputsValues: {
-          modelName: {
-            type: 'constant',
-            content: 'gpt-3.5-turbo',
-          },
-          apiKey: {
-            type: 'constant',
-            content: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-          },
-          apiHost: {
-            type: 'constant',
-            content: 'https://mock-ai-url/api/v3',
-          },
-          temperature: {
-            type: 'constant',
-            content: 0.5,
-          },
-          systemPrompt: {
-            type: 'template',
-            content: '# Role\nYou are an AI assistant.\n',
-          },
-          prompt: {
-            type: 'template',
-            content: '# LLM Input\nresult:{{llm_8--A3.result}}',
-          },
-        },
-        inputs: {
-          type: 'object',
-          required: ['modelName', 'apiKey', 'apiHost', 'temperature', 'prompt'],
-          properties: {
-            modelName: {
-              type: 'string',
-            },
-            apiKey: {
-              type: 'string',
-            },
-            apiHost: {
-              type: 'string',
-            },
-            temperature: {
-              type: 'number',
-            },
-            systemPrompt: {
-              type: 'string',
-              extra: {
-                formComponent: 'prompt-editor',
-              },
-            },
-            prompt: {
-              type: 'string',
-              extra: {
-                formComponent: 'prompt-editor',
-              },
-            },
-          },
-        },
-        outputs: {
-          type: 'object',
-          properties: {
-            result: {
-              type: 'string',
-            },
-          },
-        },
-      },
+      data: demoAgentHarnessNodeData({
+        title: 'AgentLLM_2',
+        userPrompt: '# Agent Input\nresult:{{llm_8--A3.result}}',
+        systemPrompt: '# Role\nYou are an AI assistant.\n',
+      }),
     },
   ],
   edges: [

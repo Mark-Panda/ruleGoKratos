@@ -6,11 +6,11 @@
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { InputNumber } from '@douyinfe/semi-ui';
 
-import { useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly } from '../../../hooks';
 import { FormItem } from '../../../form-components';
 
 export function Timeout() {
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
 
   return (
     <div>

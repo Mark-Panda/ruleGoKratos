@@ -7,12 +7,12 @@ import { Field } from '@flowgram.ai/free-layout-editor';
 import { IFlowTemplateValue, PromptEditorWithVariables } from '@flowgram.ai/form-materials';
 import { Select } from '@douyinfe/semi-ui';
 
-import { useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly } from '../../../hooks';
 import { VariablePicker } from '../../../form-components/variable-picker';
 import { FormItem } from '../../../form-components';
 
 export function Api() {
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
 
   return (
     <div>

@@ -11,7 +11,7 @@ import { Button, Input, Select, Tag } from '@douyinfe/semi-ui';
 import { IconPlus, IconCrossCircleStroked } from '@douyinfe/semi-icons';
 
 import { alphaNanoid } from '../../../utils';
-import { useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly, useNodeRenderContext } from '../../../hooks';
 import { VariablePicker } from '../../../form-components/variable-picker';
 import { FormItem } from '../../../form-components';
 import { Feedback } from '../../../form-components';
@@ -37,7 +37,8 @@ interface CaseItemValue {
 }
 
 export function CaseInputs() {
-  const { node, readonly } = useNodeRenderContext();
+  const { node } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
 
   useLayoutEffect(() => {
     window.requestAnimationFrame(() => {

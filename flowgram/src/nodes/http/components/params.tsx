@@ -6,11 +6,11 @@
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { DisplayInputsValues, IFlowValue, InputsValues } from '@flowgram.ai/form-materials';
 
-import { useIsSidebar, useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly, useIsSidebar } from '../../../hooks';
 import { FormItem } from '../../../form-components';
 
 export function Params() {
-  const { readonly } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
   const isSidebar = useIsSidebar();
 
   if (!isSidebar) {

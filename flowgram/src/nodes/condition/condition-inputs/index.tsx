@@ -11,7 +11,7 @@ import { Button } from '@douyinfe/semi-ui';
 import { IconPlus, IconCrossCircleStroked } from '@douyinfe/semi-icons';
 
 import { alphaNanoid } from '../../../utils';
-import { useNodeRenderContext } from '../../../hooks';
+import { useEffectiveReadonly, useNodeRenderContext } from '../../../hooks';
 import { FormItem } from '../../../form-components';
 import { Feedback } from '../../../form-components';
 import { ConditionPort } from './styles';
@@ -22,7 +22,8 @@ interface ConditionValue {
 }
 
 export function ConditionInputs() {
-  const { node, readonly } = useNodeRenderContext();
+  const { node } = useNodeRenderContext();
+  const readonly = useEffectiveReadonly();
 
   useLayoutEffect(() => {
     window.requestAnimationFrame(() => {

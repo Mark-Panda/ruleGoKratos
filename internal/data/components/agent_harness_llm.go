@@ -47,7 +47,8 @@ type AgentHarnessLLMConfig struct {
 	UserPrompt           string `json:"userPrompt"`
 	EnableSkillTool      bool   `json:"enableSkillTool"`
 	EnableMcpTool        bool   `json:"enableMcpTool"`
-	EnableUUIDTool       bool   `json:"enableUUIDTool"`
+	// EnableUUIDTool 已废弃：运行时固定启用 UUID 工具，DSL 若仍含该字段会被忽略。
+	EnableUUIDTool bool `json:"enableUUIDTool"`
 	EnableWorkspaceTools bool   `json:"enableWorkspaceTools"`
 	MaxIterations        int    `json:"maxIterations"`
 	MaxToolCalls         int    `json:"maxToolCalls"`
@@ -62,7 +63,6 @@ func (x *AgentHarnessLLM) New() types.Node {
 	return &AgentHarnessLLM{Config: AgentHarnessLLMConfig{
 		EnableSkillTool: true,
 		EnableMcpTool:   true,
-		EnableUUIDTool:  true,
 	}}
 }
 
@@ -125,8 +125,9 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	systemPrompt := x.systemTpl.Execute(env)
 	userPrompt := x.userTpl.Execute(env)
 
+	// 规则链 Agent-LLM 节点不关联「Agent 托管配置」或「模型管理 ID」，仅用节点内的 model 文案与下列工具选项。
 	toolOpts := &biz.HarnessToolOptions{
-		EnableUUIDTool:       x.Config.EnableUUIDTool,
+		EnableUUIDTool:       true, // 不在节点上暴露开关，固定启用 generate_uuid
 		EnableSkillTool:      x.Config.EnableSkillTool,
 		EnableMcpTool:        x.Config.EnableMcpTool,
 		EnableWorkspaceTools: x.Config.EnableWorkspaceTools,
@@ -144,20 +145,15 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	}
 
 	req := biz.HarnessRequest{
-		Model:          strings.TrimSpace(modelName),
-		History:        nil,
-		Input:          userPrompt,
-		SystemPrompt:   systemPrompt,
-		ConfigOverride: cfgOverride,
-	}
-	if x.Config.ManagedAgentID > 0 {
-		req.ManagedAgentID = x.Config.ManagedAgentID
-	} else {
-		req.ToolOptions = toolOpts
-		if x.Config.LlmConfigID > 0 && x.Config.LlmModelEntryID > 0 {
-			req.LlmConfigID = x.Config.LlmConfigID
-			req.LlmModelEntryID = x.Config.LlmModelEntryID
-		}
+		Model:           strings.TrimSpace(modelName),
+		History:         nil,
+		Input:           userPrompt,
+		SystemPrompt:    systemPrompt,
+		ConfigOverride:  cfgOverride,
+		ToolOptions:     toolOpts,
+		ManagedAgentID:  0,
+		LlmConfigID:     0,
+		LlmModelEntryID: 0,
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)

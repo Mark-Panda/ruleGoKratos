@@ -89,7 +89,7 @@ src/
 │   ├── end/                 # End node
 │   ├── group/               # Group node
 │   ├── http/                # HTTP node
-│   ├── llm/                 # LLM node
+│   ├── agent-harness/      # Agent LLM (Skill/MCP) node
 │   ├── loop/                # Loop node
 │   ├── start/               # Start node
 │   └── variable/            # Variable node
@@ -183,7 +183,7 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   ConditionNodeRegistry,    // Condition node
   StartNodeRegistry,        // Start node
   EndNodeRegistry,          // End node
-  LLMNodeRegistry,          // LLM node
+  AgentHarnessNodeRegistry,  // Agent LLM (Skill/MCP) node
   LoopNodeRegistry,         // Loop node
   CommentNodeRegistry,      // Comment node
   HTTPNodeRegistry,         // HTTP node
@@ -249,7 +249,7 @@ The app supports multiple workflow node types:
 export enum WorkflowNodeType {
   Start = 'start',           // Start node
   End = 'end',               // End node
-  LLM = 'llm',               // Large language model node
+  AgentHarness = 'ai/agentHarness', // Agent LLM (Skill/MCP)
   HTTP = 'http',             // HTTP request node
   Code = 'code',             // Code execution node
   Variable = 'variable',     // Variable node

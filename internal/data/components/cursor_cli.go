@@ -49,7 +49,7 @@ type CursorCliConfiguration struct {
 	PrintMode bool `json:"printMode"`
 	// Prompt 无头模式下的说明/任务文本；在 PrintMode 为 true 时紧接在 -p 之后传入。
 	Prompt string `json:"prompt"`
-	// Model 非空时在 argv 中追加 --model <Model>（如 gpt-5.2）；与官方全局参数一致。
+	// Model 非空且不为 auto（忽略大小写）时在 argv 中追加 --model <Model>；与官方全局参数一致。
 	Model string `json:"model"`
 	// OutputFormat 在 PrintMode 时追加 --output-format（text / json / stream-json）；空则按 text 处理（与 CLI 文档默认一致）。
 	OutputFormat string `json:"outputFormat"`
@@ -211,7 +211,7 @@ func (c *CursorCliDsl) buildCliMidArgs(evn map[string]interface{}) []string {
 		}
 		mid = append(mid, "--output-format", of)
 	}
-	if m := strings.TrimSpace(c.modelTpl.ExecuteAsString(evn)); m != "" {
+	if m := strings.TrimSpace(c.modelTpl.ExecuteAsString(evn)); m != "" && strings.ToLower(m) != "auto" {
 		mid = append(mid, "--model", m)
 	}
 	for _, t := range c.argsTpl {

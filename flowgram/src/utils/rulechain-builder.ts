@@ -380,12 +380,6 @@ function buildRuleChainMetaNodes(
       base.configuration = mapNodeToDslConfig(synthetic, specRest) as Record<string, any>;
       break;
     }
-    case 'ai/llm': {
-      const spec = getNodeMappingSpec('ai/llm');
-      if (!spec) break;
-      base.configuration = mapNodeToDslConfig(n, spec) as Record<string, any>;
-      break;
-    }
     case 'ai/agentHarness': {
       const specAh = getNodeMappingSpec('ai/agentHarness');
       if (!specAh) break;
@@ -1252,54 +1246,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           };
           break;
         }
-        case 'ai/llm': {
-          const cfg = n.configuration ?? {};
-          const specLlm = getNodeMappingSpec('ai/llm');
-          const inputsSchema = {
-            type: 'object',
-            required: [
-              'model',
-              'key',
-              'url',
-              'temperature',
-              'userPrompt',
-              'topP',
-              'maxTokens',
-              'responseFormat',
-            ],
-            properties: {
-              model: { type: 'string', extra: { label: '模型名称' } },
-              userPrompt: {
-                type: 'string',
-                extra: { label: '用户提示词', formComponent: 'prompt-editor' },
-              },
-              systemPrompt: {
-                type: 'string',
-                extra: { label: '系统提示词', formComponent: 'prompt-editor' },
-              },
-              responseFormat: {
-                type: 'string',
-                enum: ['text', 'json_object', 'json_schema'],
-                extra: { label: '输出格式', formComponent: 'enum-select' },
-              },
-              maxTokens: { type: 'number', extra: { label: '最大输出长度' } },
-              temperature: { type: 'number' },
-              topP: { type: 'number' },
-              key: { type: 'string' },
-              url: { type: 'string' },
-            },
-          };
-          if (!specLlm) break;
-          const ivMap = mapDslToNodeInputsValues(cfg as Record<string, unknown>, specLlm);
-          base.data = {
-            title: n.name ?? 'ai/llm',
-            positionType: 'middle',
-            inputsValues: inputsValuesMapToFlowData(ivMap, specLlm),
-            inputs: inputsSchema,
-            outputs: { type: 'object', properties: {} },
-          };
-          break;
-        }
         case 'ai/agentHarness': {
           const cfg = n.configuration ?? {};
           const specAh = getNodeMappingSpec('ai/agentHarness');
@@ -1311,7 +1257,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               'systemPrompt',
               'enableSkillTool',
               'enableMcpTool',
-              'enableUUIDTool',
               'enableWorkspaceTools',
               'skillAllowlist',
               'mcpAllowlist',
@@ -1349,10 +1294,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   label: '启用 call_mcp_tool',
                   description: '允许模型调用 MCP',
                 },
-              },
-              enableUUIDTool: {
-                type: 'boolean',
-                extra: { label: '启用 generate_uuid' },
               },
               enableWorkspaceTools: {
                 type: 'boolean',

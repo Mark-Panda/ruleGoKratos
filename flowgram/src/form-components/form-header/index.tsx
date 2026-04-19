@@ -12,7 +12,7 @@ import { IconClose, IconSmallTriangleDown, IconSmallTriangleLeft } from '@douyin
 
 import { toggleLoopExpanded } from '../../utils';
 import { FlowCommandId } from '../../shortcuts';
-import { useIsSidebar, useNodeRenderContext } from '../../hooks';
+import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
 import { nodeFormPanelFactory } from '../../components/sidebar';
 import { NodeMenu } from '../../components/node-menu';
 import { getIcon } from './utils';
@@ -21,6 +21,7 @@ import { Header, Operators } from './styles';
 
 export function FormHeader() {
   const { node, expanded, toggleExpand, readonly } = useNodeRenderContext();
+  const effectiveReadonly = useEffectiveReadonly();
   const [titleEdit, updateTitleEdit] = useState<boolean>(false);
   const ctx = useClientContext();
   const isSidebar = useIsSidebar();
@@ -45,7 +46,7 @@ export function FormHeader() {
   return (
     <Header>
       {getIcon(node)}
-      <TitleInput readonly={readonly} updateTitleEdit={updateTitleEdit} titleEdit={titleEdit} />
+      <TitleInput readonly={effectiveReadonly} updateTitleEdit={updateTitleEdit} titleEdit={titleEdit} />
       {node.renderData.expandable && !isSidebar && (
         <Button
           type="primary"
