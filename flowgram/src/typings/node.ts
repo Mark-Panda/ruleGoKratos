@@ -60,6 +60,10 @@ export interface FlowNodeMeta extends WorkflowNodeMeta {
   defaultExpanded?: boolean;
   /** 是否在节点标题栏显示展开/折叠按钮 */
   expandable?: boolean;
+  /**
+   * 添加节点面板中的分组键（与 `panel-categories.ts` 中 id 一致）；未设时按节点 type 自动归类。
+   */
+  panelCategory?: string;
 }
 
 /**
