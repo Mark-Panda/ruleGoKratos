@@ -8,7 +8,6 @@ import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconDB from '../../assets/icon_database-search.svg';
 
-let index = 0;
 export const RedisClientNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.RedisClient,
   info: {

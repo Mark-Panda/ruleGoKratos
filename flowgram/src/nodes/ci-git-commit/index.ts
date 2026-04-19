@@ -35,9 +35,9 @@ export const CiGitCommitNodeRegistry: FlowNodeRegistry = {
           pattern: { type: 'constant', content: '' },
           message: { type: 'template', content: 'chore: commit from rulego' },
           signature: {
-            type: 'json',
+            type: 'constant',
             content: { authorName: '', authorEmail: '' },
-          },
+          } as any,
         },
         inputs: {
           type: 'object',

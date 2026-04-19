@@ -66,7 +66,7 @@ export const WorkflowRunLogsSection: React.FC = () => {
     const current = typeof p === 'number' ? p : page;
     const pageSize = typeof s === 'number' ? s : size;
     const tr = range !== undefined ? range : timeRange;
-    const params: Record<string, unknown> = {
+    const params: Record<string, string | number | boolean | undefined> = {
       size: pageSize,
       page: current,
     };
@@ -123,7 +123,7 @@ export const WorkflowRunLogsSection: React.FC = () => {
           <DatePicker
             type="dateTime"
             density="compact"
-            value={timeRange[0]}
+            value={timeRange[0] ?? undefined}
             onChange={(v: any) => {
               const nv = v ? toStartOfDay(v as Date) : null;
               setTimeRange([nv, timeRange[1]]);
@@ -135,7 +135,7 @@ export const WorkflowRunLogsSection: React.FC = () => {
           <DatePicker
             type="dateTime"
             density="compact"
-            value={timeRange[1]}
+            value={timeRange[1] ?? undefined}
             onChange={(v: any) => {
               const nv = v ? toEndOfDay(v as Date) : null;
               setTimeRange([timeRange[0], nv]);
@@ -279,7 +279,6 @@ export const WorkflowRunLogsSection: React.FC = () => {
               },
             ]}
             pagination={false}
-            rowKey={(r: any) => String(r?.id || Math.random())}
           />
         </Spin>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>

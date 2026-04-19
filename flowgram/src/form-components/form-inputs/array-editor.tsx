@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { IFlowValue } from '@flowgram.ai/form-materials';
 import { Button, Input } from '@douyinfe/semi-ui';

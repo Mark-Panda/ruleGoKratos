@@ -582,10 +582,11 @@ export const WorkflowExecuteSection: React.FC = () => {
                 scroll={{ y: 360, x: 1320 }}
                 pagination={false}
                 columns={logColumns}
-                expandedRowRender={(record: Record<string, unknown>) => {
-                  const inMsg = record.inMsg;
-                  const outMsg = record.outMsg;
-                  const rest = { ...record };
+                expandedRowRender={(record?: Record<string, unknown>) => {
+                  const safeRecord = record ?? {};
+                  const inMsg = safeRecord.inMsg;
+                  const outMsg = safeRecord.outMsg;
+                  const rest = { ...safeRecord };
                   delete rest._idx;
                   delete rest._rowKey;
                   delete rest.inMsg;

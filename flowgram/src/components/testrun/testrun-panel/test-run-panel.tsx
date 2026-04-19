@@ -12,7 +12,6 @@ import { useService } from '@flowgram.ai/free-layout-editor';
 import { Button } from '@douyinfe/semi-ui';
 import { IconClose, IconPlay, IconSpin } from '@douyinfe/semi-icons';
 
-import { TestRunJsonInput } from '../testrun-json-input';
 import { TestRunForm } from '../testrun-form';
 import { NodeStatusGroup } from '../node-status-bar/group';
 import { alphaNanoid } from '../../../utils';

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Checkbox, Divider, Spin, Typography } from '@douyinfe/semi-ui';
 import { DisplayOutputs } from '@flowgram.ai/form-materials';

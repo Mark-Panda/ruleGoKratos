@@ -1,53 +1,51 @@
-/**
- * 运行控制台组件
- */
-
 import React, { useRef, useState } from 'react';
-import {
-  Typography,
-  TextArea,
-  Button,
-  Space,
-  Card,
-  Spin,
-  Toast,
-} from '@douyinfe/semi-ui';
-import {
-  IconSend,
-  IconClear,
-  IconUndo,
-  IconCopy,
-} from '@douyinfe/semi-icons';
+import { IconClear, IconCopy, IconSend, IconUndo } from '@douyinfe/semi-icons';
+import { Button, Card, Space, Spin, Tag, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 
-import {
-  CollaborationScheme,
-  TraceRun,
-  MODE_NAME_MAP,
-} from '../../services/api-playground';
+import { CollaborationScheme, MODE_NAME_MAP, RecoveryAction } from '../../services/api-playground';
+import { RuntimeViewModel } from '../utils/runtime-view-model';
+import { canApplyRecoveryAction, recoveryActionButtonLabel } from '../utils/recovery-actions';
 
 const { Text } = Typography;
 
 interface RunConsoleProps {
   scheme?: CollaborationScheme;
   onRun: (input: string) => void;
-  /** 清空当前运行轨迹与本地输入（顶栏「清空」） */
   onClear?: () => void;
+  onApplyRecovery?: (action: RecoveryAction) => void | Promise<void>;
+  applyingRecoveryActionId?: string;
   running: boolean;
-  currentRun?: TraceRun;
+  runtimeViewModel: RuntimeViewModel;
 }
+
+const STATUS_COLOR_MAP: Record<RuntimeViewModel['run']['status'], 'blue' | 'green' | 'red' | 'orange' | 'grey'> = {
+  idle: 'grey',
+  pending: 'blue',
+  ready: 'blue',
+  running: 'blue',
+  waiting_recovery: 'orange',
+  completed: 'green',
+  failed: 'red',
+  cancelled: 'grey',
+};
 
 export const RunConsole: React.FC<RunConsoleProps> = ({
   scheme,
   onRun,
   onClear,
+  onApplyRecovery,
+  applyingRecoveryActionId,
   running,
-  currentRun,
+  runtimeViewModel,
 }) => {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { run, activeStep, failedStep, recovery, planNodes } = runtimeViewModel;
 
   const handleSubmit = () => {
-    if (!input.trim() || !scheme) return;
+    if (!input.trim() || !scheme) {
+      return;
+    }
     onRun(input);
     setInput('');
   };
@@ -64,9 +62,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
     onClear?.();
   };
 
-  const showIdleHero =
-    !running &&
-    !currentRun;
+  const showIdleHero = !running && run.status === 'idle';
 
   return (
     <Card
@@ -79,7 +75,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Text strong style={{ fontSize: 15, lineHeight: '20px' }}>
-                运行
+                Run / Recovery
               </Text>
               {scheme ? (
                 <Text type="tertiary" size="small" style={{ maxWidth: 260 }} ellipsis={{ showTooltip: true }}>
@@ -96,7 +92,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             size="small"
             type="tertiary"
             icon={<IconUndo />}
-            disabled={!scheme && !currentRun && !input}
+            disabled={!scheme && run.status === 'idle' && !input}
             onClick={handleClearAll}
           >
             清空
@@ -111,131 +107,106 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         borderRadius: 14,
         boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
       }}
-      bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', paddingBottom: 12 }}
+      bodyStyle={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        overflow: 'hidden',
+        paddingBottom: 12,
+      }}
     >
-      <style>
-        {`
-        @keyframes pg-run-shimmer {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
-        }
-      `}
-      </style>
-
-      {running ? (
+      {run.status !== 'idle' ? (
         <div
           style={{
             padding: '12px 14px',
             marginBottom: 12,
             borderRadius: 12,
-            border: '1px solid rgba(22, 100, 255, 0.35)',
+            border: `1px solid ${
+              run.status === 'completed'
+                ? 'var(--semi-color-success)'
+                : run.status === 'waiting_recovery'
+                  ? 'var(--semi-color-warning)'
+                  : run.status === 'failed'
+                    ? 'var(--semi-color-danger)'
+                    : 'rgba(22, 100, 255, 0.35)'
+            }`,
             background:
-              'linear-gradient(110deg, var(--semi-color-primary-light-active) 0%, var(--semi-color-fill-0) 40%, var(--semi-color-primary-light-active) 80%)',
-            backgroundSize: '200% 100%',
-            animation: 'pg-run-shimmer 2.4s ease-in-out infinite',
+              run.status === 'completed'
+                ? 'var(--semi-color-success-light-default)'
+                : run.status === 'waiting_recovery'
+                  ? 'var(--semi-color-warning-light-default)'
+                  : run.status === 'failed'
+                    ? 'var(--semi-color-danger-light-default)'
+                    : 'var(--semi-color-primary-light-default)',
           }}
         >
-          <Space>
-            <Spin size="small" />
-            <Text strong>运行中</Text>
-            <Text type="tertiary" size="small">
-              路由、示意图与 Trace 将同步更新
-            </Text>
-          </Space>
-        </div>
-      ) : null}
-
-      {currentRun && currentRun.status !== 'running' ? (
-        <div
-          style={{
-            padding: '14px 16px',
-            background:
-              currentRun.status === 'completed'
-                ? 'var(--semi-color-success-light-active)'
-                : 'var(--semi-color-danger-light-active)',
-            borderRadius: 12,
-            marginBottom: 12,
-            border: `1px solid ${currentRun.status === 'completed' ? 'var(--semi-color-success)' : 'var(--semi-color-danger)'}`,
-          }}
-        >
-          <Space vertical align="start" style={{ width: '100%' }}>
+          <Space vertical align="start" spacing="tight" style={{ width: '100%' }}>
             <div
               style={{
+                width: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 8,
-                width: '100%',
+                gap: 12,
               }}
             >
-              <Text strong style={{ fontSize: 15 }}>
-                {currentRun.status === 'completed' ? '最终结果' : '运行失败'}
-              </Text>
-              {currentRun.status === 'completed' &&
-              currentRun.finalOutput &&
-              currentRun.finalOutput.trim().length > 0 ? (
+              <Space spacing="tight">
+                {running ? <Spin size="small" /> : null}
+                <Text strong>{run.label}</Text>
+                <Tag color={STATUS_COLOR_MAP[run.status]}>{run.status}</Tag>
+              </Space>
+              {run.finalOutput ? (
                 <Button
                   size="small"
                   type="tertiary"
                   theme="borderless"
                   icon={<IconCopy />}
                   onClick={() => {
-                    void navigator.clipboard.writeText(currentRun.finalOutput || '').then(
-                      () => Toast.success({ content: '已复制完整结果', duration: 2 }),
-                      () => Toast.warning({ content: '复制失败，请手动选中复制', duration: 3 }),
+                    void navigator.clipboard.writeText(run.finalOutput).then(
+                      () => Toast.success({ content: '已复制最终输出', duration: 2 }),
+                      () => Toast.warning({ content: '复制失败，请手动复制', duration: 3 }),
                     );
                   }}
                 >
-                  复制全文
+                  复制结果
                 </Button>
               ) : null}
             </div>
-            <Text type="tertiary" size="small" style={{ display: 'block', lineHeight: 1.5 }}>
-              {currentRun.status === 'completed'
-                ? currentRun.finalOutput?.trim()
-                  ? '以下为本次协作返回的汇总输出；详细步骤见右侧 Trace。'
-                  : '本次运行未写入汇总文本，请右侧 Trace 查看各步骤产出。'
-                : '协作提前结束，请在右侧 Trace 查看 ERROR 等事件定位原因。'}
-            </Text>
-            {currentRun.finalOutput?.trim() ? (
-              <div
-                style={{
-                  width: '100%',
-                  maxHeight: 'min(52vh, 440px)',
-                  overflow: 'auto',
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  background: 'var(--semi-color-bg-0)',
-                  border: '1px solid rgba(28,31,35,0.08)',
-                  fontSize: 13,
-                  lineHeight: 1.65,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontFamily: 'var(--semi-font-family-regular)',
-                  color: 'var(--semi-color-text-0)',
-                }}
+
+            <Space wrap>
+              {activeStep ? <Tag color="blue">当前步骤: {activeStep.name}</Tag> : null}
+              {failedStep ? <Tag color="red">失败步骤: {failedStep.name}</Tag> : null}
+              <Tag>步骤数: {planNodes.length}</Tag>
+              <Tag>恢复动作: {recovery.summary.count}</Tag>
+            </Space>
+
+            {run.failureSummary ? (
+              <Text
+                type={run.isWaitingRecovery || run.status === 'failed' ? 'danger' : 'tertiary'}
+                size="small"
+                style={{ lineHeight: 1.6 }}
               >
-                {currentRun.finalOutput}
-              </div>
+                {run.failureSummary}
+              </Text>
             ) : null}
           </Space>
         </div>
       ) : null}
 
-      {/* 主区域：空态或留白 */}
       <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: showIdleHero ? 'center' : 'flex-start',
+          gap: 12,
+          overflow: 'auto',
           minHeight: 160,
-          padding: showIdleHero ? '24px 16px' : '8px 0',
+          padding: showIdleHero ? '24px 16px' : '0 0 8px',
         }}
       >
         {showIdleHero ? (
-          <div style={{ textAlign: 'center', maxWidth: 360 }}>
+          <div style={{ textAlign: 'center', maxWidth: 360, margin: 'auto' }}>
             <div style={{ fontSize: 52, lineHeight: 1.2, marginBottom: 12, opacity: 0.88 }} aria-hidden>
               ✈️
             </div>
@@ -243,18 +214,109 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
               开始一次运行
             </Text>
             <Text type="tertiary" size="small" style={{ lineHeight: 1.65 }}>
-              发送问题并观察路由、图高亮和 Trace 变化
+              输入任务后，页面会围绕 Plan、Run 和 Recovery 三类信息同步更新。
             </Text>
+          </div>
+        ) : null}
+
+        {run.finalOutput ? (
+          <div
+            style={{
+              padding: '14px 16px',
+              border: '1px solid rgba(28,31,35,0.08)',
+              borderRadius: 12,
+              background: 'var(--semi-color-bg-0)',
+            }}
+          >
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              最终输出
+            </Text>
+            <div
+              style={{
+                maxHeight: 'min(36vh, 320px)',
+                overflow: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                lineHeight: 1.65,
+                fontSize: 13,
+              }}
+            >
+              {run.finalOutput}
+            </div>
+          </div>
+        ) : null}
+
+        {failedStep || recovery.actions.length > 0 ? (
+          <div
+            style={{
+              padding: '14px 16px',
+              border: '1px solid var(--semi-color-warning)',
+              borderRadius: 12,
+              background: 'var(--semi-color-warning-light-default)',
+            }}
+          >
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              Recovery
+            </Text>
+            {failedStep ? (
+              <Text size="small" style={{ display: 'block', lineHeight: 1.6 }}>
+                失败步骤：{failedStep.name}
+                {failedStep.agentBinding ? ` · ${failedStep.agentBinding}` : ''}
+              </Text>
+            ) : null}
+            {run.failureSummary ? (
+              <Text type="danger" size="small" style={{ display: 'block', lineHeight: 1.6, marginTop: 6 }}>
+                {run.failureSummary}
+              </Text>
+            ) : null}
+            {recovery.actions.length > 0 ? (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {recovery.actions.map(action => (
+                  <div
+                    key={action.id}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'rgba(255, 255, 255, 0.72)',
+                      border: '1px solid rgba(244, 114, 23, 0.18)',
+                    }}
+                  >
+                    <Space wrap>
+                      <Tag color="orange">{action.type}</Tag>
+                      <Text size="small">目标步骤: {action.stepId}</Text>
+                    </Space>
+                    <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}>
+                      {action.reason}
+                    </Text>
+                    <div style={{ marginTop: 10 }}>
+                      <Button
+                        size="small"
+                        type="primary"
+                        theme="solid"
+                        loading={applyingRecoveryActionId === action.id}
+                        disabled={!canApplyRecoveryAction(action, run.status, applyingRecoveryActionId)}
+                        onClick={() => void onApplyRecovery?.(action)}
+                      >
+                        {recoveryActionButtonLabel(action)}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Text type="tertiary" size="small">
+                暂无可展示的恢复动作。
+              </Text>
+            )}
           </div>
         ) : null}
       </div>
 
-      {/* 底部输入 */}
       <div style={{ flexShrink: 0, marginTop: 'auto' }}>
         <TextArea
-          ref={inputRef as any}
+          ref={inputRef as never}
           value={input}
-          onChange={v => setInput(v)}
+          onChange={value => setInput(value)}
           onKeyDown={handleKeyDown}
           placeholder={scheme ? '输入测试问题…' : '请先在左侧选择协作方案'}
           disabled={!scheme || running}

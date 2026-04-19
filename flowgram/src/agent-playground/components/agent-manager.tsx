@@ -269,7 +269,13 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
           style={{ width: '100%', maxWidth: 260 }}
           value={r.managedAgentId && r.managedAgentId > 0 ? String(r.managedAgentId) : ''}
           disabled={catalogLoading}
-          onChange={v => selectedPool && handleBindManagedAgent(selectedPool, r.id, v)}
+          onChange={(v) =>
+            selectedPool &&
+            handleBindManagedAgent(
+              selectedPool,
+              r.id,
+              typeof v === 'string' || typeof v === 'number' ? v : undefined
+            )}
         >
           <Select.Option value="">未绑定（协作运行前须选择）</Select.Option>
           {managedCatalog

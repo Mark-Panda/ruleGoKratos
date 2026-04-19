@@ -10,13 +10,10 @@ import {
   useService,
   GlobalScope,
   WorkflowDocument,
-  WorkflowNodeEntity,
   BaseVariableField,
 } from '@flowgram.ai/free-layout-editor';
 import { useVariableTree, JsonSchemaUtils } from '@flowgram.ai/form-materials';
 import { Tree } from '@douyinfe/semi-ui';
-
-import { getNodeTypeName } from '../../../nodes/node-type-names';
 
 export function FullVariableList() {
   const refresh = useRefresh();

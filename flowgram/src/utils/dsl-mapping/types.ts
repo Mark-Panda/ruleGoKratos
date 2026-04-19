@@ -5,6 +5,7 @@ export type MappingValueType = 'template' | 'constant' | 'number' | 'boolean' | 
 
 /** 节点 data 中与 inputsValues 条目兼容的最小形状（读取 .content）。 */
 export interface FlowValueLike {
+  type?: string;
   content?: unknown;
 }
 

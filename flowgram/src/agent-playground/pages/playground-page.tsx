@@ -7,7 +7,9 @@ import {
   Button,
   ButtonGroup,
   Input,
+  InputNumber,
   Select,
+  TextArea,
   Typography,
   Tag,
   Modal,
@@ -42,19 +44,25 @@ import {
   AgentPool,
   CollaborationScheme,
   CollaborationMode,
-  TraceRun,
+  SchemeConfig,
   TraceEvent,
+  RuntimeRunDetail,
+  RecoveryAction,
   MODE_NAME_MAP,
   MODE_DESC_MAP,
+  buildSchemeBindAgents,
+  createDefaultSchemeConfig,
   listSchemes,
+  normalizeSchemeConfig,
   createScheme,
+  resolveSchemeBindAgentsForSave,
   updateScheme,
   deleteScheme,
   runWorkflow,
   getRun,
   getRunEvents,
+  applyRecoveryAction,
   listAgentPools,
-  AgentBinding,
 } from '../../services/api-playground';
 import { getApiOrigin } from '../../services/http';
 
@@ -68,33 +76,51 @@ import { ModeSelector } from '../components/mode-selector';
 import { WorkflowGraph } from '../components/workflow-graph';
 import { TracePanel } from '../components/trace-panel';
 import { RunConsole } from '../components/run-console';
+import { buildRuntimeViewModel } from '../utils/runtime-view-model';
+import {
+  createRequestGuardSnapshot,
+  getDisplayedRuntimeState,
+  invalidateRequestGuards,
+  isRequestGuardCurrent,
+  shouldAutoRefreshRun,
+} from '../utils/runtime-page-guards';
+import { applyRecoveryActionAndRefresh } from '../utils/recovery-actions';
 
 const { Text, Title } = Typography;
 
-/** 规划执行推荐成员顺序（按池内是否存在过滤，与设计器模板一致） */
-const PLAN_EXEC_BIND_TEMPLATE: AgentBinding[] = [
-  { agentId: 'planner', role: '规划师' },
-  { agentId: 'designer', role: '设计师' },
-  { agentId: 'pm', role: '产品经理' },
-  { agentId: 'engineer', role: '工程师' },
-];
+function splitCommaSeparated(value: string): string[] {
+  return value
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
 
-function buildCreateBindAgents(mode: CollaborationMode, pool: AgentPool | undefined): AgentBinding[] {
-  const defs = pool?.agents || [];
-  const byId = new Map(defs.map(a => [a.id, a]));
-  if (mode === 'plan_exec') {
-    const list: AgentBinding[] = [];
-    for (const t of PLAN_EXEC_BIND_TEMPLATE) {
-      const def = byId.get(t.agentId);
-      if (def) {
-        list.push({ agentId: def.id, role: def.name });
-      }
-    }
-    if (list.length > 0) {
-      return list;
-    }
-  }
-  return defs.map(a => ({ agentId: a.id, role: a.name }));
+function joinCommaSeparated(values?: string[]): string {
+  return values?.join(', ') || '';
+}
+
+function coerceInteger(value: number | string | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+type SchemeFormState = {
+  name: string;
+  description: string;
+  mode: CollaborationMode;
+  originalMode?: CollaborationMode;
+  enableFinalizer: boolean;
+  config: SchemeConfig;
+};
+
+function buildSchemeFormState(mode: CollaborationMode = 'router_expert'): SchemeFormState {
+  return {
+    name: '',
+    description: '',
+    mode,
+    originalMode: undefined,
+    enableFinalizer: false,
+    config: createDefaultSchemeConfig(mode),
+  };
 }
 
 type PlaygroundLang = 'zh' | 'en';
@@ -145,39 +171,131 @@ export const AgentPlaygroundPage: React.FC = () => {
   const [schemes, setSchemes] = useState<CollaborationScheme[]>([]);
   const [pools, setPools] = useState<AgentPool[]>([]);
   const [selectedScheme, setSelectedScheme] = useState<CollaborationScheme | undefined>();
-  const [currentRun, setCurrentRun] = useState<TraceRun | undefined>();
+  const [currentRunDetail, setCurrentRunDetail] = useState<RuntimeRunDetail | undefined>();
+  const [currentRunSchemeId, setCurrentRunSchemeId] = useState<string | undefined>();
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'schemes' | 'run' | 'settings'>('overview');
   const [lang, setLang] = useState<PlaygroundLang>('zh');
   const [running, setRunning] = useState(false);
+  const [applyingRecoveryActionId, setApplyingRecoveryActionId] = useState<string | undefined>();
 
   // Scheme CRUD Modal
   const [showSchemeModal, setShowSchemeModal] = useState(false);
   const [schemeModalMode, setSchemeModalMode] = useState<'create' | 'edit'>('create');
   const [editingScheme, setEditingScheme] = useState<CollaborationScheme | undefined>();
-  const [schemeForm, setSchemeForm] = useState({
-    name: '',
-    description: '',
-    mode: 'router_expert' as CollaborationMode,
-    enableFinalizer: false,
-  });
+  const [schemeForm, setSchemeForm] = useState<SchemeFormState>(() => buildSchemeFormState());
 
   /** SSE EventSource（实时 Trace）；失败时用 fallback 定时拉取 */
   const eventSourceRef = useRef<EventSource | null>(null);
   const sseFallbackPollRef = useRef<number | null>(null);
+  const runDetailPollRef = useRef<number | null>(null);
+  const activeRunIdRef = useRef<string | undefined>();
+  const runDetailRequestVersionRef = useRef(0);
+  const eventsRequestVersionRef = useRef(0);
   /** 单次运行完成/失败仅弹出一次 Toast（SSE 与轮询路径共用） */
   const completionToastRunIdRef = useRef<string | null>(null);
 
+  const applyRunDetailIfCurrent = useCallback((runRes: RuntimeRunDetail, guardVersion: number) => {
+    const snapshot = createRequestGuardSnapshot(runRes.run.runId, guardVersion);
+    if (!isRequestGuardCurrent(snapshot, activeRunIdRef.current, runDetailRequestVersionRef.current)) {
+      return false;
+    }
+    setCurrentRunDetail(runRes);
+    setCurrentRunSchemeId(runRes.run.schemeId);
+    setRunning(shouldAutoRefreshRun(runRes.run.status));
+    return true;
+  }, []);
+
+  const applyEventsIfCurrent = useCallback((runId: string, nextEvents: TraceEvent[], guardVersion: number) => {
+    const snapshot = createRequestGuardSnapshot(runId, guardVersion);
+    if (!isRequestGuardCurrent(snapshot, activeRunIdRef.current, eventsRequestVersionRef.current)) {
+      return false;
+    }
+    setEvents(nextEvents);
+    return true;
+  }, []);
+
+  const issueRunDetailGuard = useCallback(() => {
+    const nextVersion = runDetailRequestVersionRef.current + 1;
+    runDetailRequestVersionRef.current = nextVersion;
+    return nextVersion;
+  }, []);
+
+  const issueEventsGuard = useCallback(() => {
+    const nextVersion = eventsRequestVersionRef.current + 1;
+    eventsRequestVersionRef.current = nextVersion;
+    return nextVersion;
+  }, []);
+
+  const invalidateActiveRunRequests = useCallback(() => {
+    const invalidated = invalidateRequestGuards({
+      runDetailVersion: runDetailRequestVersionRef.current,
+      eventsVersion: eventsRequestVersionRef.current,
+    });
+    activeRunIdRef.current = invalidated.activeRunId;
+    runDetailRequestVersionRef.current = invalidated.runDetailVersion;
+    eventsRequestVersionRef.current = invalidated.eventsVersion;
+
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    if (sseFallbackPollRef.current != null) {
+      clearInterval(sseFallbackPollRef.current);
+      sseFallbackPollRef.current = null;
+    }
+    if (runDetailPollRef.current != null) {
+      clearInterval(runDetailPollRef.current);
+      runDetailPollRef.current = null;
+    }
+  }, []);
+
+  const displayedRuntimeState = useMemo(
+    () =>
+      getDisplayedRuntimeState({
+        selectedSchemeId: selectedScheme?.id,
+        currentRunSchemeId,
+        currentRunDetail,
+        events,
+        running,
+      }),
+    [selectedScheme?.id, currentRunSchemeId, currentRunDetail, events, running],
+  );
+
+  const runtimeViewModel = useMemo(
+    () =>
+      buildRuntimeViewModel({
+        run: displayedRuntimeState.currentRunDetail?.run,
+        steps: displayedRuntimeState.currentRunDetail?.steps,
+        artifacts: displayedRuntimeState.currentRunDetail?.artifacts,
+        recoveryActions: displayedRuntimeState.currentRunDetail?.recoveryActions,
+        events: displayedRuntimeState.events,
+      }),
+    [displayedRuntimeState],
+  );
+
+  const refreshRunState = useCallback(async (runId: string) => {
+    const runDetailGuardVersion = issueRunDetailGuard();
+    const eventsGuardVersion = issueEventsGuard();
+    const [runRes, eventsRes] = await Promise.all([
+      getRun(runId),
+      getRunEvents(runId).catch(() => ({ events: [] as TraceEvent[] })),
+    ]);
+    applyRunDetailIfCurrent(runRes, runDetailGuardVersion);
+    applyEventsIfCurrent(runId, eventsRes.events || [], eventsGuardVersion);
+    return runRes;
+  }, [applyEventsIfCurrent, applyRunDetailIfCurrent, issueEventsGuard, issueRunDetailGuard]);
+
   // 运行结束后 Toast 告知用户最终结果摘要（与中间栏「最终结果」一致）
   useEffect(() => {
-    if (!currentRun?.runId) return;
-    const { runId, status } = currentRun;
-    if (status !== 'completed' && status !== 'failed') return;
+    if (!currentRunDetail?.run.runId) return;
+    const { runId, status, finalOutput } = currentRunDetail.run;
+    if (status !== 'completed' && status !== 'failed' && status !== 'waiting_recovery') return;
     if (completionToastRunIdRef.current === runId) return;
     completionToastRunIdRef.current = runId;
 
     if (status === 'completed') {
-      const raw = (currentRun.finalOutput || '').trim();
+      const raw = (finalOutput || '').trim();
       const preview =
         raw.length > 0
           ? [...raw].slice(0, 220).join('') + (raw.length > 220 ? '…' : '')
@@ -189,13 +307,21 @@ export const AgentPlaygroundPage: React.FC = () => {
             : '运行完成。\n请在中间栏查看「最终结果」，或右侧 Trace 了解步骤详情。',
         duration: 6,
       });
+    } else if (status === 'waiting_recovery') {
+      Toast.warning({
+        content:
+          runtimeViewModel.run.failureSummary || runtimeViewModel.failedStep
+            ? `运行进入恢复等待。\n失败步骤：${runtimeViewModel.failedStep?.name || runtimeViewModel.failedStep?.stepId || '未知步骤'}`
+            : '运行进入恢复等待。\n请在中间栏和右侧 Recovery 视图查看建议动作。',
+        duration: 6,
+      });
     } else {
       Toast.error({
         content: '运行失败。\n请在右侧 Trace 查看错误相关事件。',
         duration: 6,
       });
     }
-  }, [currentRun?.runId, currentRun?.status, currentRun?.finalOutput]);
+  }, [currentRunDetail?.run.runId, currentRunDetail?.run.status, currentRunDetail?.run.finalOutput, runtimeViewModel]);
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -220,7 +346,7 @@ export const AgentPlaygroundPage: React.FC = () => {
   }, [loadData]);
 
   useEffect(() => {
-    if (!currentRun?.runId || currentRun.status !== 'running') {
+    if (!currentRunDetail?.run.runId || !shouldAutoRefreshRun(currentRunDetail.run.status)) {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -229,10 +355,14 @@ export const AgentPlaygroundPage: React.FC = () => {
         clearInterval(sseFallbackPollRef.current);
         sseFallbackPollRef.current = null;
       }
+      if (runDetailPollRef.current != null) {
+        clearInterval(runDetailPollRef.current);
+        runDetailPollRef.current = null;
+      }
       return undefined;
     }
 
-    const runId = currentRun.runId;
+    const runId = currentRunDetail.run.runId;
 
     const clearFallback = () => {
       if (sseFallbackPollRef.current != null) {
@@ -241,21 +371,41 @@ export const AgentPlaygroundPage: React.FC = () => {
       }
     };
 
+    const clearRunDetailPoll = () => {
+      if (runDetailPollRef.current != null) {
+        clearInterval(runDetailPollRef.current);
+        runDetailPollRef.current = null;
+      }
+    };
+
+    const refreshRunDetail = async () => {
+      try {
+        const guardVersion = issueRunDetailGuard();
+        const runRes = await getRun(runId);
+        const applied = applyRunDetailIfCurrent(runRes, guardVersion);
+        if (applied && !shouldAutoRefreshRun(runRes.run.status)) {
+          setRunning(false);
+          clearFallback();
+          clearRunDetailPoll();
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+
+    clearRunDetailPoll();
+    runDetailPollRef.current = window.setInterval(() => {
+      void refreshRunDetail();
+    }, 900) as unknown as number;
+
     const startFallbackPolling = () => {
       clearFallback();
       sseFallbackPollRef.current = window.setInterval(() => {
         void (async () => {
           try {
-            const [runRes, evRes] = await Promise.all([
-              getRun(runId),
-              getRunEvents(runId),
-            ]);
-            setCurrentRun(runRes.run);
-            setEvents(evRes.events || []);
-            if (runRes.run.status !== 'running') {
-              setRunning(false);
-              clearFallback();
-            }
+            const guardVersion = issueEventsGuard();
+            const evRes = await getRunEvents(runId);
+            applyEventsIfCurrent(runId, evRes.events || [], guardVersion);
           } catch {
             /* ignore */
           }
@@ -277,15 +427,19 @@ export const AgentPlaygroundPage: React.FC = () => {
     es.onmessage = async event => {
       try {
         const raw = JSON.parse(event.data) as TraceEvent;
+        if (activeRunIdRef.current !== runId) {
+          return;
+        }
         setEvents(prev => mergeTraceEvents(prev, raw));
         if (raw.type === 'WORKFLOW_END') {
           es.close();
           eventSourceRef.current = null;
           clearFallback();
+          clearRunDetailPoll();
           try {
+            const guardVersion = issueRunDetailGuard();
             const runRes = await getRun(runId);
-            setCurrentRun(runRes.run);
-            setEvents(runRes.run.events?.length ? runRes.run.events : []);
+            applyRunDetailIfCurrent(runRes, guardVersion);
           } catch {
             /* ignore */
           }
@@ -306,12 +460,309 @@ export const AgentPlaygroundPage: React.FC = () => {
       es.close();
       eventSourceRef.current = null;
       clearFallback();
+      clearRunDetailPoll();
     };
-  }, [currentRun?.runId, currentRun?.status]);
+  }, [applyEventsIfCurrent, applyRunDetailIfCurrent, currentRunDetail?.run.runId, currentRunDetail?.run.status, issueEventsGuard, issueRunDetailGuard]);
+
+  const schemeFormBindAgents = useMemo(() => {
+    if (schemeModalMode === 'edit' && editingScheme?.bindAgents?.length) {
+      return resolveSchemeBindAgentsForSave({
+        mode: schemeForm.mode,
+        originalMode: schemeForm.originalMode,
+        existingBindAgents: editingScheme.bindAgents,
+        pool: pools[0],
+      });
+    }
+    return buildSchemeBindAgents(schemeForm.mode, pools[0]);
+  }, [editingScheme, pools, schemeForm.mode, schemeModalMode]);
+
+  const schemeBindAgentHint = useMemo(() => {
+    if (!schemeFormBindAgents.length) {
+      return '暂无可参考的绑定 Agent，可直接填写 Agent ID。';
+    }
+    return `当前候选 Agent：${schemeFormBindAgents.map(agent => agent.agentId).join(', ')}`;
+  }, [schemeFormBindAgents]);
+
+  const updateSchemeConfig = useCallback((updater: (config: SchemeConfig) => SchemeConfig) => {
+    setSchemeForm(prev => ({
+      ...prev,
+      config: updater(prev.config),
+    }));
+  }, []);
+
+  const renderModeConfigEditor = () => {
+    switch (schemeForm.mode) {
+      case 'router_expert': {
+        const routerConfig = schemeForm.config.modeConfig?.routerConfig;
+        return (
+          <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>兜底 Agent</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={routerConfig?.fallbackAgent ?? ''}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('router_expert', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        routerConfig: {
+                          ...normalized.modeConfig?.routerConfig,
+                          fallbackAgent: value,
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="例如：engineer"
+              />
+              <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
+                {schemeBindAgentHint}
+              </Text>
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>路由提示词</Text>
+              <TextArea
+                rows={3}
+                style={{ width: '100%' }}
+                value={routerConfig?.routingPrompt ?? ''}
+                onChange={(value: string) =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('router_expert', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        routerConfig: {
+                          ...normalized.modeConfig?.routerConfig,
+                          routingPrompt: value,
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="可选，用于补充路由时的偏好或判断依据"
+              />
+            </div>
+          </Space>
+        );
+      }
+      case 'plan_exec': {
+        const planExecConfig = schemeForm.config.modeConfig?.planExecConfig;
+        return (
+          <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>规划 Agent</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={planExecConfig?.plannerAgent ?? ''}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('plan_exec', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        planExecConfig: {
+                          ...normalized.modeConfig?.planExecConfig,
+                          plannerAgent: value,
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="例如：planner"
+              />
+              <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
+                {schemeBindAgentHint}
+              </Text>
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>执行顺序</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={joinCommaSeparated(planExecConfig?.executionOrder)}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('plan_exec', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        planExecConfig: {
+                          ...normalized.modeConfig?.planExecConfig,
+                          executionOrder: splitCommaSeparated(value),
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="按逗号分隔，例如：planner, designer, engineer"
+              />
+            </div>
+          </Space>
+        );
+      }
+      case 'supervision': {
+        const supervisionConfig = schemeForm.config.modeConfig?.supervisionConfig;
+        return (
+          <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>监督 Agent</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={supervisionConfig?.supervisorAgent ?? ''}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('supervision', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        supervisionConfig: {
+                          ...normalized.modeConfig?.supervisionConfig,
+                          supervisorAgent: value,
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="例如：supervisor"
+              />
+              <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
+                {schemeBindAgentHint}
+              </Text>
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>Worker Agents</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={joinCommaSeparated(supervisionConfig?.workerAgents)}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('supervision', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        supervisionConfig: {
+                          ...normalized.modeConfig?.supervisionConfig,
+                          workerAgents: splitCommaSeparated(value),
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="按逗号分隔，例如：designer, engineer"
+              />
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>检查间隔（秒）</Text>
+              <InputNumber
+                min={1}
+                precision={0}
+                style={{ width: '100%' }}
+                value={supervisionConfig?.checkInterval ?? 15}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('supervision', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        supervisionConfig: {
+                          ...normalized.modeConfig?.supervisionConfig,
+                          checkInterval: coerceInteger(value, normalized.modeConfig?.supervisionConfig?.checkInterval ?? 15),
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="默认 15"
+              />
+            </div>
+          </Space>
+        );
+      }
+      case 'peer_handoff': {
+        const peerHandoffConfig = schemeForm.config.modeConfig?.peerHandoffConfig;
+        return (
+          <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>入口 Agent</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={peerHandoffConfig?.entryAgent ?? ''}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('peer_handoff', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        peerHandoffConfig: {
+                          ...normalized.modeConfig?.peerHandoffConfig,
+                          entryAgent: value,
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="例如：designer"
+              />
+              <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
+                {schemeBindAgentHint}
+              </Text>
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>Mesh Agents</Text>
+              <Input
+                style={{ width: '100%' }}
+                value={joinCommaSeparated(peerHandoffConfig?.meshAgents)}
+                onChange={value =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('peer_handoff', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        peerHandoffConfig: {
+                          ...normalized.modeConfig?.peerHandoffConfig,
+                          meshAgents: splitCommaSeparated(value),
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="按逗号分隔，例如：designer, pm, engineer"
+              />
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>交接规则</Text>
+              <TextArea
+                rows={3}
+                style={{ width: '100%' }}
+                value={peerHandoffConfig?.handoffRules ?? ''}
+                onChange={(value: string) =>
+                  updateSchemeConfig(config => {
+                    const normalized = normalizeSchemeConfig('peer_handoff', config);
+                    return {
+                      ...normalized,
+                      modeConfig: {
+                        peerHandoffConfig: {
+                          ...normalized.modeConfig?.peerHandoffConfig,
+                          handoffRules: value,
+                        },
+                      },
+                    };
+                  })
+                }
+                placeholder="描述交接条件、终止条件或优先级"
+              />
+            </div>
+          </Space>
+        );
+      }
+    }
+  };
 
   // Scheme Modal 操作
   const openCreateSchemeModal = () => {
-    setSchemeForm({ name: '', description: '', mode: 'router_expert', enableFinalizer: false });
+    setEditingScheme(undefined);
+    setSchemeForm(buildSchemeFormState());
     setSchemeModalMode('create');
     setShowSchemeModal(true);
   };
@@ -322,7 +773,9 @@ export const AgentPlaygroundPage: React.FC = () => {
       name: scheme.name,
       description: scheme.description,
       mode: scheme.mode,
+      originalMode: scheme.mode,
       enableFinalizer: scheme.enableFinalizer,
+      config: normalizeSchemeConfig(scheme.mode, scheme.config),
     });
     setSchemeModalMode('edit');
     setShowSchemeModal(true);
@@ -334,9 +787,10 @@ export const AgentPlaygroundPage: React.FC = () => {
       return;
     }
     try {
+      const config = normalizeSchemeConfig(schemeForm.mode, schemeForm.config);
       if (schemeModalMode === 'create') {
         const pool = pools[0];
-        const bindAgents = buildCreateBindAgents(schemeForm.mode, pool);
+        const bindAgents = buildSchemeBindAgents(schemeForm.mode, pool);
         if (schemeForm.mode === 'plan_exec' && !bindAgents.some(b => b.agentId === 'planner')) {
           Toast.warning(
             '当前 Agent 池中缺少「规划师」(planner)，规划执行将无法启动。请在「智能体」页确认默认池含规划师或使用协调人提供的完整池。',
@@ -347,14 +801,23 @@ export const AgentPlaygroundPage: React.FC = () => {
           description: schemeForm.description,
           mode: schemeForm.mode,
           bindAgents,
+          config,
           enableFinalizer: schemeForm.enableFinalizer,
         });
         Toast.success('方案创建成功');
       } else if (editingScheme) {
+        const bindAgents = resolveSchemeBindAgentsForSave({
+          mode: schemeForm.mode,
+          originalMode: schemeForm.originalMode,
+          existingBindAgents: editingScheme.bindAgents,
+          pool: pools[0],
+        });
         await updateScheme(editingScheme.id, {
           name: schemeForm.name,
           description: schemeForm.description,
           mode: schemeForm.mode,
+          bindAgents,
+          config,
           enableFinalizer: schemeForm.enableFinalizer,
         });
         Toast.success('方案更新成功');
@@ -385,26 +848,52 @@ export const AgentPlaygroundPage: React.FC = () => {
       Toast.error('请输入任务描述');
       return;
     }
+    invalidateActiveRunRequests();
     setRunning(true);
-    setCurrentRun(undefined);
+    setCurrentRunDetail(undefined);
+    setCurrentRunSchemeId(scheme.id);
     setEvents([]);
     setActiveTab('run');
 
     try {
       const res = await runWorkflow({ schemeId: scheme.id, userInput });
       const runId = res.runId;
-
-      const [runRes, eventsRes] = await Promise.all([
-        getRun(runId),
-        getRunEvents(runId).catch(() => ({ events: [] as TraceEvent[] })),
-      ]);
-      setCurrentRun(runRes.run);
-      setEvents(eventsRes.events || []);
+      activeRunIdRef.current = runId;
+      await refreshRunState(runId);
     } catch (err) {
       Toast.error(`运行失败: ${err}`);
       setRunning(false);
+      activeRunIdRef.current = undefined;
     }
   };
+
+  const handleApplyRecovery = useCallback(async (action: RecoveryAction) => {
+    const runId = runtimeViewModel.run.runId;
+    if (!runId) {
+      return;
+    }
+    setApplyingRecoveryActionId(action.id);
+    setRunning(true);
+    activeRunIdRef.current = runId;
+    try {
+      const detail = await applyRecoveryActionAndRefresh({
+        runId,
+        action,
+        submit: applyRecoveryAction,
+        refresh: refreshRunState,
+      });
+      if (detail.run.status === 'waiting_recovery') {
+        Toast.warning('恢复动作已提交，运行状态正在刷新');
+      } else {
+        Toast.success('已开始执行恢复动作');
+      }
+    } catch (err) {
+      Toast.error(`恢复失败: ${err}`);
+      setRunning(false);
+    } finally {
+      setApplyingRecoveryActionId(undefined);
+    }
+  }, [refreshRunState, runtimeViewModel.run.runId]);
 
   // Scheme 表格列
   const schemeColumns = [
@@ -478,21 +967,23 @@ export const AgentPlaygroundPage: React.FC = () => {
   const ui = PLAYGROUND_UI[lang];
 
   const graphFooterLine = useMemo(() => {
-    if (running) {
-      return '> 运行中 · Trace 实时推送…';
+    if (runtimeViewModel.run.status === 'running' || runtimeViewModel.run.status === 'ready' || runtimeViewModel.run.status === 'pending') {
+      return `> ${runtimeViewModel.run.label} · 当前步骤 ${runtimeViewModel.activeStep?.name || '等待调度'}…`;
     }
-    if (currentRun?.status === 'completed') {
-      const ms = currentRun.totalMs > 0 ? `${currentRun.totalMs}ms` : '—';
-      return `> 已完成 · ${ms}`;
+    if (runtimeViewModel.run.status === 'completed') {
+      return `> 已完成 · 产物 ${runtimeViewModel.artifacts.total} 个`;
     }
-    if (currentRun?.status === 'failed') {
+    if (runtimeViewModel.run.status === 'waiting_recovery') {
+      return `> 等待恢复 · ${runtimeViewModel.failedStep?.name || '存在失败步骤'}`;
+    }
+    if (runtimeViewModel.run.status === 'failed') {
       return '> 运行失败';
     }
     if (selectedScheme) {
       return '> 等待交互…';
     }
     return '> 等待选择方案…';
-  }, [running, currentRun, selectedScheme]);
+  }, [runtimeViewModel, selectedScheme]);
 
   /** 运行页三栏最小高度，兼顾笔记本小屏 */
   const runAreaMinH = 'min(72vh, 760px)';
@@ -885,10 +1376,10 @@ export const AgentPlaygroundPage: React.FC = () => {
                     }}
                   >
                     <Text strong style={{ fontSize: 14 }}>
-                      Workflow Graph
+                      Execution Plan
                     </Text>
                     <Tag size="small" color="grey">
-                      VISUAL
+                      RUNTIME
                     </Tag>
                   </div>
 
@@ -897,8 +1388,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                       <WorkflowGraph
                         variant="embedded"
                         scheme={selectedScheme}
-                        currentRun={currentRun}
-                        liveEvents={events}
+                        runtimeViewModel={runtimeViewModel}
                       />
                     ) : (
                       <div
@@ -940,24 +1430,30 @@ export const AgentPlaygroundPage: React.FC = () => {
                   scheme={selectedScheme}
                   onRun={input => selectedScheme && handleRunWorkflow(selectedScheme, input)}
                   onClear={() => {
-                    setCurrentRun(undefined);
+                    invalidateActiveRunRequests();
+                    setCurrentRunDetail(undefined);
+                    setCurrentRunSchemeId(undefined);
                     setEvents([]);
+                    setRunning(false);
                   }}
-                  running={running}
-                  currentRun={currentRun}
+                  onApplyRecovery={handleApplyRecovery}
+                  applyingRecoveryActionId={applyingRecoveryActionId}
+                  running={displayedRuntimeState.running}
+                  runtimeViewModel={runtimeViewModel}
                 />
               </Col>
 
               <Col xs={24} xl={8} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                 <TracePanel
-                  events={events}
-                  run={currentRun}
+                  events={displayedRuntimeState.events}
+                  runtimeViewModel={runtimeViewModel}
                   onRefresh={async () => {
-                    if (currentRun?.runId) {
-                      const res = await getRunEvents(currentRun.runId);
-                      setEvents(res.events || []);
+                    if (runtimeViewModel.run.runId) {
+                      await refreshRunState(runtimeViewModel.run.runId);
                     }
                   }}
+                  onApplyRecovery={handleApplyRecovery}
+                  applyingRecoveryActionId={applyingRecoveryActionId}
                 />
               </Col>
             </Row>
@@ -1002,8 +1498,95 @@ export const AgentPlaygroundPage: React.FC = () => {
             <Text strong style={{ display: 'block', marginBottom: 8 }}>协作模式</Text>
             <ModeSelector
               value={schemeForm.mode}
-              onChange={(mode) => setSchemeForm({ ...schemeForm, mode })}
+              onChange={(mode) =>
+                setSchemeForm(prev => ({
+                  ...prev,
+                  mode,
+                  config: normalizeSchemeConfig(mode, prev.config),
+                }))
+              }
             />
+          </div>
+          <Divider margin="4px" />
+          <div style={{ width: '100%' }}>
+            <Text strong style={{ display: 'block', marginBottom: 12 }}>基础配置</Text>
+            <Row gutter={[12, 12]}>
+              <Col span={8}>
+                <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+                  Max Iterations
+                </Text>
+                <InputNumber
+                  min={1}
+                  precision={0}
+                  style={{ width: '100%' }}
+                  value={schemeForm.config.maxIterations}
+                  onChange={value =>
+                    updateSchemeConfig(config => ({
+                      ...config,
+                      maxIterations: coerceInteger(value, config.maxIterations),
+                    }))
+                  }
+                />
+              </Col>
+              <Col span={8}>
+                <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+                  Max Tool Calls
+                </Text>
+                <InputNumber
+                  min={1}
+                  precision={0}
+                  style={{ width: '100%' }}
+                  value={schemeForm.config.maxToolCalls}
+                  onChange={value =>
+                    updateSchemeConfig(config => ({
+                      ...config,
+                      maxToolCalls: coerceInteger(value, config.maxToolCalls),
+                    }))
+                  }
+                />
+              </Col>
+              <Col span={8}>
+                <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+                  Timeout Seconds
+                </Text>
+                <InputNumber
+                  min={1}
+                  precision={0}
+                  style={{ width: '100%' }}
+                  value={schemeForm.config.timeoutSeconds}
+                  onChange={value =>
+                    updateSchemeConfig(config => ({
+                      ...config,
+                      timeoutSeconds: coerceInteger(value, config.timeoutSeconds),
+                    }))
+                  }
+                />
+              </Col>
+            </Row>
+            <div style={{ width: '100%', marginTop: 12 }}>
+              <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+                Finalizer Prompt
+              </Text>
+              <TextArea
+                rows={3}
+                style={{ width: '100%' }}
+                value={schemeForm.config.finalizerPrompt ?? ''}
+                onChange={(value: string) =>
+                  updateSchemeConfig(config => ({
+                    ...config,
+                    finalizerPrompt: value,
+                  }))
+                }
+                placeholder="可选，启用 Finalizer 时用于约束最终整理风格"
+              />
+            </div>
+          </div>
+          <Divider margin="4px" />
+          <div style={{ width: '100%' }}>
+            <Text strong style={{ display: 'block', marginBottom: 12 }}>
+              {MODE_NAME_MAP[schemeForm.mode]} 专属配置
+            </Text>
+            {renderModeConfigEditor()}
           </div>
           <Space>
             <Switch

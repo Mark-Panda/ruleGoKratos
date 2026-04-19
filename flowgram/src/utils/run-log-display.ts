@@ -3,7 +3,7 @@
  * 工作流展示名与规则链 ID 在内层 ruleChain.ruleChain。
  */
 /** Semi Table：运行日志列表行主键（优先 msgId / id，否则链路与时间戳兜底） */
-export function runLogTableRowKey(row: unknown, index: number): string {
+export function runLogTableRowKey(row: unknown, index = 0): string {
   const r = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
   const rawId = r.id ?? r.Id;
   if (rawId != null && String(rawId).length > 0) return String(rawId);

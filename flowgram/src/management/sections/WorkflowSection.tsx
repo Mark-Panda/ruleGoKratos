@@ -393,7 +393,7 @@ export const WorkflowSection: React.FC = () => {
             {/* Table */}
             <Table
               dataSource={rules}
-              rowKey={(r: any, i: number) => String(r?.ruleChain?.id ?? `rule-${i}`)}
+              rowKey={(r?: any) => String(r?.ruleChain?.id ?? r?.id ?? 'rule-unknown')}
               columns={columns}
               loading={loading}
               pagination={{

@@ -7,11 +7,9 @@ import { FormRenderProps, FlowNodeJSON, Field, FormMeta } from '@flowgram.ai/fre
 import { useService, WorkflowDocument } from '@flowgram.ai/free-layout-editor';
 import { SubCanvasRender } from '@flowgram.ai/free-container-plugin';
 import {
-  BatchOutputs,
   createBatchOutputsFormPlugin,
   DisplayOutputs,
   IFlowValue,
-  IFlowRefValue,
   validateFlowValue,
 } from '@flowgram.ai/form-materials';
 import { Input, Select } from '@douyinfe/semi-ui';
@@ -29,7 +27,6 @@ export const ForFormRender = ({ form }: FormRenderProps<ForNodeJSON>) => {
   const isSidebar = useIsSidebar();
   const { node } = useNodeRenderContext();
   const readonly = useEffectiveReadonly();
-  const formHeight = 115;
 
   // 移除 forFor 输入框
 
@@ -137,23 +134,6 @@ export const ForFormRender = ({ form }: FormRenderProps<ForNodeJSON>) => {
               { label: '异步不合并执行结果', value: 3 },
             ]}
             style={{ width: '100%' }}
-          />
-          <Feedback errors={fieldState?.errors} />
-        </FormItem>
-      )}
-    </Field>
-  );
-
-  const forOutputs = (
-    <Field<Record<string, IFlowRefValue | undefined> | undefined> name={`forOutputs`}>
-      {({ field, fieldState }) => (
-        <FormItem name="forOutputs" type="object" vertical>
-          <BatchOutputs
-            style={{ width: '100%' }}
-            value={field.value}
-            onChange={(val) => field.onChange(val)}
-            readonly={readonly}
-            hasError={Object.keys(fieldState?.errors || {}).length > 0}
           />
           <Feedback errors={fieldState?.errors} />
         </FormItem>

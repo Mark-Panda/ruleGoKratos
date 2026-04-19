@@ -14,10 +14,8 @@ import {
   HistoryService,
   PlaygroundConfigEntity,
 } from '@flowgram.ai/free-layout-editor';
-import { Toast } from '@douyinfe/semi-ui';
 
 import { FlowCommandId } from '../constants';
-import { WorkflowNodeType } from '../../nodes';
 
 export class DeleteShortcut implements ShortcutsHandler {
   public commandId = FlowCommandId.DELETE;

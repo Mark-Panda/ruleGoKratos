@@ -4,7 +4,6 @@
  */
 
 import { FlowNodeJSON } from '@flowgram.ai/free-layout-editor';
-import { IJsonSchema } from '@flowgram.ai/form-materials';
 
 export interface TransformNodeJSON extends FlowNodeJSON {
   data: {

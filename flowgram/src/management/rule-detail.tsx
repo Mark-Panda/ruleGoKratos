@@ -561,7 +561,6 @@ export const RuleDetail: React.FC<{
                           },
                         ]}
                         pagination={false}
-                        rowKey={(r: any) => String(r?.id || r?.ruleChain?.id || Math.random())}
                       />
                     </Spin>
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

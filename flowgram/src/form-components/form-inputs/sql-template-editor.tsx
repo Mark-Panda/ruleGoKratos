@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-import React from 'react';
-
 import { IFlowTemplateValue, SQLEditorWithVariables } from '@flowgram.ai/form-materials';
 
 export function SqlTemplateEditor({

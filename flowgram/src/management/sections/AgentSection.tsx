@@ -496,15 +496,20 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                       justifyContent: 'flex-end',
                     }}
                   >
-                    <Button size="small" theme="solid" onClick={() => openCreateEntry(record.id)}>
+                    <Button
+                      size="small"
+                      theme="solid"
+                      disabled={!record?.id}
+                      onClick={() => record?.id && openCreateEntry(record.id)}
+                    >
                       添加模型
                     </Button>
                   </div>
                   <Table
                     size="small"
-                    dataSource={record.models || []}
-                    rowKey={(r: LlmModelEntryItem, i: number) =>
-                      String(r?.id ?? r?.modelName ?? `model-${i}`)
+                    dataSource={record?.models || []}
+                    rowKey={(r?: LlmModelEntryItem) =>
+                      String(r?.id ?? r?.modelName ?? 'model-unknown')
                     }
                     pagination={false}
                     columns={[
@@ -524,7 +529,11 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                         width: 160,
                         render: (_, r) => (
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <Button size="small" onClick={() => openEditEntry(record.id, r)}>
+                            <Button
+                              size="small"
+                              disabled={!record?.id}
+                              onClick={() => record?.id && openEditEntry(record.id, r)}
+                            >
                               编辑
                             </Button>
                             <Button

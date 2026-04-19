@@ -36,11 +36,41 @@ export interface AgentBinding {
   tools?: string[];
 }
 
+export interface RouterSchemeConfig {
+  fallbackAgent?: string;
+  routingPrompt?: string;
+}
+
+export interface PlanExecSchemeConfig {
+  plannerAgent?: string;
+  executionOrder?: string[];
+}
+
+export interface SupervisionSchemeConfig {
+  supervisorAgent?: string;
+  workerAgents?: string[];
+  checkInterval?: number;
+}
+
+export interface PeerHandoffSchemeConfig {
+  entryAgent?: string;
+  meshAgents?: string[];
+  handoffRules?: string;
+}
+
+export interface SchemeModeConfig {
+  routerConfig?: RouterSchemeConfig;
+  planExecConfig?: PlanExecSchemeConfig;
+  supervisionConfig?: SupervisionSchemeConfig;
+  peerHandoffConfig?: PeerHandoffSchemeConfig;
+}
+
 export interface SchemeConfig {
   maxIterations: number;
   maxToolCalls: number;
   timeoutSeconds: number;
   finalizerPrompt?: string;
+  modeConfig?: SchemeModeConfig;
 }
 
 export interface CollaborationScheme {
@@ -76,6 +106,19 @@ export interface TraceEvent {
   metadata: Record<string, string>;
 }
 
+export type RuntimeRunStatus =
+  | 'pending'
+  | 'ready'
+  | 'running'
+  | 'waiting_recovery'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export type RuntimeStepKind = 'route' | 'agent' | 'parallel' | 'review' | 'handoff' | 'finalize';
+
+export type RuntimeStepStatus = 'pending' | 'ready' | 'running' | 'succeeded' | 'failed' | 'skipped';
+
 export interface TraceRun {
   id: string;
   runId: string;
@@ -88,6 +131,235 @@ export interface TraceRun {
   events: TraceEvent[];
   finalOutput: string;
 }
+
+export interface RuntimeRun {
+  runId: string;
+  schemeId: string;
+  planId: string;
+  status: RuntimeRunStatus;
+  currentStepIds?: string[];
+  /** 最近一次成功步骤的检查点标识（用于 retry_from_checkpoint） */
+  lastCheckpointId?: string;
+  failureSummary?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  userInput?: string;
+  finalOutput?: string;
+}
+
+export interface RuntimeStep {
+  stepId: string;
+  kind: RuntimeStepKind;
+  name: string;
+  status: RuntimeStepStatus;
+  agentBinding?: string;
+  failureSummary?: string;
+  inputRefs?: string[];
+  outputRef?: string;
+}
+
+export interface RuntimeArtifact {
+  artifactId: string;
+  type: string;
+  producerStepId: string;
+  summary: string;
+}
+
+export type RecoveryActionType =
+  | 'retry_step'
+  | 'reroute_step'
+  | 'skip_step'
+  | 'retry_from_checkpoint';
+
+export interface RecoveryAction {
+  id: string;
+  type: RecoveryActionType;
+  stepId: string;
+  /** 语义随 type 变化：reroute 时为 Agent ID；retry_from_checkpoint 时为检查点步骤 ID */
+  targetRef?: string;
+  reason: string;
+}
+
+export interface RuntimeRunDetail {
+  run: RuntimeRun;
+  steps: RuntimeStep[];
+  artifacts: RuntimeArtifact[];
+  recoveryActions: RecoveryAction[];
+}
+
+const PLAN_EXEC_BIND_TEMPLATE: AgentBinding[] = [
+  { agentId: 'planner', role: '规划师' },
+  { agentId: 'designer', role: '设计师' },
+  { agentId: 'pm', role: '产品经理' },
+  { agentId: 'engineer', role: '工程师' },
+];
+
+const DEFAULT_SCHEME_CONFIG_BASE = {
+  maxIterations: 32,
+  maxToolCalls: 64,
+  timeoutSeconds: 300,
+  finalizerPrompt: '',
+} satisfies Omit<SchemeConfig, 'modeConfig'>;
+
+const cloneStringArray = (items?: string[]) => (items ? [...items] : []);
+const cloneAgentBinding = (agent: AgentBinding): AgentBinding => ({
+  ...agent,
+  tools: cloneStringArray(agent.tools),
+});
+
+export const createDefaultSchemeModeConfig = (mode: CollaborationMode): SchemeModeConfig => {
+  switch (mode) {
+    case 'router_expert':
+      return {
+        routerConfig: {
+          fallbackAgent: '',
+          routingPrompt: '',
+        },
+      };
+    case 'plan_exec':
+      return {
+        planExecConfig: {
+          plannerAgent: '',
+          executionOrder: [],
+        },
+      };
+    case 'supervision':
+      return {
+        supervisionConfig: {
+          supervisorAgent: '',
+          workerAgents: [],
+          checkInterval: 15,
+        },
+      };
+    case 'peer_handoff':
+      return {
+        peerHandoffConfig: {
+          entryAgent: '',
+          meshAgents: [],
+          handoffRules: '',
+        },
+      };
+  }
+};
+
+export const createDefaultSchemeConfig = (mode: CollaborationMode): SchemeConfig => ({
+  ...DEFAULT_SCHEME_CONFIG_BASE,
+  modeConfig: createDefaultSchemeModeConfig(mode),
+});
+
+export const normalizeSchemeConfig = (mode: CollaborationMode, config?: Partial<SchemeConfig>): SchemeConfig => {
+  const defaults = createDefaultSchemeConfig(mode);
+
+  switch (mode) {
+    case 'router_expert':
+      return {
+        maxIterations: config?.maxIterations ?? defaults.maxIterations,
+        maxToolCalls: config?.maxToolCalls ?? defaults.maxToolCalls,
+        timeoutSeconds: config?.timeoutSeconds ?? defaults.timeoutSeconds,
+        finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
+        modeConfig: {
+          routerConfig: {
+            fallbackAgent: config?.modeConfig?.routerConfig?.fallbackAgent ?? defaults.modeConfig?.routerConfig?.fallbackAgent ?? '',
+            routingPrompt: config?.modeConfig?.routerConfig?.routingPrompt ?? defaults.modeConfig?.routerConfig?.routingPrompt ?? '',
+          },
+        },
+      };
+    case 'plan_exec':
+      return {
+        maxIterations: config?.maxIterations ?? defaults.maxIterations,
+        maxToolCalls: config?.maxToolCalls ?? defaults.maxToolCalls,
+        timeoutSeconds: config?.timeoutSeconds ?? defaults.timeoutSeconds,
+        finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
+        modeConfig: {
+          planExecConfig: {
+            plannerAgent: config?.modeConfig?.planExecConfig?.plannerAgent ?? defaults.modeConfig?.planExecConfig?.plannerAgent ?? '',
+            executionOrder: cloneStringArray(config?.modeConfig?.planExecConfig?.executionOrder ?? defaults.modeConfig?.planExecConfig?.executionOrder),
+          },
+        },
+      };
+    case 'supervision':
+      return {
+        maxIterations: config?.maxIterations ?? defaults.maxIterations,
+        maxToolCalls: config?.maxToolCalls ?? defaults.maxToolCalls,
+        timeoutSeconds: config?.timeoutSeconds ?? defaults.timeoutSeconds,
+        finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
+        modeConfig: {
+          supervisionConfig: {
+            supervisorAgent: config?.modeConfig?.supervisionConfig?.supervisorAgent ?? defaults.modeConfig?.supervisionConfig?.supervisorAgent ?? '',
+            workerAgents: cloneStringArray(config?.modeConfig?.supervisionConfig?.workerAgents ?? defaults.modeConfig?.supervisionConfig?.workerAgents),
+            checkInterval: config?.modeConfig?.supervisionConfig?.checkInterval ?? defaults.modeConfig?.supervisionConfig?.checkInterval ?? 15,
+          },
+        },
+      };
+    case 'peer_handoff':
+      return {
+        maxIterations: config?.maxIterations ?? defaults.maxIterations,
+        maxToolCalls: config?.maxToolCalls ?? defaults.maxToolCalls,
+        timeoutSeconds: config?.timeoutSeconds ?? defaults.timeoutSeconds,
+        finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
+        modeConfig: {
+          peerHandoffConfig: {
+            entryAgent: config?.modeConfig?.peerHandoffConfig?.entryAgent ?? defaults.modeConfig?.peerHandoffConfig?.entryAgent ?? '',
+            meshAgents: cloneStringArray(config?.modeConfig?.peerHandoffConfig?.meshAgents ?? defaults.modeConfig?.peerHandoffConfig?.meshAgents),
+            handoffRules: config?.modeConfig?.peerHandoffConfig?.handoffRules ?? defaults.modeConfig?.peerHandoffConfig?.handoffRules ?? '',
+          },
+        },
+      };
+  }
+};
+
+export const buildSchemeBindAgents = (mode: CollaborationMode, pool?: AgentPool): AgentBinding[] => {
+  const defs = pool?.agents || [];
+  const byId = new Map(defs.map(agent => [agent.id, agent]));
+
+  if (mode === 'plan_exec') {
+    const list: AgentBinding[] = [];
+    for (const template of PLAN_EXEC_BIND_TEMPLATE) {
+      const def = byId.get(template.agentId);
+      if (def) {
+        list.push({ agentId: def.id, role: def.name });
+      }
+    }
+    if (list.length > 0) {
+      return list;
+    }
+  }
+
+  return defs.map(agent => ({ agentId: agent.id, role: agent.name }));
+};
+
+const filterBindAgentsForMode = (mode: CollaborationMode, bindAgents?: AgentBinding[]): AgentBinding[] => {
+  const current = bindAgents ? bindAgents.map(cloneAgentBinding) : [];
+  if (mode !== 'plan_exec') {
+    return current;
+  }
+
+  const byId = new Map(current.map(agent => [agent.agentId, agent]));
+  return PLAN_EXEC_BIND_TEMPLATE
+    .map(template => byId.get(template.agentId))
+    .filter((agent): agent is AgentBinding => agent !== undefined);
+};
+
+export const resolveSchemeBindAgentsForSave = (input: {
+  mode: CollaborationMode;
+  originalMode?: CollaborationMode;
+  existingBindAgents?: AgentBinding[];
+  pool?: AgentPool;
+}): AgentBinding[] => {
+  const existing = input.existingBindAgents ?? [];
+  if (!input.originalMode) {
+    return buildSchemeBindAgents(input.mode, input.pool);
+  }
+  if (input.originalMode === input.mode) {
+    return existing.map(cloneAgentBinding);
+  }
+
+  const rebuilt = buildSchemeBindAgents(input.mode, input.pool);
+  if (rebuilt.length > 0) {
+    return rebuilt;
+  }
+  return filterBindAgentsForMode(input.mode, existing);
+};
 
 // ========== Agent Pool APIs ==========
 
@@ -154,11 +426,26 @@ export const runWorkflow = async (data: { schemeId: string; userInput: string })
 };
 
 export const getRun = async (runId: string) => {
-  return requestJSON<{ run: TraceRun }>(`/playground/run/${encodeURIComponent(runId)}`);
+  return requestJSON<RuntimeRunDetail>(`/playground/run/${encodeURIComponent(runId)}`);
 };
 
 export const getRunEvents = async (runId: string, params?: { limit?: number; offset?: number }) => {
   return requestJSON<{ events: TraceEvent[] }>(`/playground/run/${encodeURIComponent(runId)}/events`, { params });
+};
+
+export const applyRecoveryAction = async (
+  runId: string,
+  actionId: string,
+  body?: { targetRef?: string },
+) => {
+  const payload =
+    body?.targetRef != null && body.targetRef.trim() !== ''
+      ? { targetRef: body.targetRef.trim() }
+      : undefined;
+  return requestJSON<{ runId: string; actionId: string; status: string }>(
+    `/playground/run/${encodeURIComponent(runId)}/recovery-actions/${encodeURIComponent(actionId)}`,
+    { method: 'POST', body: payload },
+  );
 };
 
 // ========== Mode APIs ==========
