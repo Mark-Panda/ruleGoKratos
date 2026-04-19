@@ -39,3 +39,7 @@ bin/
 *.swp
 volumes/
 .worktrees/
+
+# Docker 构建时从本机 rsync 的 Cursor 目录（勿提交密钥）
+deploy/docker-cursor-overlay/.cursor/*
+!deploy/docker-cursor-overlay/.cursor/.gitkeep
