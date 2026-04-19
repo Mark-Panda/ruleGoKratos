@@ -41,59 +41,9 @@ func (h *PeerHandoffHandler) findAgentDef(agentID string) *entity.AgentDefinitio
 	return nil
 }
 
-// Execute 同伴交接执行逻辑：
-// 1. 确定入口 Agent 作为起点
-// 2. Agent 完成后，根据任务状态自主判断交接给下一个 Agent
-// 3. 通过 Peer Mesh 协议进行任务传递
-// 4. 直到所有任务完成
+// Execute 仅保留兼容层职责；真实执行已迁移到 runtime。
 func (h *PeerHandoffHandler) Execute(ctx context.Context, runID string, input string, trace TraceEmitter) (*entity.AgentInstance, error) {
-	// 步骤1: 确定入口 Agent
-	entryAgent := h.findEntryAgent()
-	if entryAgent == nil {
-		return nil, fmt.Errorf("entry agent not found")
-	}
-
-	currentAgent := entryAgent
-	var lastOutput = input
-	var taskDesc = input
-
-	// 步骤2: 循环执行直到完成
-	maxHandoffs := 10 // 防止无限循环
-	for i := 0; i < maxHandoffs; i++ {
-		trace.TaskAssigned(runID, currentAgent.Definition.ID, taskDesc)
-		trace.AgentEnterWorker(runID, currentAgent.Definition.ID, fmt.Sprintf("peer_node_%d", i))
-
-		trace.Thinking(runID, currentAgent.Definition.ID, "处理任务并决定是否交接...")
-
-		// 模拟 Agent 执行
-		output, err := h.executeAgent(ctx, currentAgent, taskDesc, lastOutput, trace, runID)
-		if err != nil {
-			trace.Error(runID, currentAgent.Definition.ID, err.Error())
-			trace.AgentExitWorker(runID, currentAgent.Definition.ID, fmt.Sprintf("peer_node_%d", i), fmt.Sprintf("执行失败: %v", err))
-			return nil, err
-		}
-
-		trace.AgentExitWorker(runID, currentAgent.Definition.ID, fmt.Sprintf("peer_node_%d", i), "执行完成")
-
-		// 步骤3: 判断是否需要交接（round 用于在可选同伴间轮询，避免错误地固定到同一目标）
-		nextAgent := h.findNextAgent(currentAgent, i)
-		if nextAgent == nil {
-			// 无需交接，任务完成
-			currentAgent.Output = output
-			break
-		}
-
-		// 步骤4: 执行交接
-		trace.Handoff(runID, currentAgent.Definition.ID, nextAgent.Definition.ID, "任务交接")
-		lastOutput = output
-		taskDesc = h.generateNextTaskDesc(currentAgent, nextAgent, output)
-		currentAgent = nextAgent
-	}
-
-	if strings.TrimSpace(currentAgent.Output) == "" && strings.TrimSpace(lastOutput) != "" {
-		currentAgent.Output = lastOutput
-	}
-	return currentAgent, nil
+	return nil, fmt.Errorf("%w: %s", ErrLegacyExecuteDeprecated, h.Name())
 }
 
 // findEntryAgent 找到入口 Agent

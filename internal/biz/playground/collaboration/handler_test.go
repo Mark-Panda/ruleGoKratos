@@ -2,6 +2,7 @@ package collaboration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"ruleGoKratos/internal/biz/entity"
 	"testing"
@@ -113,7 +114,7 @@ func TestRouterExpertHandler_SelectAgent(t *testing.T) {
 	}
 }
 
-func TestRouterExpertHandler_Execute(t *testing.T) {
+func TestRouterExpertHandler_ExecuteIsDeprecated(t *testing.T) {
 	handler := NewRouterExpertHandler()
 	pool := newTestPool()
 	scheme := newTestScheme(entity.ModeRouterExpert)
@@ -124,20 +125,12 @@ func TestRouterExpertHandler_Execute(t *testing.T) {
 
 	trace := &MockTraceEmitter{}
 	result, err := handler.Execute(context.Background(), "run-1", "设计一个按钮", trace)
-	if err != nil {
-		t.Fatalf("Execute failed: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Execute returned nil result")
-	}
-
-	if len(trace.events) == 0 {
-		t.Error("no trace events recorded")
+	if !errors.Is(err, ErrLegacyExecuteDeprecated) {
+		t.Fatalf("expected deprecated error, got result=%v err=%v", result, err)
 	}
 }
 
-func TestPlanExecHandler_Execute(t *testing.T) {
+func TestPlanExecHandler_ExecuteIsDeprecated(t *testing.T) {
 	handler := NewPlanExecHandler()
 	pool := newTestPool()
 	scheme := newTestScheme(entity.ModePlanExec)
@@ -148,28 +141,12 @@ func TestPlanExecHandler_Execute(t *testing.T) {
 
 	trace := &MockTraceEmitter{}
 	result, err := handler.Execute(context.Background(), "run-1", "开发一个计算器", trace)
-	if err != nil {
-		t.Fatalf("Execute failed: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Execute returned nil result")
-	}
-
-	// 验证有任务分配事件
-	hasTaskAssigned := false
-	for _, e := range trace.events {
-		if len(e) > 15 && e[:15] == "TaskAssigned:ru" {
-			hasTaskAssigned = true
-			break
-		}
-	}
-	if !hasTaskAssigned {
-		t.Error("no TaskAssigned events recorded")
+	if !errors.Is(err, ErrLegacyExecuteDeprecated) {
+		t.Fatalf("expected deprecated error, got result=%v err=%v", result, err)
 	}
 }
 
-func TestSupervisionHandler_Execute(t *testing.T) {
+func TestSupervisionHandler_ExecuteIsDeprecated(t *testing.T) {
 	handler := NewSupervisionHandler()
 	pool := newTestPool()
 	scheme := newTestScheme(entity.ModeSupervision)
@@ -180,28 +157,12 @@ func TestSupervisionHandler_Execute(t *testing.T) {
 
 	trace := &MockTraceEmitter{}
 	result, err := handler.Execute(context.Background(), "run-1", "完成开发任务", trace)
-	if err != nil {
-		t.Fatalf("Execute failed: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Execute returned nil result")
-	}
-
-	// 验证有 Worker 委派事件
-	hasDelegated := false
-	for _, e := range trace.events {
-		if len(e) > 16 && e[:16] == "WorkerDelegated:" {
-			hasDelegated = true
-			break
-		}
-	}
-	if !hasDelegated {
-		t.Error("no WorkerDelegated events recorded")
+	if !errors.Is(err, ErrLegacyExecuteDeprecated) {
+		t.Fatalf("expected deprecated error, got result=%v err=%v", result, err)
 	}
 }
 
-func TestPeerHandoffHandler_Execute(t *testing.T) {
+func TestPeerHandoffHandler_ExecuteIsDeprecated(t *testing.T) {
 	handler := NewPeerHandoffHandler()
 	pool := newTestPool()
 	scheme := newTestScheme(entity.ModePeerHandoff)
@@ -212,24 +173,8 @@ func TestPeerHandoffHandler_Execute(t *testing.T) {
 
 	trace := &MockTraceEmitter{}
 	result, err := handler.Execute(context.Background(), "run-1", "开始协作任务", trace)
-	if err != nil {
-		t.Fatalf("Execute failed: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Execute returned nil result")
-	}
-
-	// 验证有 Handoff 事件
-	hasHandoff := false
-	for _, e := range trace.events {
-		if len(e) > 8 && e[:8] == "Handoff:" {
-			hasHandoff = true
-			break
-		}
-	}
-	if !hasHandoff {
-		t.Error("no Handoff events recorded")
+	if !errors.Is(err, ErrLegacyExecuteDeprecated) {
+		t.Fatalf("expected deprecated error, got result=%v err=%v", result, err)
 	}
 }
 

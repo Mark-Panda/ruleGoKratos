@@ -2,9 +2,13 @@ package collaboration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"ruleGoKratos/internal/biz/entity"
 )
+
+// ErrLegacyExecuteDeprecated 标记旧协作 handler 的 Execute 已废弃。
+var ErrLegacyExecuteDeprecated = errors.New("legacy collaboration handler execute is deprecated; use runtime plan execution")
 
 // RouterExpertHandler 路由专家模式处理器
 // 根据用户输入，LLM 决策应该由哪个 Agent 处理
@@ -29,37 +33,9 @@ func (h *RouterExpertHandler) Name() string {
 	return "router_expert"
 }
 
-// Execute 路由专家执行逻辑：
-// 1. 接收用户输入
-// 2. LLM 分析输入，决定由哪个 Agent 处理
-// 3. 将任务分配给选定的 Agent
-// 4. 返回 Agent 执行结果
+// Execute 仅保留兼容层职责；真实执行已迁移到 runtime。
 func (h *RouterExpertHandler) Execute(ctx context.Context, runID string, input string, trace TraceEmitter) (*entity.AgentInstance, error) {
-	// 步骤1: 分析用户输入，决定路由到哪个 Agent
-	selectedAgent := h.selectAgent(input)
-	if selectedAgent == nil {
-		return nil, fmt.Errorf("no suitable agent found for input")
-	}
-
-	// 记录任务分配
-	trace.TaskAssigned(runID, selectedAgent.Definition.ID, input)
-
-	// 步骤2: Agent 进入工作状态
-	trace.AgentEnterWorker(runID, selectedAgent.Definition.ID, "router_node")
-
-	// 步骤3: 执行任务（这里简化处理，实际会调用 Agent 的 LLM）
-	result, err := h.executeAgent(ctx, selectedAgent, input, trace, runID)
-	if err != nil {
-		trace.Error(runID, selectedAgent.Definition.ID, err.Error())
-		trace.AgentExitWorker(runID, selectedAgent.Definition.ID, "router_node", fmt.Sprintf("执行失败: %v", err))
-		return nil, err
-	}
-
-	// 步骤4: Agent 退出工作状态
-	trace.AgentExitWorker(runID, selectedAgent.Definition.ID, "router_node", "执行完成")
-	selectedAgent.Output = result
-
-	return selectedAgent, nil
+	return nil, fmt.Errorf("%w: %s", ErrLegacyExecuteDeprecated, h.Name())
 }
 
 // selectAgent 根据输入选择最合适的 Agent

@@ -31,54 +31,9 @@ func (h *PlanExecHandler) Name() string {
 	return "plan_exec"
 }
 
-// Execute 规划执行执行逻辑：
-// 1. 规划 Agent 分析任务，拆解为子任务
-// 2. 按执行顺序依次分配给各个 Agent
-// 3. 前一个 Agent 的输出作为下一个 Agent 的输入
-// 4. 返回最终执行结果
+// Execute 仅保留兼容层职责；真实执行已迁移到 runtime。
 func (h *PlanExecHandler) Execute(ctx context.Context, runID string, input string, trace TraceEmitter) (*entity.AgentInstance, error) {
-	// 步骤1: 找到规划 Agent（可用方案配置覆盖默认 planner ID）
-	planner := h.resolvePlannerAgent()
-	if planner == nil {
-		return nil, fmt.Errorf("planner agent not found")
-	}
-
-	trace.TaskAssigned(runID, planner.Definition.ID, "任务规划: "+input)
-	trace.AgentEnterWorker(runID, planner.Definition.ID, "plan_node")
-
-	// 步骤2: 规划 Agent 拆解任务（简化实现）
-	trace.Thinking(runID, planner.Definition.ID, "分析并拆解任务...")
-	subTasks := h.planSubTasks(input, trace, runID, planner)
-	h.emitPlanSummary(ctx, trace, runID, planner.Definition.ID, subTasks)
-
-	trace.AgentExitWorker(runID, planner.Definition.ID, "plan_node", "规划完成")
-
-	// 步骤3: 按顺序执行子任务
-	var lastOutput = input
-	for _, task := range subTasks {
-		trace.TaskAssigned(runID, task.agentID, task.desc)
-		trace.AgentEnterWorker(runID, task.agentID, task.nodeID)
-
-		output, err := h.executeTask(ctx, task, lastOutput, trace, runID)
-		if err != nil {
-			trace.Error(runID, task.agentID, err.Error())
-			trace.AgentExitWorker(runID, task.agentID, task.nodeID, fmt.Sprintf("执行失败: %v", err))
-			return nil, err
-		}
-
-		lastOutput = output
-		h.emitStepOutput(ctx, trace, runID, task, output)
-		trace.AgentExitWorker(runID, task.agentID, task.nodeID, "执行完成")
-	}
-
-	// 返回最后一个执行的 Agent 作为结果
-	lastAgent := &entity.AgentInstance{
-		Definition: h.findAgentDef(subTasks[len(subTasks)-1].agentID),
-		State:     entity.AgentStateDone,
-		Output:    lastOutput,
-	}
-
-	return lastAgent, nil
+	return nil, fmt.Errorf("%w: %s", ErrLegacyExecuteDeprecated, h.Name())
 }
 
 type subTask struct {

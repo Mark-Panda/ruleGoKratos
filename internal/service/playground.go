@@ -2,13 +2,16 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"ruleGoKratos/internal/biz/entity"
 	"ruleGoKratos/internal/biz/playground/agentpool"
+	playgroundruntime "ruleGoKratos/internal/biz/playground/runtime"
 	"ruleGoKratos/internal/biz/playground/workflow"
 
 	"github.com/go-kratos/kratos/v2/log"
@@ -58,6 +61,7 @@ func RegisterPlaygroundHTTPRoutes(s *khttp.Server, svc *PlaygroundService) {
 	// Run APIs
 	r.POST("/run", svc.runWorkflow)
 	r.GET("/run/{runId}", svc.getRun)
+	r.POST("/run/{runId}/recovery-actions/{actionId}", svc.applyRecoveryAction)
 	r.GET("/run/{runId}/events/stream", svc.streamRunEvents)
 	r.GET("/run/{runId}/events", svc.getRunEvents)
 
@@ -81,15 +85,15 @@ type agentPoolResp struct {
 }
 
 type agentDefResp struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Role             string   `json:"role"`
-	Desc             string   `json:"desc"`
-	Model            string   `json:"model"`
-	Tools            []string `json:"tools"`
-	Enabled          bool     `json:"enabled"`
-	Priority         int      `json:"priority"`
-	ManagedAgentID   int64    `json:"managedAgentId,omitempty"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Role           string   `json:"role"`
+	Desc           string   `json:"desc"`
+	Model          string   `json:"model"`
+	Tools          []string `json:"tools"`
+	Enabled        bool     `json:"enabled"`
+	Priority       int      `json:"priority"`
+	ManagedAgentID int64    `json:"managedAgentId,omitempty"`
 }
 
 func (s *PlaygroundService) listAgentPools(ctx khttp.Context) error {
@@ -125,15 +129,15 @@ func (s *PlaygroundService) getAgentPool(ctx khttp.Context) error {
 			continue
 		}
 		agents = append(agents, &agentDefResp{
-			ID:               a.ID,
-			Name:             a.Name,
-			Role:             a.Role,
-			Desc:             a.Desc,
-			Model:            a.Model,
-			Tools:            a.Tools,
-			Enabled:          a.Enabled,
-			Priority:         a.Priority,
-			ManagedAgentID:   a.ManagedAgentID,
+			ID:             a.ID,
+			Name:           a.Name,
+			Role:           a.Role,
+			Desc:           a.Desc,
+			Model:          a.Model,
+			Tools:          a.Tools,
+			Enabled:        a.Enabled,
+			Priority:       a.Priority,
+			ManagedAgentID: a.ManagedAgentID,
 		})
 	}
 
@@ -156,15 +160,15 @@ type createPoolReq struct {
 }
 
 type agentDefReq struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	Role             string   `json:"role"`
-	Desc             string   `json:"desc"`
-	Model            string   `json:"model"`
-	Tools            []string `json:"tools"`
-	Enabled          bool     `json:"enabled"`
-	Priority         int      `json:"priority"`
-	ManagedAgentID   int64    `json:"managedAgentId"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Role           string   `json:"role"`
+	Desc           string   `json:"desc"`
+	Model          string   `json:"model"`
+	Tools          []string `json:"tools"`
+	Enabled        bool     `json:"enabled"`
+	Priority       int      `json:"priority"`
+	ManagedAgentID int64    `json:"managedAgentId"`
 }
 
 func (s *PlaygroundService) createAgentPool(ctx khttp.Context) error {
@@ -177,15 +181,15 @@ func (s *PlaygroundService) createAgentPool(ctx khttp.Context) error {
 	if req.Agents != nil {
 		for _, a := range req.Agents {
 			agents = append(agents, &entity.AgentDefinition{
-				ID:               a.ID,
-				Name:             a.Name,
-				Role:             a.Role,
-				Desc:             a.Desc,
-				Model:            a.Model,
-				Tools:            a.Tools,
-				Enabled:          a.Enabled,
-				Priority:         a.Priority,
-				ManagedAgentID:   a.ManagedAgentID,
+				ID:             a.ID,
+				Name:           a.Name,
+				Role:           a.Role,
+				Desc:           a.Desc,
+				Model:          a.Model,
+				Tools:          a.Tools,
+				Enabled:        a.Enabled,
+				Priority:       a.Priority,
+				ManagedAgentID: a.ManagedAgentID,
 			})
 		}
 	}
@@ -223,15 +227,15 @@ func (s *PlaygroundService) updateAgentPool(ctx khttp.Context) error {
 				continue
 			}
 			agents = append(agents, &entity.AgentDefinition{
-				ID:               a.ID,
-				Name:             a.Name,
-				Role:             a.Role,
-				Desc:             a.Desc,
-				Model:            a.Model,
-				Tools:            a.Tools,
-				Enabled:          a.Enabled,
-				Priority:         a.Priority,
-				ManagedAgentID:   a.ManagedAgentID,
+				ID:             a.ID,
+				Name:           a.Name,
+				Role:           a.Role,
+				Desc:           a.Desc,
+				Model:          a.Model,
+				Tools:          a.Tools,
+				Enabled:        a.Enabled,
+				Priority:       a.Priority,
+				ManagedAgentID: a.ManagedAgentID,
 			})
 		}
 	}
@@ -278,15 +282,15 @@ func (s *PlaygroundService) poolToResp(pool *entity.AgentPool) *agentPoolResp {
 			continue
 		}
 		agents = append(agents, &agentDefResp{
-			ID:               a.ID,
-			Name:             a.Name,
-			Role:             a.Role,
-			Desc:             a.Desc,
-			Model:            a.Model,
-			Tools:            a.Tools,
-			Enabled:          a.Enabled,
-			Priority:         a.Priority,
-			ManagedAgentID:   a.ManagedAgentID,
+			ID:             a.ID,
+			Name:           a.Name,
+			Role:           a.Role,
+			Desc:           a.Desc,
+			Model:          a.Model,
+			Tools:          a.Tools,
+			Enabled:        a.Enabled,
+			Priority:       a.Priority,
+			ManagedAgentID: a.ManagedAgentID,
 		})
 	}
 	return &agentPoolResp{
@@ -325,11 +329,41 @@ type agentBindResp struct {
 	Tools   []string `json:"tools"`
 }
 
+type routerConfigResp struct {
+	FallbackAgent string `json:"fallbackAgent"`
+	RoutingPrompt string `json:"routingPrompt"`
+}
+
+type planExecConfigResp struct {
+	PlannerAgent   string   `json:"plannerAgent"`
+	ExecutionOrder []string `json:"executionOrder"`
+}
+
+type supervisionConfigResp struct {
+	SupervisorAgent string   `json:"supervisorAgent"`
+	WorkerAgents    []string `json:"workerAgents"`
+	CheckInterval   int      `json:"checkInterval"`
+}
+
+type peerHandoffConfigResp struct {
+	EntryAgent   string   `json:"entryAgent"`
+	MeshAgents   []string `json:"meshAgents"`
+	HandoffRules string   `json:"handoffRules"`
+}
+
+type schemeModeConfigResp struct {
+	RouterConfig      *routerConfigResp      `json:"routerConfig,omitempty"`
+	PlanExecConfig    *planExecConfigResp    `json:"planExecConfig,omitempty"`
+	SupervisionConfig *supervisionConfigResp `json:"supervisionConfig,omitempty"`
+	PeerHandoffConfig *peerHandoffConfigResp `json:"peerHandoffConfig,omitempty"`
+}
+
 type schemeConfigResp struct {
-	MaxIterations   int    `json:"maxIterations"`
-	MaxToolCalls    int    `json:"maxToolCalls"`
-	TimeoutSeconds  int    `json:"timeoutSeconds"`
-	FinalizerPrompt string `json:"finalizerPrompt"`
+	MaxIterations   int                   `json:"maxIterations"`
+	MaxToolCalls    int                   `json:"maxToolCalls"`
+	TimeoutSeconds  int                   `json:"timeoutSeconds"`
+	FinalizerPrompt string                `json:"finalizerPrompt"`
+	ModeConfig      *schemeModeConfigResp `json:"modeConfig,omitempty"`
 }
 
 func (s *PlaygroundService) listSchemes(ctx khttp.Context) error {
@@ -396,6 +430,7 @@ func (s *PlaygroundService) createScheme(ctx khttp.Context) error {
 	if req.Config != nil {
 		patchSchemeConfig(sc, req.Config)
 	}
+	normalizeSchemeModeConfig(sc)
 	if req.EnableFinalizer || req.Config != nil {
 		if err := s.workflowSvc.UpdateScheme(ctx, sc); err != nil {
 			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -443,6 +478,7 @@ func (s *PlaygroundService) updateScheme(ctx khttp.Context) error {
 	if req2.Config != nil {
 		patchSchemeConfig(sc, req2.Config)
 	}
+	normalizeSchemeModeConfig(sc)
 
 	if err := s.workflowSvc.UpdateScheme(ctx, sc); err != nil {
 		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -482,6 +518,7 @@ func (s *PlaygroundService) schemeToResp(sc *entity.CollaborationScheme) *scheme
 		cfg.MaxToolCalls = sc.Config.MaxToolCalls
 		cfg.TimeoutSeconds = sc.Config.TimeoutSeconds
 		cfg.FinalizerPrompt = sc.Config.FinalizerPrompt
+		cfg.ModeConfig = schemeModeConfigToResp(sc.Mode, sc.Config.ModeConfig)
 	}
 
 	return &schemeResp{
@@ -527,13 +564,68 @@ func (s *PlaygroundService) getRun(ctx khttp.Context) error {
 		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	runID := req.RunID
-	run, err := s.workflowSvc.GetRun(ctx, runID)
+	traceRun, err := s.workflowSvc.GetRun(ctx, runID)
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "run not found"})
 	}
+	runtimeRun, err := s.workflowSvc.GetRuntimeRun(ctx, runID)
+	if err != nil {
+		if errors.Is(err, playgroundruntime.ErrRunNotFound) {
+			runtimeRun = buildFallbackRuntimeRun(traceRun)
+		} else {
+			s.log.Errorf("getRun runtime detail failed runID=%s: %v", runID, err)
+			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "load runtime run failed"})
+		}
+	}
+	steps, err := s.workflowSvc.ListRuntimeSteps(ctx, runID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	artifacts, err := s.workflowSvc.ListRuntimeArtifacts(ctx, runID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	recoveryActions, err := s.workflowSvc.ListRecoveryActions(ctx, runID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	resp := s.buildRunDetailResp(runtimeRun, steps, artifacts, recoveryActions)
+	if resp.Run != nil {
+		resp.Run.UserInput = traceRun.UserInput
+		resp.Run.FinalOutput = traceRun.FinalOutput
+	}
+	return ctx.JSON(http.StatusOK, resp)
+}
 
-	return ctx.JSON(http.StatusOK, map[string]interface{}{
-		"run": s.runToResp(run),
+func (s *PlaygroundService) applyRecoveryAction(ctx khttp.Context) error {
+	var req struct {
+		RunID    string `json:"runId"`
+		ActionID string `json:"actionId"`
+	}
+	if err := ctx.BindVars(&req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	var body struct {
+		TargetRef string `json:"targetRef"`
+	}
+	if ctx.Request() != nil && ctx.Request().Body != nil {
+		raw, err := io.ReadAll(ctx.Request().Body)
+		if err != nil {
+			return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		if len(strings.TrimSpace(string(raw))) > 0 {
+			if err := json.Unmarshal(raw, &body); err != nil {
+				return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+			}
+		}
+	}
+	if err := s.workflowSvc.ApplyRecoveryAction(ctx, req.RunID, req.ActionID, strings.TrimSpace(body.TargetRef)); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return ctx.JSON(http.StatusOK, map[string]string{
+		"runId":    req.RunID,
+		"actionId": req.ActionID,
+		"status":   "accepted",
 	})
 }
 
@@ -574,6 +666,53 @@ type traceRunResp struct {
 	FinalOutput string            `json:"finalOutput"`
 }
 
+type runtimeRunResp struct {
+	RunID              string   `json:"runId"`
+	SchemeID           string   `json:"schemeId"`
+	PlanID             string   `json:"planId"`
+	Status             string   `json:"status"`
+	CurrentStepIDs     []string `json:"currentStepIds,omitempty"`
+	LastCheckpointID   string   `json:"lastCheckpointId,omitempty"`
+	FailureSummary     string   `json:"failureSummary,omitempty"`
+	StartedAt          string   `json:"startedAt"`
+	FinishedAt         string   `json:"finishedAt"`
+	UserInput          string   `json:"userInput,omitempty"`
+	FinalOutput        string   `json:"finalOutput,omitempty"`
+}
+
+type runtimeStepResp struct {
+	StepID         string   `json:"stepId"`
+	Kind           string   `json:"kind"`
+	Name           string   `json:"name"`
+	Status         string   `json:"status"`
+	AgentBinding   string   `json:"agentBinding,omitempty"`
+	FailureSummary string   `json:"failureSummary,omitempty"`
+	InputRefs      []string `json:"inputRefs,omitempty"`
+	OutputRef      string   `json:"outputRef,omitempty"`
+}
+
+type runtimeArtifactResp struct {
+	ArtifactID     string `json:"artifactId"`
+	Type           string `json:"type"`
+	ProducerStepID string `json:"producerStepId"`
+	Summary        string `json:"summary"`
+}
+
+type recoveryActionResp struct {
+	ID        string `json:"id"`
+	Type      string `json:"type"`
+	StepID    string `json:"stepId"`
+	TargetRef string `json:"targetRef,omitempty"`
+	Reason    string `json:"reason"`
+}
+
+type runDetailResp struct {
+	Run             *runtimeRunResp        `json:"run"`
+	Steps           []*runtimeStepResp     `json:"steps"`
+	Artifacts       []*runtimeArtifactResp `json:"artifacts"`
+	RecoveryActions []*recoveryActionResp  `json:"recoveryActions"`
+}
+
 type traceEventResp struct {
 	ID        string            `json:"id"`
 	RunID     string            `json:"runId"`
@@ -606,6 +745,64 @@ func (s *PlaygroundService) runToResp(run *entity.TraceRun) *traceRunResp {
 	}
 }
 
+func (s *PlaygroundService) buildRunDetailResp(
+	run *entity.PlaygroundRun,
+	steps []*entity.RuntimeStep,
+	artifacts []*entity.RuntimeArtifact,
+	actions []*entity.RecoveryAction,
+) *runDetailResp {
+	stepResp := make([]*runtimeStepResp, 0, len(steps))
+	for _, step := range steps {
+		if step == nil {
+			continue
+		}
+		stepResp = append(stepResp, &runtimeStepResp{
+			StepID:         step.StepID,
+			Kind:           string(step.Kind),
+			Name:           step.Name,
+			Status:         string(step.Status),
+			AgentBinding:   step.AgentBinding,
+			FailureSummary: step.FailureSummary,
+			InputRefs:      append([]string(nil), step.InputRefs...),
+			OutputRef:      step.OutputRef,
+		})
+	}
+
+	artifactResp := make([]*runtimeArtifactResp, 0, len(artifacts))
+	for _, artifact := range artifacts {
+		if artifact == nil {
+			continue
+		}
+		artifactResp = append(artifactResp, &runtimeArtifactResp{
+			ArtifactID:     artifact.ArtifactID,
+			Type:           artifact.Type,
+			ProducerStepID: artifact.ProducerStepID,
+			Summary:        artifact.Summary,
+		})
+	}
+
+	actionResp := make([]*recoveryActionResp, 0, len(actions))
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+		actionResp = append(actionResp, &recoveryActionResp{
+			ID:        action.ID,
+			Type:      string(action.Type),
+			StepID:    action.StepID,
+			TargetRef: action.TargetRef,
+			Reason:    action.Reason,
+		})
+	}
+
+	return &runDetailResp{
+		Run:             runtimeRunToResp(run),
+		Steps:           stepResp,
+		Artifacts:       artifactResp,
+		RecoveryActions: actionResp,
+	}
+}
+
 func (s *PlaygroundService) traceEventToResp(e *entity.TraceEvent) *traceEventResp {
 	metadata := make(map[string]string)
 	for k, v := range e.Metadata {
@@ -626,6 +823,36 @@ func (s *PlaygroundService) traceEventToResp(e *entity.TraceEvent) *traceEventRe
 		TaskDesc:  e.TaskDesc,
 		Message:   e.Message,
 		Metadata:  metadata,
+	}
+}
+
+func runtimeRunToResp(run *entity.PlaygroundRun) *runtimeRunResp {
+	if run == nil {
+		return &runtimeRunResp{}
+	}
+	return &runtimeRunResp{
+		RunID:            run.RunID,
+		SchemeID:         run.SchemeID,
+		PlanID:           run.PlanID,
+		Status:           string(run.Status),
+		CurrentStepIDs:   append([]string(nil), run.CurrentStepIDs...),
+		LastCheckpointID: run.LastCheckpointID,
+		FailureSummary:   run.FailureSummary,
+		StartedAt:        formatTime(run.StartedAt),
+		FinishedAt:       formatTime(run.FinishedAt),
+	}
+}
+
+func buildFallbackRuntimeRun(traceRun *entity.TraceRun) *entity.PlaygroundRun {
+	if traceRun == nil {
+		return &entity.PlaygroundRun{}
+	}
+	return &entity.PlaygroundRun{
+		RunID:      traceRun.RunID,
+		SchemeID:   traceRun.SchemeID,
+		Status:     entity.RunStatus(traceRun.Status),
+		StartedAt:  traceRun.StartTime,
+		FinishedAt: traceRun.EndTime,
 	}
 }
 
@@ -749,4 +976,168 @@ func patchSchemeConfig(dst *entity.CollaborationScheme, src *schemeConfigResp) {
 	dst.Config.MaxToolCalls = src.MaxToolCalls
 	dst.Config.TimeoutSeconds = src.TimeoutSeconds
 	dst.Config.FinalizerPrompt = src.FinalizerPrompt
+	dst.Config.ModeConfig = schemeModeConfigToEntity(dst.Mode, src.ModeConfig)
+}
+
+func schemeModeConfigToResp(mode entity.CollaborationMode, cfg *entity.ModeConfig) *schemeModeConfigResp {
+	if cfg == nil {
+		return nil
+	}
+
+	switch mode {
+	case entity.ModeRouterExpert:
+		if cfg.RouterConfig == nil {
+			return nil
+		}
+		return &schemeModeConfigResp{
+			RouterConfig: &routerConfigResp{
+				FallbackAgent: cfg.RouterConfig.FallbackAgent,
+				RoutingPrompt: cfg.RouterConfig.RoutingPrompt,
+			},
+		}
+	case entity.ModePlanExec:
+		if cfg.PlanExecConfig == nil {
+			return nil
+		}
+		return &schemeModeConfigResp{
+			PlanExecConfig: &planExecConfigResp{
+				PlannerAgent:   cfg.PlanExecConfig.PlannerAgent,
+				ExecutionOrder: append([]string(nil), cfg.PlanExecConfig.ExecutionOrder...),
+			},
+		}
+	case entity.ModeSupervision:
+		if cfg.SupervisionConfig == nil {
+			return nil
+		}
+		return &schemeModeConfigResp{
+			SupervisionConfig: &supervisionConfigResp{
+				SupervisorAgent: cfg.SupervisionConfig.SupervisorAgent,
+				WorkerAgents:    append([]string(nil), cfg.SupervisionConfig.WorkerAgents...),
+				CheckInterval:   cfg.SupervisionConfig.CheckInterval,
+			},
+		}
+	case entity.ModePeerHandoff:
+		if cfg.PeerHandoffConfig == nil {
+			return nil
+		}
+		return &schemeModeConfigResp{
+			PeerHandoffConfig: &peerHandoffConfigResp{
+				EntryAgent:   cfg.PeerHandoffConfig.EntryAgent,
+				MeshAgents:   append([]string(nil), cfg.PeerHandoffConfig.MeshAgents...),
+				HandoffRules: cfg.PeerHandoffConfig.HandoffRules,
+			},
+		}
+	default:
+		return nil
+	}
+}
+
+func schemeModeConfigToEntity(mode entity.CollaborationMode, cfg *schemeModeConfigResp) *entity.ModeConfig {
+	if cfg == nil {
+		return nil
+	}
+
+	switch mode {
+	case entity.ModeRouterExpert:
+		if cfg.RouterConfig == nil {
+			return nil
+		}
+		return &entity.ModeConfig{
+			RouterConfig: &entity.RouterConfig{
+				FallbackAgent: cfg.RouterConfig.FallbackAgent,
+				RoutingPrompt: cfg.RouterConfig.RoutingPrompt,
+			},
+		}
+	case entity.ModePlanExec:
+		if cfg.PlanExecConfig == nil {
+			return nil
+		}
+		return &entity.ModeConfig{
+			PlanExecConfig: &entity.PlanExecConfig{
+				PlannerAgent:   cfg.PlanExecConfig.PlannerAgent,
+				ExecutionOrder: append([]string(nil), cfg.PlanExecConfig.ExecutionOrder...),
+			},
+		}
+	case entity.ModeSupervision:
+		if cfg.SupervisionConfig == nil {
+			return nil
+		}
+		return &entity.ModeConfig{
+			SupervisionConfig: &entity.SupervisionConfig{
+				SupervisorAgent: cfg.SupervisionConfig.SupervisorAgent,
+				WorkerAgents:    append([]string(nil), cfg.SupervisionConfig.WorkerAgents...),
+				CheckInterval:   cfg.SupervisionConfig.CheckInterval,
+			},
+		}
+	case entity.ModePeerHandoff:
+		if cfg.PeerHandoffConfig == nil {
+			return nil
+		}
+		return &entity.ModeConfig{
+			PeerHandoffConfig: &entity.PeerHandoffConfig{
+				EntryAgent:   cfg.PeerHandoffConfig.EntryAgent,
+				MeshAgents:   append([]string(nil), cfg.PeerHandoffConfig.MeshAgents...),
+				HandoffRules: cfg.PeerHandoffConfig.HandoffRules,
+			},
+		}
+	default:
+		return nil
+	}
+}
+
+func normalizeSchemeModeConfig(sc *entity.CollaborationScheme) {
+	if sc == nil || sc.Config == nil {
+		return
+	}
+
+	switch sc.Mode {
+	case entity.ModeRouterExpert:
+		if sc.Config.ModeConfig == nil || sc.Config.ModeConfig.RouterConfig == nil {
+			sc.Config.ModeConfig = nil
+			return
+		}
+		sc.Config.ModeConfig = &entity.ModeConfig{
+			RouterConfig: &entity.RouterConfig{
+				FallbackAgent: sc.Config.ModeConfig.RouterConfig.FallbackAgent,
+				RoutingPrompt: sc.Config.ModeConfig.RouterConfig.RoutingPrompt,
+			},
+		}
+	case entity.ModePlanExec:
+		if sc.Config.ModeConfig == nil || sc.Config.ModeConfig.PlanExecConfig == nil {
+			sc.Config.ModeConfig = nil
+			return
+		}
+		sc.Config.ModeConfig = &entity.ModeConfig{
+			PlanExecConfig: &entity.PlanExecConfig{
+				PlannerAgent:   sc.Config.ModeConfig.PlanExecConfig.PlannerAgent,
+				ExecutionOrder: append([]string(nil), sc.Config.ModeConfig.PlanExecConfig.ExecutionOrder...),
+			},
+		}
+	case entity.ModeSupervision:
+		if sc.Config.ModeConfig == nil || sc.Config.ModeConfig.SupervisionConfig == nil {
+			sc.Config.ModeConfig = nil
+			return
+		}
+		sc.Config.ModeConfig = &entity.ModeConfig{
+			SupervisionConfig: &entity.SupervisionConfig{
+				SupervisorAgent: sc.Config.ModeConfig.SupervisionConfig.SupervisorAgent,
+				WorkerAgents:    append([]string(nil), sc.Config.ModeConfig.SupervisionConfig.WorkerAgents...),
+				CheckInterval:   sc.Config.ModeConfig.SupervisionConfig.CheckInterval,
+			},
+		}
+	case entity.ModePeerHandoff:
+		if sc.Config.ModeConfig == nil || sc.Config.ModeConfig.PeerHandoffConfig == nil {
+			sc.Config.ModeConfig = nil
+			return
+		}
+		sc.Config.ModeConfig = &entity.ModeConfig{
+			PeerHandoffConfig: &entity.PeerHandoffConfig{
+				EntryAgent:   sc.Config.ModeConfig.PeerHandoffConfig.EntryAgent,
+				MeshAgents:   append([]string(nil), sc.Config.ModeConfig.PeerHandoffConfig.MeshAgents...),
+				HandoffRules: sc.Config.ModeConfig.PeerHandoffConfig.HandoffRules,
+			},
+		}
+	default:
+		sc.Config.ModeConfig = nil
+	}
 }

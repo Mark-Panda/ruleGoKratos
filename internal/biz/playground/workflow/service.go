@@ -2,12 +2,15 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"ruleGoKratos/internal/biz"
+	"ruleGoKratos/internal/biz/entity"
 	"ruleGoKratos/internal/biz/playground/agentpool"
 	"ruleGoKratos/internal/biz/playground/collaboration"
-	"ruleGoKratos/internal/biz/entity"
+	"ruleGoKratos/internal/biz/playground/planbuilder"
+	playgroundruntime "ruleGoKratos/internal/biz/playground/runtime"
 	"ruleGoKratos/internal/biz/playground/trace"
 	"runtime/debug"
 	"sort"
@@ -28,15 +31,19 @@ type WorkflowRepo interface {
 
 // WorkflowService 工作流服务
 type WorkflowService struct {
-	repo            WorkflowRepo
-	agentPoolSvc    *agentpool.AgentPoolService
-	traceEngine     *trace.TraceEngine
-	agentUC         *biz.AgentUsecase
-	collabFactory   *collaboration.Factory
-	schemes         map[string]*entity.CollaborationScheme
-	schemesMu       sync.RWMutex
-	activeRuns      map[string]*ActiveRun
-	activeRunsMu    sync.RWMutex
+	repo              WorkflowRepo
+	agentPoolSvc      *agentpool.AgentPoolService
+	traceEngine       *trace.TraceEngine
+	agentUC           *biz.AgentUsecase
+	collabFactory     *collaboration.Factory
+	builderRegistry   *planbuilder.Registry
+	runtimeEnabledSet map[entity.CollaborationMode]struct{}
+	runtimeRepo       playgroundruntime.Repo
+	runtimeSvc        runtimeExecutor
+	schemes           map[string]*entity.CollaborationScheme
+	schemesMu         sync.RWMutex
+	activeRuns        map[string]*ActiveRun
+	activeRunsMu      sync.RWMutex
 }
 
 type ActiveRun struct {
@@ -46,20 +53,64 @@ type ActiveRun struct {
 	StartAt  *time.Time
 }
 
+type runtimeExecutor interface {
+	Execute(
+		ctx context.Context,
+		runID string,
+		plan *entity.ExecutionPlan,
+		scheme *entity.CollaborationScheme,
+		pool *entity.AgentPool,
+		userInput string,
+		trace collaboration.TraceEmitter,
+	) (string, error)
+	ApplyRecoveryAction(
+		ctx context.Context,
+		runID string,
+		actionID string,
+		scheme *entity.CollaborationScheme,
+		pool *entity.AgentPool,
+		userInput string,
+		trace collaboration.TraceEmitter,
+		optTargetRef string,
+	) (string, error)
+}
+
 func NewWorkflowService(
 	repo WorkflowRepo,
 	agentPoolSvc *agentpool.AgentPoolService,
 	traceEngine *trace.TraceEngine,
 	agentUC *biz.AgentUsecase,
 ) *WorkflowService {
+	return NewWorkflowServiceWithRuntimeRepo(repo, agentPoolSvc, traceEngine, agentUC, playgroundruntime.NewMemoryRepo())
+}
+
+// NewWorkflowServiceWithRuntimeRepo 创建 WorkflowService，并显式暴露 runtime repo 注入点。
+func NewWorkflowServiceWithRuntimeRepo(
+	repo WorkflowRepo,
+	agentPoolSvc *agentpool.AgentPoolService,
+	traceEngine *trace.TraceEngine,
+	agentUC *biz.AgentUsecase,
+	runtimeRepo playgroundruntime.Repo,
+) *WorkflowService {
 	svc := &WorkflowService{
-		repo:          repo,
-		agentPoolSvc:  agentPoolSvc,
-		traceEngine:   traceEngine,
-		agentUC:       agentUC,
-		collabFactory: collaboration.NewFactory(),
-		schemes:       make(map[string]*entity.CollaborationScheme),
-		activeRuns:    make(map[string]*ActiveRun),
+		repo:            repo,
+		agentPoolSvc:    agentPoolSvc,
+		traceEngine:     traceEngine,
+		agentUC:         agentUC,
+		collabFactory:   collaboration.NewFactory(),
+		builderRegistry: planbuilder.NewRegistry(),
+		runtimeRepo:     runtimeRepo,
+		runtimeEnabledSet: map[entity.CollaborationMode]struct{}{
+			entity.ModeRouterExpert: {},
+			entity.ModePlanExec:     {},
+			entity.ModeSupervision:  {},
+			entity.ModePeerHandoff:  {},
+		},
+		schemes:    make(map[string]*entity.CollaborationScheme),
+		activeRuns: make(map[string]*ActiveRun),
+	}
+	if svc.runtimeRepo != nil {
+		svc.runtimeSvc = playgroundruntime.NewService(svc.runtimeRepo, &collaboration.CollaborationRuntime{AgentUC: agentUC})
 	}
 
 	// 注册协作处理器
@@ -67,6 +118,10 @@ func NewWorkflowService(
 	svc.collabFactory.Register(entity.ModePlanExec, collaboration.NewPlanExecHandler())
 	svc.collabFactory.Register(entity.ModeSupervision, collaboration.NewSupervisionHandler())
 	svc.collabFactory.Register(entity.ModePeerHandoff, collaboration.NewPeerHandoffHandler())
+	svc.builderRegistry.Register(planbuilder.NewRouterExpertBuilder())
+	svc.builderRegistry.Register(planbuilder.NewPlanExecBuilder())
+	svc.builderRegistry.Register(planbuilder.NewSupervisionBuilder())
+	svc.builderRegistry.Register(planbuilder.NewPeerHandoffBuilder())
 
 	return svc
 }
@@ -75,16 +130,16 @@ func NewWorkflowService(
 func (s *WorkflowService) CreateScheme(ctx context.Context, name, desc string, mode entity.CollaborationMode, bindAgents []*entity.AgentBinding) (*entity.CollaborationScheme, error) {
 	cfgCopy := *entity.DefaultSchemeConfig
 	scheme := &entity.CollaborationScheme{
-		ID:             uuid.NewString(),
-		Name:           name,
-		Description:    desc,
-		Mode:           mode,
-		BindAgents:     bindAgents,
-		Config:         &cfgCopy,
-		Enabled:        true,
+		ID:              uuid.NewString(),
+		Name:            name,
+		Description:     desc,
+		Mode:            mode,
+		BindAgents:      bindAgents,
+		Config:          &cfgCopy,
+		Enabled:         true,
 		EnableFinalizer: false,
-		CreatedAt:      nowPtr(),
-		UpdatedAt:      nowPtr(),
+		CreatedAt:       nowPtr(),
+		UpdatedAt:       nowPtr(),
 	}
 
 	EnsurePlanExecModeConfig(scheme)
@@ -196,16 +251,17 @@ func (s *WorkflowService) Run(ctx context.Context, schemeID, userInput string) (
 	if err := s.validateAgentsForHarness(scheme, pool); err != nil {
 		return "", err
 	}
-
-	// 获取协作处理器
-	handler, err := s.collabFactory.Get(scheme.Mode)
-	if err != nil {
-		return "", fmt.Errorf("get handler: %w", err)
+	if err := s.ensureRuntimeConfigured(); err != nil {
+		return "", err
 	}
 
-	rt := &collaboration.CollaborationRuntime{AgentUC: s.agentUC}
-	if err := handler.Init(ctx, scheme, pool, rt); err != nil {
-		return "", fmt.Errorf("init handler: %w", err)
+	builder, ok := s.builderRegistry.Get(scheme.Mode)
+	if !ok {
+		return "", fmt.Errorf("runtime builder not registered for mode: %s", scheme.Mode)
+	}
+	plan, err := builder.Build(scheme, userInput)
+	if err != nil {
+		return "", fmt.Errorf("build plan: %w", err)
 	}
 
 	// 创建 Trace
@@ -242,21 +298,18 @@ func (s *WorkflowService) Run(ctx context.Context, schemeID, userInput string) (
 			}
 		}()
 
-		result, err := handler.Execute(execCtx, runID, userInput, traceSink)
+		finalOutput, err := s.executeRun(execCtx, runID, plan, scheme, pool, userInput, traceSink)
 		if err != nil {
-			_ = s.traceEngine.EndRun(execCtx, runID, "", "failed")
+			status, finalOutput := runtimeErrorOutcome(err)
+			_ = s.traceEngine.EndRun(execCtx, runID, finalOutput, status)
 			s.activeRunsMu.Lock()
 			if r, ok := s.activeRuns[runID]; ok {
-				r.Status = "failed"
+				r.Status = status
 			}
 			s.activeRunsMu.Unlock()
 			return
 		}
 
-		finalOutput := ""
-		if result != nil {
-			finalOutput = result.Output
-		}
 		_ = s.traceEngine.EndRun(execCtx, runID, finalOutput, "completed")
 
 		s.activeRunsMu.Lock()
@@ -269,9 +322,181 @@ func (s *WorkflowService) Run(ctx context.Context, schemeID, userInput string) (
 	return runID, nil
 }
 
+func (s *WorkflowService) executeRun(
+	ctx context.Context,
+	runID string,
+	plan *entity.ExecutionPlan,
+	scheme *entity.CollaborationScheme,
+	pool *entity.AgentPool,
+	userInput string,
+	traceSink collaboration.TraceEmitter,
+) (string, error) {
+	if plan == nil {
+		return "", fmt.Errorf("runtime plan is nil for mode: %s", scheme.Mode)
+	}
+	return s.executePlanWithRuntime(ctx, runID, plan, scheme, pool, userInput, traceSink)
+}
+
+func (s *WorkflowService) executePlanWithRuntime(
+	ctx context.Context,
+	runID string,
+	plan *entity.ExecutionPlan,
+	scheme *entity.CollaborationScheme,
+	pool *entity.AgentPool,
+	userInput string,
+	traceSink collaboration.TraceEmitter,
+) (string, error) {
+	if err := s.ensureRuntimeConfigured(); err != nil {
+		return "", err
+	}
+	return s.runtimeSvc.Execute(ctx, runID, plan, scheme, pool, userInput, traceSink)
+}
+
+func (s *WorkflowService) ensureRuntimeConfigured() error {
+	if s.runtimeRepo == nil {
+		return fmt.Errorf("runtime repo is nil")
+	}
+	if s.runtimeSvc == nil {
+		return fmt.Errorf("runtime service is nil")
+	}
+	return nil
+}
+
+func (s *WorkflowService) isRuntimeEnabledMode(mode entity.CollaborationMode) bool {
+	if s == nil {
+		return false
+	}
+	_, ok := s.runtimeEnabledSet[mode]
+	return ok
+}
+
+// SetRuntimeServiceForTest 允许测试注入自定义 runtime service。
+func (s *WorkflowService) SetRuntimeServiceForTest(rt *playgroundruntime.Service) {
+	if s == nil {
+		return
+	}
+	s.runtimeSvc = rt
+}
+
+func runtimeErrorOutcome(err error) (status string, finalOutput string) {
+	var runErr *playgroundruntime.RunError
+	if errors.As(err, &runErr) {
+		return string(runErr.Status()), runErr.FailureSummary()
+	}
+	return "failed", ""
+}
+
 // GetRun 获取运行记录
 func (s *WorkflowService) GetRun(ctx context.Context, runID string) (*entity.TraceRun, error) {
 	return s.traceEngine.GetRun(ctx, runID)
+}
+
+// GetRuntimeRun 获取 runtime 运行详情。
+func (s *WorkflowService) GetRuntimeRun(ctx context.Context, runID string) (*entity.PlaygroundRun, error) {
+	if s.runtimeRepo == nil {
+		return nil, fmt.Errorf("runtime repo is nil")
+	}
+	run, err := s.runtimeRepo.GetRun(ctx, runID)
+	if err != nil {
+		return nil, fmt.Errorf("get runtime run: %w", err)
+	}
+	return run, nil
+}
+
+// ListRuntimeSteps 列出某次运行的全部 runtime steps。
+func (s *WorkflowService) ListRuntimeSteps(ctx context.Context, runID string) ([]*entity.RuntimeStep, error) {
+	if s.runtimeRepo == nil {
+		return nil, fmt.Errorf("runtime repo is nil")
+	}
+	return s.runtimeRepo.ListSteps(ctx, runID)
+}
+
+// ListRuntimeArtifacts 列出某次运行的全部 runtime artifacts。
+func (s *WorkflowService) ListRuntimeArtifacts(ctx context.Context, runID string) ([]*entity.RuntimeArtifact, error) {
+	if s.runtimeRepo == nil {
+		return nil, fmt.Errorf("runtime repo is nil")
+	}
+	return s.runtimeRepo.ListArtifacts(ctx, runID)
+}
+
+// ListRecoveryActions 列出某次运行当前可见的恢复动作。
+func (s *WorkflowService) ListRecoveryActions(ctx context.Context, runID string) ([]*entity.RecoveryAction, error) {
+	if s.runtimeRepo == nil {
+		return nil, fmt.Errorf("runtime repo is nil")
+	}
+	actions, err := s.runtimeRepo.ListRecoveryActions(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	filtered := make([]*entity.RecoveryAction, 0, len(actions))
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+		if state, _ := action.Metadata["state"].(string); state != "" && state != "pending" {
+			continue
+		}
+		filtered = append(filtered, action)
+	}
+	return filtered, nil
+}
+
+// ApplyRecoveryAction 异步触发指定 run 的恢复动作。
+func (s *WorkflowService) ApplyRecoveryAction(ctx context.Context, runID, actionID, optTargetRef string) error {
+	if err := s.ensureRuntimeConfigured(); err != nil {
+		return err
+	}
+	traceRun, err := s.GetRun(ctx, runID)
+	if err != nil {
+		return fmt.Errorf("get trace run: %w", err)
+	}
+	runtimeRun, err := s.GetRuntimeRun(ctx, runID)
+	if err != nil {
+		return fmt.Errorf("get runtime run: %w", err)
+	}
+	scheme, err := s.GetScheme(ctx, runtimeRun.SchemeID)
+	if err != nil {
+		return fmt.Errorf("get scheme: %w", err)
+	}
+	pool, err := s.agentPoolSvc.CreateDefaultAgentPool(ctx)
+	if err != nil {
+		return fmt.Errorf("default agent pool: %w", err)
+	}
+	if err := s.validateAgentsForHarness(scheme, pool); err != nil {
+		return err
+	}
+
+	s.activeRunsMu.Lock()
+	s.activeRuns[runID] = &ActiveRun{
+		ID:       runID,
+		SchemeID: scheme.ID,
+		Status:   "running",
+		StartAt:  nowPtr(),
+	}
+	s.activeRunsMu.Unlock()
+
+	execCtx := context.WithoutCancel(ctx)
+	traceSink := newTraceAdapter(execCtx, s.traceEngine)
+	go func() {
+		finalOutput, err := s.runtimeSvc.ApplyRecoveryAction(execCtx, runID, actionID, scheme, pool, traceRun.UserInput, traceSink, optTargetRef)
+		if err != nil {
+			status, finalOutput := runtimeErrorOutcome(err)
+			_ = s.traceEngine.EndRun(execCtx, runID, finalOutput, status)
+			s.activeRunsMu.Lock()
+			if r, ok := s.activeRuns[runID]; ok {
+				r.Status = status
+			}
+			s.activeRunsMu.Unlock()
+			return
+		}
+		_ = s.traceEngine.EndRun(execCtx, runID, finalOutput, "completed")
+		s.activeRunsMu.Lock()
+		if r, ok := s.activeRuns[runID]; ok {
+			r.Status = "completed"
+		}
+		s.activeRunsMu.Unlock()
+	}()
+	return nil
 }
 
 // GetRunEvents 获取运行事件

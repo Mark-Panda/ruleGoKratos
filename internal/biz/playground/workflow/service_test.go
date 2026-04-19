@@ -2,8 +2,10 @@ package workflow
 
 import (
 	"context"
-	"ruleGoKratos/internal/biz/playground/agentpool"
 	"ruleGoKratos/internal/biz/entity"
+	"ruleGoKratos/internal/biz/playground/agentpool"
+	"ruleGoKratos/internal/biz/playground/collaboration"
+	playgroundruntime "ruleGoKratos/internal/biz/playground/runtime"
 	"ruleGoKratos/internal/biz/playground/trace"
 	playgrounddata "ruleGoKratos/internal/data/playground"
 	"testing"
@@ -83,6 +85,92 @@ func TestWorkflowService_CreateAndRunScheme(t *testing.T) {
 	run := waitRunTerminal(ctx, t, svc, runID)
 	if run.Status != "completed" {
 		t.Errorf("expected status 'completed', got '%s'", run.Status)
+	}
+}
+
+func TestNewWorkflowServiceInitializesRuntimeWithUsableRepo(t *testing.T) {
+	agentPoolRepo := playgrounddata.NewAgentPoolRepo()
+	schemeRepo := playgrounddata.NewSchemeRepo()
+	traceRepo := playgrounddata.NewTraceRepo()
+
+	agentPoolSvc := agentpool.NewAgentPoolService(agentPoolRepo)
+	traceEngine := trace.NewTraceEngine(traceRepo)
+	svc := NewWorkflowService(schemeRepo, agentPoolSvc, traceEngine, nil)
+
+	rtSvc, ok := svc.runtimeSvc.(*playgroundruntime.Service)
+	if !ok {
+		t.Fatalf("expected runtime service type, got %T", svc.runtimeSvc)
+	}
+	if rtSvc.Repo() == nil {
+		t.Fatal("expected workflow runtime service to have a repo")
+	}
+}
+
+func TestNewWorkflowServiceWithRuntimeRepoUsesInjectedRepo(t *testing.T) {
+	agentPoolRepo := playgrounddata.NewAgentPoolRepo()
+	schemeRepo := playgrounddata.NewSchemeRepo()
+	traceRepo := playgrounddata.NewTraceRepo()
+	customRuntimeRepo := playgroundruntime.NewMemoryRepo()
+
+	agentPoolSvc := agentpool.NewAgentPoolService(agentPoolRepo)
+	traceEngine := trace.NewTraceEngine(traceRepo)
+	svc := NewWorkflowServiceWithRuntimeRepo(schemeRepo, agentPoolSvc, traceEngine, nil, customRuntimeRepo)
+
+	rtSvc, ok := svc.runtimeSvc.(*playgroundruntime.Service)
+	if !ok {
+		t.Fatalf("expected runtime service type, got %T", svc.runtimeSvc)
+	}
+	if svc.runtimeRepo != customRuntimeRepo {
+		t.Fatal("expected workflow service to retain injected runtime repo")
+	}
+	if rtSvc.Repo() != customRuntimeRepo {
+		t.Fatal("expected runtime service to use injected runtime repo")
+	}
+}
+
+func TestNewWorkflowServiceWithRuntimeRepoDoesNotInjectDefaultWhenNil(t *testing.T) {
+	agentPoolRepo := playgrounddata.NewAgentPoolRepo()
+	schemeRepo := playgrounddata.NewSchemeRepo()
+	traceRepo := playgrounddata.NewTraceRepo()
+
+	agentPoolSvc := agentpool.NewAgentPoolService(agentPoolRepo)
+	traceEngine := trace.NewTraceEngine(traceRepo)
+	svc := NewWorkflowServiceWithRuntimeRepo(schemeRepo, agentPoolSvc, traceEngine, nil, nil)
+
+	if svc.runtimeRepo != nil {
+		t.Fatalf("expected workflow service runtime repo to stay nil, got %T", svc.runtimeRepo)
+	}
+	if svc.runtimeSvc != nil {
+		t.Fatalf("expected runtime service to stay nil when runtime repo is nil, got %T", svc.runtimeSvc)
+	}
+}
+
+func TestWorkflowService_RunFailsFastWhenRuntimeNotConfigured(t *testing.T) {
+	agentPoolRepo := playgrounddata.NewAgentPoolRepo()
+	schemeRepo := playgrounddata.NewSchemeRepo()
+	traceRepo := playgrounddata.NewTraceRepo()
+
+	agentPoolSvc := agentpool.NewAgentPoolService(agentPoolRepo)
+	traceEngine := trace.NewTraceEngine(traceRepo)
+	svc := NewWorkflowServiceWithRuntimeRepo(schemeRepo, agentPoolSvc, traceEngine, nil, nil)
+
+	ctx := context.Background()
+	if _, err := agentPoolSvc.CreateDefaultAgentPool(ctx); err != nil {
+		t.Fatalf("CreateDefaultAgentPool failed: %v", err)
+	}
+	scheme, err := svc.CreateScheme(ctx, "未配置 runtime", "测试", entity.ModeRouterExpert, []*entity.AgentBinding{
+		{AgentID: "engineer", Role: "工程师"},
+	})
+	if err != nil {
+		t.Fatalf("CreateScheme failed: %v", err)
+	}
+
+	runID, err := svc.Run(ctx, scheme.ID, "请实现接口")
+	if err == nil {
+		t.Fatalf("expected run to fail fast without runtime, got runID=%q", runID)
+	}
+	if runID != "" {
+		t.Fatalf("expected empty runID, got %q", runID)
 	}
 }
 
@@ -338,4 +426,256 @@ func TestSchemeRepo_InMemory(t *testing.T) {
 	if err == nil {
 		t.Error("expected error after delete")
 	}
+}
+
+func TestExecuteRunUsesRuntimeForRouterExpert(t *testing.T) {
+	rt := &fakeRuntimeExecutor{output: "runtime-output"}
+	handler := &fakeHandler{output: "legacy-output"}
+	factory := collaboration.NewFactory()
+	factory.Register(entity.ModeRouterExpert, handler)
+
+	svc := &WorkflowService{
+		collabFactory:     factory,
+		runtimeRepo:       playgroundruntime.NewMemoryRepo(),
+		runtimeSvc:        rt,
+		runtimeEnabledSet: map[entity.CollaborationMode]struct{}{entity.ModeRouterExpert: {}},
+	}
+
+	output, err := svc.executeRun(
+		context.Background(),
+		"run-1",
+		&entity.ExecutionPlan{PlanID: "plan-1"},
+		&entity.CollaborationScheme{Mode: entity.ModeRouterExpert},
+		nil,
+		"设计登录页",
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("executeRun failed: %v", err)
+	}
+	if output != "runtime-output" {
+		t.Fatalf("expected runtime output, got %q", output)
+	}
+	if !rt.called {
+		t.Fatal("expected runtime executor to be called")
+	}
+	if handler.executeCalled {
+		t.Fatal("expected legacy handler not to run for router_expert")
+	}
+}
+
+func TestExecuteRunUsesRuntimeForCurrentModes(t *testing.T) {
+	testCases := []struct {
+		name string
+		mode entity.CollaborationMode
+	}{
+		{name: "plan_exec", mode: entity.ModePlanExec},
+		{name: "supervision", mode: entity.ModeSupervision},
+		{name: "peer_handoff", mode: entity.ModePeerHandoff},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := &fakeRuntimeExecutor{output: "runtime-output"}
+			handler := &fakeHandler{output: "legacy-output"}
+			factory := collaboration.NewFactory()
+			factory.Register(tc.mode, handler)
+
+			svc := &WorkflowService{
+				collabFactory: factory,
+				runtimeRepo:   playgroundruntime.NewMemoryRepo(),
+				runtimeSvc:    rt,
+			}
+
+			output, err := svc.executeRun(
+				context.Background(),
+				"run-"+tc.name,
+				&entity.ExecutionPlan{PlanID: "plan-" + tc.name},
+				&entity.CollaborationScheme{Mode: tc.mode},
+				nil,
+				"执行任务",
+				nil,
+			)
+			if err != nil {
+				t.Fatalf("executeRun failed: %v", err)
+			}
+			if output != "runtime-output" {
+				t.Fatalf("expected runtime output, got %q", output)
+			}
+			if !rt.called {
+				t.Fatal("expected runtime executor to be called")
+			}
+			if handler.initCalled || handler.executeCalled {
+				t.Fatal("expected legacy handler not to initialize or execute")
+			}
+		})
+	}
+}
+
+func TestExecuteRunRejectsMissingRuntimePlanForCurrentModes(t *testing.T) {
+	testCases := []struct {
+		name string
+		mode entity.CollaborationMode
+	}{
+		{name: "plan_exec", mode: entity.ModePlanExec},
+		{name: "supervision", mode: entity.ModeSupervision},
+		{name: "peer_handoff", mode: entity.ModePeerHandoff},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := &fakeRuntimeExecutor{output: "runtime-output"}
+			handler := &fakeHandler{output: "legacy-output"}
+			factory := collaboration.NewFactory()
+			factory.Register(tc.mode, handler)
+
+			svc := &WorkflowService{
+				collabFactory: factory,
+				runtimeSvc:    rt,
+			}
+
+			output, err := svc.executeRun(
+				context.Background(),
+				"run-"+tc.name,
+				nil,
+				&entity.CollaborationScheme{Mode: tc.mode},
+				nil,
+				"规划任务",
+				nil,
+			)
+			if err == nil {
+				t.Fatal("expected missing runtime plan error")
+			}
+			if output != "" {
+				t.Fatalf("expected empty output, got %q", output)
+			}
+			if rt.called {
+				t.Fatal("expected runtime executor not to run without plan")
+			}
+			if handler.initCalled || handler.executeCalled {
+				t.Fatal("expected legacy handler not to initialize or execute")
+			}
+		})
+	}
+}
+
+func TestWorkflowRunPreservesWaitingRecoveryFromRuntime(t *testing.T) {
+	agentPoolRepo := playgrounddata.NewAgentPoolRepo()
+	schemeRepo := playgrounddata.NewSchemeRepo()
+	traceRepo := playgrounddata.NewTraceRepo()
+
+	agentPoolSvc := agentpool.NewAgentPoolService(agentPoolRepo)
+	traceEngine := trace.NewTraceEngine(traceRepo)
+	svc := NewWorkflowService(schemeRepo, agentPoolSvc, traceEngine, nil)
+	svc.runtimeSvc = &fakeRuntimeExecutor{
+		err: playgroundruntime.NewRunError(entity.RunStatusWaitingRecovery, "agent step failed"),
+	}
+
+	ctx := context.Background()
+	if _, err := agentPoolSvc.CreateDefaultAgentPool(ctx); err != nil {
+		t.Fatalf("CreateDefaultAgentPool failed: %v", err)
+	}
+	scheme, err := svc.CreateScheme(ctx, "router", "test", entity.ModeRouterExpert, []*entity.AgentBinding{
+		{AgentID: "engineer", Role: "工程师"},
+	})
+	if err != nil {
+		t.Fatalf("CreateScheme failed: %v", err)
+	}
+
+	runID, err := svc.Run(ctx, scheme.ID, "请实现接口")
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	run := waitRunTerminal(ctx, t, svc, runID)
+	if run.Status != string(entity.RunStatusWaitingRecovery) {
+		t.Fatalf("expected trace run status waiting_recovery, got %q", run.Status)
+	}
+	if got := svc.activeRuns[runID].Status; got != string(entity.RunStatusWaitingRecovery) {
+		t.Fatalf("expected active run status waiting_recovery, got %q", got)
+	}
+}
+
+func TestExecutePlanUsesRuntimeService(t *testing.T) {
+	rt := &fakeRuntimeExecutor{output: "runtime-output"}
+	svc := &WorkflowService{
+		runtimeRepo: playgroundruntime.NewMemoryRepo(),
+		runtimeSvc:  rt,
+	}
+
+	output, err := svc.executePlanWithRuntime(
+		context.Background(),
+		"run-1",
+		&entity.ExecutionPlan{PlanID: "plan-1"},
+		&entity.CollaborationScheme{ID: "scheme-router", Mode: entity.ModeRouterExpert},
+		nil,
+		"设计一个表单",
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("executePlanWithRuntime failed: %v", err)
+	}
+	if output != "runtime-output" {
+		t.Fatalf("expected runtime output, got %q", output)
+	}
+	if !rt.called {
+		t.Fatal("expected runtime path instead of legacy handler execute")
+	}
+}
+
+type fakeRuntimeExecutor struct {
+	called bool
+	output string
+	err    error
+}
+
+func (f *fakeRuntimeExecutor) Execute(
+	_ context.Context,
+	_ string,
+	_ *entity.ExecutionPlan,
+	_ *entity.CollaborationScheme,
+	_ *entity.AgentPool,
+	_ string,
+	_ collaboration.TraceEmitter,
+) (string, error) {
+	f.called = true
+	return f.output, f.err
+}
+
+func (f *fakeRuntimeExecutor) ApplyRecoveryAction(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ *entity.CollaborationScheme,
+	_ *entity.AgentPool,
+	_ string,
+	_ collaboration.TraceEmitter,
+	_ string,
+) (string, error) {
+	f.called = true
+	return f.output, f.err
+}
+
+type fakeHandler struct {
+	initCalled    bool
+	executeCalled bool
+	output        string
+	err           error
+}
+
+func (f *fakeHandler) Init(context.Context, *entity.CollaborationScheme, *entity.AgentPool, *collaboration.CollaborationRuntime) error {
+	f.initCalled = true
+	return nil
+}
+
+func (f *fakeHandler) Execute(context.Context, string, string, collaboration.TraceEmitter) (*entity.AgentInstance, error) {
+	f.executeCalled = true
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &entity.AgentInstance{Output: f.output}, nil
+}
+
+func (f *fakeHandler) Name() string {
+	return "fake"
 }
