@@ -1,0 +1,101 @@
+<h2>方案 C 首版架构</h2>
+<p class="subtitle">协作能力优先，其次保证 runtime 可扩展、可恢复、可观测，画布编排后接入</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">从上到下的数据流</div>
+    <div class="mockup-body">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="padding:12px 14px;border:2px solid #5b8ff9;border-radius:10px;background:#eef4ff">
+          <div class="label">输入层</div>
+          <h3 style="margin:4px 0 0">协作方案 / 未来画布 DSL</h3>
+          <p style="margin:6px 0 0">四种模式只是高层意图，先被编译成统一的执行计划，而不是直接各写一套运行逻辑。</p>
+        </div>
+
+        <div style="text-align:center;font-size:20px;color:#8c8c8c">↓</div>
+
+        <div style="padding:12px 14px;border:2px solid #7a5af8;border-radius:10px;background:#f5f1ff">
+          <div class="label">编排层</div>
+          <h3 style="margin:4px 0 0">Plan Builders</h3>
+          <p style="margin:6px 0 0">Router / PlanExec / Supervision / PeerHandoff 各自生成 <code>ExecutionPlan</code>。</p>
+        </div>
+
+        <div style="text-align:center;font-size:20px;color:#8c8c8c">↓</div>
+
+        <div style="padding:12px 14px;border:2px solid #00b96b;border-radius:10px;background:#ecfff5">
+          <div class="label">运行层</div>
+          <h3 style="margin:4px 0 0">Runtime + Step Executor</h3>
+          <p style="margin:6px 0 0">按统一 Step 模型执行：<code>route</code> / <code>agent</code> / <code>parallel</code> / <code>review</code> / <code>handoff</code> / <code>finalize</code>。</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="padding:12px 14px;border:1px solid #faad14;border-radius:10px;background:#fff9e8">
+            <div class="label">状态与恢复</div>
+            <h3 style="margin:4px 0 0">Run State / Step State</h3>
+            <p style="margin:6px 0 0">持久化运行状态、步骤状态、失败原因和恢复命令。支持失败后重试、跳过、改派。</p>
+          </div>
+          <div style="padding:12px 14px;border:1px solid #13c2c2;border-radius:10px;background:#edffff">
+            <div class="label">共享上下文</div>
+            <h3 style="margin:4px 0 0">Artifact Store</h3>
+            <p style="margin:6px 0 0">结构化交接数据、阶段产物、最终结果统一沉淀，不再只靠自由文本串接。</p>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="padding:12px 14px;border:1px solid #722ed1;border-radius:10px;background:#f9f0ff">
+            <div class="label">执行适配</div>
+            <h3 style="margin:4px 0 0">Harness Adapter</h3>
+            <p style="margin:6px 0 0">继续复用现有 <code>RunAgentHarness</code>、托管 Agent、工具链和工作区机制。</p>
+          </div>
+          <div style="padding:12px 14px;border:1px solid #eb2f96;border-radius:10px;background:#fff0f6">
+            <div class="label">观测层</div>
+            <h3 style="margin:4px 0 0">Trace / Event Log</h3>
+            <p style="margin:6px 0 0">把计划编译、步骤推进、产物写入、失败和恢复操作全部事件化。</p>
+          </div>
+        </div>
+
+        <div style="text-align:center;font-size:20px;color:#8c8c8c">↓</div>
+
+        <div style="padding:12px 14px;border:2px solid #f5222d;border-radius:10px;background:#fff1f0">
+          <div class="label">输出层</div>
+          <h3 style="margin:4px 0 0">Run Console / Debug / Recovery UI</h3>
+          <p style="margin:6px 0 0">首版先支持失败后恢复；后续再让画布直接驱动 plan 与局部重跑。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>这一版的关键边界</h3>
+  <div class="options" data-multiselect>
+    <div class="option" data-choice="capability-first">
+      <div class="letter">1</div>
+      <div class="content">
+        <h3>协作能力优先</h3>
+        <p>先把并发、handoff、review、finalizer 做实。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="typed-runtime">
+      <div class="letter">2</div>
+      <div class="content">
+        <h3>Typed Runtime</h3>
+        <p>先做强类型计划和步骤，不直接上完全自由 DAG。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="recover-after-failure">
+      <div class="letter">3</div>
+      <div class="content">
+        <h3>失败后恢复</h3>
+        <p>运行中保持自动；失败后支持重试、跳过、改派。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="canvas-later">
+      <div class="letter">4</div>
+      <div class="content">
+        <h3>画布后接</h3>
+        <p>首版先由方案编译 plan，之后再让 flowgraph/DSL 直接驱动。</p>
+      </div>
+    </div>
+  </div>
+</div>

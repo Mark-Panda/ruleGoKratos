@@ -43,3 +43,6 @@ volumes/
 # Docker 构建时从本机 rsync 的 Cursor 目录（勿提交密钥）
 deploy/docker-cursor-overlay/.cursor/*
 !deploy/docker-cursor-overlay/.cursor/.gitkeep
+
+# Cursor Superpowers 插件本地会话状态（进程、日志等）
+.superpowers/**/state/
