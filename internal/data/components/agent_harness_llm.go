@@ -125,7 +125,6 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	systemPrompt := x.systemTpl.Execute(env)
 	userPrompt := x.userTpl.Execute(env)
 
-	// 规则链 Agent-LLM 节点不关联「Agent 托管配置」或「模型管理 ID」，仅用节点内的 model 文案与下列工具选项。
 	toolOpts := &biz.HarnessToolOptions{
 		EnableUUIDTool:       true, // 不在节点上暴露开关，固定启用 generate_uuid
 		EnableSkillTool:      x.Config.EnableSkillTool,
@@ -151,9 +150,9 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		SystemPrompt:    systemPrompt,
 		ConfigOverride:  cfgOverride,
 		ToolOptions:     toolOpts,
-		ManagedAgentID:  0,
-		LlmConfigID:     0,
-		LlmModelEntryID: 0,
+		ManagedAgentID:  x.Config.ManagedAgentID,
+		LlmConfigID:     x.Config.LlmConfigID,
+		LlmModelEntryID: x.Config.LlmModelEntryID,
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)

@@ -17,6 +17,8 @@ function demoAgentHarnessNodeData(opts: {
     title: opts.title,
     positionType: 'middle',
     inputsValues: {
+      llmConfigId: { type: 'constant' as const, content: 0 },
+      llmModelEntryId: { type: 'constant' as const, content: 0 },
       model: { type: 'constant' as const, content: '' },
       userPrompt: { type: 'template' as const, content: opts.userPrompt },
       systemPrompt: { type: 'template' as const, content: opts.systemPrompt ?? defaultSys },
@@ -32,6 +34,8 @@ function demoAgentHarnessNodeData(opts: {
     inputs: {
       type: 'object',
       required: [
+        'llmConfigId',
+        'llmModelEntryId',
         'model',
         'userPrompt',
         'systemPrompt',
@@ -45,12 +49,27 @@ function demoAgentHarnessNodeData(opts: {
         'toolTimeoutSecs',
       ],
       properties: {
+        llmConfigId: {
+          type: 'number',
+          extra: {
+            label: 'LLM 配置（模型管理）',
+            description: '后台「Agent / 模型」中维护的配置；须与「模型条目」同时选择',
+          },
+        },
+        llmModelEntryId: {
+          type: 'number',
+          extra: {
+            label: '模型条目',
+            description: '该配置下已启用的一条模型 ID',
+          },
+        },
         model: {
           type: 'string',
           extra: {
-            label: '模型名称',
+            label: '模型名称（可选）',
             formComponent: 'prompt-editor',
-            description: '留空则用配置默认模型；支持 ${} 模板',
+            description:
+              '调用时以模型管理解析结果为准；此处一般留空。填写则可用于 ${} 模板或日志展示',
           },
         },
         userPrompt: {

@@ -345,6 +345,8 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.enableWorkspaceTools).toBe(true);
     expect(cfg.skillAllowlist).toEqual(['a', 'b']);
     expect(cfg.maxIterations).toBe(3);
+    expect(cfg.llmConfigId).toBe(0);
+    expect(cfg.llmModelEntryId).toBe(0);
 
     const iv = mapDslToNodeInputsValues(cfg as Record<string, unknown>, aiAgentHarnessMappingSpec);
     expect(iv.model?.content).toBe('${model}');
@@ -359,6 +361,8 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(iv.maxIterations?.content).toBe(3);
     expect(iv.maxToolCalls?.content).toBe(10);
     expect(iv.toolTimeoutSecs?.content).toBe(30);
+    expect(iv.llmConfigId?.content).toBe(0);
+    expect(iv.llmModelEntryId?.content).toBe(0);
   });
 
   it('toDSL: missing inputsValues keys use agentHarness spec defaults', () => {
@@ -382,6 +386,8 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.maxIterations).toBe(0);
     expect(cfg.maxToolCalls).toBe(0);
     expect(cfg.toolTimeoutSecs).toBe(0);
+    expect(cfg.llmConfigId).toBe(0);
+    expect(cfg.llmModelEntryId).toBe(0);
   });
 
   it('fromDSL：字符串白名单转为数组（兼容旧链）', () => {

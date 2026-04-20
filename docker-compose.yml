@@ -11,6 +11,10 @@ services:
     volumes:
       - ./configs:/data/conf
       - ./skills:/app/skills
+      # 与 AGENT_SKILL_DIR 一致；部分模型会用「/agent/skills」臆测路径，额外挂载避免 node MODULE_NOT_FOUND
+      - ./skills:/agent/skills
+      # 部分模型会写成 /agents/tavily-search/...（无 skills、且 agents 复数），与上条同源目录
+      - ./skills:/agents
       - ./agent_workspace:/app/agent_workspace
     environment:
       - SERVER_HTTP_ADDR=0.0.0.0:8000
@@ -29,6 +33,7 @@ services:
       - AGENT_SKILL_ALLOWLIST=
       - AGENT_SKILL_SCAN_INTERVAL_MS=1000
       - CURSOR_API_KEY=
+      - TAVILY_API_KEY=xx
     depends_on:
       postgres-db:
         condition: service_healthy

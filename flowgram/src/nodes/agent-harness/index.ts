@@ -16,7 +16,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLLM,
     description:
-      'Agent LLM：按节点配置模型名与 Skill / MCP / Workspace 工具及白名单（不关联「Agent 托管配置」）；提示词与模型名支持 ${}。generate_uuid 由运行时固定启用。',
+      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；可选填写「模型名称」模板（${}）仅影响日志等旁路；Skill / MCP / Workspace 与白名单可按节点配置。generate_uuid 由运行时固定启用。',
   },
   meta: {
     defaultPorts: [
@@ -40,6 +40,8 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
         title: `AgentLLM_${++index}`,
         positionType: 'middle',
         inputsValues: {
+          llmConfigId: { type: 'constant', content: 0 },
+          llmModelEntryId: { type: 'constant', content: 0 },
           model: { type: 'constant', content: '' },
           userPrompt: { type: 'template', content: '' },
           systemPrompt: {
@@ -59,6 +61,8 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
         inputs: {
           type: 'object',
           required: [
+            'llmConfigId',
+            'llmModelEntryId',
             'model',
             'userPrompt',
             'systemPrompt',
@@ -72,12 +76,27 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             'toolTimeoutSecs',
           ],
           properties: {
+            llmConfigId: {
+              type: 'number',
+              extra: {
+                label: 'LLM 配置（模型管理）',
+                description: '后台「Agent / 模型」中维护的配置；须与「模型条目」同时选择',
+              },
+            },
+            llmModelEntryId: {
+              type: 'number',
+              extra: {
+                label: '模型条目',
+                description: '该配置下已启用的一条模型 ID',
+              },
+            },
             model: {
               type: 'string',
               extra: {
-                label: '模型名称',
+                label: '模型名称（可选）',
                 formComponent: 'prompt-editor',
-                description: '留空则用配置默认模型；支持 ${} 模板',
+                description:
+                  '调用时以模型管理解析结果为准；此处一般留空。填写则可用于 ${} 模板或日志展示',
               },
             },
             userPrompt: {

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -10,7 +11,10 @@ import (
 	"ruleGoKratos/internal/biz"
 	"ruleGoKratos/internal/biz/entity"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+	"gorm.io/gorm"
 )
 
 // RuleGoService is a rulego service.
@@ -59,26 +63,50 @@ func (s *RunLogService) ListRunLogs(ctx context.Context, req *v1.ListRunLogsRequ
 func (s *RunLogService) GetRunLogByMsgId(ctx context.Context, req *v1.GetRunLogByMsgIdReq) (*v1.RunLogItem, error) {
 	item, err := s.rlu.FindOne(ctx, req.MsgId)
 	if err != nil {
+		// 前端轮询用 404 表示「尚未落库」，与 WorkflowExecuteSection 注释一致；勿将 RecordNotFound 透出为 500。
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Errorf(codes.NotFound, "run log not found for msgId=%s", req.MsgId)
+		}
 		return nil, err
 	}
 	return toRunLogItem(item), nil
+}
+
+func emptyStructPB() *structpb.Struct {
+	s, _ := structpb.NewStruct(map[string]interface{}{})
+	return s
+}
+
+func mapToStructPB(m map[string]interface{}) *structpb.Struct {
+	if m == nil {
+		return emptyStructPB()
+	}
+	s, err := structpb.NewStruct(m)
+	if err != nil || s == nil {
+		return emptyStructPB()
+	}
+	return s
 }
 
 func toRunLogItem(item *entity.RunLog) *v1.RunLogItem {
 	if item == nil {
 		return nil
 	}
-	var ruleChainMap map[string]interface{}
+	ruleChainStruct := emptyStructPB()
 	if item.RuleChainInfo != "" {
-		_ = json.Unmarshal([]byte(item.RuleChainInfo), &ruleChainMap)
+		var ruleChainMap map[string]interface{}
+		if json.Unmarshal([]byte(item.RuleChainInfo), &ruleChainMap) == nil && ruleChainMap != nil {
+			ruleChainStruct = mapToStructPB(ruleChainMap)
+		}
 	}
-	ruleChainStruct, _ := structpb.NewStruct(ruleChainMap)
 
-	var metadataMap map[string]interface{}
+	metadataStruct := emptyStructPB()
 	if item.Metadata != "" {
-		_ = json.Unmarshal([]byte(item.Metadata), &metadataMap)
+		var metadataMap map[string]interface{}
+		if json.Unmarshal([]byte(item.Metadata), &metadataMap) == nil && metadataMap != nil {
+			metadataStruct = mapToStructPB(metadataMap)
+		}
 	}
-	metadataStruct, _ := structpb.NewStruct(metadataMap)
 
 	var logsList []map[string]interface{}
 	if item.NodeLog != "" {
@@ -86,7 +114,13 @@ func toRunLogItem(item *entity.RunLog) *v1.RunLogItem {
 	}
 	logsStructs := make([]*structpb.Struct, 0, len(logsList))
 	for _, logItem := range logsList {
-		logStruct, _ := structpb.NewStruct(logItem)
+		if logItem == nil {
+			continue
+		}
+		logStruct, err := structpb.NewStruct(logItem)
+		if err != nil || logStruct == nil {
+			continue
+		}
 		logsStructs = append(logsStructs, logStruct)
 	}
 
