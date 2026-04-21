@@ -33,6 +33,7 @@ const (
 	Admin_CreateLlmModelEntry_FullMethodName = "/rulego.v1.Admin/CreateLlmModelEntry"
 	Admin_UpdateLlmModelEntry_FullMethodName = "/rulego.v1.Admin/UpdateLlmModelEntry"
 	Admin_DeleteLlmModelEntry_FullMethodName = "/rulego.v1.Admin/DeleteLlmModelEntry"
+	Admin_RunTerminal_FullMethodName         = "/rulego.v1.Admin/RunTerminal"
 )
 
 // AdminClient is the client API for Admin service.
@@ -45,7 +46,7 @@ type AdminClient interface {
 	CreateMcpConfig(ctx context.Context, in *CreateMcpConfigRequest, opts ...grpc.CallOption) (*McpConfigItem, error)
 	UpdateMcpConfig(ctx context.Context, in *UpdateMcpConfigRequest, opts ...grpc.CallOption) (*UpdateMcpConfigReply, error)
 	DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRequest, opts ...grpc.CallOption) (*DeleteMcpConfigReply, error)
-	// TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	// TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
 	TestMcpConfig(ctx context.Context, in *TestMcpConfigRequest, opts ...grpc.CallOption) (*TestMcpConfigReply, error)
 	ListLlmConfigs(ctx context.Context, in *ListLlmConfigsRequest, opts ...grpc.CallOption) (*ListLlmConfigsReply, error)
 	CreateLlmConfig(ctx context.Context, in *CreateLlmConfigRequest, opts ...grpc.CallOption) (*LlmConfigItem, error)
@@ -54,6 +55,8 @@ type AdminClient interface {
 	CreateLlmModelEntry(ctx context.Context, in *CreateLlmModelEntryRequest, opts ...grpc.CallOption) (*LlmModelEntryItem, error)
 	UpdateLlmModelEntry(ctx context.Context, in *UpdateLlmModelEntryRequest, opts ...grpc.CallOption) (*UpdateLlmModelEntryReply, error)
 	DeleteLlmModelEntry(ctx context.Context, in *DeleteLlmModelEntryRequest, opts ...grpc.CallOption) (*DeleteLlmModelEntryReply, error)
+	// RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+	RunTerminal(ctx context.Context, in *RunTerminalRequest, opts ...grpc.CallOption) (*RunTerminalReply, error)
 }
 
 type adminClient struct {
@@ -204,6 +207,16 @@ func (c *adminClient) DeleteLlmModelEntry(ctx context.Context, in *DeleteLlmMode
 	return out, nil
 }
 
+func (c *adminClient) RunTerminal(ctx context.Context, in *RunTerminalRequest, opts ...grpc.CallOption) (*RunTerminalReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunTerminalReply)
+	err := c.cc.Invoke(ctx, Admin_RunTerminal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServer is the server API for Admin service.
 // All implementations must embed UnimplementedAdminServer
 // for forward compatibility.
@@ -214,7 +227,7 @@ type AdminServer interface {
 	CreateMcpConfig(context.Context, *CreateMcpConfigRequest) (*McpConfigItem, error)
 	UpdateMcpConfig(context.Context, *UpdateMcpConfigRequest) (*UpdateMcpConfigReply, error)
 	DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error)
-	// TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	// TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
 	TestMcpConfig(context.Context, *TestMcpConfigRequest) (*TestMcpConfigReply, error)
 	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
 	CreateLlmConfig(context.Context, *CreateLlmConfigRequest) (*LlmConfigItem, error)
@@ -223,6 +236,8 @@ type AdminServer interface {
 	CreateLlmModelEntry(context.Context, *CreateLlmModelEntryRequest) (*LlmModelEntryItem, error)
 	UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error)
 	DeleteLlmModelEntry(context.Context, *DeleteLlmModelEntryRequest) (*DeleteLlmModelEntryReply, error)
+	// RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+	RunTerminal(context.Context, *RunTerminalRequest) (*RunTerminalReply, error)
 	mustEmbedUnimplementedAdminServer()
 }
 
@@ -274,6 +289,9 @@ func (UnimplementedAdminServer) UpdateLlmModelEntry(context.Context, *UpdateLlmM
 }
 func (UnimplementedAdminServer) DeleteLlmModelEntry(context.Context, *DeleteLlmModelEntryRequest) (*DeleteLlmModelEntryReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteLlmModelEntry not implemented")
+}
+func (UnimplementedAdminServer) RunTerminal(context.Context, *RunTerminalRequest) (*RunTerminalReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunTerminal not implemented")
 }
 func (UnimplementedAdminServer) mustEmbedUnimplementedAdminServer() {}
 func (UnimplementedAdminServer) testEmbeddedByValue()               {}
@@ -548,6 +566,24 @@ func _Admin_DeleteLlmModelEntry_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Admin_RunTerminal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunTerminalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).RunTerminal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_RunTerminal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).RunTerminal(ctx, req.(*RunTerminalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Admin_ServiceDesc is the grpc.ServiceDesc for Admin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -610,6 +646,10 @@ var Admin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteLlmModelEntry",
 			Handler:    _Admin_DeleteLlmModelEntry_Handler,
+		},
+		{
+			MethodName: "RunTerminal",
+			Handler:    _Admin_RunTerminal_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

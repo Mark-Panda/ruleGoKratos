@@ -28,6 +28,11 @@ const getToken = (): string => {
   return window.localStorage.getItem('AUTH_TOKEN') || window.localStorage.getItem('token') || '';
 };
 
+/** 供 WebSocket 等无法带 Authorization 头时使用（可选 query）。 */
+export function getAuthToken(): string {
+  return getToken();
+}
+
 export interface RequestOptions {
   method?: HttpMethod;
   headers?: Record<string, string>;

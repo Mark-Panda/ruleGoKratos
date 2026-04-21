@@ -972,6 +972,126 @@ func (x *TestMcpConfigReply) GetProtocolVersion() string {
 	return ""
 }
 
+type RunTerminalRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	Cwd           string                 `protobuf:"bytes,2,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunTerminalRequest) Reset() {
+	*x = RunTerminalRequest{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunTerminalRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunTerminalRequest) ProtoMessage() {}
+
+func (x *RunTerminalRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunTerminalRequest.ProtoReflect.Descriptor instead.
+func (*RunTerminalRequest) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *RunTerminalRequest) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *RunTerminalRequest) GetCwd() string {
+	if x != nil {
+		return x.Cwd
+	}
+	return ""
+}
+
+type RunTerminalReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExitCode      int32                  `protobuf:"varint,1,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Stdout        string                 `protobuf:"bytes,2,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr        string                 `protobuf:"bytes,3,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	Diagnostic    string                 `protobuf:"bytes,4,opt,name=diagnostic,proto3" json:"diagnostic,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunTerminalReply) Reset() {
+	*x = RunTerminalReply{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunTerminalReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunTerminalReply) ProtoMessage() {}
+
+func (x *RunTerminalReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunTerminalReply.ProtoReflect.Descriptor instead.
+func (*RunTerminalReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *RunTerminalReply) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *RunTerminalReply) GetStdout() string {
+	if x != nil {
+		return x.Stdout
+	}
+	return ""
+}
+
+func (x *RunTerminalReply) GetStderr() string {
+	if x != nil {
+		return x.Stderr
+	}
+	return ""
+}
+
+func (x *RunTerminalReply) GetDiagnostic() string {
+	if x != nil {
+		return x.Diagnostic
+	}
+	return ""
+}
+
 type ListLlmConfigsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -980,7 +1100,7 @@ type ListLlmConfigsRequest struct {
 
 func (x *ListLlmConfigsRequest) Reset() {
 	*x = ListLlmConfigsRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[15]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -992,7 +1112,7 @@ func (x *ListLlmConfigsRequest) String() string {
 func (*ListLlmConfigsRequest) ProtoMessage() {}
 
 func (x *ListLlmConfigsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[15]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1005,7 +1125,7 @@ func (x *ListLlmConfigsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLlmConfigsRequest.ProtoReflect.Descriptor instead.
 func (*ListLlmConfigsRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{15}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{17}
 }
 
 type LlmModelEntryItem struct {
@@ -1023,7 +1143,7 @@ type LlmModelEntryItem struct {
 
 func (x *LlmModelEntryItem) Reset() {
 	*x = LlmModelEntryItem{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[16]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1035,7 +1155,7 @@ func (x *LlmModelEntryItem) String() string {
 func (*LlmModelEntryItem) ProtoMessage() {}
 
 func (x *LlmModelEntryItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[16]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1048,7 +1168,7 @@ func (x *LlmModelEntryItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LlmModelEntryItem.ProtoReflect.Descriptor instead.
 func (*LlmModelEntryItem) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{16}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *LlmModelEntryItem) GetId() int64 {
@@ -1118,7 +1238,7 @@ type LlmConfigItem struct {
 
 func (x *LlmConfigItem) Reset() {
 	*x = LlmConfigItem{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[17]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1130,7 +1250,7 @@ func (x *LlmConfigItem) String() string {
 func (*LlmConfigItem) ProtoMessage() {}
 
 func (x *LlmConfigItem) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[17]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1143,7 +1263,7 @@ func (x *LlmConfigItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LlmConfigItem.ProtoReflect.Descriptor instead.
 func (*LlmConfigItem) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{17}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *LlmConfigItem) GetId() int64 {
@@ -1225,7 +1345,7 @@ type ListLlmConfigsReply struct {
 
 func (x *ListLlmConfigsReply) Reset() {
 	*x = ListLlmConfigsReply{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[18]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1237,7 +1357,7 @@ func (x *ListLlmConfigsReply) String() string {
 func (*ListLlmConfigsReply) ProtoMessage() {}
 
 func (x *ListLlmConfigsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[18]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1250,7 +1370,7 @@ func (x *ListLlmConfigsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLlmConfigsReply.ProtoReflect.Descriptor instead.
 func (*ListLlmConfigsReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{18}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListLlmConfigsReply) GetItems() []*LlmConfigItem {
@@ -1271,7 +1391,7 @@ type LlmModelEntryDraft struct {
 
 func (x *LlmModelEntryDraft) Reset() {
 	*x = LlmModelEntryDraft{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[19]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1283,7 +1403,7 @@ func (x *LlmModelEntryDraft) String() string {
 func (*LlmModelEntryDraft) ProtoMessage() {}
 
 func (x *LlmModelEntryDraft) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[19]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1296,7 +1416,7 @@ func (x *LlmModelEntryDraft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LlmModelEntryDraft.ProtoReflect.Descriptor instead.
 func (*LlmModelEntryDraft) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{19}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *LlmModelEntryDraft) GetModelName() string {
@@ -1335,7 +1455,7 @@ type CreateLlmConfigRequest struct {
 
 func (x *CreateLlmConfigRequest) Reset() {
 	*x = CreateLlmConfigRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[20]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1347,7 +1467,7 @@ func (x *CreateLlmConfigRequest) String() string {
 func (*CreateLlmConfigRequest) ProtoMessage() {}
 
 func (x *CreateLlmConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[20]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1360,7 +1480,7 @@ func (x *CreateLlmConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLlmConfigRequest.ProtoReflect.Descriptor instead.
 func (*CreateLlmConfigRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{20}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CreateLlmConfigRequest) GetName() string {
@@ -1427,7 +1547,7 @@ type UpdateLlmConfigRequest struct {
 
 func (x *UpdateLlmConfigRequest) Reset() {
 	*x = UpdateLlmConfigRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[21]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1439,7 +1559,7 @@ func (x *UpdateLlmConfigRequest) String() string {
 func (*UpdateLlmConfigRequest) ProtoMessage() {}
 
 func (x *UpdateLlmConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[21]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1452,7 +1572,7 @@ func (x *UpdateLlmConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLlmConfigRequest.ProtoReflect.Descriptor instead.
 func (*UpdateLlmConfigRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{21}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *UpdateLlmConfigRequest) GetId() int64 {
@@ -1512,7 +1632,7 @@ type UpdateLlmConfigReply struct {
 
 func (x *UpdateLlmConfigReply) Reset() {
 	*x = UpdateLlmConfigReply{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[22]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +1644,7 @@ func (x *UpdateLlmConfigReply) String() string {
 func (*UpdateLlmConfigReply) ProtoMessage() {}
 
 func (x *UpdateLlmConfigReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[22]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +1657,7 @@ func (x *UpdateLlmConfigReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLlmConfigReply.ProtoReflect.Descriptor instead.
 func (*UpdateLlmConfigReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{22}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{24}
 }
 
 type DeleteLlmConfigRequest struct {
@@ -1549,7 +1669,7 @@ type DeleteLlmConfigRequest struct {
 
 func (x *DeleteLlmConfigRequest) Reset() {
 	*x = DeleteLlmConfigRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[23]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1561,7 +1681,7 @@ func (x *DeleteLlmConfigRequest) String() string {
 func (*DeleteLlmConfigRequest) ProtoMessage() {}
 
 func (x *DeleteLlmConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[23]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1574,7 +1694,7 @@ func (x *DeleteLlmConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteLlmConfigRequest.ProtoReflect.Descriptor instead.
 func (*DeleteLlmConfigRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{23}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DeleteLlmConfigRequest) GetId() int64 {
@@ -1592,7 +1712,7 @@ type DeleteLlmConfigReply struct {
 
 func (x *DeleteLlmConfigReply) Reset() {
 	*x = DeleteLlmConfigReply{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[24]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1604,7 +1724,7 @@ func (x *DeleteLlmConfigReply) String() string {
 func (*DeleteLlmConfigReply) ProtoMessage() {}
 
 func (x *DeleteLlmConfigReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[24]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1617,7 +1737,7 @@ func (x *DeleteLlmConfigReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteLlmConfigReply.ProtoReflect.Descriptor instead.
 func (*DeleteLlmConfigReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{24}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{26}
 }
 
 type CreateLlmModelEntryRequest struct {
@@ -1632,7 +1752,7 @@ type CreateLlmModelEntryRequest struct {
 
 func (x *CreateLlmModelEntryRequest) Reset() {
 	*x = CreateLlmModelEntryRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[25]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1644,7 +1764,7 @@ func (x *CreateLlmModelEntryRequest) String() string {
 func (*CreateLlmModelEntryRequest) ProtoMessage() {}
 
 func (x *CreateLlmModelEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[25]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1657,7 +1777,7 @@ func (x *CreateLlmModelEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateLlmModelEntryRequest.ProtoReflect.Descriptor instead.
 func (*CreateLlmModelEntryRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{25}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CreateLlmModelEntryRequest) GetConfigId() int64 {
@@ -1700,7 +1820,7 @@ type UpdateLlmModelEntryRequest struct {
 
 func (x *UpdateLlmModelEntryRequest) Reset() {
 	*x = UpdateLlmModelEntryRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[26]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1712,7 +1832,7 @@ func (x *UpdateLlmModelEntryRequest) String() string {
 func (*UpdateLlmModelEntryRequest) ProtoMessage() {}
 
 func (x *UpdateLlmModelEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[26]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1725,7 +1845,7 @@ func (x *UpdateLlmModelEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLlmModelEntryRequest.ProtoReflect.Descriptor instead.
 func (*UpdateLlmModelEntryRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{26}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *UpdateLlmModelEntryRequest) GetId() int64 {
@@ -1764,7 +1884,7 @@ type UpdateLlmModelEntryReply struct {
 
 func (x *UpdateLlmModelEntryReply) Reset() {
 	*x = UpdateLlmModelEntryReply{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[27]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1776,7 +1896,7 @@ func (x *UpdateLlmModelEntryReply) String() string {
 func (*UpdateLlmModelEntryReply) ProtoMessage() {}
 
 func (x *UpdateLlmModelEntryReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[27]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1789,7 +1909,7 @@ func (x *UpdateLlmModelEntryReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateLlmModelEntryReply.ProtoReflect.Descriptor instead.
 func (*UpdateLlmModelEntryReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{27}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{29}
 }
 
 type DeleteLlmModelEntryRequest struct {
@@ -1801,7 +1921,7 @@ type DeleteLlmModelEntryRequest struct {
 
 func (x *DeleteLlmModelEntryRequest) Reset() {
 	*x = DeleteLlmModelEntryRequest{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[28]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1813,7 +1933,7 @@ func (x *DeleteLlmModelEntryRequest) String() string {
 func (*DeleteLlmModelEntryRequest) ProtoMessage() {}
 
 func (x *DeleteLlmModelEntryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[28]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1826,7 +1946,7 @@ func (x *DeleteLlmModelEntryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteLlmModelEntryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteLlmModelEntryRequest) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{28}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *DeleteLlmModelEntryRequest) GetId() int64 {
@@ -1844,7 +1964,7 @@ type DeleteLlmModelEntryReply struct {
 
 func (x *DeleteLlmModelEntryReply) Reset() {
 	*x = DeleteLlmModelEntryReply{}
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[29]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1856,7 +1976,7 @@ func (x *DeleteLlmModelEntryReply) String() string {
 func (*DeleteLlmModelEntryReply) ProtoMessage() {}
 
 func (x *DeleteLlmModelEntryReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_admin_proto_msgTypes[29]
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1869,7 +1989,7 @@ func (x *DeleteLlmModelEntryReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteLlmModelEntryReply.ProtoReflect.Descriptor instead.
 func (*DeleteLlmModelEntryReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{29}
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{31}
 }
 
 var File_api_rulego_v1_admin_proto protoreflect.FileDescriptor
@@ -1950,7 +2070,17 @@ const file_api_rulego_v1_admin_proto_rawDesc = "" +
 	"tool_names\x18\x03 \x03(\tR\ttoolNames\x12\x1f\n" +
 	"\vserver_name\x18\x04 \x01(\tR\n" +
 	"serverName\x12)\n" +
-	"\x10protocol_version\x18\x05 \x01(\tR\x0fprotocolVersion\"\x17\n" +
+	"\x10protocol_version\x18\x05 \x01(\tR\x0fprotocolVersion\"@\n" +
+	"\x12RunTerminalRequest\x12\x18\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\x12\x10\n" +
+	"\x03cwd\x18\x02 \x01(\tR\x03cwd\"\x7f\n" +
+	"\x10RunTerminalReply\x12\x1b\n" +
+	"\texit_code\x18\x01 \x01(\x05R\bexitCode\x12\x16\n" +
+	"\x06stdout\x18\x02 \x01(\tR\x06stdout\x12\x16\n" +
+	"\x06stderr\x18\x03 \x01(\tR\x06stderr\x12\x1e\n" +
+	"\n" +
+	"diagnostic\x18\x04 \x01(\tR\n" +
+	"diagnostic\"\x17\n" +
 	"\x15ListLlmConfigsRequest\"\xd9\x01\n" +
 	"\x11LlmModelEntryItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
@@ -2019,7 +2149,7 @@ const file_api_rulego_v1_admin_proto_rawDesc = "" +
 	"\x18UpdateLlmModelEntryReply\",\n" +
 	"\x1aDeleteLlmModelEntryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"\x1a\n" +
-	"\x18DeleteLlmModelEntryReply2\xd8\r\n" +
+	"\x18DeleteLlmModelEntryReply2\xca\x0e\n" +
 	"\x05Admin\x12d\n" +
 	"\n" +
 	"ListSkills\x12\x1c.rulego.v1.ListSkillsRequest\x1a\x1a.rulego.v1.ListSkillsReply\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/admin/skills\x12q\n" +
@@ -2035,7 +2165,8 @@ const file_api_rulego_v1_admin_proto_rawDesc = "" +
 	"\x0fDeleteLlmConfig\x12!.rulego.v1.DeleteLlmConfigRequest\x1a\x1f.rulego.v1.DeleteLlmConfigReply\"&\x82\xd3\xe4\x93\x02 *\x1e/api/v1/admin/llm-configs/{id}\x12\x93\x01\n" +
 	"\x13CreateLlmModelEntry\x12%.rulego.v1.CreateLlmModelEntryRequest\x1a\x1c.rulego.v1.LlmModelEntryItem\"7\x82\xd3\xe4\x93\x021:\x01*\",/api/v1/admin/llm-configs/{config_id}/models\x12\x92\x01\n" +
 	"\x13UpdateLlmModelEntry\x12%.rulego.v1.UpdateLlmModelEntryRequest\x1a#.rulego.v1.UpdateLlmModelEntryReply\"/\x82\xd3\xe4\x93\x02):\x01*\x1a$/api/v1/admin/llm-model-entries/{id}\x12\x8f\x01\n" +
-	"\x13DeleteLlmModelEntry\x12%.rulego.v1.DeleteLlmModelEntryRequest\x1a#.rulego.v1.DeleteLlmModelEntryReply\",\x82\xd3\xe4\x93\x02&*$/api/v1/admin/llm-model-entries/{id}B\x1fZ\x1druleGoKratos/api/rulego/v1;v1b\x06proto3"
+	"\x13DeleteLlmModelEntry\x12%.rulego.v1.DeleteLlmModelEntryRequest\x1a#.rulego.v1.DeleteLlmModelEntryReply\",\x82\xd3\xe4\x93\x02&*$/api/v1/admin/llm-model-entries/{id}\x12p\n" +
+	"\vRunTerminal\x12\x1d.rulego.v1.RunTerminalRequest\x1a\x1b.rulego.v1.RunTerminalReply\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/admin/terminal/runB\x1fZ\x1druleGoKratos/api/rulego/v1;v1b\x06proto3"
 
 var (
 	file_api_rulego_v1_admin_proto_rawDescOnce sync.Once
@@ -2049,7 +2180,7 @@ func file_api_rulego_v1_admin_proto_rawDescGZIP() []byte {
 	return file_api_rulego_v1_admin_proto_rawDescData
 }
 
-var file_api_rulego_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_api_rulego_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_api_rulego_v1_admin_proto_goTypes = []any{
 	(*ListSkillsRequest)(nil),          // 0: rulego.v1.ListSkillsRequest
 	(*SkillItem)(nil),                  // 1: rulego.v1.SkillItem
@@ -2066,32 +2197,34 @@ var file_api_rulego_v1_admin_proto_goTypes = []any{
 	(*DeleteMcpConfigReply)(nil),       // 12: rulego.v1.DeleteMcpConfigReply
 	(*TestMcpConfigRequest)(nil),       // 13: rulego.v1.TestMcpConfigRequest
 	(*TestMcpConfigReply)(nil),         // 14: rulego.v1.TestMcpConfigReply
-	(*ListLlmConfigsRequest)(nil),      // 15: rulego.v1.ListLlmConfigsRequest
-	(*LlmModelEntryItem)(nil),          // 16: rulego.v1.LlmModelEntryItem
-	(*LlmConfigItem)(nil),              // 17: rulego.v1.LlmConfigItem
-	(*ListLlmConfigsReply)(nil),        // 18: rulego.v1.ListLlmConfigsReply
-	(*LlmModelEntryDraft)(nil),         // 19: rulego.v1.LlmModelEntryDraft
-	(*CreateLlmConfigRequest)(nil),     // 20: rulego.v1.CreateLlmConfigRequest
-	(*UpdateLlmConfigRequest)(nil),     // 21: rulego.v1.UpdateLlmConfigRequest
-	(*UpdateLlmConfigReply)(nil),       // 22: rulego.v1.UpdateLlmConfigReply
-	(*DeleteLlmConfigRequest)(nil),     // 23: rulego.v1.DeleteLlmConfigRequest
-	(*DeleteLlmConfigReply)(nil),       // 24: rulego.v1.DeleteLlmConfigReply
-	(*CreateLlmModelEntryRequest)(nil), // 25: rulego.v1.CreateLlmModelEntryRequest
-	(*UpdateLlmModelEntryRequest)(nil), // 26: rulego.v1.UpdateLlmModelEntryRequest
-	(*UpdateLlmModelEntryReply)(nil),   // 27: rulego.v1.UpdateLlmModelEntryReply
-	(*DeleteLlmModelEntryRequest)(nil), // 28: rulego.v1.DeleteLlmModelEntryRequest
-	(*DeleteLlmModelEntryReply)(nil),   // 29: rulego.v1.DeleteLlmModelEntryReply
-	(*structpb.Struct)(nil),            // 30: google.protobuf.Struct
+	(*RunTerminalRequest)(nil),         // 15: rulego.v1.RunTerminalRequest
+	(*RunTerminalReply)(nil),           // 16: rulego.v1.RunTerminalReply
+	(*ListLlmConfigsRequest)(nil),      // 17: rulego.v1.ListLlmConfigsRequest
+	(*LlmModelEntryItem)(nil),          // 18: rulego.v1.LlmModelEntryItem
+	(*LlmConfigItem)(nil),              // 19: rulego.v1.LlmConfigItem
+	(*ListLlmConfigsReply)(nil),        // 20: rulego.v1.ListLlmConfigsReply
+	(*LlmModelEntryDraft)(nil),         // 21: rulego.v1.LlmModelEntryDraft
+	(*CreateLlmConfigRequest)(nil),     // 22: rulego.v1.CreateLlmConfigRequest
+	(*UpdateLlmConfigRequest)(nil),     // 23: rulego.v1.UpdateLlmConfigRequest
+	(*UpdateLlmConfigReply)(nil),       // 24: rulego.v1.UpdateLlmConfigReply
+	(*DeleteLlmConfigRequest)(nil),     // 25: rulego.v1.DeleteLlmConfigRequest
+	(*DeleteLlmConfigReply)(nil),       // 26: rulego.v1.DeleteLlmConfigReply
+	(*CreateLlmModelEntryRequest)(nil), // 27: rulego.v1.CreateLlmModelEntryRequest
+	(*UpdateLlmModelEntryRequest)(nil), // 28: rulego.v1.UpdateLlmModelEntryRequest
+	(*UpdateLlmModelEntryReply)(nil),   // 29: rulego.v1.UpdateLlmModelEntryReply
+	(*DeleteLlmModelEntryRequest)(nil), // 30: rulego.v1.DeleteLlmModelEntryRequest
+	(*DeleteLlmModelEntryReply)(nil),   // 31: rulego.v1.DeleteLlmModelEntryReply
+	(*structpb.Struct)(nil),            // 32: google.protobuf.Struct
 }
 var file_api_rulego_v1_admin_proto_depIdxs = []int32{
 	1,  // 0: rulego.v1.ListSkillsReply.items:type_name -> rulego.v1.SkillItem
-	30, // 1: rulego.v1.McpConfigItem.headers:type_name -> google.protobuf.Struct
+	32, // 1: rulego.v1.McpConfigItem.headers:type_name -> google.protobuf.Struct
 	6,  // 2: rulego.v1.ListMcpConfigsReply.items:type_name -> rulego.v1.McpConfigItem
-	30, // 3: rulego.v1.CreateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
-	30, // 4: rulego.v1.UpdateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
-	16, // 5: rulego.v1.LlmConfigItem.models:type_name -> rulego.v1.LlmModelEntryItem
-	17, // 6: rulego.v1.ListLlmConfigsReply.items:type_name -> rulego.v1.LlmConfigItem
-	19, // 7: rulego.v1.CreateLlmConfigRequest.models:type_name -> rulego.v1.LlmModelEntryDraft
+	32, // 3: rulego.v1.CreateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
+	32, // 4: rulego.v1.UpdateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
+	18, // 5: rulego.v1.LlmConfigItem.models:type_name -> rulego.v1.LlmModelEntryItem
+	19, // 6: rulego.v1.ListLlmConfigsReply.items:type_name -> rulego.v1.LlmConfigItem
+	21, // 7: rulego.v1.CreateLlmConfigRequest.models:type_name -> rulego.v1.LlmModelEntryDraft
 	0,  // 8: rulego.v1.Admin.ListSkills:input_type -> rulego.v1.ListSkillsRequest
 	3,  // 9: rulego.v1.Admin.UploadSkill:input_type -> rulego.v1.UploadSkillRequest
 	5,  // 10: rulego.v1.Admin.ListMcpConfigs:input_type -> rulego.v1.ListMcpConfigsRequest
@@ -2099,29 +2232,31 @@ var file_api_rulego_v1_admin_proto_depIdxs = []int32{
 	9,  // 12: rulego.v1.Admin.UpdateMcpConfig:input_type -> rulego.v1.UpdateMcpConfigRequest
 	11, // 13: rulego.v1.Admin.DeleteMcpConfig:input_type -> rulego.v1.DeleteMcpConfigRequest
 	13, // 14: rulego.v1.Admin.TestMcpConfig:input_type -> rulego.v1.TestMcpConfigRequest
-	15, // 15: rulego.v1.Admin.ListLlmConfigs:input_type -> rulego.v1.ListLlmConfigsRequest
-	20, // 16: rulego.v1.Admin.CreateLlmConfig:input_type -> rulego.v1.CreateLlmConfigRequest
-	21, // 17: rulego.v1.Admin.UpdateLlmConfig:input_type -> rulego.v1.UpdateLlmConfigRequest
-	23, // 18: rulego.v1.Admin.DeleteLlmConfig:input_type -> rulego.v1.DeleteLlmConfigRequest
-	25, // 19: rulego.v1.Admin.CreateLlmModelEntry:input_type -> rulego.v1.CreateLlmModelEntryRequest
-	26, // 20: rulego.v1.Admin.UpdateLlmModelEntry:input_type -> rulego.v1.UpdateLlmModelEntryRequest
-	28, // 21: rulego.v1.Admin.DeleteLlmModelEntry:input_type -> rulego.v1.DeleteLlmModelEntryRequest
-	2,  // 22: rulego.v1.Admin.ListSkills:output_type -> rulego.v1.ListSkillsReply
-	4,  // 23: rulego.v1.Admin.UploadSkill:output_type -> rulego.v1.UploadSkillReply
-	7,  // 24: rulego.v1.Admin.ListMcpConfigs:output_type -> rulego.v1.ListMcpConfigsReply
-	6,  // 25: rulego.v1.Admin.CreateMcpConfig:output_type -> rulego.v1.McpConfigItem
-	10, // 26: rulego.v1.Admin.UpdateMcpConfig:output_type -> rulego.v1.UpdateMcpConfigReply
-	12, // 27: rulego.v1.Admin.DeleteMcpConfig:output_type -> rulego.v1.DeleteMcpConfigReply
-	14, // 28: rulego.v1.Admin.TestMcpConfig:output_type -> rulego.v1.TestMcpConfigReply
-	18, // 29: rulego.v1.Admin.ListLlmConfigs:output_type -> rulego.v1.ListLlmConfigsReply
-	17, // 30: rulego.v1.Admin.CreateLlmConfig:output_type -> rulego.v1.LlmConfigItem
-	22, // 31: rulego.v1.Admin.UpdateLlmConfig:output_type -> rulego.v1.UpdateLlmConfigReply
-	24, // 32: rulego.v1.Admin.DeleteLlmConfig:output_type -> rulego.v1.DeleteLlmConfigReply
-	16, // 33: rulego.v1.Admin.CreateLlmModelEntry:output_type -> rulego.v1.LlmModelEntryItem
-	27, // 34: rulego.v1.Admin.UpdateLlmModelEntry:output_type -> rulego.v1.UpdateLlmModelEntryReply
-	29, // 35: rulego.v1.Admin.DeleteLlmModelEntry:output_type -> rulego.v1.DeleteLlmModelEntryReply
-	22, // [22:36] is the sub-list for method output_type
-	8,  // [8:22] is the sub-list for method input_type
+	17, // 15: rulego.v1.Admin.ListLlmConfigs:input_type -> rulego.v1.ListLlmConfigsRequest
+	22, // 16: rulego.v1.Admin.CreateLlmConfig:input_type -> rulego.v1.CreateLlmConfigRequest
+	23, // 17: rulego.v1.Admin.UpdateLlmConfig:input_type -> rulego.v1.UpdateLlmConfigRequest
+	25, // 18: rulego.v1.Admin.DeleteLlmConfig:input_type -> rulego.v1.DeleteLlmConfigRequest
+	27, // 19: rulego.v1.Admin.CreateLlmModelEntry:input_type -> rulego.v1.CreateLlmModelEntryRequest
+	28, // 20: rulego.v1.Admin.UpdateLlmModelEntry:input_type -> rulego.v1.UpdateLlmModelEntryRequest
+	30, // 21: rulego.v1.Admin.DeleteLlmModelEntry:input_type -> rulego.v1.DeleteLlmModelEntryRequest
+	15, // 22: rulego.v1.Admin.RunTerminal:input_type -> rulego.v1.RunTerminalRequest
+	2,  // 23: rulego.v1.Admin.ListSkills:output_type -> rulego.v1.ListSkillsReply
+	4,  // 24: rulego.v1.Admin.UploadSkill:output_type -> rulego.v1.UploadSkillReply
+	7,  // 25: rulego.v1.Admin.ListMcpConfigs:output_type -> rulego.v1.ListMcpConfigsReply
+	6,  // 26: rulego.v1.Admin.CreateMcpConfig:output_type -> rulego.v1.McpConfigItem
+	10, // 27: rulego.v1.Admin.UpdateMcpConfig:output_type -> rulego.v1.UpdateMcpConfigReply
+	12, // 28: rulego.v1.Admin.DeleteMcpConfig:output_type -> rulego.v1.DeleteMcpConfigReply
+	14, // 29: rulego.v1.Admin.TestMcpConfig:output_type -> rulego.v1.TestMcpConfigReply
+	20, // 30: rulego.v1.Admin.ListLlmConfigs:output_type -> rulego.v1.ListLlmConfigsReply
+	19, // 31: rulego.v1.Admin.CreateLlmConfig:output_type -> rulego.v1.LlmConfigItem
+	24, // 32: rulego.v1.Admin.UpdateLlmConfig:output_type -> rulego.v1.UpdateLlmConfigReply
+	26, // 33: rulego.v1.Admin.DeleteLlmConfig:output_type -> rulego.v1.DeleteLlmConfigReply
+	18, // 34: rulego.v1.Admin.CreateLlmModelEntry:output_type -> rulego.v1.LlmModelEntryItem
+	29, // 35: rulego.v1.Admin.UpdateLlmModelEntry:output_type -> rulego.v1.UpdateLlmModelEntryReply
+	31, // 36: rulego.v1.Admin.DeleteLlmModelEntry:output_type -> rulego.v1.DeleteLlmModelEntryReply
+	16, // 37: rulego.v1.Admin.RunTerminal:output_type -> rulego.v1.RunTerminalReply
+	23, // [23:38] is the sub-list for method output_type
+	8,  // [8:23] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
 	8,  // [8:8] is the sub-list for extension extendee
 	0,  // [0:8] is the sub-list for field type_name
@@ -2138,7 +2273,7 @@ func file_api_rulego_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_rulego_v1_admin_proto_rawDesc), len(file_api_rulego_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   30,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

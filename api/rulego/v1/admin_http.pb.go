@@ -28,6 +28,7 @@ const OperationAdminDeleteMcpConfig = "/rulego.v1.Admin/DeleteMcpConfig"
 const OperationAdminListLlmConfigs = "/rulego.v1.Admin/ListLlmConfigs"
 const OperationAdminListMcpConfigs = "/rulego.v1.Admin/ListMcpConfigs"
 const OperationAdminListSkills = "/rulego.v1.Admin/ListSkills"
+const OperationAdminRunTerminal = "/rulego.v1.Admin/RunTerminal"
 const OperationAdminTestMcpConfig = "/rulego.v1.Admin/TestMcpConfig"
 const OperationAdminUpdateLlmConfig = "/rulego.v1.Admin/UpdateLlmConfig"
 const OperationAdminUpdateLlmModelEntry = "/rulego.v1.Admin/UpdateLlmModelEntry"
@@ -44,7 +45,9 @@ type AdminHTTPServer interface {
 	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
 	ListMcpConfigs(context.Context, *ListMcpConfigsRequest) (*ListMcpConfigsReply, error)
 	ListSkills(context.Context, *ListSkillsRequest) (*ListSkillsReply, error)
-	// TestMcpConfig TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	// RunTerminal RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+	RunTerminal(context.Context, *RunTerminalRequest) (*RunTerminalReply, error)
+	// TestMcpConfig TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
 	TestMcpConfig(context.Context, *TestMcpConfigRequest) (*TestMcpConfigReply, error)
 	UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error)
 	UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error)
@@ -68,6 +71,7 @@ func RegisterAdminHTTPServer(s *http.Server, srv AdminHTTPServer) {
 	r.POST("/api/v1/admin/llm-configs/{config_id}/models", _Admin_CreateLlmModelEntry0_HTTP_Handler(srv))
 	r.PUT("/api/v1/admin/llm-model-entries/{id}", _Admin_UpdateLlmModelEntry0_HTTP_Handler(srv))
 	r.DELETE("/api/v1/admin/llm-model-entries/{id}", _Admin_DeleteLlmModelEntry0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/terminal/run", _Admin_RunTerminal0_HTTP_Handler(srv))
 }
 
 func _Admin_ListSkills0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
@@ -384,6 +388,28 @@ func _Admin_DeleteLlmModelEntry0_HTTP_Handler(srv AdminHTTPServer) func(ctx http
 	}
 }
 
+func _Admin_RunTerminal0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in RunTerminalRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminRunTerminal)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.RunTerminal(ctx, req.(*RunTerminalRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*RunTerminalReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type AdminHTTPClient interface {
 	CreateLlmConfig(ctx context.Context, req *CreateLlmConfigRequest, opts ...http.CallOption) (rsp *LlmConfigItem, err error)
 	CreateLlmModelEntry(ctx context.Context, req *CreateLlmModelEntryRequest, opts ...http.CallOption) (rsp *LlmModelEntryItem, err error)
@@ -394,7 +420,9 @@ type AdminHTTPClient interface {
 	ListLlmConfigs(ctx context.Context, req *ListLlmConfigsRequest, opts ...http.CallOption) (rsp *ListLlmConfigsReply, err error)
 	ListMcpConfigs(ctx context.Context, req *ListMcpConfigsRequest, opts ...http.CallOption) (rsp *ListMcpConfigsReply, err error)
 	ListSkills(ctx context.Context, req *ListSkillsRequest, opts ...http.CallOption) (rsp *ListSkillsReply, err error)
-	// TestMcpConfig TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	// RunTerminal RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+	RunTerminal(ctx context.Context, req *RunTerminalRequest, opts ...http.CallOption) (rsp *RunTerminalReply, err error)
+	// TestMcpConfig TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
 	TestMcpConfig(ctx context.Context, req *TestMcpConfigRequest, opts ...http.CallOption) (rsp *TestMcpConfigReply, err error)
 	UpdateLlmConfig(ctx context.Context, req *UpdateLlmConfigRequest, opts ...http.CallOption) (rsp *UpdateLlmConfigReply, err error)
 	UpdateLlmModelEntry(ctx context.Context, req *UpdateLlmModelEntryRequest, opts ...http.CallOption) (rsp *UpdateLlmModelEntryReply, err error)
@@ -527,7 +555,21 @@ func (c *AdminHTTPClientImpl) ListSkills(ctx context.Context, in *ListSkillsRequ
 	return &out, nil
 }
 
-// TestMcpConfig TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+// RunTerminal RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+func (c *AdminHTTPClientImpl) RunTerminal(ctx context.Context, in *RunTerminalRequest, opts ...http.CallOption) (*RunTerminalReply, error) {
+	var out RunTerminalReply
+	pattern := "/api/v1/admin/terminal/run"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminRunTerminal))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// TestMcpConfig TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
 func (c *AdminHTTPClientImpl) TestMcpConfig(ctx context.Context, in *TestMcpConfigRequest, opts ...http.CallOption) (*TestMcpConfigReply, error) {
 	var out TestMcpConfigReply
 	pattern := "/api/v1/admin/mcps/{id}/test"

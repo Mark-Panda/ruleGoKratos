@@ -7,12 +7,14 @@ toolchain go1.24.10
 require (
 	github.com/cloudwego/eino v0.8.9
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.12
+	github.com/creack/pty v1.1.24
 	github.com/envoyproxy/protoc-gen-validate v1.2.1
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/gnostic v0.7.1
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jinzhu/copier v0.4.0
 	github.com/mark3labs/mcp-go v0.18.0
 	github.com/rulego/rulego v0.35.2
@@ -77,7 +79,6 @@ require (
 	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect

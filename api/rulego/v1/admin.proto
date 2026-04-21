@@ -100,6 +100,14 @@ service Admin {
       delete: "/api/v1/admin/llm-model-entries/{id}"
     };
   }
+
+  // RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+  rpc RunTerminal (RunTerminalRequest) returns (RunTerminalReply) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/terminal/run"
+      body: "*"
+    };
+  }
 }
 
 message ListSkillsRequest {}
@@ -193,6 +201,18 @@ message TestMcpConfigReply {
   repeated string tool_names = 3 [json_name = "toolNames"];
   string server_name = 4 [json_name = "serverName"];
   string protocol_version = 5 [json_name = "protocolVersion"];
+}
+
+message RunTerminalRequest {
+  string command = 1;
+  string cwd = 2;
+}
+
+message RunTerminalReply {
+  int32 exit_code = 1 [json_name = "exitCode"];
+  string stdout = 2;
+  string stderr = 3;
+  string diagnostic = 4;
 }
 
 message ListLlmConfigsRequest {}

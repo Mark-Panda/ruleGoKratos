@@ -13,6 +13,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconBranch,
+  IconDesktop,
 } from '@douyinfe/semi-icons';
 
 import { WorkflowSection } from './sections/WorkflowSection';
@@ -23,6 +24,7 @@ import { AgentSection } from './sections/AgentSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
 import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
 import { AgentPlaygroundPage } from '../agent-playground';
+import { TerminalSection } from './sections/TerminalSection';
 
 type MenuKey =
   | 'intro'
@@ -36,6 +38,7 @@ type MenuKey =
   | 'agent-models'
   | 'agent-playground'
   | 'agent-profiles'
+  | 'admin-terminal'
   | 'engine'
   | 'component'
   | 'agent';
@@ -53,10 +56,12 @@ const MENU_KEYS: MenuKey[] = [
   'agent-models',
   'agent-playground',
   'agent-profiles',
+  'admin-terminal',
 ];
 
 function getMenuFromHash(h: string): MenuKey {
   if (h === '#/' || h === '' || h === '#') return 'intro';
+  if (h.startsWith('#/terminal')) return 'admin-terminal';
   if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
   if (h.startsWith('#/agent/skills')) return 'agent-skills';
   if (h.startsWith('#/agent/models')) return 'agent-models';
@@ -81,6 +86,7 @@ function setHashForMenu(key: MenuKey) {
   else if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
   else if (key === 'agent-playground') window.location.hash = '#/playground';
   else if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
+  else if (key === 'admin-terminal') window.location.hash = '#/terminal';
 }
 
 export const AdminPanel: React.FC = () => {
@@ -126,6 +132,7 @@ export const AdminPanel: React.FC = () => {
     if (key === 'agent-models') return <AgentSection view="models" />;
     if (key === 'agent-mcp') return <AgentSection view="mcps" />;
     if (key === 'agent-playground') return <AgentPlaygroundPage />;
+    if (key === 'admin-terminal') return <TerminalSection />;
     if (key === 'component-rules') return <ComponentsSection view="rules" />;
     return <ComponentsSection view="installed" />;
   };
@@ -154,6 +161,8 @@ export const AdminPanel: React.FC = () => {
         return 'Agent Playground';
       case 'agent-profiles':
         return 'Agent 配置';
+      case 'admin-terminal':
+        return '终端';
       default:
         return 'Code 助手';
     }
@@ -175,6 +184,7 @@ export const AdminPanel: React.FC = () => {
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
     if (activeMenu === 'intro') return '工作台';
     if (activeMenu === 'agent-playground' || activeMenu === 'agent-profiles') return '智能体';
+    if (activeMenu === 'admin-terminal') return '运维';
     return '系统';
   };
 
@@ -249,6 +259,7 @@ export const AdminPanel: React.FC = () => {
               { itemKey: 'intro', text: 'Code 助手', icon: <IconHome /> },
               { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <IconUser /> },
               { itemKey: 'agent-playground', text: 'Agent Playground', icon: <IconBranch /> },
+              { itemKey: 'admin-terminal', text: '终端', icon: <IconDesktop /> },
               {
                 text: '工作流引擎',
                 itemKey: 'engine',

@@ -1,12 +1,14 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/playground/agentpool"
@@ -290,6 +292,121 @@ func (s *AdminService) TestMcpConfig(ctx context.Context, req *v1.TestMcpConfigR
 		ServerName:       serverName,
 		ProtocolVersion:  protoVer,
 	}, nil
+}
+
+const (
+	terminalMaxCommandLen = 8000
+	terminalMaxOutputEach = 256 * 1024
+	terminalExecTimeout   = 120 * time.Second
+)
+
+// RunTerminal 在服务端以 sh -c 执行命令；cwd 限制在 /app 与配置的 Agent 工作区内。
+func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalRequest) (*v1.RunTerminalReply, error) {
+	cmd := strings.TrimSpace(req.GetCommand())
+	if cmd == "" {
+		return nil, errors.New("command 不能为空")
+	}
+	if len(cmd) > terminalMaxCommandLen {
+		return nil, fmt.Errorf("command 超过 %d 字符", terminalMaxCommandLen)
+	}
+	cwd, err := s.resolveTerminalCwd(req.GetCwd())
+	if err != nil {
+		return nil, err
+	}
+	execCtx, cancel := context.WithTimeout(ctx, terminalExecTimeout)
+	defer cancel()
+	c := exec.CommandContext(execCtx, "sh", "-c", cmd)
+	c.Dir = cwd
+	var stdout, stderr bytes.Buffer
+	c.Stdout = &stdout
+	c.Stderr = &stderr
+	runErr := c.Run()
+	outStr := truncateTerminalOutput(stdout.String())
+	errStr := truncateTerminalOutput(stderr.String())
+	exit := int32(0)
+	if runErr != nil {
+		if errors.Is(runErr, context.DeadlineExceeded) || errors.Is(execCtx.Err(), context.DeadlineExceeded) {
+			return &v1.RunTerminalReply{
+				ExitCode:    -1,
+				Stdout:      outStr,
+				Stderr:      errStr,
+				Diagnostic:  "命令执行超时（120s）",
+			}, nil
+		}
+		var ee *exec.ExitError
+		if errors.As(runErr, &ee) {
+			exit = int32(ee.ExitCode())
+			return &v1.RunTerminalReply{ExitCode: exit, Stdout: outStr, Stderr: errStr}, nil
+		}
+		return &v1.RunTerminalReply{
+			ExitCode:    -1,
+			Stdout:      outStr,
+			Stderr:      errStr,
+			Diagnostic:  runErr.Error(),
+		}, nil
+	}
+	return &v1.RunTerminalReply{ExitCode: exit, Stdout: outStr, Stderr: errStr}, nil
+}
+
+func (s *AdminService) terminalAllowedRoots() []string {
+	seen := make(map[string]struct{})
+	add := func(p string) {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return
+		}
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return
+		}
+		seen[filepath.Clean(abs)] = struct{}{}
+	}
+	add("/app")
+	if s.config != nil && s.config.Agent != nil {
+		add(s.config.Agent.WorkspaceRoot)
+	}
+	out := make([]string, 0, len(seen))
+	for k := range seen {
+		out = append(out, k)
+	}
+	return out
+}
+
+func (s *AdminService) resolveTerminalCwd(raw string) (string, error) {
+	cwd := strings.TrimSpace(raw)
+	if cwd == "" {
+		cwd = "/app"
+	}
+	if !filepath.IsAbs(cwd) {
+		return "", errors.New("cwd 须为绝对路径")
+	}
+	abs := filepath.Clean(cwd)
+	st, err := os.Stat(abs)
+	if err != nil {
+		return "", fmt.Errorf("cwd 不可用: %w", err)
+	}
+	if !st.IsDir() {
+		return "", errors.New("cwd 不是目录")
+	}
+	for _, root := range s.terminalAllowedRoots() {
+		rc := filepath.Clean(root)
+		if abs == rc || strings.HasPrefix(abs, rc+string(filepath.Separator)) {
+			return abs, nil
+		}
+	}
+	return "", errors.New("cwd 不在允许目录内（一般为 /app 或配置的 Agent 工作区）")
+}
+
+// ValidateTerminalCwd 校验终端工作目录（与 RunTerminal 白名单一致），供 WebSocket 交互式终端等复用。
+func (s *AdminService) ValidateTerminalCwd(raw string) (string, error) {
+	return s.resolveTerminalCwd(raw)
+}
+
+func truncateTerminalOutput(s string) string {
+	if len(s) <= terminalMaxOutputEach {
+		return s
+	}
+	return s[:terminalMaxOutputEach] + "\n...(truncated)"
 }
 
 func (s *AdminService) ListLlmConfigs(ctx context.Context, _ *v1.ListLlmConfigsRequest) (*v1.ListLlmConfigsReply, error) {

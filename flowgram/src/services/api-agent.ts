@@ -134,6 +134,24 @@ export const deleteMCPConfig = (id: number) =>
 export const testMCPConfig = (id: number) =>
   requestJSON<TestMcpConfigReply>(`/admin/mcps/${id}/test`, { method: 'POST', body: {} });
 
+/** POST /admin/terminal/run：服务端执行 shell（cwd 须为白名单绝对路径，空则 /app） */
+export interface RunTerminalReply {
+  exitCode?: number;
+  exit_code?: number;
+  stdout?: string;
+  stderr?: string;
+  diagnostic?: string;
+}
+
+export const runTerminal = async (command: string, cwd?: string): Promise<RunTerminalReply> => {
+  const raw = await requestJSON<RunTerminalReply>('/admin/terminal/run', {
+    method: 'POST',
+    body: { command, cwd: cwd ?? '' },
+  });
+  const exit = raw.exitCode ?? raw.exit_code;
+  return { ...raw, exitCode: exit != null ? Number(exit) : 0 };
+};
+
 /** 一条模型记录（隶属于某个 LLM 配置，共享凭证） */
 export interface LlmModelEntryItem {
   id: number;
