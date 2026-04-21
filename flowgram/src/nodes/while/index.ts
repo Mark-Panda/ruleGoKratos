@@ -19,6 +19,7 @@ export const WhileNodeRegistry: FlowNodeRegistry = {
   meta: {
     defaultPorts: [
       { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
       { type: 'output', location: 'right', portID: OutPutPortType.SuccessPort },
       { type: 'output', location: 'bottom', portID: OutPutPortType.FailurePort },
     ],

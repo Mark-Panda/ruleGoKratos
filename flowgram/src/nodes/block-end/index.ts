@@ -16,7 +16,7 @@ export const BlockEndNodeRegistry: FlowNodeRegistry = {
     copyDisable: true,
     sidebarDisabled: true,
     nodePanelVisible: false,
-    defaultPorts: [{ type: 'input' }],
+    defaultPorts: [{ type: 'input', location: 'left' }],
     size: {
       width: 80,
       height: 80,

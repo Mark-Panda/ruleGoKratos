@@ -17,7 +17,10 @@ export const ConditionNodeRegistry: FlowNodeRegistry = {
       'Connect multiple downstream branches. Only the corresponding branch will be executed if the set conditions are met.',
   },
   meta: {
-    defaultPorts: [{ type: 'input' }],
+    defaultPorts: [
+      { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
+    ],
     // Condition Outputs use dynamic port
     useDynamicPort: true,
     expandable: false, // disable expanded

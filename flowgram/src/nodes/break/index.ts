@@ -13,7 +13,10 @@ let index = 0;
 export const BreakNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.Break,
   meta: {
-    defaultPorts: [{ type: 'input' }],
+    defaultPorts: [
+      { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
+    ],
     sidebarDisabled: true,
     size: {
       width: 360,

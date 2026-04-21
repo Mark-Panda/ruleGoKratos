@@ -14,7 +14,10 @@ export const EndNodeRegistry: FlowNodeRegistry = {
     deleteDisable: false,
     copyDisable: true,
     nodePanelVisible: true,
-    defaultPorts: [{ type: 'input' }],
+    defaultPorts: [
+      { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
+    ],
     size: {
       width: 360,
       height: 211,

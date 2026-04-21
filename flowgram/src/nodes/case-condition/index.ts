@@ -18,6 +18,7 @@ export const CaseConditionNodeRegistry: FlowNodeRegistry = {
   meta: {
     defaultPorts: [
       { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
       { type: 'output', location: 'bottom', portID: OutPutPortType.FailurePort },
     ],
     useDynamicPort: true,

@@ -148,7 +148,20 @@ export function useEditorProps(
          * 线条环检测，不允许连接到前面的节点
          * Line loop detection, which is not allowed to connect to the node in front of it
          */
-        return !fromPort.node.lines.allInputNodes.includes(toPort.node);
+        if (fromPort.node.lines.allInputNodes.includes(toPort.node)) {
+          return false;
+        }
+        /**
+         * 左侧与顶部均为同一逻辑入点：除 Join（多路合并）外，同一节点只允许一条入边。
+         */
+        if (
+          toPort.portType === 'input' &&
+          toPort.node.flowNodeType !== WorkflowNodeType.Join &&
+          toPort.node.lines.inputLines.length > 0
+        ) {
+          return false;
+        }
+        return true;
       },
       /**
        * Check whether the line can be deleted, this triggers on the default shortcut `Bakspace` or `Delete`

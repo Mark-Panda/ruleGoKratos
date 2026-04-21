@@ -55,3 +55,6 @@ export enum OutPutPortType {
   SuccessPort = 'Success',
   FailurePort = 'Failure',
 }
+
+/** 画布入口点旁展示的输入端标识文案 */
+export const InputPortLabel = '输入';

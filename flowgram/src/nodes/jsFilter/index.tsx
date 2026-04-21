@@ -25,6 +25,7 @@ export const JsFilterNodeRegistry: FlowNodeRegistry = {
     // 设置端口：一个输入，两个输出（success / failed）
     defaultPorts: [
       { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
       { type: 'output', location: 'right', portID: 'True' },
       { type: 'output', location: 'bottom', portID: 'False' },
     ],
