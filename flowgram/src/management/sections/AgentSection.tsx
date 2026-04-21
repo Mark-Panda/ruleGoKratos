@@ -19,6 +19,7 @@ import {
   listLlmConfigs,
   listSkills,
   type SkillItem,
+  testMCPConfig,
   updateMCPConfig,
   updateLlmConfig,
   updateLlmModelEntry,
@@ -33,6 +34,10 @@ const defaultMCPForm: MCPConfigPayload = {
   headers: {},
   enabled: true,
   description: '',
+  transport: 'http',
+  stdio_command: '',
+  stdio_args_json: '[]',
+  stdio_env_json: '{}',
 };
 
 const defaultLlmConfigForm: LlmConfigPayload = {
@@ -67,6 +72,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
   const [mcpEditing, setMcpEditing] = useState<MCPConfigItem | null>(null);
   const [mcpForm, setMcpForm] = useState<MCPConfigPayload>(defaultMCPForm);
   const [headersText, setHeadersText] = useState('{}');
+  const [mcpTestLoadingId, setMcpTestLoadingId] = useState<number | null>(null);
 
   const [llmConfigList, setLlmConfigList] = useState<LlmConfigItem[]>([]);
   const [llmLoading, setLlmLoading] = useState(false);
@@ -147,22 +153,89 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
 
   const openEditMCP = (item: MCPConfigItem) => {
     const headers = item.headers || {};
+    const tr = (item.transport || 'http').toLowerCase() === 'stdio' ? 'stdio' : 'http';
     setMcpEditing(item);
     setMcpForm({
       name: item.name,
       server: item.server,
-      endpoint: item.endpoint,
+      endpoint: item.endpoint || '',
       headers,
       enabled: !!item.enabled,
       description: item.description || '',
+      transport: tr,
+      stdio_command: item.stdio_command || '',
+      stdio_args_json: item.stdio_args_json?.trim() ? item.stdio_args_json : '[]',
+      stdio_env_json: item.stdio_env_json?.trim() ? item.stdio_env_json : '{}',
     });
     setHeadersText(JSON.stringify(headers, null, 2));
     setMcpModalVisible(true);
   };
 
+  const runMcpTest = async (r: MCPConfigItem) => {
+    setMcpTestLoadingId(r.id);
+    try {
+      const res = await testMCPConfig(r.id);
+      if (res.ok) {
+        Toast.success({ content: res.message || '测试成功' });
+        Modal.info({
+          title: 'MCP 测试成功',
+          width: 640,
+          content: (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Typography.Text type="secondary">{res.message}</Typography.Text>
+              {res.serverName ? (
+                <Typography.Text>
+                  服务端名称：<Typography.Text strong>{res.serverName}</Typography.Text>
+                </Typography.Text>
+              ) : null}
+              {res.protocolVersion ? (
+                <Typography.Text>
+                  协议版本：<Typography.Text code>{res.protocolVersion}</Typography.Text>
+                </Typography.Text>
+              ) : null}
+              {res.toolNames && res.toolNames.length > 0 ? (
+                <div>
+                  <Typography.Text strong>工具列表（{res.toolNames.length}）</Typography.Text>
+                  <pre
+                    style={{
+                      marginTop: 8,
+                      maxHeight: 280,
+                      overflow: 'auto',
+                      padding: 8,
+                      background: 'rgba(6,7,9,0.04)',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  >
+                    {res.toolNames.join('\n')}
+                  </pre>
+                </div>
+              ) : null}
+            </div>
+          ),
+        });
+      } else {
+        Toast.error({ content: res.message || '测试失败' });
+      }
+    } catch (e) {
+      Toast.error({ content: String((e as Error)?.message ?? e) });
+    } finally {
+      setMcpTestLoadingId(null);
+    }
+  };
+
   const submitMCP = async () => {
-    if (!mcpForm.name.trim() || !mcpForm.server.trim() || !mcpForm.endpoint.trim()) {
-      Toast.warning({ content: '请填写 name/server/endpoint' });
+    if (!mcpForm.name.trim() || !mcpForm.server.trim()) {
+      Toast.warning({ content: '请填写名称与 Server' });
+      return;
+    }
+    const tr = (mcpForm.transport || 'http').toLowerCase() === 'stdio' ? 'stdio' : 'http';
+    if (tr === 'http' && !mcpForm.endpoint.trim()) {
+      Toast.warning({ content: 'HTTP 模式请填写 Endpoint' });
+      return;
+    }
+    if (tr === 'stdio' && !mcpForm.stdio_command?.trim()) {
+      Toast.warning({ content: 'stdio 模式请填写启动命令（stdio_command）' });
       return;
     }
     let parsedHeaders: Record<string, any> = {};
@@ -172,7 +245,37 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
       Toast.error({ content: 'headers 必须是合法 JSON' });
       return;
     }
-    const payload: MCPConfigPayload = { ...mcpForm, headers: parsedHeaders };
+    if (tr === 'stdio') {
+      try {
+        const argsRaw = mcpForm.stdio_args_json?.trim() || '[]';
+        const args = JSON.parse(argsRaw);
+        if (!Array.isArray(args) || !args.every((x) => typeof x === 'string')) {
+          Toast.error({ content: 'stdio_args_json 须为 JSON 字符串数组，例如 ["-y","@modelcontextprotocol/server-filesystem"]' });
+          return;
+        }
+      } catch {
+        Toast.error({ content: 'stdio_args_json 须为合法 JSON 数组' });
+        return;
+      }
+      try {
+        const envRaw = mcpForm.stdio_env_json?.trim() || '{}';
+        const env = JSON.parse(envRaw);
+        if (env === null || typeof env !== 'object' || Array.isArray(env)) {
+          Toast.error({ content: 'stdio_env_json 须为 JSON 对象' });
+          return;
+        }
+      } catch {
+        Toast.error({ content: 'stdio_env_json 须为合法 JSON 对象' });
+        return;
+      }
+    }
+    const payload: MCPConfigPayload = {
+      ...mcpForm,
+      transport: tr,
+      headers: parsedHeaders,
+      stdio_args_json: mcpForm.stdio_args_json?.trim() || '[]',
+      stdio_env_json: mcpForm.stdio_env_json?.trim() || '{}',
+    };
     setMcpSubmitting(true);
     try {
       if (mcpEditing) {
@@ -419,7 +522,22 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
               columns={[
                 { title: '名称', dataIndex: 'name', width: 180 },
                 { title: 'Server', dataIndex: 'server', width: 180 },
-                { title: 'Endpoint', dataIndex: 'endpoint' },
+                {
+                  title: '传输',
+                  width: 88,
+                  render: (_, r) =>
+                    String(r.transport || 'http').toLowerCase() === 'stdio' ? 'stdio' : 'http',
+                },
+                {
+                  title: 'Endpoint / 命令',
+                  ellipsis: true,
+                  render: (_, r) => {
+                    if (String(r.transport || 'http').toLowerCase() === 'stdio') {
+                      return r.stdio_command || '—';
+                    }
+                    return r.endpoint || '—';
+                  },
+                },
                 {
                   title: '状态',
                   width: 100,
@@ -427,9 +545,16 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                 },
                 {
                   title: '操作',
-                  width: 180,
+                  width: 260,
                   render: (_, r) => (
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button
+                        size="small"
+                        loading={mcpTestLoadingId === r.id}
+                        onClick={() => runMcpTest(r)}
+                      >
+                        测试
+                      </Button>
                       <Button size="small" onClick={() => openEditMCP(r)}>
                         编辑
                       </Button>
@@ -781,13 +906,58 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
           <Input
             value={mcpForm.server}
             onChange={(v) => setMcpForm({ ...mcpForm, server: String(v) })}
-            placeholder="Server 名称"
+            placeholder="Server 名称（与 Agent 里引用的 MCP server 名一致）"
           />
-          <Input
-            value={mcpForm.endpoint}
-            onChange={(v) => setMcpForm({ ...mcpForm, endpoint: String(v) })}
-            placeholder="Endpoint（例如 https://example.com/mcp）"
-          />
+          <Select
+            value={(mcpForm.transport || 'http').toLowerCase() === 'stdio' ? 'stdio' : 'http'}
+            onChange={(v) =>
+              setMcpForm({
+                ...mcpForm,
+                transport: v === 'stdio' ? 'stdio' : 'http',
+              })
+            }
+          >
+            <Select.Option value="http">HTTP / SSE（远程 URL）</Select.Option>
+            <Select.Option value="stdio">stdio（本机子进程）</Select.Option>
+          </Select>
+          {(mcpForm.transport || 'http').toLowerCase() !== 'stdio' ? (
+            <>
+              <Input
+                value={mcpForm.endpoint}
+                onChange={(v) => setMcpForm({ ...mcpForm, endpoint: String(v) })}
+                placeholder="Endpoint（例如 https://example.com/mcp）"
+              />
+              <TextArea
+                value={headersText}
+                onChange={(v) => setHeadersText(String(v))}
+                autosize={{ minRows: 6, maxRows: 12 }}
+                placeholder='Headers JSON，例如 {"Authorization":"Bearer xxx"}'
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                value={mcpForm.stdio_command}
+                onChange={(v) => setMcpForm({ ...mcpForm, stdio_command: String(v) })}
+                placeholder="启动命令，例如 npx 或 /usr/local/bin/mcp-server"
+              />
+              <TextArea
+                value={mcpForm.stdio_args_json}
+                onChange={(v) => setMcpForm({ ...mcpForm, stdio_args_json: String(v) })}
+                autosize={{ minRows: 3, maxRows: 8 }}
+                placeholder='参数 JSON 数组，例如 ["-y","@modelcontextprotocol/server-filesystem","/tmp"]'
+              />
+              <TextArea
+                value={mcpForm.stdio_env_json}
+                onChange={(v) => setMcpForm({ ...mcpForm, stdio_env_json: String(v) })}
+                autosize={{ minRows: 3, maxRows: 8 }}
+                placeholder='环境变量 JSON 对象，例如 {} 或 {"NODE_PATH":"/app/node_modules"}'
+              />
+              <Typography.Text type="tertiary" size="small">
+                stdio 由运行本服务的机器拉起子进程；「测试」会真实启动进程并列出工具（超时 60s）。
+              </Typography.Text>
+            </>
+          )}
           <Select
             value={mcpForm.enabled ? '1' : '0'}
             onChange={(v) => setMcpForm({ ...mcpForm, enabled: v === '1' })}
@@ -795,12 +965,6 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
             <Select.Option value="1">启用</Select.Option>
             <Select.Option value="0">禁用</Select.Option>
           </Select>
-          <TextArea
-            value={headersText}
-            onChange={(v) => setHeadersText(String(v))}
-            autosize={{ minRows: 6, maxRows: 12 }}
-            placeholder='Headers JSON，例如 {"Authorization":"Bearer xxx"}'
-          />
           <TextArea
             value={mcpForm.description}
             onChange={(v) => setMcpForm({ ...mcpForm, description: String(v) })}

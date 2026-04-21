@@ -5,12 +5,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/playground/agentpool"
 	"ruleGoKratos/internal/conf"
 	"ruleGoKratos/internal/data/dao"
+	"ruleGoKratos/internal/mcpprobe"
 	"sort"
 	"strings"
 	"time"
@@ -30,11 +32,15 @@ type AdminService struct {
 }
 
 type mcpConfigPayload struct {
-	Name        string
-	Server      string
-	Endpoint    string
-	Enabled     bool
-	Description string
+	Name          string
+	Server        string
+	Endpoint      string
+	Enabled       bool
+	Description   string
+	Transport     string
+	StdioCommand  string
+	StdioArgsJSON string
+	StdioEnvJSON  string
 }
 
 func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpool.AgentPoolService) *AdminService {
@@ -130,26 +136,35 @@ func (s *AdminService) ListMcpConfigs(ctx context.Context, _ *v1.ListMcpConfigsR
 
 func (s *AdminService) CreateMcpConfig(ctx context.Context, req *v1.CreateMcpConfigRequest) (*v1.McpConfigItem, error) {
 	payload := mcpConfigPayload{
-		Name:        req.GetName(),
-		Server:      req.GetServer(),
-		Endpoint:    req.GetEndpoint(),
-		Enabled:     req.GetEnabled(),
-		Description: req.GetDescription(),
+		Name:          req.GetName(),
+		Server:        req.GetServer(),
+		Endpoint:      req.GetEndpoint(),
+		Enabled:       req.GetEnabled(),
+		Description:   req.GetDescription(),
+		Transport:     req.GetTransport(),
+		StdioCommand:  req.GetStdioCommand(),
+		StdioArgsJSON: req.GetStdioArgsJson(),
+		StdioEnvJSON:  req.GetStdioEnvJson(),
 	}
+	normalizeMCPPayload(&payload)
 	if err := validateMCPPayload(payload); err != nil {
 		return nil, err
 	}
 	headersJSON := normalizeHeaders(req.GetHeaders())
 	now := time.Now()
 	row := dao.MCPConfig{
-		Name:        strings.TrimSpace(payload.Name),
-		Server:      strings.TrimSpace(payload.Server),
-		Endpoint:    strings.TrimSpace(payload.Endpoint),
-		HeadersJSON: headersJSON,
-		Enabled:     payload.Enabled,
-		Description: strings.TrimSpace(payload.Description),
-		CreatedAt:   &now,
-		UpdatedAt:   &now,
+		Name:          strings.TrimSpace(payload.Name),
+		Server:        strings.TrimSpace(payload.Server),
+		Endpoint:      strings.TrimSpace(payload.Endpoint),
+		HeadersJSON:   headersJSON,
+		Transport:     payload.Transport,
+		StdioCommand:  strings.TrimSpace(payload.StdioCommand),
+		StdioArgsJSON: payload.StdioArgsJSON,
+		StdioEnvJSON:  payload.StdioEnvJSON,
+		Enabled:       payload.Enabled,
+		Description:   strings.TrimSpace(payload.Description),
+		CreatedAt:     &now,
+		UpdatedAt:     &now,
 	}
 	if err := row.Create(ctx); err != nil {
 		return nil, err
@@ -162,24 +177,33 @@ func (s *AdminService) UpdateMcpConfig(ctx context.Context, req *v1.UpdateMcpCon
 		return nil, errors.New("id不合法")
 	}
 	payload := mcpConfigPayload{
-		Name:        req.GetName(),
-		Server:      req.GetServer(),
-		Endpoint:    req.GetEndpoint(),
-		Enabled:     req.GetEnabled(),
-		Description: req.GetDescription(),
+		Name:          req.GetName(),
+		Server:        req.GetServer(),
+		Endpoint:      req.GetEndpoint(),
+		Enabled:       req.GetEnabled(),
+		Description:   req.GetDescription(),
+		Transport:     req.GetTransport(),
+		StdioCommand:  req.GetStdioCommand(),
+		StdioArgsJSON: req.GetStdioArgsJson(),
+		StdioEnvJSON:  req.GetStdioEnvJson(),
 	}
+	normalizeMCPPayload(&payload)
 	if err := validateMCPPayload(payload); err != nil {
 		return nil, err
 	}
 	headersJSON := normalizeHeaders(req.GetHeaders())
 	err := dao.NewMCPConfig().Updates(ctx, map[string]interface{}{"id": req.GetId()}, map[string]interface{}{
-		"name":         strings.TrimSpace(payload.Name),
-		"server":       strings.TrimSpace(payload.Server),
-		"endpoint":     strings.TrimSpace(payload.Endpoint),
-		"headers_json": headersJSON,
-		"enabled":      payload.Enabled,
-		"description":  strings.TrimSpace(payload.Description),
-		"updated_at":   time.Now(),
+		"name":            strings.TrimSpace(payload.Name),
+		"server":          strings.TrimSpace(payload.Server),
+		"endpoint":        strings.TrimSpace(payload.Endpoint),
+		"headers_json":    headersJSON,
+		"transport":       payload.Transport,
+		"stdio_command":   strings.TrimSpace(payload.StdioCommand),
+		"stdio_args_json": payload.StdioArgsJSON,
+		"stdio_env_json":  payload.StdioEnvJSON,
+		"enabled":         payload.Enabled,
+		"description":     strings.TrimSpace(payload.Description),
+		"updated_at":      time.Now(),
 	})
 	if err != nil {
 		return nil, err
@@ -195,6 +219,77 @@ func (s *AdminService) DeleteMcpConfig(ctx context.Context, req *v1.DeleteMcpCon
 		return nil, err
 	}
 	return &v1.DeleteMcpConfigReply{}, nil
+}
+
+func (s *AdminService) TestMcpConfig(ctx context.Context, req *v1.TestMcpConfigRequest) (*v1.TestMcpConfigReply, error) {
+	if req.GetId() <= 0 {
+		return nil, errors.New("id不合法")
+	}
+	rows, err := dao.NewMCPConfig().FindByIDs(ctx, []int64{req.GetId()})
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, errors.New("MCP 配置不存在")
+	}
+	row := rows[0]
+	if strings.EqualFold(strings.TrimSpace(row.Transport), "stdio") {
+		cmd := strings.TrimSpace(row.StdioCommand)
+		if cmd == "" {
+			return &v1.TestMcpConfigReply{
+				Ok:      false,
+				Message: "stdio 模式须配置 stdio_command",
+			}, nil
+		}
+		args, err := stdioArgsJSONToSlice(row.StdioArgsJSON)
+		if err != nil {
+			return &v1.TestMcpConfigReply{
+				Ok:      false,
+				Message: fmt.Sprintf("stdio_args_json 解析失败: %v", err),
+			}, nil
+		}
+		env, err := stdioEnvJSONToStringMap(row.StdioEnvJSON)
+		if err != nil {
+			return &v1.TestMcpConfigReply{
+				Ok:      false,
+				Message: fmt.Sprintf("stdio_env_json 解析失败: %v", err),
+			}, nil
+		}
+		// stdio 首次 npx/uv 拉依赖、冷启动常超过 60s；与 mcpbridge 长调用一致给足时间
+		probeCtx, cancel := context.WithTimeout(ctx, 180*time.Second)
+		defer cancel()
+		serverName, protoVer, tools, probeErr := mcpprobe.ProbeStdio(probeCtx, cmd, args, env)
+		if probeErr != nil {
+			return &v1.TestMcpConfigReply{
+				Ok:      false,
+				Message: probeErr.Error(),
+			}, nil
+		}
+		return &v1.TestMcpConfigReply{
+			Ok:      true,
+			Message: fmt.Sprintf("stdio 子进程启动成功，共列出 %d 个工具", len(tools)),
+			ToolNames:        tools,
+			ServerName:       serverName,
+			ProtocolVersion:  protoVer,
+		}, nil
+	}
+	headers := headersJSONToStringMap(row.HeadersJSON)
+	probeCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	defer cancel()
+	serverName, protoVer, tools, probeErr := mcpprobe.Probe(probeCtx, row.Endpoint, headers)
+	if probeErr != nil {
+		return &v1.TestMcpConfigReply{
+			Ok:      false,
+			Message: probeErr.Error(),
+		}, nil
+	}
+	return &v1.TestMcpConfigReply{
+		Ok:               true,
+		Message:          fmt.Sprintf("连接成功，共列出 %d 个工具", len(tools)),
+		ToolNames:        tools,
+		ServerName:       serverName,
+		ProtocolVersion:  protoVer,
+	}, nil
 }
 
 func (s *AdminService) ListLlmConfigs(ctx context.Context, _ *v1.ListLlmConfigsRequest) (*v1.ListLlmConfigsReply, error) {
@@ -446,6 +541,21 @@ func toLlmConfigProto(c dao.LLMConfig, entries []dao.LLMModelEntry) *v1.LlmConfi
 	}
 }
 
+func normalizeMCPPayload(p *mcpConfigPayload) {
+	if strings.TrimSpace(p.Transport) == "" {
+		p.Transport = "http"
+	}
+	p.Transport = strings.ToLower(strings.TrimSpace(p.Transport))
+	if p.Transport == "stdio" {
+		if strings.TrimSpace(p.StdioArgsJSON) == "" {
+			p.StdioArgsJSON = "[]"
+		}
+		if strings.TrimSpace(p.StdioEnvJSON) == "" {
+			p.StdioEnvJSON = "{}"
+		}
+	}
+}
+
 func validateMCPPayload(req mcpConfigPayload) error {
 	if strings.TrimSpace(req.Name) == "" {
 		return errors.New("name不能为空")
@@ -453,8 +563,25 @@ func validateMCPPayload(req mcpConfigPayload) error {
 	if strings.TrimSpace(req.Server) == "" {
 		return errors.New("server不能为空")
 	}
-	if strings.TrimSpace(req.Endpoint) == "" {
-		return errors.New("endpoint不能为空")
+	switch req.Transport {
+	case "http":
+		if strings.TrimSpace(req.Endpoint) == "" {
+			return errors.New("http 模式 endpoint 不能为空")
+		}
+	case "stdio":
+		if strings.TrimSpace(req.StdioCommand) == "" {
+			return errors.New("stdio 模式 stdio_command 不能为空")
+		}
+		var args []string
+		if err := json.Unmarshal([]byte(req.StdioArgsJSON), &args); err != nil {
+			return fmt.Errorf("stdio_args_json 须为 JSON 字符串数组: %w", err)
+		}
+		var envObj map[string]interface{}
+		if err := json.Unmarshal([]byte(req.StdioEnvJSON), &envObj); err != nil {
+			return fmt.Errorf("stdio_env_json 须为 JSON 对象: %w", err)
+		}
+	default:
+		return errors.New("transport 须为 http 或 stdio")
 	}
 	return nil
 }
@@ -482,15 +609,19 @@ func toMCPProto(it dao.MCPConfig) *v1.McpConfigItem {
 		updatedAt = it.UpdatedAt.Format(time.RFC3339Nano)
 	}
 	return &v1.McpConfigItem{
-		Id:          it.ID,
-		Name:        it.Name,
-		Server:      it.Server,
-		Endpoint:    it.Endpoint,
-		Headers:     parseHeadersToStruct(it.HeadersJSON),
-		Enabled:     it.Enabled,
-		Description: it.Description,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
+		Id:            it.ID,
+		Name:          it.Name,
+		Server:        it.Server,
+		Endpoint:      it.Endpoint,
+		Headers:       parseHeadersToStruct(it.HeadersJSON),
+		Enabled:       it.Enabled,
+		Description:   it.Description,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+		Transport:     it.Transport,
+		StdioCommand:  it.StdioCommand,
+		StdioArgsJson: it.StdioArgsJSON,
+		StdioEnvJson:  it.StdioEnvJSON,
 	}
 }
 
@@ -504,6 +635,58 @@ func normalizeHeaders(headers *structpb.Struct) string {
 		return "{}"
 	}
 	return string(data)
+}
+
+func stdioArgsJSONToSlice(raw string) ([]string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	var out []string
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func stdioEnvJSONToStringMap(raw string) (map[string]string, error) {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return nil, nil
+	}
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(text), &obj); err != nil {
+		return nil, err
+	}
+	out := make(map[string]string, len(obj))
+	for k, v := range obj {
+		if s, ok := v.(string); ok {
+			out[k] = s
+		} else {
+			out[k] = fmt.Sprint(v)
+		}
+	}
+	return out, nil
+}
+
+func headersJSONToStringMap(raw string) map[string]string {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return nil
+	}
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(text), &obj); err != nil {
+		return nil
+	}
+	out := make(map[string]string, len(obj))
+	for k, v := range obj {
+		if s, ok := v.(string); ok {
+			out[k] = s
+		} else {
+			out[k] = fmt.Sprint(v)
+		}
+	}
+	return out
 }
 
 func parseHeadersToStruct(raw string) *structpb.Struct {

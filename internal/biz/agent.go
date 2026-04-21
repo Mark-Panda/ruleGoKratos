@@ -8,10 +8,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"ruleGoKratos/internal/conf"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	einoopenai "github.com/cloudwego/eino-ext/components/model/openai"
 	"github.com/cloudwego/eino/components/model"
@@ -40,7 +42,9 @@ Vision & multimodal: User turns may include images attached via the chat multimo
 
 Image URLs: If the user pastes HTTPS links to images in the message, the server may fetch them into the same multimodal payload you receive—treat those as viewable images, not as links you must open yourself. Still do not claim you can browse arbitrary sites beyond what is supplied in the conversation payload.
 
-Style: Stay concise; use Markdown with fenced code blocks for code and log excerpts.`
+Style: Stay concise; use Markdown with fenced code blocks for code and log excerpts.
+
+MCP registration (this deployment): MCP entries live in the admin «MCP 配置» table. transport=http: endpoint (SSE-capable MCP URL) plus optional headers JSON. transport=stdio: stdio_command, stdio_args_json (JSON array of strings), stdio_env_json (JSON object), endpoint omitted. The tool save_mcp_server_config writes or updates that table; call_mcp_tool(server, …) matches the row’s server name and runs either HTTP(SSE) or stdio on the RuleGo host. After saving, remind the user to enable the entry, attach it in «Agent 配置» if needed, and use «测试» to verify connectivity.`
 )
 
 type StreamMessage struct {
@@ -136,6 +140,7 @@ type AgentUsecase struct {
 	mcpExecutor        McpExecutor
 	managedLLM         ManagedLLMResolver
 	managedAgentLoader ManagedAgentLoader
+	mcpConfigAdmin     McpConfigAdmin
 	chatModelFunc      func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error)
 }
 
@@ -301,11 +306,93 @@ func (uc *AgentUsecase) appendSkillCatalogToSystemWithFilter(systemPrompt string
 	return b.String()
 }
 
-func sanitizeExternalError(err error) error {
+// UserFacingError 表示错误文案已审阅为不含密钥/路径等敏感信息，可直接展示给调用方。
+type UserFacingError struct {
+	msg string
+}
+
+func (e *UserFacingError) Error() string { return e.msg }
+
+func userFacingError(msg string) error {
+	return &UserFacingError{msg: msg}
+}
+
+const harnessErrDetailMaxRunes = 280
+
+var (
+	reBearerLike     = regexp.MustCompile(`(?i)\bBearer\s+\S+`)
+	reSkOpenAIStyle  = regexp.MustCompile(`\bsk-[a-zA-Z0-9]{10,}\b`)
+	reUnixLikePath   = regexp.MustCompile(`(?:/Users|/home|/var|/tmp)(?:/[\w.-]+)+`)
+	reWinLikePath    = regexp.MustCompile(`\b[A-Za-z]:\\(?:[\w.-]+\\)+[\w.-]+`)
+	reLongOpaqueTok  = regexp.MustCompile(`\b[A-Za-z0-9+/=_-]{64,}\b`)
+)
+
+func redactErrorText(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.Join(strings.Fields(s), " ")
+	s = reBearerLike.ReplaceAllString(s, "Bearer [redacted]")
+	s = reSkOpenAIStyle.ReplaceAllString(s, "sk-[redacted]")
+	s = reUnixLikePath.ReplaceAllString(s, "[path]")
+	s = reWinLikePath.ReplaceAllString(s, "[path]")
+	s = reLongOpaqueTok.ReplaceAllString(s, "[token]")
+	if utf8.RuneCountInString(s) > harnessErrDetailMaxRunes {
+		r := []rune(s)
+		s = string(r[:harnessErrDetailMaxRunes]) + "…"
+	}
+	return s
+}
+
+func harnessStageLabel(stage string) string {
+	switch stage {
+	case "managed_agent":
+		return "托管 Agent 配置"
+	case "workspace_root":
+		return "工作区根路径"
+	case "workspace_mkdir":
+		return "工作区目录"
+	case "init_model":
+		return "模型初始化"
+	case "build_tools":
+		return "工具注册"
+	case "bind_tools":
+		return "工具绑定"
+	case "model_stream":
+		return "模型调用"
+	case "model_stream_recv":
+		return "模型流读取"
+	case "model_stream_concat":
+		return "模型输出合并"
+	case "tool_limit":
+		return "工具沙箱"
+	case "tool_denied":
+		return "工具授权"
+	case "tool_invoke":
+		return "工具执行"
+	case "max_iterations":
+		return "Agent 迭代"
+	default:
+		return "Agent"
+	}
+}
+
+func sanitizeExternalError(stage string, err error) error {
 	if err == nil {
 		return nil
 	}
-	return errors.New("Agent执行失败，请稍后重试")
+	var uf *UserFacingError
+	if errors.As(err, &uf) {
+		return err
+	}
+	label := harnessStageLabel(stage)
+	detail := redactErrorText(err.Error())
+	if detail == "" {
+		return fmt.Errorf("%s失败，请稍后重试", label)
+	}
+	return fmt.Errorf("%s失败：%s", label, detail)
 }
 
 func (uc *AgentUsecase) sanitizeConfig() HarnessConfig {
@@ -350,7 +437,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		enriched, err := uc.enrichHarnessWithManagedAgent(ctx, req)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "managed_agent", err)
-			yield(nil, sanitizeExternalError(err))
+			yield(nil, sanitizeExternalError("managed_agent", err))
 			return
 		}
 		req = enriched
@@ -380,7 +467,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				baseRoot, err := uc.resolveAgentWorkspaceRoot()
 				if err != nil {
 					uc.harnessLogger.LogError(requestID, "workspace_root", err)
-					yield(nil, sanitizeExternalError(err))
+					yield(nil, sanitizeExternalError("workspace_root", err))
 					return
 				}
 				sessionRoot := filepath.Join(baseRoot, sub)
@@ -389,12 +476,12 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				rel, relErr := filepath.Rel(baseClean, sessionRoot)
 				if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 					uc.harnessLogger.LogError(requestID, "workspace_session_dir", errors.New("invalid session path"))
-					yield(nil, sanitizeExternalError(errors.New("会话目录无效")))
+					yield(nil, userFacingError("会话目录无效"))
 					return
 				}
 				if err := os.MkdirAll(sessionRoot, 0o755); err != nil {
 					uc.harnessLogger.LogError(requestID, "workspace_mkdir", err)
-					yield(nil, sanitizeExternalError(err))
+					yield(nil, sanitizeExternalError("workspace_mkdir", err))
 					return
 				}
 				workCtx = withHarnessWorkspaceRoot(ctx, sessionRoot)
@@ -404,14 +491,14 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		einoModel, err := uc.newChatModel(workCtx, req)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "init_model", err)
-			yield(nil, sanitizeExternalError(err))
+			yield(nil, sanitizeExternalError("init_model", err))
 			return
 		}
 
 		toolRegistry, toolInfos, err := uc.resolveToolRegistry(req.ToolOptions)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "build_tools", err)
-			yield(nil, sanitizeExternalError(err))
+			yield(nil, sanitizeExternalError("build_tools", err))
 			return
 		}
 		modelRunner := einoModel
@@ -419,7 +506,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			modelWithTools, wErr := einoModel.WithTools(toolInfos)
 			if wErr != nil {
 				uc.harnessLogger.LogError(requestID, "bind_tools", wErr)
-				yield(nil, sanitizeExternalError(wErr))
+				yield(nil, sanitizeExternalError("bind_tools", wErr))
 				return
 			}
 			modelRunner = modelWithTools
@@ -447,7 +534,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			uc.harnessLogger.LogModelRound(requestID, i+1, time.Since(modelStart), genErr)
 			if genErr != nil {
 				uc.harnessLogger.LogError(requestID, "model_stream", genErr)
-				yield(nil, sanitizeExternalError(genErr))
+				yield(nil, sanitizeExternalError("model_stream", genErr))
 				return
 			}
 			// 收集流式 chunk，用于拼出完整 assistant 消息并进入下一轮状态。
@@ -461,7 +548,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				if recvErr != nil {
 					stream.Close()
 					uc.harnessLogger.LogError(requestID, "model_stream_recv", recvErr)
-					yield(nil, sanitizeExternalError(recvErr))
+					yield(nil, sanitizeExternalError("model_stream_recv", recvErr))
 					return
 				}
 				if chunk == nil {
@@ -485,12 +572,12 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			resp, concatErr := schema.ConcatMessages(chunks)
 			if concatErr != nil {
 				uc.harnessLogger.LogError(requestID, "model_stream_concat", concatErr)
-				yield(nil, sanitizeExternalError(concatErr))
+				yield(nil, sanitizeExternalError("model_stream_concat", concatErr))
 				return
 			}
 			if resp == nil {
 				uc.harnessLogger.LogError(requestID, "model_stream_concat", errors.New("模型返回为空"))
-				yield(nil, sanitizeExternalError(errors.New("模型返回为空")))
+				yield(nil, userFacingError("模型返回为空"))
 				return
 			}
 			if resp.Content != "" {
@@ -513,7 +600,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 					err = errors.New("工具调用次数超过沙箱限制")
 					uc.harnessLogger.LogSandboxDecision(requestID, call.Function.Name, false, "tool_call_limit_exceeded")
 					uc.harnessLogger.LogError(requestID, "tool_limit", err)
-					yield(nil, sanitizeExternalError(err))
+					yield(nil, userFacingError("工具调用次数超过沙箱限制"))
 					return
 				}
 
@@ -521,7 +608,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 					err = fmt.Errorf("未授权工具: %s", call.Function.Name)
 					uc.harnessLogger.LogSandboxDecision(requestID, call.Function.Name, false, "tool_not_in_whitelist")
 					uc.harnessLogger.LogError(requestID, "tool_denied", err)
-					yield(nil, sanitizeExternalError(err))
+					yield(nil, userFacingError(fmt.Sprintf("未授权工具: %s", call.Function.Name)))
 					return
 				}
 
@@ -530,7 +617,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 					err = fmt.Errorf("未授权工具: %s", call.Function.Name)
 					uc.harnessLogger.LogSandboxDecision(requestID, call.Function.Name, false, "tool_not_registered")
 					uc.harnessLogger.LogError(requestID, "tool_denied", err)
-					yield(nil, sanitizeExternalError(err))
+					yield(nil, userFacingError(fmt.Sprintf("未授权工具: %s", call.Function.Name)))
 					return
 				}
 				uc.harnessLogger.LogSandboxDecision(requestID, call.Function.Name, true, "tool_allowed")
@@ -558,7 +645,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				uc.harnessLogger.LogToolCallIO(requestID, call.Function.Name, time.Since(toolStart), argsStr, toolOutput, toolErr)
 				if toolErr != nil {
 					uc.harnessLogger.LogError(requestID, "tool_invoke", toolErr)
-					yield(nil, sanitizeExternalError(toolErr))
+					yield(nil, sanitizeExternalError("tool_invoke", toolErr))
 					return
 				}
 
@@ -573,7 +660,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 
 		err = fmt.Errorf("超过最大迭代次数（maxIterations=%d），Agent 提前终止；多轮工具调用场景请在协作方案 config 中提高 maxIterations/maxToolCalls", cfg.MaxIterations)
 		uc.harnessLogger.LogError(requestID, "max_iterations", err)
-		yield(nil, sanitizeExternalError(err))
+		yield(nil, userFacingError(err.Error()))
 	}
 }
 
@@ -618,6 +705,14 @@ func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.
 	infos := []*schema.ToolInfo{
 		uuidTool.Info, skillTool.Info, mcpTool.Info,
 		readFileTool.Info, writeFileTool.Info, shellTool.Info,
+	}
+	if uc.mcpConfigAdmin != nil {
+		saveTool, err := uc.BuildSaveMcpConfigTool()
+		if err != nil {
+			return nil, nil, err
+		}
+		registry[saveTool.Info.Name] = saveTool
+		infos = append(infos, saveTool.Info)
 	}
 	return registry, infos, nil
 }
@@ -733,6 +828,153 @@ func (uc *AgentUsecase) BuildMCPTool() (*HarnessTool, error) {
 				return "", errors.New("server 和 tool 不能为空")
 			}
 			return uc.mcpExecutor.Call(ctx, args.Server, args.Tool, args.Arguments)
+		},
+	}, nil
+}
+
+// BuildSaveMcpConfigTool 将一条 MCP 登记到本机「MCP 配置」表（与 Code 助手 / 管理后台同源）；需已注入 McpConfigAdmin。
+func (uc *AgentUsecase) BuildSaveMcpConfigTool() (*HarnessTool, error) {
+	if uc.mcpConfigAdmin == nil {
+		return nil, errors.New("mcp config admin 未配置")
+	}
+	toolInfo := &schema.ToolInfo{
+		Name: "save_mcp_server_config",
+		Desc: "将一条 MCP 服务写入本系统的「MCP 配置」数据库（与管理后台相同）。transport=http 时填写 endpoint（SSE URL）与可选 headers_json；transport=stdio 时填写 stdio_command、stdio_args_json（JSON 字符串数组）、stdio_env_json（JSON 对象），endpoint 可省略。server 为 call_mcp_tool 使用的逻辑名。",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"id": {
+				Type:     schema.String,
+				Desc:     "已有记录 id，非零则更新；省略或 0 为新建",
+				Required: false,
+			},
+			"name": {
+				Type:     schema.String,
+				Desc:     "展示名称",
+				Required: true,
+			},
+			"server": {
+				Type:     schema.String,
+				Desc:     "逻辑服务名，与 call_mcp_tool.server 一致",
+				Required: true,
+			},
+			"transport": {
+				Type:     schema.String,
+				Desc:     "http 或 stdio；可省略则：有 stdio_command 视为 stdio，否则 http",
+				Required: false,
+			},
+			"endpoint": {
+				Type:     schema.String,
+				Desc:     "http 模式：MCP HTTP(SSE) 入口 URL；stdio 模式可空",
+				Required: false,
+			},
+			"headers_json": {
+				Type:     schema.String,
+				Desc:     "HTTP 请求头 JSON 对象字符串，可为 {}",
+				Required: false,
+			},
+			"stdio_command": {
+				Type:     schema.String,
+				Desc:     "stdio 模式：可执行文件，如 uv、npx、python3",
+				Required: false,
+			},
+			"stdio_args_json": {
+				Type:     schema.String,
+				Desc:     "stdio 模式：参数 JSON 数组字符串，如 [\"-y\",\"@pkg\"]",
+				Required: false,
+			},
+			"stdio_env_json": {
+				Type:     schema.String,
+				Desc:     "stdio 模式：环境变量 JSON 对象字符串",
+				Required: false,
+			},
+			"enabled": {
+				Type:     schema.String,
+				Desc:     "是否启用：true 或 false",
+				Required: false,
+			},
+			"description": {
+				Type:     schema.String,
+				Desc:     "说明，可选",
+				Required: false,
+			},
+		}),
+	}
+	type saveMcpArgs struct {
+		ID            interface{} `json:"id"`
+		Name          string        `json:"name"`
+		Server        string        `json:"server"`
+		Transport     string        `json:"transport"`
+		Endpoint      string        `json:"endpoint"`
+		HeadersJSON   string        `json:"headers_json"`
+		StdioCommand  string        `json:"stdio_command"`
+		StdioArgsJSON string        `json:"stdio_args_json"`
+		StdioEnvJSON  string        `json:"stdio_env_json"`
+		Enabled       *bool         `json:"enabled"`
+		Description   string        `json:"description"`
+	}
+	parseIDAny := func(v interface{}) int64 {
+		if v == nil {
+			return 0
+		}
+		switch x := v.(type) {
+		case float64:
+			return int64(x)
+		case string:
+			x = strings.TrimSpace(x)
+			if x == "" {
+				return 0
+			}
+			n, err := strconv.ParseInt(x, 10, 64)
+			if err != nil {
+				return 0
+			}
+			return n
+		case json.Number:
+			n, err := x.Int64()
+			if err != nil {
+				return 0
+			}
+			return n
+		default:
+			return 0
+		}
+	}
+	return &HarnessTool{
+		Info: toolInfo,
+		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
+			var args saveMcpArgs
+			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+				return "", err
+			}
+			id := parseIDAny(args.ID)
+			enabled := true
+			if args.Enabled != nil {
+				enabled = *args.Enabled
+			}
+			transport := strings.ToLower(strings.TrimSpace(args.Transport))
+			if transport == "" {
+				if strings.TrimSpace(args.StdioCommand) != "" {
+					transport = "stdio"
+				} else {
+					transport = "http"
+				}
+			}
+			outID, action, err := uc.mcpConfigAdmin.UpsertMcpConfig(ctx, McpConfigUpsertArgs{
+				ID:            id,
+				Name:          args.Name,
+				Server:        args.Server,
+				Transport:     transport,
+				Endpoint:      args.Endpoint,
+				HeadersJSON:   args.HeadersJSON,
+				StdioCommand:  args.StdioCommand,
+				StdioArgsJSON: args.StdioArgsJSON,
+				StdioEnvJSON:  args.StdioEnvJSON,
+				Enabled:       enabled,
+				Description:   args.Description,
+			})
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf(`{"ok":true,"id":%d,"action":%q}`, outID, action), nil
 		},
 	}, nil
 }

@@ -211,6 +211,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.DeleteMcpConfigReply'
+    /api/v1/admin/mcps/{id}/test:
+        post:
+            tags:
+                - Admin
+            operationId: Admin_TestMcpConfig
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.TestMcpConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.TestMcpConfigReply'
     /api/v1/admin/skills:
         get:
             tags:
@@ -784,6 +808,26 @@ components:
         rulego.v1.DeleteMcpConfigReply:
             type: object
             properties: {}
+        rulego.v1.TestMcpConfigRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        rulego.v1.TestMcpConfigReply:
+            type: object
+            properties:
+                ok:
+                    type: boolean
+                message:
+                    type: string
+                toolNames:
+                    type: array
+                    items:
+                        type: string
+                serverName:
+                    type: string
+                protocolVersion:
+                    type: string
         rulego.v1.DeleteRuleChainReply:
             type: object
             properties: {}

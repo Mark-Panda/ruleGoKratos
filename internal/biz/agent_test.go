@@ -233,8 +233,11 @@ func TestExecuteHarnessShouldYieldErrorWhenModelStreamFailed(t *testing.T) {
 		}
 		return true
 	})
-	if gotErr == nil || !strings.Contains(gotErr.Error(), "Agent执行失败") {
-		t.Fatalf("expected sanitized stream error, got: %v", gotErr)
+	if gotErr == nil || !strings.Contains(gotErr.Error(), "模型调用失败") {
+		t.Fatalf("expected staged model error, got: %v", gotErr)
+	}
+	if !strings.Contains(gotErr.Error(), "stream init failed") {
+		t.Fatalf("expected redacted detail to retain safe message, got: %v", gotErr)
 	}
 }
 
@@ -243,6 +246,31 @@ func TestBuildMessagesShouldUseDefaultSystemPrompt(t *testing.T) {
 	msgs := uc.buildMessages(nil, "hello")
 	if len(msgs) == 0 || msgs[0].Content != defaultSystemPrompt {
 		t.Fatalf("expected default system prompt, got: %#v", msgs)
+	}
+}
+
+func TestRedactErrorTextShouldStripPathsAndSecrets(t *testing.T) {
+	in := "dial tcp: Bearer sk-abcdefghijklmnopqrstuvwxyz0123456789 at /Users/x/proj/foo.go"
+	out := redactErrorText(in)
+	if strings.Contains(out, "/Users/") || strings.Contains(out, "Bearer sk-") {
+		t.Fatalf("expected path/Bearer stripped, got: %q", out)
+	}
+	if !strings.Contains(out, "[path]") || !strings.Contains(out, "Bearer [redacted]") {
+		t.Fatalf("expected redaction markers, got: %q", out)
+	}
+}
+
+func TestSanitizeExternalErrorShouldCombineStageAndDetail(t *testing.T) {
+	err := sanitizeExternalError("model_stream", errors.New("timeout"))
+	if err == nil || !strings.Contains(err.Error(), "模型调用失败") || !strings.Contains(err.Error(), "timeout") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestSanitizeExternalErrorShouldPassThroughUserFacing(t *testing.T) {
+	err := sanitizeExternalError("model_stream", userFacingError("自定义说明"))
+	if err == nil || err.Error() != "自定义说明" {
+		t.Fatalf("unexpected: %v", err)
 	}
 }
 

@@ -47,6 +47,14 @@ service Admin {
     };
   }
 
+  // TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
+  rpc TestMcpConfig (TestMcpConfigRequest) returns (TestMcpConfigReply) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mcps/{id}/test"
+      body: "*"
+    };
+  }
+
   rpc ListLlmConfigs (ListLlmConfigsRequest) returns (ListLlmConfigsReply) {
     option (google.api.http) = {
       get: "/api/v1/admin/llm-configs"
@@ -129,6 +137,11 @@ message McpConfigItem {
   string description = 7;
   string created_at = 8 [json_name = "createdAt"];
   string updated_at = 9 [json_name = "updatedAt"];
+  // http | stdio；stdio 时使用 stdio_command / stdio_args_json / stdio_env_json，endpoint 可为空。
+  string transport = 10;
+  string stdio_command = 11 [json_name = "stdioCommand"];
+  string stdio_args_json = 12 [json_name = "stdioArgsJson"];
+  string stdio_env_json = 13 [json_name = "stdioEnvJson"];
 }
 
 message ListMcpConfigsReply {
@@ -142,6 +155,10 @@ message CreateMcpConfigRequest {
   google.protobuf.Struct headers = 4;
   bool enabled = 5;
   string description = 6;
+  string transport = 7;
+  string stdio_command = 8 [json_name = "stdioCommand"];
+  string stdio_args_json = 9 [json_name = "stdioArgsJson"];
+  string stdio_env_json = 10 [json_name = "stdioEnvJson"];
 }
 
 message UpdateMcpConfigRequest {
@@ -152,6 +169,10 @@ message UpdateMcpConfigRequest {
   google.protobuf.Struct headers = 5;
   bool enabled = 6;
   string description = 7;
+  string transport = 8;
+  string stdio_command = 9 [json_name = "stdioCommand"];
+  string stdio_args_json = 10 [json_name = "stdioArgsJson"];
+  string stdio_env_json = 11 [json_name = "stdioEnvJson"];
 }
 
 message UpdateMcpConfigReply {}
@@ -161,6 +182,18 @@ message DeleteMcpConfigRequest {
 }
 
 message DeleteMcpConfigReply {}
+
+message TestMcpConfigRequest {
+  int64 id = 1;
+}
+
+message TestMcpConfigReply {
+  bool ok = 1;
+  string message = 2;
+  repeated string tool_names = 3 [json_name = "toolNames"];
+  string server_name = 4 [json_name = "serverName"];
+  string protocol_version = 5 [json_name = "protocolVersion"];
+}
 
 message ListLlmConfigsRequest {}
 

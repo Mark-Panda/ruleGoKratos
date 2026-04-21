@@ -7,6 +7,10 @@ export interface SkillItem {
   updatedAt: string;
 }
 
+/**
+ * 列表/详情接口经 normalize 后统一为 snake_case（表单用）。
+ * 原始 HTTP 为 protojson：stdio 字段为 stdioCommand / stdioArgsJson / stdioEnvJson。
+ */
 export interface MCPConfigItem {
   id: number;
   name: string;
@@ -15,6 +19,11 @@ export interface MCPConfigItem {
   headers?: Record<string, any>;
   enabled: boolean;
   description: string;
+  /** 缺省或空视为 http */
+  transport?: string;
+  stdio_command?: string;
+  stdio_args_json?: string;
+  stdio_env_json?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -26,6 +35,63 @@ export interface MCPConfigPayload {
   headers?: Record<string, any>;
   enabled: boolean;
   description: string;
+  transport?: string;
+  stdio_command?: string;
+  stdio_args_json?: string;
+  stdio_env_json?: string;
+}
+
+/** 将 protojson 响应（camelCase）合并为表单使用的 MCPConfigItem */
+export function normalizeMcpConfigItem(raw: Record<string, unknown>): MCPConfigItem {
+  const r = raw as Record<string, any>;
+  const headersRaw = r.headers;
+  const headers =
+    headersRaw && typeof headersRaw === 'object' && !Array.isArray(headersRaw)
+      ? (headersRaw as Record<string, any>)
+      : {};
+  const stdioCmd = r.stdioCommand ?? r.stdio_command;
+  const stdioArgs = r.stdioArgsJson ?? r.stdio_args_json;
+  const stdioEnv = r.stdioEnvJson ?? r.stdio_env_json;
+  return {
+    id: Number(r.id),
+    name: String(r.name ?? ''),
+    server: String(r.server ?? ''),
+    endpoint: String(r.endpoint ?? ''),
+    headers,
+    enabled: Boolean(r.enabled),
+    description: String(r.description ?? ''),
+    transport: r.transport != null && r.transport !== '' ? String(r.transport) : undefined,
+    stdio_command: stdioCmd != null ? String(stdioCmd) : '',
+    stdio_args_json: stdioArgs != null && String(stdioArgs).trim() !== '' ? String(stdioArgs) : undefined,
+    stdio_env_json: stdioEnv != null && String(stdioEnv).trim() !== '' ? String(stdioEnv) : undefined,
+    createdAt: r.createdAt != null ? String(r.createdAt) : r.created_at != null ? String(r.created_at) : undefined,
+    updatedAt: r.updatedAt != null ? String(r.updatedAt) : r.updated_at != null ? String(r.updated_at) : undefined,
+  };
+}
+
+/** Kratos/protojson 请求体须使用 proto 的 json_name（camelCase） */
+function mcpPayloadToApiBody(payload: MCPConfigPayload): Record<string, unknown> {
+  return {
+    name: payload.name,
+    server: payload.server,
+    endpoint: payload.endpoint,
+    headers: payload.headers ?? {},
+    enabled: payload.enabled,
+    description: payload.description,
+    transport: payload.transport,
+    stdioCommand: payload.stdio_command,
+    stdioArgsJson: payload.stdio_args_json,
+    stdioEnvJson: payload.stdio_env_json,
+  };
+}
+
+/** POST /admin/mcps/:id/test：http 走 SSE；stdio 拉起子进程；均 initialize + tools/list */
+export interface TestMcpConfigReply {
+  ok: boolean;
+  message: string;
+  toolNames?: string[];
+  serverName?: string;
+  protocolVersion?: string;
 }
 
 export const listSkills = () => requestJSON<{ root: string; items: SkillItem[] }>('/admin/skills');
@@ -49,16 +115,24 @@ export const uploadSkill = async (file: File, path?: string) => {
 };
 
 export const listMCPConfigs = () =>
-  requestJSON<{ items: MCPConfigItem[] }>('/admin/mcps').then((r) => r.items || []);
+  requestJSON<{ items: Record<string, unknown>[] }>('/admin/mcps').then((r) =>
+    (r.items || []).map((row) => normalizeMcpConfigItem(row))
+  );
 
 export const createMCPConfig = (payload: MCPConfigPayload) =>
-  requestJSON<MCPConfigItem>('/admin/mcps', { method: 'POST', body: payload });
+  requestJSON<Record<string, unknown>>('/admin/mcps', {
+    method: 'POST',
+    body: mcpPayloadToApiBody(payload),
+  }).then((row) => normalizeMcpConfigItem(row));
 
 export const updateMCPConfig = (id: number, payload: MCPConfigPayload) =>
-  requestJSON(`/admin/mcps/${id}`, { method: 'PUT', body: payload });
+  requestJSON(`/admin/mcps/${id}`, { method: 'PUT', body: mcpPayloadToApiBody(payload) });
 
 export const deleteMCPConfig = (id: number) =>
   requestJSON(`/admin/mcps/${id}`, { method: 'DELETE' });
+
+export const testMCPConfig = (id: number) =>
+  requestJSON<TestMcpConfigReply>(`/admin/mcps/${id}/test`, { method: 'POST', body: {} });
 
 /** 一条模型记录（隶属于某个 LLM 配置，共享凭证） */
 export interface LlmModelEntryItem {

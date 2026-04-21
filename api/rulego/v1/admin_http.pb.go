@@ -28,6 +28,7 @@ const OperationAdminDeleteMcpConfig = "/rulego.v1.Admin/DeleteMcpConfig"
 const OperationAdminListLlmConfigs = "/rulego.v1.Admin/ListLlmConfigs"
 const OperationAdminListMcpConfigs = "/rulego.v1.Admin/ListMcpConfigs"
 const OperationAdminListSkills = "/rulego.v1.Admin/ListSkills"
+const OperationAdminTestMcpConfig = "/rulego.v1.Admin/TestMcpConfig"
 const OperationAdminUpdateLlmConfig = "/rulego.v1.Admin/UpdateLlmConfig"
 const OperationAdminUpdateLlmModelEntry = "/rulego.v1.Admin/UpdateLlmModelEntry"
 const OperationAdminUpdateMcpConfig = "/rulego.v1.Admin/UpdateMcpConfig"
@@ -43,6 +44,8 @@ type AdminHTTPServer interface {
 	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
 	ListMcpConfigs(context.Context, *ListMcpConfigsRequest) (*ListMcpConfigsReply, error)
 	ListSkills(context.Context, *ListSkillsRequest) (*ListSkillsReply, error)
+	// TestMcpConfig TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	TestMcpConfig(context.Context, *TestMcpConfigRequest) (*TestMcpConfigReply, error)
 	UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error)
 	UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error)
 	UpdateMcpConfig(context.Context, *UpdateMcpConfigRequest) (*UpdateMcpConfigReply, error)
@@ -57,6 +60,7 @@ func RegisterAdminHTTPServer(s *http.Server, srv AdminHTTPServer) {
 	r.POST("/api/v1/admin/mcps", _Admin_CreateMcpConfig0_HTTP_Handler(srv))
 	r.PUT("/api/v1/admin/mcps/{id}", _Admin_UpdateMcpConfig0_HTTP_Handler(srv))
 	r.DELETE("/api/v1/admin/mcps/{id}", _Admin_DeleteMcpConfig0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/mcps/{id}/test", _Admin_TestMcpConfig0_HTTP_Handler(srv))
 	r.GET("/api/v1/admin/llm-configs", _Admin_ListLlmConfigs0_HTTP_Handler(srv))
 	r.POST("/api/v1/admin/llm-configs", _Admin_CreateLlmConfig0_HTTP_Handler(srv))
 	r.PUT("/api/v1/admin/llm-configs/{id}", _Admin_UpdateLlmConfig0_HTTP_Handler(srv))
@@ -191,6 +195,31 @@ func _Admin_DeleteMcpConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Con
 			return err
 		}
 		reply := out.(*DeleteMcpConfigReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_TestMcpConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in TestMcpConfigRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminTestMcpConfig)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.TestMcpConfig(ctx, req.(*TestMcpConfigRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*TestMcpConfigReply)
 		return ctx.Result(200, reply)
 	}
 }
@@ -365,6 +394,8 @@ type AdminHTTPClient interface {
 	ListLlmConfigs(ctx context.Context, req *ListLlmConfigsRequest, opts ...http.CallOption) (rsp *ListLlmConfigsReply, err error)
 	ListMcpConfigs(ctx context.Context, req *ListMcpConfigsRequest, opts ...http.CallOption) (rsp *ListMcpConfigsReply, err error)
 	ListSkills(ctx context.Context, req *ListSkillsRequest, opts ...http.CallOption) (rsp *ListSkillsReply, err error)
+	// TestMcpConfig TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	TestMcpConfig(ctx context.Context, req *TestMcpConfigRequest, opts ...http.CallOption) (rsp *TestMcpConfigReply, err error)
 	UpdateLlmConfig(ctx context.Context, req *UpdateLlmConfigRequest, opts ...http.CallOption) (rsp *UpdateLlmConfigReply, err error)
 	UpdateLlmModelEntry(ctx context.Context, req *UpdateLlmModelEntryRequest, opts ...http.CallOption) (rsp *UpdateLlmModelEntryReply, err error)
 	UpdateMcpConfig(ctx context.Context, req *UpdateMcpConfigRequest, opts ...http.CallOption) (rsp *UpdateMcpConfigReply, err error)
@@ -490,6 +521,20 @@ func (c *AdminHTTPClientImpl) ListSkills(ctx context.Context, in *ListSkillsRequ
 	opts = append(opts, http.Operation(OperationAdminListSkills))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// TestMcpConfig TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+func (c *AdminHTTPClientImpl) TestMcpConfig(ctx context.Context, in *TestMcpConfigRequest, opts ...http.CallOption) (*TestMcpConfigReply, error) {
+	var out TestMcpConfigReply
+	pattern := "/api/v1/admin/mcps/{id}/test"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminTestMcpConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

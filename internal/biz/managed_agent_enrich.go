@@ -12,6 +12,12 @@ func (uc *AgentUsecase) SetManagedAgentLoader(l ManagedAgentLoader) {
 	}
 }
 
+func (uc *AgentUsecase) SetMcpConfigAdmin(a McpConfigAdmin) {
+	if a != nil {
+		uc.mcpConfigAdmin = a
+	}
+}
+
 // enrichHarnessWithManagedAgent 当 ManagedAgentID>0 时加载配置：系统提示、托管模型、技能/MCP 白名单与 SKILL 目录段落。
 func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req HarnessRequest) (HarnessRequest, error) {
 	if req.ManagedAgentID <= 0 {

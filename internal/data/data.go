@@ -120,6 +120,8 @@ func NewRuleConfig() *types.Config {
 func NewRuleEngine(c *conf.Data, ruleConfig *types.Config, agentUc *biz.AgentUsecase) (*rulego.RuleGo, error) {
 	agentUc.SetManagedLLMResolver(NewManagedLLMResolver())
 	agentUc.SetManagedAgentLoader(NewManagedAgentHarnessLoader())
+	agentUc.SetMcpConfigAdmin(NewMcpConfigAdmin())
+	agentUc.SetMcpExecutor(NewDatabaseMcpExecutor())
 	WireRuleGoAgent(agentUc)
 	// 获取所有的规则链信息
 	var ruleChainList []RuleChain

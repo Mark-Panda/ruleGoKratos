@@ -25,6 +25,7 @@ const (
 	Admin_CreateMcpConfig_FullMethodName     = "/rulego.v1.Admin/CreateMcpConfig"
 	Admin_UpdateMcpConfig_FullMethodName     = "/rulego.v1.Admin/UpdateMcpConfig"
 	Admin_DeleteMcpConfig_FullMethodName     = "/rulego.v1.Admin/DeleteMcpConfig"
+	Admin_TestMcpConfig_FullMethodName       = "/rulego.v1.Admin/TestMcpConfig"
 	Admin_ListLlmConfigs_FullMethodName      = "/rulego.v1.Admin/ListLlmConfigs"
 	Admin_CreateLlmConfig_FullMethodName     = "/rulego.v1.Admin/CreateLlmConfig"
 	Admin_UpdateLlmConfig_FullMethodName     = "/rulego.v1.Admin/UpdateLlmConfig"
@@ -44,6 +45,8 @@ type AdminClient interface {
 	CreateMcpConfig(ctx context.Context, in *CreateMcpConfigRequest, opts ...grpc.CallOption) (*McpConfigItem, error)
 	UpdateMcpConfig(ctx context.Context, in *UpdateMcpConfigRequest, opts ...grpc.CallOption) (*UpdateMcpConfigReply, error)
 	DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRequest, opts ...grpc.CallOption) (*DeleteMcpConfigReply, error)
+	// TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	TestMcpConfig(ctx context.Context, in *TestMcpConfigRequest, opts ...grpc.CallOption) (*TestMcpConfigReply, error)
 	ListLlmConfigs(ctx context.Context, in *ListLlmConfigsRequest, opts ...grpc.CallOption) (*ListLlmConfigsReply, error)
 	CreateLlmConfig(ctx context.Context, in *CreateLlmConfigRequest, opts ...grpc.CallOption) (*LlmConfigItem, error)
 	UpdateLlmConfig(ctx context.Context, in *UpdateLlmConfigRequest, opts ...grpc.CallOption) (*UpdateLlmConfigReply, error)
@@ -115,6 +118,16 @@ func (c *adminClient) DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteMcpConfigReply)
 	err := c.cc.Invoke(ctx, Admin_DeleteMcpConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) TestMcpConfig(ctx context.Context, in *TestMcpConfigRequest, opts ...grpc.CallOption) (*TestMcpConfigReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TestMcpConfigReply)
+	err := c.cc.Invoke(ctx, Admin_TestMcpConfig_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +214,8 @@ type AdminServer interface {
 	CreateMcpConfig(context.Context, *CreateMcpConfigRequest) (*McpConfigItem, error)
 	UpdateMcpConfig(context.Context, *UpdateMcpConfigRequest) (*UpdateMcpConfigReply, error)
 	DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error)
+	// TestMcpConfig 使用 SSE 传输连接 endpoint，执行 initialize 与 tools/list，用于校验 MCP 是否可达。
+	TestMcpConfig(context.Context, *TestMcpConfigRequest) (*TestMcpConfigReply, error)
 	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
 	CreateLlmConfig(context.Context, *CreateLlmConfigRequest) (*LlmConfigItem, error)
 	UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error)
@@ -235,6 +250,9 @@ func (UnimplementedAdminServer) UpdateMcpConfig(context.Context, *UpdateMcpConfi
 }
 func (UnimplementedAdminServer) DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMcpConfig not implemented")
+}
+func (UnimplementedAdminServer) TestMcpConfig(context.Context, *TestMcpConfigRequest) (*TestMcpConfigReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method TestMcpConfig not implemented")
 }
 func (UnimplementedAdminServer) ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListLlmConfigs not implemented")
@@ -382,6 +400,24 @@ func _Admin_DeleteMcpConfig_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AdminServer).DeleteMcpConfig(ctx, req.(*DeleteMcpConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_TestMcpConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestMcpConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).TestMcpConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_TestMcpConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).TestMcpConfig(ctx, req.(*TestMcpConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -542,6 +578,10 @@ var Admin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMcpConfig",
 			Handler:    _Admin_DeleteMcpConfig_Handler,
+		},
+		{
+			MethodName: "TestMcpConfig",
+			Handler:    _Admin_TestMcpConfig_Handler,
 		},
 		{
 			MethodName: "ListLlmConfigs",

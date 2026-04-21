@@ -11,13 +11,16 @@ import (
 var db *gorm.DB
 var pgOnce sync.Once
 
-// Init pg客户端初始化（含 managed_agent 表自动迁移）
+// Init pg客户端初始化（含 managed_agent、mcp_config 等表自动迁移）
 func Init(client *gorm.DB) {
 	pgOnce.Do(func() {
 		db = client
 		if db != nil {
 			if err := migrateManagedAgentTable(db); err != nil {
 				log.Printf("dao: migrate managed_agent: %v", err)
+			}
+			if err := migrateMcpConfigTable(db); err != nil {
+				log.Printf("dao: migrate mcp_config: %v", err)
 			}
 			if err := migratePlaygroundAgentPoolTable(db); err != nil {
 				log.Printf("dao: migrate playground_agent_pool: %v", err)

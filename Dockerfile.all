@@ -42,6 +42,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
 # Install Nginx, Cursor Agent CLI deps, and basic dependencies
+# build-essential + python3-dev：uv/pip 安装含 C 扩展的包时必需（如 pycryptodome←volcengine←MCP TLS 等）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -49,11 +50,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netbase \
     nginx \
     python3 \
+    python3-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/ \
     && apt-get autoremove -y && apt-get autoclean -y
 
 # Cursor Agent CLI (~/.local/bin); Feishu CLI needs Node from /usr/local
 ENV PATH="/root/.local/bin:/usr/local/bin:${PATH}"
+
+# uv: Python 包/项目管理器（https://github.com/astral-sh/uv），安装到 ~/.local/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 RUN curl -fsSL https://cursor.com/install | bash
 
@@ -69,6 +75,7 @@ WORKDIR /app
 COPY --from=backend-builder /src/bin/server /app/server
 # Copy default skills directory for Agent runtime
 COPY --from=backend-builder /src/skills /app/skills
+COPY --from=backend-builder /src/mcp /app/mcp
 
 # Copy frontend static files to a dedicated directory
 COPY --from=frontend-builder /web/dist /app/dist
@@ -91,6 +98,9 @@ RUN echo 'server { \
     proxy_set_header Host $host; \
     proxy_set_header X-Real-IP $remote_addr; \
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+    proxy_connect_timeout 60s; \
+    proxy_send_timeout 300s; \
+    proxy_read_timeout 300s; \
     } \
     }' > /etc/nginx/sites-enabled/default
 
