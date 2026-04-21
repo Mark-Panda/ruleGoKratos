@@ -13,7 +13,7 @@ import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconLoop from '../../assets/icon-loop.jpg';
 import { formMeta } from './form-meta';
-import { WorkflowNodeType } from '../constants';
+import { OutPutPortType, WorkflowNodeType } from '../constants';
 
 let index = 0;
 export const ForNodeRegistry: FlowNodeRegistry = {
@@ -74,7 +74,12 @@ export const ForNodeRegistry: FlowNodeRegistry = {
       minWidth: 'unset',
       width: '100%',
     },
-    // defaultPorts: [{ type: 'output', location: 'right' }, { type: 'input', location: 'left'}, { type: 'output', location: 'bottom', portID: 'bottom' }, { type: 'input', location: 'top', portID: 'top'}]
+    defaultPorts: [
+      { type: 'input', location: 'left' },
+      { type: 'input', location: 'top', portID: 'input_top' },
+      { type: 'output', location: 'right', portID: OutPutPortType.SuccessPort },
+      { type: 'output', location: 'bottom', portID: OutPutPortType.FailurePort },
+    ],
   },
   onAdd() {
     return {

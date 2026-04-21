@@ -23,6 +23,7 @@ import {
 import { Toast } from '@douyinfe/semi-ui';
 
 import { getRuleBaseInfo } from '../services/rule-base-info';
+import { panelBuildLine } from '../utils/panel-build-line';
 import { WorkflowNodeType } from '../nodes';
 
 /**
@@ -123,8 +124,8 @@ export const usePortClick = () => {
     // wait for node render - 等待节点渲染
     await delay(20);
 
-    // build connection line - 构建连接线
-    WorkflowNodePanelUtils.buildLine({
+    // build connection line - 构建连接线（底部出口接新节点顶入）
+    panelBuildLine({
       fromPort: port,
       node,
       linesManager,

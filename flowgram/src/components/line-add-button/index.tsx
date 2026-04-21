@@ -25,6 +25,7 @@ import './index.less';
 import { Toast } from '@douyinfe/semi-ui';
 
 import { WorkflowNodeType } from '../../nodes/constants';
+import { panelBuildLine } from '../../utils/panel-build-line';
 import { useVisible } from './use-visible';
 import { IconPlusCircle } from './button';
 
@@ -108,8 +109,8 @@ export const LineAddButton = (props: LineRenderProps) => {
     // wait for node render - 等待节点渲染
     await delay(20);
 
-    // build connection lines - 构建连接线
-    WorkflowNodePanelUtils.buildLine({
+    // build connection lines - 构建连接线（底部出口接新节点顶入）
+    panelBuildLine({
       fromPort,
       node,
       toPort,
