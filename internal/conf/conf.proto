@@ -66,6 +66,10 @@ message Agent {
   string system_prompt = 1;
   // Agent 内置读/写文件与 shell 的根目录；空则回退为 skill.dir，再空则为进程工作目录
   string workspace_root = 3;
+  // 管理端 RunTerminal 单条命令超时；未设置或 <=0 时默认 120s
+  google.protobuf.Duration terminal_exec_timeout = 4;
+  // 飞书 lark-cli 配置文件路径；空则使用 $HOME/.lark-cli/config.json（可用 ~ 前缀）
+  string lark_cli_config_path = 5;
   message Skill {
     string dir              = 1;
     string dirs             = 2;

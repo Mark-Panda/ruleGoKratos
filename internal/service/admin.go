@@ -297,8 +297,41 @@ func (s *AdminService) TestMcpConfig(ctx context.Context, req *v1.TestMcpConfigR
 const (
 	terminalMaxCommandLen = 8000
 	terminalMaxOutputEach = 256 * 1024
-	terminalExecTimeout   = 120 * time.Second
+	defaultTerminalExecTimeout = 120 * time.Second
 )
+
+// terminalExecTimeout 返回 agent.terminal_exec_timeout，未配置时默认 120s。
+func (s *AdminService) terminalExecTimeout() time.Duration {
+	if s.config != nil && s.config.Agent != nil && s.config.Agent.TerminalExecTimeout != nil {
+		d := s.config.Agent.TerminalExecTimeout.AsDuration()
+		if d > 0 {
+			return d
+		}
+	}
+	return defaultTerminalExecTimeout
+}
+
+// resolveLarkCliConfigPath 解析 lark-cli 配置文件绝对路径（默认 $HOME/.lark-cli/config.json）。
+func (s *AdminService) resolveLarkCliConfigPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("无法解析用户主目录: %w", err)
+	}
+	raw := ""
+	if s.config != nil && s.config.Agent != nil {
+		raw = strings.TrimSpace(s.config.Agent.GetLarkCliConfigPath())
+	}
+	if raw == "" {
+		return filepath.Join(home, ".lark-cli", "config.json"), nil
+	}
+	if strings.HasPrefix(raw, "~/") {
+		raw = filepath.Join(home, strings.TrimPrefix(raw, "~/"))
+	}
+	if filepath.IsAbs(raw) {
+		return filepath.Clean(raw), nil
+	}
+	return filepath.Clean(filepath.Join(home, raw)), nil
+}
 
 // RunTerminal 在服务端以 sh -c 执行命令；cwd 限制在 /app 与配置的 Agent 工作区内。
 func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalRequest) (*v1.RunTerminalReply, error) {
@@ -313,7 +346,8 @@ func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalReque
 	if err != nil {
 		return nil, err
 	}
-	execCtx, cancel := context.WithTimeout(ctx, terminalExecTimeout)
+	to := s.terminalExecTimeout()
+	execCtx, cancel := context.WithTimeout(ctx, to)
 	defer cancel()
 	c := exec.CommandContext(execCtx, "sh", "-c", cmd)
 	c.Dir = cwd
@@ -324,13 +358,17 @@ func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalReque
 	outStr := truncateTerminalOutput(stdout.String())
 	errStr := truncateTerminalOutput(stderr.String())
 	exit := int32(0)
+	sec := int(to / time.Second)
+	if sec < 1 {
+		sec = 120
+	}
 	if runErr != nil {
 		if errors.Is(runErr, context.DeadlineExceeded) || errors.Is(execCtx.Err(), context.DeadlineExceeded) {
 			return &v1.RunTerminalReply{
 				ExitCode:    -1,
 				Stdout:      outStr,
 				Stderr:      errStr,
-				Diagnostic:  "命令执行超时（120s）",
+				Diagnostic:  fmt.Sprintf("命令执行超时（%ds，可在 configs 中调整 agent.terminal_exec_timeout）", sec),
 			}, nil
 		}
 		var ee *exec.ExitError
@@ -346,6 +384,62 @@ func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalReque
 		}, nil
 	}
 	return &v1.RunTerminalReply{ExitCode: exit, Stdout: outStr, Stderr: errStr}, nil
+}
+
+// GetLarkCliConfig 读取 ~/.lark-cli/config.json（或配置的 agent.lark_cli_config_path）。
+func (s *AdminService) GetLarkCliConfig(ctx context.Context, _ *v1.GetLarkCliConfigRequest) (*v1.GetLarkCliConfigReply, error) {
+	_ = ctx
+	path, err := s.resolveLarkCliConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	to := s.terminalExecTimeout()
+	sec := int32(to / time.Second)
+	if sec < 1 {
+		sec = 120
+	}
+	b, readErr := os.ReadFile(path)
+	if readErr != nil {
+		if os.IsNotExist(readErr) {
+			return &v1.GetLarkCliConfigReply{
+				ResolvedPath:           path,
+				Exists:                 false,
+				TerminalExecTimeoutSec: sec,
+			}, nil
+		}
+		return nil, readErr
+	}
+	return &v1.GetLarkCliConfigReply{
+		Content:                string(b),
+		ResolvedPath:           path,
+		Exists:                 true,
+		TerminalExecTimeoutSec: sec,
+	}, nil
+}
+
+// SaveLarkCliConfig 写入 lark-cli 配置文件（须为合法 JSON）。
+func (s *AdminService) SaveLarkCliConfig(ctx context.Context, req *v1.SaveLarkCliConfigRequest) (*v1.SaveLarkCliConfigReply, error) {
+	_ = ctx
+	raw := strings.TrimSpace(req.GetJsonRaw())
+	if raw == "" {
+		return nil, errors.New("jsonRaw 不能为空")
+	}
+	var tmp any
+	if err := json.Unmarshal([]byte(raw), &tmp); err != nil {
+		return nil, fmt.Errorf("内容不是合法 JSON: %w", err)
+	}
+	path, err := s.resolveLarkCliConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
+		return nil, err
+	}
+	return &v1.SaveLarkCliConfigReply{}, nil
 }
 
 func (s *AdminService) terminalAllowedRoots() []string {

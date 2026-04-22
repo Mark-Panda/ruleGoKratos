@@ -108,6 +108,21 @@ service Admin {
       body: "*"
     };
   }
+
+  // GetLarkCliConfig 读取 lark-cli 配置文件（默认 ~/.lark-cli/config.json）及终端超时配置。
+  rpc GetLarkCliConfig (GetLarkCliConfigRequest) returns (GetLarkCliConfigReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/lark-cli/config"
+    };
+  }
+
+  // SaveLarkCliConfig 写入 lark-cli 配置文件（须为合法 JSON）。
+  rpc SaveLarkCliConfig (SaveLarkCliConfigRequest) returns (SaveLarkCliConfigReply) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/lark-cli/config"
+      body: "*"
+    };
+  }
 }
 
 message ListSkillsRequest {}
@@ -214,6 +229,24 @@ message RunTerminalReply {
   string stderr = 3;
   string diagnostic = 4;
 }
+
+message GetLarkCliConfigRequest {}
+
+message GetLarkCliConfigReply {
+  // 配置文件文本（不存在时为空）
+  string content = 1;
+  // 服务端解析后的绝对路径，便于对照 ~/.lark-cli/config.json
+  string resolved_path = 2 [json_name = "resolvedPath"];
+  bool exists = 3;
+  // 当前生效的 RunTerminal 超时（秒），来自 configs agent.terminal_exec_timeout
+  int32 terminal_exec_timeout_sec = 4 [json_name = "terminalExecTimeoutSec"];
+}
+
+message SaveLarkCliConfigRequest {
+  string json_raw = 1 [json_name = "jsonRaw"];
+}
+
+message SaveLarkCliConfigReply {}
 
 message ListLlmConfigsRequest {}
 

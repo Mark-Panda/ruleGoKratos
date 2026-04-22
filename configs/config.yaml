@@ -29,6 +29,10 @@ ai:
     api_base_url: ${AI_OPENAI_BASE_URL}
 agent:
   system_prompt: ${AGENT_SYSTEM_PROMPT:You are an AI agent harness. Use tools when needed and answer clearly.}
+  # 管理端 RunTerminal 单条命令超时（lark-cli 扫码/授权等长任务可调大，如 600s）
+  terminal_exec_timeout: ${AGENT_TERMINAL_EXEC_TIMEOUT:300s}
+  # 飞书 lark-cli 配置文件；空则使用运行用户 $HOME/.lark-cli/config.json
+  lark_cli_config_path: ${LARK_CLI_CONFIG_PATH:}
   # Agent 内置读/写文件、bash 的根目录（字符串可用环境变量覆盖）
   workspace_root: ${AGENT_WORKSPACE_ROOT:agent_workspace}
   skill:

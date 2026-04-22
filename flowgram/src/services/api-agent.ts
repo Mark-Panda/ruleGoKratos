@@ -152,6 +152,33 @@ export const runTerminal = async (command: string, cwd?: string): Promise<RunTer
   return { ...raw, exitCode: exit != null ? Number(exit) : 0 };
 };
 
+/** GET /admin/lark-cli/config：服务端 lark-cli 配置文件与终端超时（来自 configs） */
+export interface LarkCliConfigMeta {
+  content: string;
+  resolvedPath: string;
+  exists: boolean;
+  terminalExecTimeoutSec: number;
+}
+
+export async function getLarkCliConfig(): Promise<LarkCliConfigMeta> {
+  const raw = await requestJSON<Record<string, unknown>>('/admin/lark-cli/config');
+  const sec = Number(raw.terminalExecTimeoutSec ?? raw.terminal_exec_timeout_sec ?? 120);
+  return {
+    content: String(raw.content ?? ''),
+    resolvedPath: String(raw.resolvedPath ?? raw.resolved_path ?? ''),
+    exists: Boolean(raw.exists),
+    terminalExecTimeoutSec: Number.isFinite(sec) && sec > 0 ? sec : 120,
+  };
+}
+
+/** PUT /admin/lark-cli/config：写入合法 JSON（默认路径见 get 返回的 resolvedPath） */
+export async function saveLarkCliConfig(jsonRaw: string): Promise<void> {
+  await requestJSON('/admin/lark-cli/config', {
+    method: 'PUT',
+    body: { jsonRaw },
+  });
+}
+
 /** 一条模型记录（隶属于某个 LLM 配置，共享凭证） */
 export interface LlmModelEntryItem {
   id: number;
