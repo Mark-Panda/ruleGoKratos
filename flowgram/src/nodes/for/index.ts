@@ -30,11 +30,11 @@ export const ForNodeRegistry: FlowNodeRegistry = {
     isContainer: true,
     /**
      * The subcanvas default size setting
-     * 子画布默认大小设置
+     * 子画布默认大小设置（略小于 loop，画布占位更紧凑）
      */
     size: {
-      width: 424,
-      height: 244,
+      width: 360,
+      height: 160,
     },
     // autoResizeDisable: true,
     /**
@@ -51,10 +51,10 @@ export const ForNodeRegistry: FlowNodeRegistry = {
         };
       }
       return {
-        top: 350,
-        bottom: 80,
-        left: 80,
-        right: 80,
+        top: 248,
+        bottom: 56,
+        left: 72,
+        right: 72,
       };
     },
     /**
@@ -95,7 +95,7 @@ export const ForNodeRegistry: FlowNodeRegistry = {
           type: WorkflowNodeType.BlockStart,
           meta: {
             position: {
-              x: 32,
+              x: 28,
               y: 0,
             },
           },
@@ -106,7 +106,7 @@ export const ForNodeRegistry: FlowNodeRegistry = {
           type: WorkflowNodeType.BlockEnd,
           meta: {
             position: {
-              x: 192,
+              x: 168,
               y: 0,
             },
           },
