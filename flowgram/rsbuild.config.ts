@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.RSBUILD_API_PROXY || 'http://127.0.0.1:8081',
+        target: process.env.RSBUILD_API_PROXY || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },
