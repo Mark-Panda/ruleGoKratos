@@ -32,7 +32,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN npm config set registry https://registry.npmmirror.com \
     && npm install -g @larksuite/cli \
-    && npx --yes skills add larksuite/cli -y -g
+    && npx --yes skills add larksuite/cli -y -g --copy \
+    && mkdir -p /root/.cursor/skills \
+    && test -f /root/.agents/skills/lark-shared/SKILL.md \
+        || (echo "skills add failed: missing /root/.agents/skills"; ls -la /root/.agents/skills /root/.claude/skills 2>&1; exit 1)
 
 # Stage 4: Final Image
 FROM docker.m.daocloud.io/debian:stable-slim
@@ -64,10 +67,15 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 RUN curl -fsSL https://cursor.com/install | bash
 
 # 本机 ~/.cursor → 构建前执行: bash scripts/prepare-docker-cursor.sh（写入 deploy/docker-cursor-overlay/.cursor）
+# Dockerfile 的 COPY 目标不可用 ~（Shell 展开无效），必须用绝对路径
 COPY deploy/docker-cursor-overlay/.cursor /root/.cursor/
 
 # Feishu CLI: copy Node runtime + global npm modules from lark-cli-installer
 COPY --from=lark-cli-installer /usr/local /usr/local
+# skills add -g 实体在 /root/.agents/skills；/root/.claude/skills 多为 symlink，运行时 WalkDir 不跟随目录链接，须复制实体目录
+COPY --from=lark-cli-installer /root/.agents/skills /root/.agents/skills
+COPY --from=lark-cli-installer /root/.claude/skills /root/.claude/skills
+COPY --from=lark-cli-installer /root/.cursor/skills /root/.cursor/skills
 
 WORKDIR /app
 

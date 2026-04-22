@@ -49,24 +49,28 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 	}
 	all := fe.ListAvailableSkillNames()
 	filtered := FilterSkillNamesByPackages(all, p.SkillPackageIDs)
+	var skillAllow []string
 	if len(p.SkillPackageIDs) > 0 {
 		cp := filtered
 		out.SkillCatalogFilter = &cp
+		skillAllow = filtered
 	} else {
-		empty := []string{}
-		out.SkillCatalogFilter = &empty
+		// 未勾选技能包时：系统提示附全量 SKILL 目录（SkillCatalogFilter=nil），run_skill 不做额外白名单限制。
+		out.SkillCatalogFilter = nil
+		skillAllow = nil
 	}
 
 	mcpAllow, err := uc.managedAgentLoader.McpAllowlistStrings(ctx, p.McpIDs)
 	if err != nil {
 		return req, err
 	}
+	enableSkill := len(all) > 0 && (len(p.SkillPackageIDs) == 0 || len(filtered) > 0)
 	out.ToolOptions = &HarnessToolOptions{
 		EnableUUIDTool:       true,
-		EnableSkillTool:      len(filtered) > 0,
+		EnableSkillTool:      enableSkill,
 		EnableMcpTool:        len(mcpAllow) > 0,
 		EnableWorkspaceTools: true,
-		SkillAllowlist:       filtered,
+		SkillAllowlist:       skillAllow,
 		McpAllowlist:         mcpAllow,
 	}
 	return out, nil

@@ -36,9 +36,9 @@ type FileSkillExecutorOptions struct {
 	ScanIntervalMSSet bool
 }
 
-// defaultSkillDirs 组装技能目录来源：配置优先，内置目录兜底。
+// defaultSkillDirs 组装技能目录来源：配置优先，内置目录兜底；末尾追加用户主目录下全局技能路径（skills CLI 实体多在 ~/.agents/skills）。
 func defaultSkillDirs(dir string, dirsCSV string) []string {
-	dirs := make([]string, 0, 4)
+	dirs := make([]string, 0, 8)
 	if v := strings.TrimSpace(dir); v != "" {
 		dirs = append(dirs, v)
 	}
@@ -52,6 +52,14 @@ func defaultSkillDirs(dir string, dirsCSV string) []string {
 	}
 	// 兜底目录：本地默认读取仓库 skills/，容器默认读取 /app/skills。
 	dirs = append(dirs, "skills", "/app/skills", "internal/biz/skills")
+	if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
+		// skills add -g 默认写入 ~/.agents/skills；~/.claude 等常为指向该处的 symlink，WalkDir 不进入目录级 symlink
+		dirs = append(dirs,
+			filepath.Join(home, ".agents", "skills"),
+			filepath.Join(home, ".claude", "skills"),
+			filepath.Join(home, ".cursor", "skills"),
+		)
+	}
 	return dirs
 }
 

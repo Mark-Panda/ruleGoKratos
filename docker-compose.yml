@@ -18,9 +18,12 @@ services:
       - ./skills:/agents
       - ./agent_workspace:/app/agent_workspace
     environment:
+      # HTTP / gRPC 监听地址（容器内需 0.0.0.0；宿主机映射见 ports）
       - SERVER_HTTP_ADDR=0.0.0.0:8000
       - SERVER_GRPC_ADDR=0.0.0.0:9000
+      # Agent 读写文件、执行 shell 的工作区根路径（需与 volumes 挂载一致）
       - AGENT_WORKSPACE_ROOT=/app/agent_workspace
+      # Postgres 连接（主机名用 compose 服务名 postgres-db）
       - DATA_POSTGRES_HOST=postgres-db
       - DATA_POSTGRES_PORT=5432
       - DATA_POSTGRES_USER=rulego
@@ -28,12 +31,19 @@ services:
       - DATA_POSTGRES_DBNAME=rulego
       - DATA_POSTGRES_SSLMODE=disable
       - DATA_POSTGRES_TIMEZONE=Asia/Shanghai
+      # Agent 技能文件：主目录（对应挂载 ./skills -> /app/skills）
       - AGENT_SKILL_DIR=/app/skills
+      # 额外技能目录，逗号分隔多个路径；空则仅用主目录 + 内置兜底 + $HOME/.claude|cursor/skills（容器内需自行挂载）
       - AGENT_SKILL_DIRS=
+      # 技能命名空间前缀：非空时扫描到的 skill id 会带上「namespace/」前缀，避免与其它来源同名冲突
       - AGENT_SKILL_NAMESPACE=
+      # 技能白名单：逗号分隔的 skill id / 前缀*；空或 * 表示不限制；与 FileSkillExecutor 权限一致
       - AGENT_SKILL_ALLOWLIST=
+      # 技能目录热更新轮询间隔（毫秒）
       - AGENT_SKILL_SCAN_INTERVAL_MS=1000
+      # 供需要 Cursor Cloud / 相关集成的组件使用（无则留空）
       - CURSOR_API_KEY=
+      # Tavily 搜索等工具用的 API Key（按需填写，勿提交敏感值到仓库）
       - TAVILY_API_KEY=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
     depends_on:
       postgres-db:
@@ -54,7 +64,7 @@ services:
       - ./volumes/database_postgres-data:/var/lib/postgresql/data
       - ./sql/:/docker-entrypoint-initdb.d/
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rulego -d rulego"]
+      test: [ "CMD-SHELL", "pg_isready -U rulego -d rulego" ]
       interval: 5s
       timeout: 5s
       retries: 5
