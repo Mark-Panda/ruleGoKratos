@@ -9,28 +9,13 @@ import { Divider } from '@douyinfe/semi-ui';
 
 import { useIsSidebar, useNodeRenderContext } from '../../../hooks';
 import { FormItem } from '../../../form-components';
-import {
-  CANVAS_TWO_LINE_BOX_STYLE,
-  canvasSchemaPreviewText,
-} from '../../../utils/canvas-node-preview';
 
 export function Outputs() {
   const { readonly } = useNodeRenderContext();
   const isSidebar = useIsSidebar();
 
   if (!isSidebar) {
-    return (
-      <>
-        <Divider />
-        <Field<IJsonSchema> name="outputs">
-          {({ field }) => (
-            <div style={{ ...CANVAS_TWO_LINE_BOX_STYLE, fontFamily: 'monospace', fontSize: '11px' }}>
-              {canvasSchemaPreviewText(field.value, 220)}
-            </div>
-          )}
-        </Field>
-      </>
-    );
+    return null;
   }
 
   return (

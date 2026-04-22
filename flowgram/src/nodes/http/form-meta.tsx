@@ -9,7 +9,6 @@ import { Divider } from '@douyinfe/semi-ui';
 
 import { FormHeader, FormContent, OutputsPeek } from '../../form-components';
 import { HTTPNodeJSON } from './types';
-import { HttpCanvasCollapsedPreview } from './components/canvas-collapsed-preview';
 import { Timeout } from './components/timeout';
 import { Params } from './components/params';
 import { Headers } from './components/headers';
@@ -20,7 +19,7 @@ import { defaultFormMeta } from '../default-form-meta';
 export const FormRender = ({ form }: FormRenderProps<HTTPNodeJSON>) => (
   <>
     <FormHeader />
-    <FormContent collapsedPreview={<HttpCanvasCollapsedPreview />}>
+    <FormContent>
       <Api />
       <Divider />
       <Headers />

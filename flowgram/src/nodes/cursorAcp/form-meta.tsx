@@ -9,10 +9,6 @@ import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-edito
 import { FlowNodeJSON } from '../../typings';
 import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 import { defaultFormMeta } from '../default-form-meta';
-import {
-  CANVAS_TWO_LINE_BOX_STYLE,
-  truncateCanvasText,
-} from '../../utils/canvas-node-preview';
 
 const CURSOR_ACP_FIELD_ORDER: readonly string[] = [
   'acpSimpleMode',
@@ -28,46 +24,10 @@ const CURSOR_ACP_FIELD_ORDER: readonly string[] = [
   'args',
 ];
 
-function acpFlowContent(v: unknown): string {
-  return String((v as { content?: unknown })?.content ?? '');
-}
-
-function CursorAcpCollapsedPreview() {
-  return (
-    <Field name="inputsValues.acpSimpleMode">
-      {({ field: sm }) => (
-        <Field name="inputsValues.acpTask">
-          {({ field: tk }) => (
-            <Field name="inputsValues.agentPath">
-              {({ field: ag }) => (
-                <Field name="inputsValues.timeoutMs">
-                  {({ field: to }) => {
-                    const simple =
-                      (sm.value as { content?: unknown })?.content !== false ? '简易开' : '简易关';
-                    const task = truncateCanvasText(acpFlowContent(tk.value), 44);
-                    const agent = truncateCanvasText(acpFlowContent(ag.value), 36);
-                    const ms = acpFlowContent(to.value) || '—';
-                    const line = `${simple} · ${task} · agent ${agent} · ${ms}ms`;
-                    return (
-                      <div style={{ margin: '0 10px 6px' }}>
-                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>{truncateCanvasText(line, 220)}</div>
-                      </div>
-                    );
-                  }}
-                </Field>
-              )}
-            </Field>
-          )}
-        </Field>
-      )}
-    </Field>
-  );
-}
-
 const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
   <>
     <FormHeader />
-    <FormContent collapsedPreview={<CursorAcpCollapsedPreview />}>
+    <FormContent>
       <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 8px' }}>
         简易模式打开时：填写「API 密钥」与「任务说明」即可；引擎会用 API Key 启动 CLI（--api-key），并按官方 ACP 流程发送
         JSON-RPC。关闭简易模式后可自行编辑「stdin JSON-RPC 行」。文档：{' '}

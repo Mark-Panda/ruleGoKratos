@@ -61,7 +61,7 @@ export function summarizeFlowValue(v: IFlowValue | undefined): string {
 export function summarizeFlowValuesRecord(
   rec: Record<string, IFlowValue | undefined> | undefined
 ): string {
-  if (!rec || Object.keys(rec).length === 0) return '(空)';
+  if (!rec || Object.keys(rec).length === 0) return '';
   return Object.entries(rec)
     .map(([k, val]) => `${k}: ${summarizeFlowValue(val)}`)
     .join('\n');
@@ -74,7 +74,7 @@ export function summarizeFlowValuesRecordCompact(
   rec: Record<string, IFlowValue | undefined> | undefined,
   maxChars = 160
 ): string {
-  if (!rec || Object.keys(rec).length === 0) return '(空)';
+  if (!rec || Object.keys(rec).length === 0) return '';
   const parts: string[] = [];
   for (const [k, v] of Object.entries(rec)) {
     parts.push(`${k}:${summarizeFlowValue(v)}`);
@@ -83,7 +83,7 @@ export function summarizeFlowValuesRecordCompact(
 }
 
 export function canvasSchemaPreviewText(schema: unknown, maxChars = 200): string {
-  if (schema == null) return '(空)';
+  if (schema == null) return '';
   try {
     return truncateCanvasText(JSON.stringify(schema), maxChars);
   } catch {

@@ -21,17 +21,6 @@ import {
   type SkillItem,
 } from '../../services/api-agent';
 import { groupSkillPackages } from '../../utils/skill-packages';
-import {
-  CANVAS_TWO_LINE_BOX_STYLE,
-  truncateCanvasText,
-} from '../../utils/canvas-node-preview';
-
-function truncOneLine(s: string, max: number) {
-  const one = s.replace(/\s+/g, ' ').trim();
-  if (!one) return '（空）';
-  if (one.length <= max) return one;
-  return `${one.slice(0, max)}…`;
-}
 
 function flowStr(v: unknown): string {
   if (v == null || typeof v !== 'object' || !('content' in (v as object))) return '';
@@ -387,63 +376,10 @@ function AgentHarnessToolAllowlists() {
   );
 }
 
-function AgentHarnessCollapsedPreview() {
-  return (
-    <Field name="inputsValues.llmConfigId">
-      {({ field: lc }) => (
-        <Field name="inputsValues.llmModelEntryId">
-          {({ field: lm }) => (
-            <Field name="inputsValues.model">
-              {({ field: md }) => (
-                <Field name="inputsValues.userPrompt">
-                  {({ field: up }) => (
-                    <Field name="inputsValues.enableSkillTool">
-                      {({ field: es }) => (
-                        <Field name="inputsValues.enableMcpTool">
-                          {({ field: em }) => (
-                            <Field name="inputsValues.enableWorkspaceTools">
-                              {({ field: ew }) => (
-                                <Field name="inputsValues.skillAllowlist">
-                                  {({ field: sa }) => (
-                                    <Field name="inputsValues.mcpAllowlist">
-                                      {({ field: ma }) => (
-                                        <Field name="inputsValues.maxIterations">
-                                          {({ field: mi }) => {
-                                            const line = `配置#${flowNum(lc.value) || '—'} 条目#${flowNum(lm.value) || '—'} · ${truncOneLine(flowStr(md.value), 16) || '模型·'} · 提示 ${truncOneLine(flowStr(up.value), 48)} · Skill${flowBool(es.value) ? '开' : '关'} MCP${flowBool(em.value) ? '开' : '关'} WS${flowBool(ew.value) ? '开' : '关'} · Skill白${flowStringList(sa.value).length || '不限'} MCP白${flowStringList(ma.value).length || '不限'} · ${flowStr(mi.value) || '0'}轮`;
-                                            return (
-                                              <div style={{ margin: '0 10px 6px' }}>
-                                                <div style={CANVAS_TWO_LINE_BOX_STYLE}>
-                                                  {truncateCanvasText(line, 220)}
-                                                </div>
-                                              </div>
-                                            );
-                                          }}
-                                        </Field>
-                                      )}
-                                    </Field>
-                                  )}
-                                </Field>
-                              )}
-                            </Field>
-                          )}
-                        </Field>
-                      )}
-                    </Field>
-                  )}
-                </Field>
-              )}
-            </Field>
-          )}
-        </Field>
-      )}
-    </Field>
-  );
-}
-
 const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
   <>
     <FormHeader />
-    <FormContent collapsedPreview={<AgentHarnessCollapsedPreview />}>
+    <FormContent>
       <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 10px' }}>
         上方须选择模型管理中的 LLM 配置与模型条目（运行时解析密钥与模型名）；下方可编辑提示词与各工具选项。generate_uuid 由服务端固定启用。
       </Typography.Paragraph>

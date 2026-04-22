@@ -44,6 +44,10 @@ export function FormInputs(props?: FormInputsProps) {
   const propertyFilter = props?.propertyFilter;
   const propertyKeyOrder = props?.propertyKeyOrder;
 
+  if (!isSidebar) {
+    return null;
+  }
+
   return (
     <Field<JsonSchema> name="inputs">
       {({ field: inputsField }) => {

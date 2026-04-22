@@ -9,10 +9,6 @@ import { createInferInputsPlugin, IFlowValue, InputsValues } from '@flowgram.ai/
 import { defaultFormMeta } from '../default-form-meta';
 import { useIsSidebar } from '../../hooks';
 import { FormHeader, FormContent } from '../../form-components';
-import {
-  CANVAS_TWO_LINE_BOX_STYLE,
-  summarizeFlowValuesRecordCompact,
-} from '../../utils/canvas-node-preview';
 
 export const renderForm = () => {
   const isSidebar = useIsSidebar();
@@ -35,13 +31,7 @@ export const renderForm = () => {
   return (
     <>
       <FormHeader />
-      <FormContent>
-        <Field<Record<string, IFlowValue | undefined> | undefined> name="inputsValues">
-          {({ field: { value } }) => (
-            <div style={CANVAS_TWO_LINE_BOX_STYLE}>{summarizeFlowValuesRecordCompact(value)}</div>
-          )}
-        </Field>
-      </FormContent>
+      <FormContent />
     </>
   );
 };

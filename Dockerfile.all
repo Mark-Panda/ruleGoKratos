@@ -25,14 +25,22 @@ RUN GOPROXY=https://goproxy.cn make build
 # Stage 3: Feishu / Lark CLI (@larksuite/cli, npm global)
 # 使用与 frontend-builder 相同的 node:22，便于复用镜像层并避免单独拉 node:*-slim 时偶发的镜像站 EOF
 FROM docker.m.daocloud.io/node:22 AS lark-cli-installer
+# npx skills add 内部 git clone 固定 60s 超时；慢网易失败。改为系统 git clone（lowSpeed* 放宽）+ skills add 本地路径。
+# 无法访问 GitHub 时自行指定镜像，例如：--build-arg LARK_CLI_GIT_URL=https://gitclone.com/github.com/larksuite/cli.git
+ARG LARK_CLI_GIT_URL=https://github.com/larksuite/cli.git
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 RUN npm config set registry https://registry.npmmirror.com \
+    && git clone --depth 1 \
+        -c http.lowSpeedLimit=0 \
+        -c http.lowSpeedTime=9999 \
+        "${LARK_CLI_GIT_URL}" /tmp/larksuite-cli \
     && npm install -g @larksuite/cli \
-    && npx --yes skills add larksuite/cli -y -g --copy \
+    && npx --yes skills add /tmp/larksuite-cli -y -g --copy \
+    && rm -rf /tmp/larksuite-cli \
     && mkdir -p /root/.cursor/skills \
     && test -f /root/.agents/skills/lark-shared/SKILL.md \
         || (echo "skills add failed: missing /root/.agents/skills"; ls -la /root/.agents/skills /root/.claude/skills 2>&1; exit 1)

@@ -5,27 +5,36 @@
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { DisplayOutputs } from '@flowgram.ai/form-materials';
 
-import { useIsSidebar } from '../hooks';
+import { useIsSidebar, useNodeRenderContext } from '../hooks';
+import { WorkflowNodeType } from '../nodes/constants';
 import { CANVAS_TWO_LINE_BOX_STYLE, canvasSchemaPreviewText } from '../utils/canvas-node-preview';
 
 export function OutputsPeek() {
   const isSidebar = useIsSidebar();
+  const { node } = useNodeRenderContext();
   if (isSidebar) {
     return <DisplayOutputs displayFromScope />;
   }
+  if (node.flowNodeType !== WorkflowNodeType.For) {
+    return null;
+  }
   return (
     <Field name="outputs">
-      {({ field }) => (
-        <div
-          style={{
-            ...CANVAS_TWO_LINE_BOX_STYLE,
-            fontFamily: 'monospace',
-            fontSize: '11px',
-          }}
-        >
-          {canvasSchemaPreviewText(field.value, 220)}
-        </div>
-      )}
+      {({ field }) => {
+        const text = canvasSchemaPreviewText(field.value, 220);
+        if (!text.trim()) return null;
+        return (
+          <div
+            style={{
+              ...CANVAS_TWO_LINE_BOX_STYLE,
+              fontFamily: 'monospace',
+              fontSize: '11px',
+            }}
+          >
+            {text}
+          </div>
+        );
+      }}
     </Field>
   );
 }
