@@ -11,6 +11,7 @@ export const Header = styled.div`
   justify-content: flex-start;
   align-items: center;
   width: 100%;
+  flex-shrink: 0;
   column-gap: 8px;
   border-radius: 8px 8px 0 0;
   cursor: move;

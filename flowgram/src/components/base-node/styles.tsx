@@ -14,10 +14,13 @@ export const NodeWrapperStyle = styled.div`
   box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.04), 0 4px 12px 0 rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* 勿用 center：容器节点 bounds 被子画布撑高时，表单体被竖直居中，底部 Failure 等端口仍贴在 bounds 底边，圆点会落在白底下方 */
+  justify-content: flex-start;
   position: relative;
   width: 360px;
-  height: auto;
+  /* 与 free-container-plugin useSyncNodeRenderSize 注入的节点高度一致，避免「卡片视觉高度 < 引擎 hit 框」 */
+  height: 100%;
+  box-sizing: border-box;
 
   &.selected {
     border: 1px solid #4e40e5;

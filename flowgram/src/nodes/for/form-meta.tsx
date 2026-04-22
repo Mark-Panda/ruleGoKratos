@@ -15,6 +15,8 @@ import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../
 import { VariablePicker } from '../../form-components/variable-picker';
 import { FormHeader, FormContent, FormItem, Feedback, OutputsPeek } from '../../form-components';
 
+import { FOR_SUBCANVAS_TOP_FORM_RESERVE_PX } from './subcanvas-layout';
+
 // 使用通用 FlowNodeJSON 即可，无需特定 forFor 字段
 type ForNodeJSON = FlowNodeJSON;
 
@@ -158,7 +160,7 @@ export const ForFormRender = ({ form }: FormRenderProps<ForNodeJSON>) => {
         {nodeIdLinked}
         {textInput}
         {modeSelect}
-        <SubCanvasRender offsetY={0} />
+        <SubCanvasRender offsetY={-FOR_SUBCANVAS_TOP_FORM_RESERVE_PX} />
         <OutputsPeek />
       </FormContent>
     </>

@@ -51,6 +51,7 @@ export const ForNodeRegistry: FlowNodeRegistry = {
         };
       }
       return {
+        // 与 form-meta 中 SubCanvasRender 负 offset 预留一致，见 subcanvas-layout.ts
         top: 248,
         bottom: 56,
         left: 72,
