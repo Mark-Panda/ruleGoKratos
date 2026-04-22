@@ -417,7 +417,9 @@ function buildRuleChainMetaNodes(
     case 'x/fileList':
     case 'ci/gitClone':
     case 'ci/gitCommit':
-    case 'ci/gitPush': {
+    case 'ci/gitPush':
+    case 'opensearch/search':
+    case 'volcTls/searchLogs': {
       const specExtra = getNodeMappingSpec(nodeType);
       if (!specExtra) break;
       base.configuration = mapNodeToDslConfig(n, specExtra) as Record<string, any>;
@@ -762,6 +764,140 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   : [],
               },
             },
+          } as any;
+          break;
+        }
+        case 'opensearch/search': {
+          const cfg = n.configuration ?? {};
+          const specOs = getNodeMappingSpec('opensearch/search');
+          const ivMapOs = specOs
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specOs)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'OpenSearch 检索',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['endpoint', 'index'],
+              properties: {
+                endpoint: {
+                  type: 'string',
+                  extra: {
+                    label: 'Endpoint',
+                    formComponent: 'prompt-editor',
+                    description: 'OpenSearch 地址，例如 https://opensearch:9200',
+                  },
+                },
+                index: {
+                  type: 'string',
+                  extra: {
+                    label: '索引',
+                    formComponent: 'prompt-editor',
+                    description: '支持单索引、多索引（逗号分隔）和通配符',
+                  },
+                },
+                username: { type: 'string', extra: { label: '用户名（可选）' } },
+                password: { type: 'string', extra: { label: '密码（可选）' } },
+                insecureSkipVerify: {
+                  type: 'boolean',
+                  extra: { label: '跳过 TLS 证书校验' },
+                },
+                timeoutSec: { type: 'number', extra: { label: '超时（秒）' } },
+                searchType: {
+                  type: 'string',
+                  enum: ['query_then_fetch', 'dfs_query_then_fetch'],
+                  extra: { label: 'search_type', formComponent: 'enum-select' },
+                },
+                ignoreUnavailable: {
+                  type: 'boolean',
+                  extra: { label: '忽略不可用索引' },
+                },
+                defaultSearchBody: {
+                  type: 'string',
+                  extra: {
+                    label: '默认查询体（JSON）',
+                    formComponent: 'prompt-editor',
+                    jsonFormat: true,
+                  },
+                },
+              },
+            },
+            inputsValues: specOs
+              ? inputsValuesMapToFlowData(ivMapOs, specOs)
+              : {
+                  endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
+                  index: { type: 'template', content: String((cfg as any).index ?? '') },
+                },
+          } as any;
+          break;
+        }
+        case 'volcTls/searchLogs': {
+          const cfg = n.configuration ?? {};
+          const specTls = getNodeMappingSpec('volcTls/searchLogs');
+          const ivMapTls = specTls
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specTls)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '火山 TLS 检索',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['region', 'accessKeyId', 'secretAccessKey', 'topicId'],
+              properties: {
+                endpoint: { type: 'string', extra: { label: 'Endpoint（可选）' } },
+                region: { type: 'string', extra: { label: 'Region（必填）' } },
+                accessKeyId: {
+                  type: 'string',
+                  extra: { label: 'AccessKeyId', formComponent: 'prompt-editor' },
+                },
+                secretAccessKey: {
+                  type: 'string',
+                  extra: { label: 'SecretAccessKey', formComponent: 'prompt-editor' },
+                },
+                sessionToken: {
+                  type: 'string',
+                  extra: { label: 'SessionToken（可选）', formComponent: 'prompt-editor' },
+                },
+                topicId: {
+                  type: 'string',
+                  extra: { label: 'TopicId（默认）', formComponent: 'prompt-editor' },
+                },
+                defaultQuery: {
+                  type: 'string',
+                  extra: { label: '默认查询语句', formComponent: 'prompt-editor' },
+                },
+                limit: { type: 'number', extra: { label: 'Limit（1-500）' } },
+                useApiV3: { type: 'boolean', extra: { label: '使用 SearchLogsV2' } },
+                timeoutSec: { type: 'number', extra: { label: '超时（秒）' } },
+                timeRangePreset: {
+                  type: 'string',
+                  enum: [
+                    'last_15m',
+                    'last_30m',
+                    'last_1h',
+                    'last_6h',
+                    'last_24h',
+                    'last_7d',
+                    'today_local',
+                    'custom',
+                  ],
+                  extra: { label: '默认时间窗', formComponent: 'enum-select' },
+                },
+                defaultStartTimeMs: { type: 'number', extra: { label: '自定义开始时间（毫秒）' } },
+                defaultEndTimeMs: { type: 'number', extra: { label: '自定义结束时间（毫秒）' } },
+                defaultSort: {
+                  type: 'string',
+                  enum: ['desc', 'asc'],
+                  extra: { label: '默认排序', formComponent: 'enum-select' },
+                },
+                highLight: { type: 'boolean', extra: { label: '默认开启高亮' } },
+              },
+            },
+            inputsValues: specTls
+              ? inputsValuesMapToFlowData(ivMapTls, specTls)
+              : {
+                  region: { type: 'constant', content: String((cfg as any).region ?? '') },
+                },
           } as any;
           break;
         }
@@ -1121,6 +1257,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   extra: {
                     label: '卡片 JSON（自定义）',
                     formComponent: 'prompt-editor',
+                    jsonFormat: true,
                   },
                 },
                 rawJson: {
@@ -1128,6 +1265,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   extra: {
                     label: '自定义整包（raw）',
                     formComponent: 'prompt-editor',
+                    jsonFormat: true,
                   },
                 },
                 timeoutMs: {

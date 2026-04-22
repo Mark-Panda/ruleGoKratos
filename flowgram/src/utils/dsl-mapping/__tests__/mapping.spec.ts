@@ -14,12 +14,14 @@ import {
   logMappingSpec,
   luaTransformMappingSpec,
   multiNodeOutputMappingSpec,
+  opensearchSearchMappingSpec,
   redisClientMappingSpec,
   restApiCallMappingSpec,
   inclusiveMappingSpec,
   switchMappingSpec,
   whileMappingSpec,
   execMappingSpec,
+  volcTlsSearchLogsMappingSpec,
   yapiMappingSpec,
 } from '../specs';
 import { mapDslToNodeInputsValues, mapNodeToDslConfig } from '../engine';
@@ -674,6 +676,91 @@ describe('remaining node specs round-trip', () => {
       redisClientMappingSpec
     );
     expect(redisIv.db?.content).toBe(2);
+
+    const osCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            endpoint: { content: 'https://opensearch.example.com:9200' },
+            index: { content: 'logs-*' },
+            username: { content: 'u' },
+            password: { content: 'p' },
+            insecureSkipVerify: { content: true },
+            timeoutSec: { content: 30 },
+            searchType: { content: 'dfs_query_then_fetch' },
+            ignoreUnavailable: { content: true },
+            defaultSearchBody: { content: '{"size":10,"query":{"match_all":{}}}' },
+          },
+        },
+      },
+      opensearchSearchMappingSpec
+    );
+    expect(osCfg).toMatchObject({
+      endpoint: 'https://opensearch.example.com:9200',
+      index: 'logs-*',
+      username: 'u',
+      password: 'p',
+      insecureSkipVerify: true,
+      timeoutSec: 30,
+      searchType: 'dfs_query_then_fetch',
+      ignoreUnavailable: true,
+      defaultSearchBody: '{"size":10,"query":{"match_all":{}}}',
+    });
+    const osIv = mapDslToNodeInputsValues(
+      osCfg as Record<string, unknown>,
+      opensearchSearchMappingSpec
+    );
+    expect(osIv.searchType?.content).toBe('dfs_query_then_fetch');
+    expect(osIv.ignoreUnavailable?.content).toBe(true);
+
+    const tlsCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            endpoint: { content: 'https://tls.cn-beijing.volces.com' },
+            region: { content: 'cn-beijing' },
+            accessKeyId: { content: 'ak' },
+            secretAccessKey: { content: 'sk' },
+            sessionToken: { content: 'st' },
+            topicId: { content: 'topic-1' },
+            defaultQuery: { content: '__source__:*error*' },
+            limit: { content: 50 },
+            useApiV3: { content: true },
+            timeoutSec: { content: 20 },
+            timeRangePreset: { content: 'last_1h' },
+            defaultStartTimeMs: { content: 1000 },
+            defaultEndTimeMs: { content: 2000 },
+            defaultSort: { content: 'asc' },
+            highLight: { content: true },
+          },
+        },
+      },
+      volcTlsSearchLogsMappingSpec
+    );
+    expect(tlsCfg).toMatchObject({
+      endpoint: 'https://tls.cn-beijing.volces.com',
+      region: 'cn-beijing',
+      accessKeyId: 'ak',
+      secretAccessKey: 'sk',
+      sessionToken: 'st',
+      topicId: 'topic-1',
+      defaultQuery: '__source__:*error*',
+      limit: 50,
+      useApiV3: true,
+      timeoutSec: 20,
+      timeRangePreset: 'last_1h',
+      defaultStartTimeMs: 1000,
+      defaultEndTimeMs: 2000,
+      defaultSort: 'asc',
+      highLight: true,
+    });
+    const tlsIv = mapDslToNodeInputsValues(
+      tlsCfg as Record<string, unknown>,
+      volcTlsSearchLogsMappingSpec
+    );
+    expect(tlsIv.useApiV3?.content).toBe(true);
+    expect(tlsIv.timeRangePreset?.content).toBe('last_1h');
+    expect(tlsIv.defaultSort?.content).toBe('asc');
 
     const cursorCfg = mapNodeToDslConfig(
       {
@@ -1518,5 +1605,101 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     const node = back.nodes.find((n: any) => n.id === 'fn');
     expect((node as any)?.data?.inputsValues?.interactivePreset?.content).toBe('notice_card');
     expect((node as any)?.data?.inputsValues?.cardNoticeTitle?.content).toBe('标题A');
+  });
+});
+
+describe('opensearch/tls nodes: rulechain round-trip', () => {
+  it('opensearch/search + volcTls/searchLogs：文档→RuleChain→文档 保持关键 configuration', () => {
+    const chainId = 'chain-search-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'SearchRT',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'os1',
+            type: 'opensearch/search',
+            meta: { position: { x: 180, y: 0 } },
+            data: {
+              title: 'OS',
+              positionType: 'middle',
+              inputsValues: {
+                endpoint: { type: 'template', content: 'https://os:9200' },
+                index: { type: 'template', content: 'app-*' },
+                username: { type: 'constant', content: 'u' },
+                password: { type: 'constant', content: 'p' },
+                insecureSkipVerify: { type: 'constant', content: true },
+                timeoutSec: { type: 'constant', content: 25 },
+                searchType: { type: 'constant', content: 'query_then_fetch' },
+                ignoreUnavailable: { type: 'constant', content: true },
+                defaultSearchBody: { type: 'template', content: '{"size":50}' },
+              },
+              inputs: { type: 'object', properties: {} },
+            },
+          },
+          {
+            id: 'tls1',
+            type: 'volcTls/searchLogs',
+            meta: { position: { x: 380, y: 0 } },
+            data: {
+              title: 'TLS',
+              positionType: 'middle',
+              inputsValues: {
+                endpoint: { type: 'constant', content: 'https://tls.cn-beijing.volces.com' },
+                region: { type: 'constant', content: 'cn-beijing' },
+                accessKeyId: { type: 'template', content: 'ak' },
+                secretAccessKey: { type: 'template', content: 'sk' },
+                sessionToken: { type: 'template', content: '' },
+                topicId: { type: 'template', content: 't-1' },
+                defaultQuery: { type: 'template', content: '*' },
+                limit: { type: 'constant', content: 80 },
+                useApiV3: { type: 'constant', content: true },
+                timeoutSec: { type: 'constant', content: 10 },
+                timeRangePreset: { type: 'constant', content: 'last_6h' },
+                defaultStartTimeMs: { type: 'constant', content: 0 },
+                defaultEndTimeMs: { type: 'constant', content: 0 },
+                defaultSort: { type: 'constant', content: 'desc' },
+                highLight: { type: 'constant', content: false },
+              },
+              inputs: { type: 'object', properties: {} },
+            },
+          },
+        ],
+        edges: [
+          { sourceNodeID: 'st', targetNodeID: 'os1', sourcePortID: 'Success' },
+          { sourceNodeID: 'os1', targetNodeID: 'tls1', sourcePortID: 'Success' },
+        ],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const osMeta = parsed.metadata.nodes.find((n: any) => n.id === 'os1');
+    expect(osMeta.type).toBe('opensearch/search');
+    expect(osMeta.configuration).toMatchObject({
+      endpoint: 'https://os:9200',
+      index: 'app-*',
+      timeoutSec: 25,
+      ignoreUnavailable: true,
+    });
+    const tlsMeta = parsed.metadata.nodes.find((n: any) => n.id === 'tls1');
+    expect(tlsMeta.type).toBe('volcTls/searchLogs');
+    expect(tlsMeta.configuration).toMatchObject({
+      region: 'cn-beijing',
+      topicId: 't-1',
+      useApiV3: true,
+      timeRangePreset: 'last_6h',
+      limit: 80,
+    });
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const osNode = back.nodes.find((n: any) => n.id === 'os1');
+    expect((osNode as any)?.data?.inputsValues?.index?.content).toBe('app-*');
+    expect((osNode as any)?.data?.inputsValues?.timeoutSec?.content).toBe(25);
+    const tlsNode = back.nodes.find((n: any) => n.id === 'tls1');
+    expect((tlsNode as any)?.data?.inputsValues?.region?.content).toBe('cn-beijing');
+    expect((tlsNode as any)?.data?.inputsValues?.useApiV3?.content).toBe(true);
+    expect((tlsNode as any)?.data?.inputsValues?.timeRangePreset?.content).toBe('last_6h');
   });
 });

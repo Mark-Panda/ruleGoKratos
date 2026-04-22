@@ -6,6 +6,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { JsonCodeEditor } from '@flowgram.ai/form-materials';
+import { Button, Toast } from '@douyinfe/semi-ui';
+
+import { tryFormatJsonPretty } from '../../../utils/format-json-pretty';
 
 export function JsonValueEditor({
   value,
@@ -43,5 +46,31 @@ export function JsonValueEditor({
     setJsonText(JSON.stringify(value, null, 2));
   }, [value]);
 
-  return <JsonCodeEditor value={jsonText} onChange={handleJsonTextChange} />;
+  const handleFormat = () => {
+    const r = tryFormatJsonPretty(jsonText);
+    if (!r.ok) {
+      Toast.warning({ content: `无法格式化：${r.error}` });
+      return;
+    }
+    setJsonText(r.text);
+    try {
+      const jsonValue = JSON.parse(r.text);
+      onChange(jsonValue as Record<string, unknown>);
+      changeVersion.current++;
+      Toast.success({ content: 'JSON 已格式化' });
+    } catch {
+      Toast.warning({ content: '格式化后解析失败' });
+    }
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+        <Button size="small" type="tertiary" onClick={handleFormat}>
+          格式化 JSON
+        </Button>
+      </div>
+      <JsonCodeEditor value={jsonText} onChange={handleJsonTextChange} />
+    </div>
+  );
 }

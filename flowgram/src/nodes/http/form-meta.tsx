@@ -4,11 +4,12 @@
  */
 
 import { FormMeta, FormRenderProps, ValidateTrigger } from '@flowgram.ai/free-layout-editor';
-import { createInferInputsPlugin, DisplayOutputs } from '@flowgram.ai/form-materials';
+import { createInferInputsPlugin } from '@flowgram.ai/form-materials';
 import { Divider } from '@douyinfe/semi-ui';
 
-import { FormHeader, FormContent } from '../../form-components';
+import { FormHeader, FormContent, OutputsPeek } from '../../form-components';
 import { HTTPNodeJSON } from './types';
+import { HttpCanvasCollapsedPreview } from './components/canvas-collapsed-preview';
 import { Timeout } from './components/timeout';
 import { Params } from './components/params';
 import { Headers } from './components/headers';
@@ -19,7 +20,7 @@ import { defaultFormMeta } from '../default-form-meta';
 export const FormRender = ({ form }: FormRenderProps<HTTPNodeJSON>) => (
   <>
     <FormHeader />
-    <FormContent>
+    <FormContent collapsedPreview={<HttpCanvasCollapsedPreview />}>
       <Api />
       <Divider />
       <Headers />
@@ -30,7 +31,7 @@ export const FormRender = ({ form }: FormRenderProps<HTTPNodeJSON>) => (
       <Divider />
       <Timeout />
       <Divider />
-      <DisplayOutputs displayFromScope />
+      <OutputsPeek />
     </FormContent>
   </>
 );

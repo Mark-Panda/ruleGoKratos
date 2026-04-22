@@ -240,6 +240,82 @@ export const redisClientMappingSpec: NodeMappingSpec = {
   ],
 };
 
+export const opensearchSearchMappingSpec: NodeMappingSpec = {
+  nodeType: 'opensearch/search',
+  fields: [
+    { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'template', defaultValue: '' },
+    { inputKey: 'index', dslKey: 'index', valueType: 'template', defaultValue: '' },
+    { inputKey: 'username', dslKey: 'username', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'password', dslKey: 'password', valueType: 'constant', defaultValue: '' },
+    {
+      inputKey: 'insecureSkipVerify',
+      dslKey: 'insecureSkipVerify',
+      valueType: 'boolean',
+      defaultValue: false,
+    },
+    { inputKey: 'timeoutSec', dslKey: 'timeoutSec', valueType: 'number', defaultValue: 60 },
+    {
+      inputKey: 'searchType',
+      dslKey: 'searchType',
+      valueType: 'constant',
+      defaultValue: 'query_then_fetch',
+    },
+    {
+      inputKey: 'ignoreUnavailable',
+      dslKey: 'ignoreUnavailable',
+      valueType: 'boolean',
+      defaultValue: false,
+    },
+    {
+      inputKey: 'defaultSearchBody',
+      dslKey: 'defaultSearchBody',
+      valueType: 'template',
+      defaultValue: '{"size":100,"sort":[{"@timestamp":{"order":"desc"}}],"query":{"match_all":{}}}',
+    },
+  ],
+};
+
+export const volcTlsSearchLogsMappingSpec: NodeMappingSpec = {
+  nodeType: 'volcTls/searchLogs',
+  fields: [
+    { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'region', dslKey: 'region', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'accessKeyId', dslKey: 'accessKeyId', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'secretAccessKey',
+      dslKey: 'secretAccessKey',
+      valueType: 'template',
+      defaultValue: '',
+    },
+    { inputKey: 'sessionToken', dslKey: 'sessionToken', valueType: 'template', defaultValue: '' },
+    { inputKey: 'topicId', dslKey: 'topicId', valueType: 'template', defaultValue: '' },
+    { inputKey: 'defaultQuery', dslKey: 'defaultQuery', valueType: 'template', defaultValue: '*' },
+    { inputKey: 'limit', dslKey: 'limit', valueType: 'number', defaultValue: 100 },
+    { inputKey: 'useApiV3', dslKey: 'useApiV3', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'timeoutSec', dslKey: 'timeoutSec', valueType: 'number', defaultValue: 60 },
+    {
+      inputKey: 'timeRangePreset',
+      dslKey: 'timeRangePreset',
+      valueType: 'constant',
+      defaultValue: 'last_15m',
+    },
+    {
+      inputKey: 'defaultStartTimeMs',
+      dslKey: 'defaultStartTimeMs',
+      valueType: 'number',
+      defaultValue: 0,
+    },
+    {
+      inputKey: 'defaultEndTimeMs',
+      dslKey: 'defaultEndTimeMs',
+      valueType: 'number',
+      defaultValue: 0,
+    },
+    { inputKey: 'defaultSort', dslKey: 'defaultSort', valueType: 'constant', defaultValue: 'desc' },
+    { inputKey: 'highLight', dslKey: 'highLight', valueType: 'boolean', defaultValue: false },
+  ],
+};
+
 export const multiNodeOutputMappingSpec: NodeMappingSpec = {
   nodeType: 'transform/multiNodeOutput',
   fields: [{ inputKey: 'nodeIds', dslKey: 'nodeIds', valueType: 'json', defaultValue: [] }],
@@ -487,6 +563,8 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'transform/yapi': yapiMappingSpec,
   dbClient: dbClientMappingSpec,
   'x/redisClient': redisClientMappingSpec,
+  'opensearch/search': opensearchSearchMappingSpec,
+  'volcTls/searchLogs': volcTlsSearchLogsMappingSpec,
   'transform/multiNodeOutput': multiNodeOutputMappingSpec,
   switch: switchMappingSpec,
   inclusive: inclusiveMappingSpec,

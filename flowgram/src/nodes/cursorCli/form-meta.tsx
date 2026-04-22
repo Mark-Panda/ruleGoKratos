@@ -4,74 +4,48 @@
  */
 
 import { Divider } from '@douyinfe/semi-ui';
-import { DisplayOutputs } from '@flowgram.ai/form-materials';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
 
 import { FlowNodeJSON } from '../../typings';
-import { FormContent, FormHeader, FormInputs } from '../../form-components';
+import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 import { defaultFormMeta } from '../default-form-meta';
+import {
+  CANVAS_TWO_LINE_BOX_STYLE,
+  truncateCanvasText,
+} from '../../utils/canvas-node-preview';
 
-function truncOneLine(s: string, max: number) {
-  const one = s.replace(/\s+/g, ' ').trim();
-  if (!one) return '（空）';
-  if (one.length <= max) return one;
-  return `${one.slice(0, max)}…`;
+function cliFlowContent(v: unknown): string {
+  return String((v as { content?: unknown })?.content ?? '');
 }
 
 function CursorCliCollapsedPreview() {
   return (
-    <div
-      style={{
-        margin: '0 10px 6px',
-        padding: '8px',
-        borderRadius: 6,
-        background: '#f7f8fa',
-        fontSize: 12,
-        color: '#1d2129',
-        lineHeight: 1.55,
-      }}
-    >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 6 }}>
-        <Field name="inputsValues.model">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              模型{' '}
-              <strong style={{ color: '#1d2129' }}>
-                {truncOneLine(String((field.value as { content?: unknown })?.content ?? 'auto'), 28)}
-              </strong>
-            </span>
-          )}
-        </Field>
+    <Field name="inputsValues.model">
+      {({ field: mo }) => (
         <Field name="inputsValues.outputFormat">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              输出{' '}
-              <strong style={{ color: '#1d2129' }}>
-                {String((field.value as { content?: unknown })?.content ?? 'text')}
-              </strong>
-            </span>
+          {({ field: of }) => (
+            <Field name="inputsValues.printMode">
+              {({ field: pm }) => (
+                <Field name="inputsValues.prompt">
+                  {({ field: pr }) => {
+                    const model = truncateCanvasText(cliFlowContent(mo.value) || 'auto', 28);
+                    const fmt = cliFlowContent(of.value) || 'text';
+                    const printOn = (pm.value as { content?: unknown })?.content ? '打印开' : '打印关';
+                    const task = truncateCanvasText(cliFlowContent(pr.value), 96);
+                    const line = `${model} · ${fmt} · ${printOn} · ${task}`;
+                    return (
+                      <div style={{ margin: '0 10px 6px' }}>
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>{truncateCanvasText(line, 220)}</div>
+                      </div>
+                    );
+                  }}
+                </Field>
+              )}
+            </Field>
           )}
         </Field>
-        <Field name="inputsValues.printMode">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              打印模式{' '}
-              <strong style={{ color: '#1d2129' }}>
-                {(field.value as { content?: unknown })?.content ? '开' : '关'}
-              </strong>
-            </span>
-          )}
-        </Field>
-      </div>
-      <Field name="inputsValues.prompt">
-        {({ field }) => (
-          <div style={{ color: '#4e5969', wordBreak: 'break-word' }}>
-            <span style={{ color: '#86909c' }}>任务 </span>
-            {truncOneLine(String((field.value as { content?: unknown })?.content ?? ''), 140)}
-          </div>
-        )}
-      </Field>
-    </div>
+      )}
+    </Field>
   );
 }
 
@@ -81,7 +55,7 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
     <FormContent collapsedPreview={<CursorCliCollapsedPreview />}>
       <FormInputs />
       <Divider />
-      <DisplayOutputs displayFromScope />
+      <OutputsPeek />
     </FormContent>
   </>
 );

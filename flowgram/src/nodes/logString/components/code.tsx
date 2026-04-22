@@ -4,7 +4,7 @@
  */
 
 import { Field } from '@flowgram.ai/free-layout-editor';
-import { Divider } from '@douyinfe/semi-ui';
+import { Divider, TextArea } from '@douyinfe/semi-ui';
 
 import { useIsSidebar, useNodeRenderContext } from '../../../hooks';
 import { CodeEditorWithFormat } from '../../../components/code-editor-with-format';
@@ -12,43 +12,52 @@ import { CodeEditorWithFormat } from '../../../components/code-editor-with-forma
 export function LogStringCode() {
   const isSidebar = useIsSidebar();
   const { readonly } = useNodeRenderContext();
+  const FIXED_HEADER = 'async function ToString(msg, metadata, msgType, dataType) {';
+  const SIGNATURE_STRING = /^(?:\s*async\s+)?function\s+ToString\s*\([^)]*\)\s*\{/m;
+  const SIGNATURE_STRICT =
+    /^(?:\s*async\s+)?function\s+ToString\s*\(\s*msg\s*,\s*metadata\s*,\s*msgType\s*,\s*dataType\s*\)\s*\{/m;
+
+  const enforceSignature = (src: string): string => {
+    if (SIGNATURE_STRICT.test(src)) return src; // already correct
+    if (SIGNATURE_STRING.test(src)) {
+      return src.replace(SIGNATURE_STRING, FIXED_HEADER);
+    }
+    // fallback: replace first top-level function declaration
+    const ANY_FUNC = /^(?:\s*async\s+)?function\s+[A-Za-z_$][\w$]*\s*\([^)]*\)\s*\{/m;
+    if (ANY_FUNC.test(src)) {
+      return src.replace(ANY_FUNC, FIXED_HEADER);
+    }
+    // if user deletes header entirely, prepend fixed header
+    return `${FIXED_HEADER}\n` + src;
+  };
 
   if (!isSidebar) {
-    return null;
+    return (
+      <Field<string> name="script.content">
+        {({ field }) => (
+          <TextArea
+            value={field.value ?? ''}
+            onChange={(value) => field.onChange(enforceSignature(String(value ?? '')))}
+            disabled={readonly}
+            autosize={{ minRows: 2, maxRows: 2 }}
+            placeholder="输入 ToString 脚本"
+          />
+        )}
+      </Field>
+    );
   }
 
   return (
     <>
       <Divider />
       <Field<string> name="script.content">
-        {({ field }) => {
-          const FIXED_HEADER = 'async function ToString(msg, metadata, msgType, dataType) {';
-          const SIGNATURE_STRING = /^(?:\s*async\s+)?function\s+ToString\s*\([^)]*\)\s*\{/m;
-          const SIGNATURE_STRICT =
-            /^(?:\s*async\s+)?function\s+ToString\s*\(\s*msg\s*,\s*metadata\s*,\s*msgType\s*,\s*dataType\s*\)\s*\{/m;
-
-          const enforceSignature = (src: string): string => {
-            if (SIGNATURE_STRICT.test(src)) return src; // already correct
-            if (SIGNATURE_STRING.test(src)) {
-              return src.replace(SIGNATURE_STRING, FIXED_HEADER);
-            }
-            // fallback: replace first top-level function declaration
-            const ANY_FUNC = /^(?:\s*async\s+)?function\s+[A-Za-z_$][\w$]*\s*\([^)]*\)\s*\{/m;
-            if (ANY_FUNC.test(src)) {
-              return src.replace(ANY_FUNC, FIXED_HEADER);
-            }
-            // if user deletes header entirely, prepend fixed header
-            return `${FIXED_HEADER}\n` + src;
-          };
-
-          return (
-            <CodeEditorWithFormat
-              value={field.value}
-              onChange={(value: string) => field.onChange(enforceSignature(String(value ?? '')))}
-              readonly={readonly}
-            />
-          );
-        }}
+        {({ field }) => (
+          <CodeEditorWithFormat
+            value={field.value}
+            onChange={(value: string) => field.onChange(enforceSignature(String(value ?? '')))}
+            readonly={readonly}
+          />
+        )}
       </Field>
     </>
   );

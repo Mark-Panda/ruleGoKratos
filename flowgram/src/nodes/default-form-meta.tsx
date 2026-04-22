@@ -8,7 +8,6 @@ import {
   autoRenameRefEffect,
   provideJsonSchemaOutputs,
   syncVariableTitle,
-  DisplayOutputs,
   validateFlowValue,
   validateWhenVariableSync,
   listenRefSchemaChange,
@@ -16,7 +15,7 @@ import {
 import { Divider } from '@douyinfe/semi-ui';
 
 import { FlowNodeJSON } from '../typings';
-import { FormHeader, FormContent, FormInputs } from '../form-components';
+import { FormHeader, FormContent, FormInputs, OutputsPeek } from '../form-components';
 
 export const renderForm = ({ form }: FormRenderProps<FlowNodeJSON>) => (
   <>
@@ -24,7 +23,7 @@ export const renderForm = ({ form }: FormRenderProps<FlowNodeJSON>) => (
     <FormContent>
       <FormInputs />
       <Divider />
-      <DisplayOutputs displayFromScope />
+      <OutputsPeek />
     </FormContent>
   </>
 );

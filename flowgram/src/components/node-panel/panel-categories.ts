@@ -70,6 +70,7 @@ export function inferPanelCategoryKey(nodeType: string): string {
     if (/^x\/file/i.test(t)) return 'files';
     return 'integration-x';
   }
+  if (t.startsWith('opensearch/') || t.startsWith('volcTls/')) return 'integration-x';
   if (FLOW_BASE.has(t)) return 'flow-base';
   if (FLOW_CONTROL.has(t)) return 'flow-control';
   if (DATA_TRANSFORM.has(t)) return 'data-transform';

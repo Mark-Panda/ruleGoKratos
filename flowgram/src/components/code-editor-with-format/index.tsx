@@ -6,8 +6,8 @@
 import { useState } from 'react';
 
 import { TypeScriptCodeEditor } from '@flowgram.ai/form-materials';
-import { Button, Toast } from '@douyinfe/semi-ui';
-import { IconCode } from '@douyinfe/semi-icons';
+import { Button, Modal, Toast, Tooltip } from '@douyinfe/semi-ui';
+import { IconCode, IconExpand } from '@douyinfe/semi-icons';
 
 interface CodeEditorWithFormatProps {
   value: string;
@@ -64,6 +64,7 @@ function formatJavaScript(code: string): string {
 
 export function CodeEditorWithFormat({ value, onChange, readonly }: CodeEditorWithFormatProps) {
   const [formatting, setFormatting] = useState(false);
+  const [expandOpen, setExpandOpen] = useState(false);
 
   const handleFormat = () => {
     if (readonly || !value) return;
@@ -83,32 +84,96 @@ export function CodeEditorWithFormat({ value, onChange, readonly }: CodeEditorWi
 
   return (
     <div style={{ position: 'relative' }}>
-      {!readonly && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            zIndex: 10,
-          }}
-        >
+      <div
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 10,
+          display: 'flex',
+          gap: 6,
+          alignItems: 'center',
+        }}
+      >
+        <Tooltip content={readonly ? '放大查看' : '放大编辑'}>
           <Button
-            icon={<IconCode />}
+            icon={<IconExpand />}
             size="small"
             theme="borderless"
-            onClick={handleFormat}
-            loading={formatting}
-            disabled={readonly || !value}
+            onClick={() => setExpandOpen(true)}
             style={{
               background: 'rgba(255, 255, 255, 0.9)',
               boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
             }}
-          >
-            格式化
-          </Button>
-        </div>
-      )}
+          />
+        </Tooltip>
+        {!readonly ? (
+          <Tooltip content="格式化">
+            <Button
+              icon={<IconCode />}
+              size="small"
+              theme="borderless"
+              onClick={handleFormat}
+              loading={formatting}
+              disabled={!value}
+              style={{
+                background: 'rgba(255, 255, 255, 0.9)',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              格式化
+            </Button>
+          </Tooltip>
+        ) : null}
+      </div>
       <TypeScriptCodeEditor value={value} onChange={onChange} readonly={readonly} />
+      <Modal
+        title={readonly ? '放大查看' : '放大编辑'}
+        visible={expandOpen}
+        onCancel={() => setExpandOpen(false)}
+        footer={
+          <Button type="primary" onClick={() => setExpandOpen(false)}>
+            关闭
+          </Button>
+        }
+        width="min(1200px, 92vw)"
+        bodyStyle={{ padding: 12 }}
+      >
+        <div style={{ position: 'relative', minHeight: 'min(72vh, 720px)' }}>
+          {!readonly ? (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                zIndex: 10,
+                display: 'flex',
+                gap: 6,
+              }}
+            >
+              <Tooltip content="格式化">
+                <Button
+                  icon={<IconCode />}
+                  size="small"
+                  theme="borderless"
+                  onClick={handleFormat}
+                  loading={formatting}
+                  disabled={!value}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.96)',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                  }}
+                >
+                  格式化
+                </Button>
+              </Tooltip>
+            </div>
+          ) : null}
+          <div style={{ height: 'min(68vh, 680px)' }}>
+            <TypeScriptCodeEditor value={value} onChange={onChange} readonly={readonly} />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

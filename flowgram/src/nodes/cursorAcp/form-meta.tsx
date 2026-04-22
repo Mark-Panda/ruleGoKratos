@@ -4,12 +4,15 @@
  */
 
 import { Divider, Typography } from '@douyinfe/semi-ui';
-import { DisplayOutputs } from '@flowgram.ai/form-materials';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
 
 import { FlowNodeJSON } from '../../typings';
-import { FormContent, FormHeader, FormInputs } from '../../form-components';
+import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 import { defaultFormMeta } from '../default-form-meta';
+import {
+  CANVAS_TWO_LINE_BOX_STYLE,
+  truncateCanvasText,
+} from '../../utils/canvas-node-preview';
 
 const CURSOR_ACP_FIELD_ORDER: readonly string[] = [
   'acpSimpleMode',
@@ -25,71 +28,39 @@ const CURSOR_ACP_FIELD_ORDER: readonly string[] = [
   'args',
 ];
 
-function truncOneLine(s: string, max: number) {
-  const one = s.replace(/\s+/g, ' ').trim();
-  if (!one) return '（空）';
-  if (one.length <= max) return one;
-  return `${one.slice(0, max)}…`;
+function acpFlowContent(v: unknown): string {
+  return String((v as { content?: unknown })?.content ?? '');
 }
 
 function CursorAcpCollapsedPreview() {
   return (
-    <div
-      style={{
-        margin: '0 10px 6px',
-        padding: '8px',
-        borderRadius: 6,
-        background: '#f7f8fa',
-        fontSize: 12,
-        color: '#1d2129',
-        lineHeight: 1.55,
-      }}
-    >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', marginBottom: 6 }}>
-        <Field name="inputsValues.acpSimpleMode">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              简易模式{' '}
-              <strong style={{ color: '#1d2129' }}>
-                {(field.value as { content?: unknown })?.content !== false ? '开' : '关'}
-              </strong>
-            </span>
-          )}
-        </Field>
+    <Field name="inputsValues.acpSimpleMode">
+      {({ field: sm }) => (
         <Field name="inputsValues.acpTask">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              任务{' '}
-              <strong style={{ color: '#1d2129' }}>
-                {truncOneLine(String((field.value as { content?: unknown })?.content ?? ''), 48)}
-              </strong>
-            </span>
+          {({ field: tk }) => (
+            <Field name="inputsValues.agentPath">
+              {({ field: ag }) => (
+                <Field name="inputsValues.timeoutMs">
+                  {({ field: to }) => {
+                    const simple =
+                      (sm.value as { content?: unknown })?.content !== false ? '简易开' : '简易关';
+                    const task = truncateCanvasText(acpFlowContent(tk.value), 44);
+                    const agent = truncateCanvasText(acpFlowContent(ag.value), 36);
+                    const ms = acpFlowContent(to.value) || '—';
+                    const line = `${simple} · ${task} · agent ${agent} · ${ms}ms`;
+                    return (
+                      <div style={{ margin: '0 10px 6px' }}>
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>{truncateCanvasText(line, 220)}</div>
+                      </div>
+                    );
+                  }}
+                </Field>
+              )}
+            </Field>
           )}
         </Field>
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
-        <Field name="inputsValues.agentPath">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              agent{' '}
-              <strong style={{ color: '#1d2129' }}>
-                {truncOneLine(String((field.value as { content?: unknown })?.content ?? ''), 36)}
-              </strong>
-            </span>
-          )}
-        </Field>
-        <Field name="inputsValues.timeoutMs">
-          {({ field }) => (
-            <span style={{ color: '#86909c' }}>
-              超时(ms){' '}
-              <strong style={{ color: '#1d2129' }}>
-                {String((field.value as { content?: unknown })?.content ?? '')}
-              </strong>
-            </span>
-          )}
-        </Field>
-      </div>
-    </div>
+      )}
+    </Field>
   );
 }
 
@@ -134,7 +105,7 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
         }}
       </Field>
       <Divider />
-      <DisplayOutputs displayFromScope />
+      <OutputsPeek />
     </FormContent>
   </>
 );

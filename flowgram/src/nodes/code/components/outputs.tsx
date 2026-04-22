@@ -4,11 +4,15 @@
  */
 
 import { Field } from '@flowgram.ai/free-layout-editor';
-import { DisplayOutputs, IJsonSchema, JsonSchemaEditor } from '@flowgram.ai/form-materials';
+import { IJsonSchema, JsonSchemaEditor } from '@flowgram.ai/form-materials';
 import { Divider } from '@douyinfe/semi-ui';
 
 import { useIsSidebar, useNodeRenderContext } from '../../../hooks';
 import { FormItem } from '../../../form-components';
+import {
+  CANVAS_TWO_LINE_BOX_STYLE,
+  canvasSchemaPreviewText,
+} from '../../../utils/canvas-node-preview';
 
 export function Outputs() {
   const { readonly } = useNodeRenderContext();
@@ -19,7 +23,11 @@ export function Outputs() {
       <>
         <Divider />
         <Field<IJsonSchema> name="outputs">
-          {({ field }) => <DisplayOutputs value={field.value} />}
+          {({ field }) => (
+            <div style={{ ...CANVAS_TWO_LINE_BOX_STYLE, fontFamily: 'monospace', fontSize: '11px' }}>
+              {canvasSchemaPreviewText(field.value, 220)}
+            </div>
+          )}
         </Field>
       </>
     );

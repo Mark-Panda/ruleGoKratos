@@ -4,16 +4,15 @@
  */
 
 import { Field, FormMeta } from '@flowgram.ai/free-layout-editor';
-import {
-  createInferInputsPlugin,
-  DisplayInputsValues,
-  IFlowValue,
-  InputsValues,
-} from '@flowgram.ai/form-materials';
+import { createInferInputsPlugin, IFlowValue, InputsValues } from '@flowgram.ai/form-materials';
 
 import { defaultFormMeta } from '../default-form-meta';
 import { useIsSidebar } from '../../hooks';
 import { FormHeader, FormContent } from '../../form-components';
+import {
+  CANVAS_TWO_LINE_BOX_STYLE,
+  summarizeFlowValuesRecordCompact,
+} from '../../utils/canvas-node-preview';
 
 export const renderForm = () => {
   const isSidebar = useIsSidebar();
@@ -39,9 +38,7 @@ export const renderForm = () => {
       <FormContent>
         <Field<Record<string, IFlowValue | undefined> | undefined> name="inputsValues">
           {({ field: { value } }) => (
-            <>
-              <DisplayInputsValues value={value} />
-            </>
+            <div style={CANVAS_TWO_LINE_BOX_STYLE}>{summarizeFlowValuesRecordCompact(value)}</div>
           )}
         </Field>
       </FormContent>

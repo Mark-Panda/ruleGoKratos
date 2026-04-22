@@ -4,9 +4,9 @@
  */
 
 import { FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
-import { AssignRows, createInferAssignPlugin, DisplayOutputs } from '@flowgram.ai/form-materials';
+import { AssignRows, createInferAssignPlugin } from '@flowgram.ai/form-materials';
 
-import { FormHeader, FormContent } from '../../form-components';
+import { FormHeader, FormContent, OutputsPeek } from '../../form-components';
 import { VariableNodeJSON } from './types';
 import { defaultFormMeta } from '../default-form-meta';
 import { useIsSidebar } from '../../hooks';
@@ -18,7 +18,7 @@ export const FormRender = ({ form }: FormRenderProps<VariableNodeJSON>) => {
     <>
       <FormHeader />
       <FormContent>
-        {isSidebar ? <AssignRows name="assign" /> : <DisplayOutputs displayFromScope />}
+        {isSidebar ? <AssignRows name="assign" /> : <OutputsPeek />}
       </FormContent>
     </>
   );

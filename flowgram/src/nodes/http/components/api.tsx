@@ -5,14 +5,16 @@
 
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { IFlowTemplateValue, PromptEditorWithVariables } from '@flowgram.ai/form-materials';
-import { Select } from '@douyinfe/semi-ui';
+import { Select, TextArea } from '@douyinfe/semi-ui';
 
-import { useEffectiveReadonly } from '../../../hooks';
+import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../../hooks';
 import { VariablePicker } from '../../../form-components/variable-picker';
 import { FormItem } from '../../../form-components';
 
 export function Api() {
   const readonly = useEffectiveReadonly();
+  const isSidebar = useIsSidebar();
+  const { readonly: playgroundReadonly } = useNodeRenderContext();
 
   return (
     <div>
@@ -43,19 +45,32 @@ export function Api() {
           <Field<IFlowTemplateValue> name="api.url">
             {({ field }) => (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                <PromptEditorWithVariables
-                  disableMarkdownHighlight
-                  readonly={readonly}
-                  style={{ flexGrow: 1 }}
-                  placeholder="Input URL, use var by '${'"
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value!);
-                  }}
-                />
+                {isSidebar ? (
+                  <PromptEditorWithVariables
+                    disableMarkdownHighlight
+                    readonly={readonly}
+                    style={{ flexGrow: 1 }}
+                    placeholder="Input URL, use var by '${'"
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value!);
+                    }}
+                  />
+                ) : (
+                  <TextArea
+                    style={{ flexGrow: 1 }}
+                    value={String((field.value as any)?.content ?? '')}
+                    onChange={(value) =>
+                      field.onChange({ type: 'template', content: String(value ?? '') } as any)
+                    }
+                    disabled={playgroundReadonly}
+                    autosize={{ minRows: 2, maxRows: 2 }}
+                    placeholder="输入 URL（支持变量）"
+                  />
+                )}
                 <VariablePicker
                   size="small"
-                  disabled={readonly}
+                  disabled={isSidebar ? readonly : playgroundReadonly}
                   onInsert={(text) => {
                     const oldText =
                       typeof (field.value as any)?.content === 'string'

@@ -8,6 +8,8 @@ import { YapiNodeRegistry } from './yapi';
 import { TransformNodeRegistry } from './transform';
 import { StartNodeRegistry } from './start';
 import { RedisClientNodeRegistry } from './redisClient';
+import { OpenSearchSearchNodeRegistry } from './opensearch-search';
+import { VolcTlsSearchLogsNodeRegistry } from './volc-tls-search-logs';
 import { CursorCliNodeRegistry } from './cursorCli';
 import { CursorAcpNodeRegistry } from './cursorAcp';
 import { FeishuWebhookNodeRegistry } from './feishuWebhook';
@@ -78,6 +80,8 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   GroupNodeRegistry,
   DBClientNodeRegistry,
   RedisClientNodeRegistry,
+  OpenSearchSearchNodeRegistry,
+  VolcTlsSearchLogsNodeRegistry,
   CursorCliNodeRegistry,
   CursorAcpNodeRegistry,
   FeishuWebhookNodeRegistry,

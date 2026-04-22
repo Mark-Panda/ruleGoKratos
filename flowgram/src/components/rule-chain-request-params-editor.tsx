@@ -4,7 +4,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-import { Button, Input, Modal, Select, TextArea, Typography } from '@douyinfe/semi-ui';
+import { Button, Input, Modal, Select, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 
 import {
   buildRuleChainParamsCommentedPreview,
@@ -17,6 +17,7 @@ import {
   type RuleChainParamNode,
   type RuleChainParamType,
 } from '../utils/rule-chain-request-params';
+import { tryFormatJsonPretty } from '../utils/format-json-pretty';
 
 export type RuleChainRequestParamsEditorProps = {
   title: string;
@@ -290,6 +291,25 @@ export const RuleChainRequestParamsEditor: React.FC<RuleChainRequestParamsEditor
         <Typography.Paragraph type="tertiary" size="small">
           粘贴对象 JSON（将覆盖当前表格）。支持 // 与 /* */ 注释。
         </Typography.Paragraph>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <Button
+            size="small"
+            type="tertiary"
+            onClick={() => {
+              const r = tryFormatJsonPretty(importText);
+              if (!r.ok) {
+                Toast.warning({
+                  content: `无法格式化：${r.error}。含 // 注释时需先删掉注释再格式化（导入仍可按注释语法解析）。`,
+                });
+                return;
+              }
+              setImportText(r.text);
+              Toast.success({ content: 'JSON 已格式化' });
+            }}
+          >
+            格式化 JSON
+          </Button>
+        </div>
         <TextArea
           value={importText}
           onChange={setImportText}

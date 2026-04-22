@@ -31,6 +31,8 @@ export enum WorkflowNodeType {
   Flow = 'flow',
   LuaTransform = 'luaTransform',
   RedisClient = 'x/redisClient',
+  OpenSearchSearch = 'opensearch/search',
+  VolcTlsSearchLogs = 'volcTls/searchLogs',
   CursorCli = 'x/cursorCli',
   CursorAcp = 'x/cursorAcp',
   FeishuWebhook = 'x/feishuWebhook',

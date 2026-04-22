@@ -37,6 +37,8 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   [WorkflowNodeType.AgentHarness]: 'Agent LLM(Skill/MCP)',
   [WorkflowNodeType.DBClient]: '数据库客户端',
   [WorkflowNodeType.RedisClient]: 'Redis客户端',
+  [WorkflowNodeType.OpenSearchSearch]: 'OpenSearch 检索',
+  [WorkflowNodeType.VolcTlsSearchLogs]: '火山 TLS 检索',
   [WorkflowNodeType.CursorCli]: 'Cursor CLI (agent)',
   [WorkflowNodeType.CursorAcp]: 'Cursor ACP (agent acp)',
   [WorkflowNodeType.FeishuWebhook]: '飞书 Webhook',

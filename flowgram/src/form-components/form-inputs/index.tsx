@@ -4,14 +4,25 @@
  */
 
 import { Field } from '@flowgram.ai/free-layout-editor';
-import { DynamicValueInput, PromptEditorWithVariables } from '@flowgram.ai/form-materials';
-import { Switch } from '@douyinfe/semi-ui';
+import {
+  DynamicValueInput,
+  PromptEditorWithVariables,
+  type IFlowValue,
+} from '@flowgram.ai/form-materials';
+import { Button, Switch, TextArea, Toast } from '@douyinfe/semi-ui';
 
 import { VariablePicker } from '../variable-picker';
 import { FormItem } from '../form-item';
 import { Feedback } from '../feedback';
 import { JsonSchema } from '../../typings';
-import { useEffectiveReadonly, useIsSidebar } from '../../hooks';
+import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
+import {
+  CANVAS_TWO_LINE_BOX_STYLE,
+  normalizeCanvasPreviewText,
+  summarizeFlowValue,
+  truncateCanvasText,
+} from '../../utils/canvas-node-preview';
+import { tryFormatJsonPretty } from '../../utils/format-json-pretty';
 import { SqlTemplateEditor } from './sql-template-editor';
 import { RuleSelect } from './rule-select';
 import { NodeIdSelect } from './node-id-select';
@@ -29,6 +40,7 @@ export type FormInputsProps = {
 export function FormInputs(props?: FormInputsProps) {
   const readonly = useEffectiveReadonly();
   const isSidebar = useIsSidebar();
+  const { readonly: playgroundReadonly } = useNodeRenderContext();
   const propertyFilter = props?.propertyFilter;
   const propertyKeyOrder = props?.propertyKeyOrder;
 
@@ -65,6 +77,23 @@ export function FormInputs(props?: FormInputsProps) {
               {({ field, fieldState }) => {
                 const isTemplate = (field.value as any)?.type === 'template';
                 const switchRow = property.type === 'boolean' && !isTemplate;
+                const jsonFormat =
+                  (property as { extra?: { jsonFormat?: boolean } }).extra?.jsonFormat === true ||
+                  /（JSON）|\(JSON\)/i.test(displayLabel);
+                const formatJsonField = () => {
+                  const raw = summarizeFlowValue(field.value as IFlowValue | undefined);
+                  const r = tryFormatJsonPretty(raw);
+                  if (!r.ok) {
+                    Toast.warning({
+                      content: `无法格式化：${r.error}。含变量时请保证整体为合法 JSON。`,
+                    });
+                    return;
+                  }
+                  const t = (field.value as IFlowValue | undefined)?.type;
+                  const nextType = t === 'constant' ? 'constant' : 'template';
+                  field.onChange({ type: nextType, content: r.text } as IFlowValue);
+                  Toast.success({ content: 'JSON 已格式化' });
+                };
                 const renderCore = () => {
                   if (property.type === 'boolean') {
                     if (isTemplate) {
@@ -133,30 +162,27 @@ export function FormInputs(props?: FormInputsProps) {
                         typeof (field.value as any)?.content === 'string'
                           ? String((field.value as any)?.content)
                           : '';
-                      const truncated =
-                        content.length > 100 ? content.slice(0, 100) + '...' : content;
+                      const shown =
+                        content.trim() === ''
+                          ? '(空)'
+                          : truncateCanvasText(normalizeCanvasPreviewText(content), 220);
                       return (
-                        <div
-                          style={{
-                            padding: '8px',
-                            background: '#f5f5f5',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            color: '#666',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            maxHeight: '60px',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {truncated || '(空)'}
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                          {shown}
                         </div>
                       );
                     }
                     // 在侧边栏中显示完整的编辑器
                     return (
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {!readonly && jsonFormat ? (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                              <Button size="small" type="tertiary" onClick={formatJsonField}>
+                                格式化 JSON
+                              </Button>
+                            </div>
+                          ) : null}
                           <PromptEditorWithVariables
                             value={field.value}
                             onChange={field.onChange}
@@ -186,24 +212,15 @@ export function FormInputs(props?: FormInputsProps) {
                         typeof (field.value as any)?.content === 'string'
                           ? String((field.value as any)?.content)
                           : '';
-                      const truncated =
-                        content.length > 100 ? content.slice(0, 100) + '...' : content;
+                      const shown =
+                        content.trim() === ''
+                          ? '(空)'
+                          : truncateCanvasText(normalizeCanvasPreviewText(content), 220);
                       return (
                         <div
-                          style={{
-                            padding: '8px',
-                            background: '#f5f5f5',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            color: '#666',
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            maxHeight: '60px',
-                            overflow: 'hidden',
-                            fontFamily: 'monospace',
-                          }}
+                          style={{ ...CANVAS_TWO_LINE_BOX_STYLE, fontFamily: 'monospace' }}
                         >
-                          {truncated || '(空)'}
+                          {shown}
                         </div>
                       );
                     }
@@ -234,9 +251,66 @@ export function FormInputs(props?: FormInputsProps) {
                     );
                   }
                   if (isTemplate || !formComponent) {
+                    if (!isSidebar) {
+                      if (isTemplate) {
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {jsonFormat && !playgroundReadonly ? (
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                                  <Button size="small" type="tertiary" onClick={formatJsonField}>
+                                    格式化 JSON
+                                  </Button>
+                                </div>
+                              ) : null}
+                              <TextArea
+                                value={summarizeFlowValue(field.value as IFlowValue | undefined)}
+                                onChange={(v) =>
+                                  field.onChange({
+                                    type: 'template',
+                                    content: String(v ?? ''),
+                                  } as any)
+                                }
+                                disabled={playgroundReadonly}
+                                autosize={{ minRows: 2, maxRows: 2 }}
+                              />
+                            </div>
+                            <VariablePicker
+                              size="small"
+                              disabled={playgroundReadonly}
+                              onInsert={(text) => {
+                                const oldText =
+                                  typeof (field.value as any)?.content === 'string'
+                                    ? String((field.value as any)?.content)
+                                    : '';
+                                const nextText = oldText ? `${oldText}${text}` : text;
+                                field.onChange({ type: 'template', content: nextText } as any);
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+                      const pv = summarizeFlowValue(field.value as IFlowValue | undefined);
+                      const shown =
+                        pv.trim() === ''
+                          ? '(空)'
+                          : truncateCanvasText(normalizeCanvasPreviewText(pv), 220);
+                      return (
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                          {shown}
+                        </div>
+                      );
+                    }
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {!readonly && jsonFormat ? (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                              <Button size="small" type="tertiary" onClick={formatJsonField}>
+                                格式化 JSON
+                              </Button>
+                            </div>
+                          ) : null}
                           <DynamicValueInput
                             value={field.value}
                             onChange={field.onChange}
@@ -274,17 +348,8 @@ export function FormInputs(props?: FormInputsProps) {
                           ? `子规则链：${c.slice('chain:'.length)}`
                           : `节点：${c}`;
                       return (
-                        <div
-                          style={{
-                            padding: '8px',
-                            background: '#f5f5f5',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            color: '#666',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {preview}
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                          {truncateCanvasText(normalizeCanvasPreviewText(preview), 220)}
                         </div>
                       );
                     }
@@ -315,17 +380,8 @@ export function FormInputs(props?: FormInputsProps) {
                           ? `子规则链：${c.slice('chain:'.length)}`
                           : `节点：${c}`;
                       return (
-                        <div
-                          style={{
-                            padding: '8px',
-                            background: '#f5f5f5',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            color: '#666',
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {preview}
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                          {truncateCanvasText(normalizeCanvasPreviewText(preview), 220)}
                         </div>
                       );
                     }
@@ -343,6 +399,20 @@ export function FormInputs(props?: FormInputsProps) {
                     );
                   }
                   if (formComponent === 'node-selector-multi') {
+                    if (!isSidebar) {
+                      const selectedValues =
+                        (field.value as IFlowValue | undefined)?.type === 'constant' &&
+                        Array.isArray((field.value as IFlowValue)?.content)
+                          ? ((field.value as IFlowValue).content as string[])
+                          : [];
+                      const text =
+                        selectedValues.length > 0 ? selectedValues.join(', ') : '(未选择)';
+                      return (
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                          {truncateCanvasText(normalizeCanvasPreviewText(text), 220)}
+                        </div>
+                      );
+                    }
                     return (
                       <NodeIdMultiSelect
                         value={field.value}
@@ -374,6 +444,19 @@ export function FormInputs(props?: FormInputsProps) {
                     );
                   }
                   if (formComponent === 'array-editor') {
+                    if (!isSidebar) {
+                      const arr = Array.isArray((field.value as IFlowValue | undefined)?.content)
+                        ? (((field.value as IFlowValue).content as unknown[]) ?? []).map((x) =>
+                            String(x ?? '')
+                          )
+                        : [];
+                      const text = arr.length === 0 ? '(空)' : arr.join(', ');
+                      return (
+                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                          {truncateCanvasText(normalizeCanvasPreviewText(text), 220)}
+                        </div>
+                      );
+                    }
                     return (
                       <ArrayEditor
                         value={field.value}
@@ -391,6 +474,22 @@ export function FormInputs(props?: FormInputsProps) {
                     );
                   }
                   if (formComponent === 'cron-editor') {
+                    if (!isSidebar) {
+                      const cron =
+                        typeof (field.value as IFlowValue | undefined)?.content === 'string'
+                          ? String((field.value as IFlowValue).content)
+                          : '*/10 * * * * *';
+                      return (
+                        <div
+                          style={{
+                            ...CANVAS_TWO_LINE_BOX_STYLE,
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          {truncateCanvasText(normalizeCanvasPreviewText(cron), 220)}
+                        </div>
+                      );
+                    }
                     return (
                       <CronEditor
                         value={field.value}

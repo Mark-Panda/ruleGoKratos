@@ -6,11 +6,10 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Checkbox, Divider, Select, Spin, Typography } from '@douyinfe/semi-ui';
-import { DisplayOutputs } from '@flowgram.ai/form-materials';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
 
 import { FlowNodeJSON } from '../../typings';
-import { FormContent, FormHeader, FormInputs } from '../../form-components';
+import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 import type { FormInputsProps } from '../../form-components';
 import { defaultFormMeta } from '../default-form-meta';
 import {
@@ -22,6 +21,10 @@ import {
   type SkillItem,
 } from '../../services/api-agent';
 import { groupSkillPackages } from '../../utils/skill-packages';
+import {
+  CANVAS_TWO_LINE_BOX_STYLE,
+  truncateCanvasText,
+} from '../../utils/canvas-node-preview';
 
 function truncOneLine(s: string, max: number) {
   const one = s.replace(/\s+/g, ' ').trim();
@@ -386,76 +389,54 @@ function AgentHarnessToolAllowlists() {
 
 function AgentHarnessCollapsedPreview() {
   return (
-    <div
-      style={{
-        margin: '0 10px 6px',
-        padding: '8px',
-        borderRadius: 6,
-        background: '#f7f8fa',
-        fontSize: 12,
-        color: '#1d2129',
-        lineHeight: 1.55,
-      }}
-    >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: 11, color: '#86909c', marginBottom: 6 }}>
-        <Field name="inputsValues.llmConfigId">
-          {({ field: f }) => (
-            <span>
-              LLM配置 #{flowNum(f.value) || '—'}
-            </span>
-          )}
-        </Field>
+    <Field name="inputsValues.llmConfigId">
+      {({ field: lc }) => (
         <Field name="inputsValues.llmModelEntryId">
-          {({ field: f }) => (
-            <span>
-              模型条目 #{flowNum(f.value) || '—'}
-            </span>
+          {({ field: lm }) => (
+            <Field name="inputsValues.model">
+              {({ field: md }) => (
+                <Field name="inputsValues.userPrompt">
+                  {({ field: up }) => (
+                    <Field name="inputsValues.enableSkillTool">
+                      {({ field: es }) => (
+                        <Field name="inputsValues.enableMcpTool">
+                          {({ field: em }) => (
+                            <Field name="inputsValues.enableWorkspaceTools">
+                              {({ field: ew }) => (
+                                <Field name="inputsValues.skillAllowlist">
+                                  {({ field: sa }) => (
+                                    <Field name="inputsValues.mcpAllowlist">
+                                      {({ field: ma }) => (
+                                        <Field name="inputsValues.maxIterations">
+                                          {({ field: mi }) => {
+                                            const line = `配置#${flowNum(lc.value) || '—'} 条目#${flowNum(lm.value) || '—'} · ${truncOneLine(flowStr(md.value), 16) || '模型·'} · 提示 ${truncOneLine(flowStr(up.value), 48)} · Skill${flowBool(es.value) ? '开' : '关'} MCP${flowBool(em.value) ? '开' : '关'} WS${flowBool(ew.value) ? '开' : '关'} · Skill白${flowStringList(sa.value).length || '不限'} MCP白${flowStringList(ma.value).length || '不限'} · ${flowStr(mi.value) || '0'}轮`;
+                                            return (
+                                              <div style={{ margin: '0 10px 6px' }}>
+                                                <div style={CANVAS_TWO_LINE_BOX_STYLE}>
+                                                  {truncateCanvasText(line, 220)}
+                                                </div>
+                                              </div>
+                                            );
+                                          }}
+                                        </Field>
+                                      )}
+                                    </Field>
+                                  )}
+                                </Field>
+                              )}
+                            </Field>
+                          )}
+                        </Field>
+                      )}
+                    </Field>
+                  )}
+                </Field>
+              )}
+            </Field>
           )}
         </Field>
-      </div>
-      <Field name="inputsValues.model">
-        {({ field }) => (
-          <div style={{ marginBottom: 6 }}>
-            <span style={{ color: '#86909c' }}>模型名模板（可选）</span>{' '}
-            <strong style={{ color: '#1d2129' }}>
-              {truncOneLine(flowStr(field.value), 40) || '（空）'}
-            </strong>
-          </div>
-        )}
-      </Field>
-      <Field name="inputsValues.userPrompt">
-        {({ field }) => (
-          <div style={{ color: '#4e5969', wordBreak: 'break-word', marginBottom: 6 }}>
-            <span style={{ color: '#86909c' }}>用户提示 </span>
-            {truncOneLine(flowStr(field.value), 120)}
-          </div>
-        )}
-      </Field>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: 11, color: '#86909c' }}>
-        <Field name="inputsValues.enableSkillTool">
-          {({ field }) => <span>Skill {flowBool(field.value) ? '开' : '关'}</span>}
-        </Field>
-        <Field name="inputsValues.enableMcpTool">
-          {({ field }) => <span>MCP {flowBool(field.value) ? '开' : '关'}</span>}
-        </Field>
-        <Field name="inputsValues.enableWorkspaceTools">
-          {({ field }) => <span>WS {flowBool(field.value) ? '开' : '关'}</span>}
-        </Field>
-        <Field name="inputsValues.skillAllowlist">
-          {({ field }) => (
-            <span>Skill白 {flowStringList(field.value).length || '不限'}</span>
-          )}
-        </Field>
-        <Field name="inputsValues.mcpAllowlist">
-          {({ field }) => (
-            <span>MCP白 {flowStringList(field.value).length || '不限'}</span>
-          )}
-        </Field>
-        <Field name="inputsValues.maxIterations">
-          {({ field }) => <span>迭代 {flowStr(field.value) || '0'}</span>}
-        </Field>
-      </div>
-    </div>
+      )}
+    </Field>
   );
 }
 
@@ -471,7 +452,7 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
       <Divider />
       <AgentHarnessToolAllowlists />
       <Divider />
-      <DisplayOutputs displayFromScope />
+      <OutputsPeek />
     </FormContent>
   </>
 );

@@ -195,6 +195,7 @@ export const FeishuWebhookNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '卡片 JSON（自定义）',
                 formComponent: 'prompt-editor',
+                jsonFormat: true,
                 description: '仅「自定义 JSON」模式：卡片对象，不含最外层 msg_type。',
               },
             },
@@ -203,6 +204,7 @@ export const FeishuWebhookNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '自定义整包（raw）',
                 formComponent: 'prompt-editor',
+                jsonFormat: true,
                 description: '完整 Webhook 请求体 JSON，须含 msg_type。',
               },
             },
