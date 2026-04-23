@@ -81,7 +81,8 @@ export const ConditionRow = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-right: 132px; // 为右侧操作符选择预留空间
+  /* 缩小右侧操作符占位，把更多宽度让给左右值输入框 */
+  padding-right: 98px;
 `;
 
 export const OperatorSelectWrapper = styled.div`
@@ -89,5 +90,5 @@ export const OperatorSelectWrapper = styled.div`
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 120px;
+  width: 86px;
 `;

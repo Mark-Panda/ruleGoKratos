@@ -13,6 +13,10 @@ import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconLoop from '../../assets/icon-loop.jpg';
 import { formMeta } from './form-meta';
+import {
+  FOR_SUBCANVAS_DEFAULT_HEIGHT_PX,
+  FOR_SUBCANVAS_TOP_FORM_RESERVE_PX,
+} from './subcanvas-layout';
 import { OutPutPortType, WorkflowNodeType } from '../constants';
 
 let index = 0;
@@ -34,7 +38,7 @@ export const ForNodeRegistry: FlowNodeRegistry = {
      */
     size: {
       width: 360,
-      height: 160,
+      height: FOR_SUBCANVAS_DEFAULT_HEIGHT_PX,
     },
     // autoResizeDisable: true,
     /**
@@ -52,7 +56,7 @@ export const ForNodeRegistry: FlowNodeRegistry = {
       }
       return {
         // 与 form-meta 中 SubCanvasRender 负 offset 预留一致，见 subcanvas-layout.ts
-        top: 248,
+        top: FOR_SUBCANVAS_TOP_FORM_RESERVE_PX,
         bottom: 56,
         left: 72,
         right: 72,

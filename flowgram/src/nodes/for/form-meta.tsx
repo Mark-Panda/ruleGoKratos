@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { useLayoutEffect } from 'react';
+
 import { FormRenderProps, FlowNodeJSON, Field, FormMeta } from '@flowgram.ai/free-layout-editor';
 import { useService, WorkflowDocument } from '@flowgram.ai/free-layout-editor';
 import { SubCanvasRender } from '@flowgram.ai/free-container-plugin';
@@ -15,7 +17,10 @@ import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../
 import { VariablePicker } from '../../form-components/variable-picker';
 import { FormHeader, FormContent, FormItem, Feedback, OutputsPeek } from '../../form-components';
 
-import { FOR_SUBCANVAS_TOP_FORM_RESERVE_PX } from './subcanvas-layout';
+import {
+  FOR_SUBCANVAS_DEFAULT_HEIGHT_PX,
+  FOR_SUBCANVAS_TOP_FORM_RESERVE_PX,
+} from './subcanvas-layout';
 
 // 使用通用 FlowNodeJSON 即可，无需特定 forFor 字段
 type ForNodeJSON = FlowNodeJSON;
@@ -24,6 +29,22 @@ export const ForFormRender = ({ form }: FormRenderProps<ForNodeJSON>) => {
   const isSidebar = useIsSidebar();
   const { node } = useNodeRenderContext();
   const readonly = useEffectiveReadonly();
+
+  useLayoutEffect(() => {
+    if (isSidebar) {
+      return;
+    }
+    const currentHeight = node.transform.size?.height;
+    // 兼容历史默认值：旧 For 节点仍为 160 时自动迁移到 180。
+    if (typeof currentHeight !== 'number' || Math.round(currentHeight) !== 160) {
+      return;
+    }
+    node.transform.size = {
+      width: node.transform.size?.width ?? node.bounds.width,
+      height: FOR_SUBCANVAS_DEFAULT_HEIGHT_PX,
+    };
+    node.transform.transform.fireChange();
+  }, [isSidebar, node]);
 
   // 移除 forFor 输入框
 

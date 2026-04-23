@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { WorkflowNodeType, OutPutPortType } from '../constants';
 import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconSwitch from '../../assets/icon_switch.svg';
 import { formMeta } from './form-meta';
-import { WorkflowNodeType, OutPutPortType } from '../constants';
 
 export const InclusiveNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.Inclusive,
@@ -25,10 +25,11 @@ export const InclusiveNodeRegistry: FlowNodeRegistry = {
     useDynamicPort: true,
     expandable: false,
     size: {
-      width: 420,
+      width: 450,
       height: 260,
     },
     wrapperStyle: {
+      width: '360px',
       borderRadius: 12,
       border: '1px solid rgba(6, 7, 9, 0.12)',
       boxShadow: '0 4px 12px rgba(0,0,0,0.06)',

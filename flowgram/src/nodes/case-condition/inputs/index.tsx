@@ -257,6 +257,7 @@ export function CaseInputs() {
                                     <Select
                                       disabled={readonly}
                                       value={(row as any)?.operator ?? '=='}
+                                      style={{ width: '100%' }}
                                       onChange={(op) => {
                                         const nextGroups = groups.map(ensureGroup);
                                         const nextRows = [...nextGroups[gi].rows];

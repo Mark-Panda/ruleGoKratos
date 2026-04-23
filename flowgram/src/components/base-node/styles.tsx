@@ -17,7 +17,7 @@ export const NodeWrapperStyle = styled.div`
   /* 勿用 center：容器节点 bounds 被子画布撑高时，表单体被竖直居中，底部 Failure 等端口仍贴在 bounds 底边，圆点会落在白底下方 */
   justify-content: flex-start;
   position: relative;
-  width: 360px;
+  width: 300px;
   /* 与 free-container-plugin useSyncNodeRenderSize 注入的节点高度一致，避免「卡片视觉高度 < 引擎 hit 框」 */
   height: 100%;
   box-sizing: border-box;
