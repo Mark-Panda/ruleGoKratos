@@ -255,6 +255,8 @@ export async function streamChat(
   const res = await fetch(url, {
     method: 'POST',
     headers: {
+      Accept: 'text/event-stream',
+      'Cache-Control': 'no-cache',
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },

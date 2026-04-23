@@ -413,6 +413,9 @@ func sanitizeExternalError(stage string, err error) error {
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, context.Canceled) {
+		return userFacingError("已取消执行")
+	}
 	var uf *UserFacingError
 	if errors.As(err, &uf) {
 		return err
@@ -559,6 +562,10 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		msgs := uc.composeMessages(&req, systemPrompt, req.History, req.Input, req.Attachments)
 		toolCallCount := 0
 		for i := 0; i < cfg.MaxIterations; i++ {
+			if err := workCtx.Err(); err != nil {
+				yield(nil, userFacingError("已取消执行"))
+				return
+			}
 			modelStart := time.Now()
 			// 是否调用工具由模型通过流式 chunk 中的 tool_calls 决定。
 			stream, genErr := modelRunner.Stream(workCtx, msgs)
@@ -570,8 +577,14 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			}
 			// 收集流式 chunk，用于拼出完整 assistant 消息并进入下一轮状态。
 			chunks := make([]*schema.Message, 0, 32)
+			var streamedThisRound strings.Builder
 			seenToolCall := false
 			for {
+				if err := workCtx.Err(); err != nil {
+					stream.Close()
+					yield(nil, userFacingError("已取消执行"))
+					return
+				}
 				chunk, recvErr := stream.Recv()
 				if recvErr == io.EOF {
 					break
@@ -591,6 +604,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				}
 				// 在出现工具调用前，只向调用方透传纯文本 chunk。
 				if !seenToolCall && chunk.Content != "" {
+					streamedThisRound.WriteString(chunk.Content)
 					if !yield(&StreamMessage{Content: chunk.Content, Done: false}, nil) {
 						stream.Close()
 						return
@@ -598,6 +612,11 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				}
 			}
 			stream.Close()
+
+			if err := workCtx.Err(); err != nil {
+				yield(nil, userFacingError("已取消执行"))
+				return
+			}
 
 			// Eino 返回的是分片，需要先合并，才能稳定处理工具调用。
 			resp, concatErr := schema.ConcatMessages(chunks)
@@ -613,6 +632,20 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			}
 			if resp.Content != "" {
 				assistantAcc.WriteString(resp.Content)
+			}
+			// 某些模型/SDK在流式阶段不稳定地产生空 chunk，正文只会在 concat 后出现。
+			// 这里兜底补发本轮尚未透传给前端的增量，避免前端表现为“非流式/只在结束时更新”。
+			if len(resp.ToolCalls) == 0 && resp.Content != "" {
+				alreadyStreamed := streamedThisRound.String()
+				remain := resp.Content
+				if alreadyStreamed != "" && strings.HasPrefix(resp.Content, alreadyStreamed) {
+					remain = resp.Content[len(alreadyStreamed):]
+				}
+				if remain != "" {
+					if !yield(&StreamMessage{Content: remain, Done: false}, nil) {
+						return
+					}
+				}
 			}
 			msgs = append(msgs, resp)
 
@@ -653,13 +686,27 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				}
 				uc.harnessLogger.LogSandboxDecision(requestID, call.Function.Name, true, "tool_allowed")
 
+				if err := workCtx.Err(); err != nil {
+					yield(nil, userFacingError("已取消执行"))
+					return
+				}
+
 				argsStr := call.Function.Arguments
 				if req.TraceSink != nil && req.PlaygroundRunID != "" && req.PlaygroundAgentID != "" {
 					req.TraceSink.EmitToolCall(req.PlaygroundRunID, req.PlaygroundAgentID, call.Function.Name, argsStr)
 				}
 
-				// 工具调用设置独立超时，防止单个工具阻塞整轮执行。
-				toolCtx, cancel := context.WithTimeout(workCtx, time.Duration(cfg.ToolTimeoutSecs)*time.Second)
+				// 工具调用默认设置独立超时，防止单个工具阻塞整轮执行。
+				// 但 run_sub_agent 需要执行完整子 Agent 回合，若沿用短工具超时（默认 5s）会提前触发 context deadline exceeded。
+				// 因此对子 Agent 工具放宽为继承会话上下文，具体耗时由子 Agent 自身的流超时与迭代上限控制。
+				toolCtx := workCtx
+				cancel := func() {}
+				if call.Function.Name != "run_sub_agent" {
+					toolCtx, cancel = context.WithTimeout(
+						workCtx,
+						time.Duration(cfg.ToolTimeoutSecs)*time.Second,
+					)
+				}
 				toolStart := time.Now()
 				toolOutput, toolErr := toolImpl.Invoke(toolCtx, argsStr)
 				cancel()

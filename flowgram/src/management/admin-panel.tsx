@@ -391,6 +391,7 @@ export const AdminPanel: React.FC = () => {
           }}
         >
           <Tabs
+            className="admin-shell-tabs"
             type="card"
             collapsible
             activeKey={activeMenu}
@@ -402,10 +403,13 @@ export const AdminPanel: React.FC = () => {
             style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
             contentStyle={{
               flex: 1,
+              height: '100%',
               minHeight: 0,
-              overflow: 'auto',
+              overflow: 'hidden',
               padding: 0,
               background: '#F7F8FA',
+              display: 'flex',
+              flexDirection: 'column',
             }}
             keepDOM
           >
@@ -415,8 +419,24 @@ export const AdminPanel: React.FC = () => {
                 itemKey={tabKey}
                 tab={getPageTitle(tabKey)}
                 closable={openTabs.length > 1}
+                style={{
+                  // 勿在此写 display:flex：inline 会压过 Semi 的 .semi-tabs-pane-inactive{display:none}，导致 keepDOM 下所有标签页同时铺开
+                  flex: '1 1 0%',
+                  minHeight: 0,
+                  overflow: 'hidden',
+                }}
               >
-                <div style={{ flex: 1, minHeight: '100%', padding: 0 }}>{renderPage(tabKey)}</div>
+                <div
+                  style={{
+                    height: '100%',
+                    minHeight: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: 0,
+                  }}
+                >
+                  <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>{renderPage(tabKey)}</div>
+                </div>
               </TabPane>
             ))}
           </Tabs>

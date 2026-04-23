@@ -57,30 +57,41 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 	}
 	all := fe.ListAvailableSkillNames()
 	filtered := FilterSkillNamesByPackages(all, p.SkillPackageIDs)
-	var skillAllow []string
-	if len(p.SkillPackageIDs) > 0 {
-		cp := filtered
-		out.SkillCatalogFilter = &cp
-		skillAllow = filtered
-	} else {
-		// 未勾选技能包时：系统提示附全量 SKILL 目录（SkillCatalogFilter=nil），run_skill 不做额外白名单限制。
-		out.SkillCatalogFilter = nil
-		skillAllow = nil
+	// 子 Agent 默认继承父 Agent 的技能目录过滤；仅在未显式携带过滤条件时按托管 Agent 配置注入。
+	if out.SkillCatalogFilter == nil {
+		if len(p.SkillPackageIDs) > 0 {
+			cp := filtered
+			out.SkillCatalogFilter = &cp
+		} else {
+			// 未勾选技能包时：系统提示附全量 SKILL 目录（SkillCatalogFilter=nil）。
+			out.SkillCatalogFilter = nil
+		}
 	}
 
 	mcpAllow, err := uc.managedAgentLoader.McpAllowlistStrings(ctx, p.McpIDs)
 	if err != nil {
 		return req, err
 	}
-	enableSkill := len(all) > 0 && (len(p.SkillPackageIDs) == 0 || len(filtered) > 0)
-	out.ToolOptions = &HarnessToolOptions{
-		EnableUUIDTool:       true,
-		EnableSkillTool:      enableSkill,
-		EnableMcpTool:        len(mcpAllow) > 0,
-		EnableWorkspaceTools: true,
-		EnableSubAgentTool:   true,
-		SkillAllowlist:       skillAllow,
-		McpAllowlist:         mcpAllow,
+	// 子 Agent 默认继承父 Agent 的工具配置（Skill/MCP 白名单与开关）。
+	// 仅在请求侧未提供 ToolOptions 时，才由托管 Agent 配置注入默认工具集。
+	if out.ToolOptions == nil {
+		var skillAllow []string
+		if len(p.SkillPackageIDs) > 0 {
+			skillAllow = filtered
+		} else {
+			// 未勾选技能包时：run_skill 不做额外白名单限制。
+			skillAllow = nil
+		}
+		enableSkill := len(all) > 0 && (len(p.SkillPackageIDs) == 0 || len(filtered) > 0)
+		out.ToolOptions = &HarnessToolOptions{
+			EnableUUIDTool:       true,
+			EnableSkillTool:      enableSkill,
+			EnableMcpTool:        len(mcpAllow) > 0,
+			EnableWorkspaceTools: true,
+			EnableSubAgentTool:   true,
+			SkillAllowlist:       skillAllow,
+			McpAllowlist:         mcpAllow,
+		}
 	}
 	return out, nil
 }

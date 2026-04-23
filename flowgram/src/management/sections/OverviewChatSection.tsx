@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import hljs from 'highlight.js/lib/common';
+import 'highlight.js/styles/github.css';
 import { marked } from 'marked';
 import {
   Button,
@@ -18,17 +20,58 @@ import {
   mergeMessageForChatDisplay,
   streamChat,
   type ChatAttachmentPayload,
+  type ChatStreamPayload,
 } from '../../services/api-chat';
 import { listLlmConfigs, type LlmConfigItem } from '../../services/api-agent';
 import { listManagedAgents } from '../../services/api-managed-agents';
 
+function escapeHtml(raw: string): string {
+  return raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const markedRenderer = new marked.Renderer();
+(markedRenderer as any).code = (code: string, infostring?: string) => {
+  const rawLang = (infostring || '').trim().split(/\s+/)[0] || '';
+  let lang = rawLang.toLowerCase();
+  let highlighted = escapeHtml(code || '');
+  try {
+    if (lang && hljs.getLanguage(lang)) {
+      highlighted = hljs.highlight(code || '', { language: lang, ignoreIllegals: true }).value;
+    } else {
+      const auto = hljs.highlightAuto(code || '');
+      highlighted = auto.value || highlighted;
+      if (!lang && auto.language) lang = auto.language;
+    }
+  } catch {
+    highlighted = escapeHtml(code || '');
+  }
+  if (!lang) lang = 'text';
+  const encoded = encodeURIComponent(code || '');
+  return `
+<div class="overview-chat-code-wrap">
+  <div class="overview-chat-code-toolbar">
+    <span class="overview-chat-code-lang">${escapeHtml(lang)}</span>
+    <button class="overview-chat-code-copy" type="button" data-copy-code="${encoded}">复制代码</button>
+  </div>
+  <pre><code class="hljs language-${escapeHtml(lang)}">${highlighted}</code></pre>
+</div>`;
+};
+
 marked.use({
   breaks: true,
+  renderer: markedRenderer,
 });
 
 const STORAGE_MODEL_KEY = 'flowgram-overview-chat-model-v1';
 const STORAGE_CHAT_STORE_KEY = 'flowgram-overview-chat-store-v1';
 const STORAGE_MANAGED_AGENT_KEY = 'flowgram-overview-chat-managed-agent-v1';
+const STORAGE_LAST_REQUEST_KEY = 'flowgram-overview-chat-last-request-v1';
+const RETRY_PAYLOAD_MAX_BYTES = 380000;
 
 /** 页面引导：能力与「如何提问」（空状态 + 输入区提示） */
 const CHAT_GUIDE = {
@@ -68,6 +111,9 @@ type ChatStore = {
   sessions: ChatSession[];
   activeId: string | null;
 };
+
+type RetryPayloadStore = Record<string, ChatStreamPayload>;
+type RetrySource = 'persisted' | 'memory';
 
 function newSessionId(): string {
   return `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 11)}`;
@@ -163,6 +209,48 @@ function saveStoredManagedAgentId(id: number) {
   }
 }
 
+function loadLastRequestStore(): RetryPayloadStore {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_LAST_REQUEST_KEY) : null;
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as RetryPayloadStore;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function saveLastRequestStore(store: RetryPayloadStore) {
+  try {
+    localStorage.setItem(STORAGE_LAST_REQUEST_KEY, JSON.stringify(store));
+  } catch {
+    /* ignore */
+  }
+}
+
+function upsertLastRequestStore(sessionId: string, payload: ChatStreamPayload): boolean {
+  if (!sessionId) return false;
+  try {
+    const next = { ...loadLastRequestStore(), [sessionId]: payload };
+    const raw = JSON.stringify(next);
+    if (new TextEncoder().encode(raw).length > RETRY_PAYLOAD_MAX_BYTES) {
+      return false;
+    }
+    localStorage.setItem(STORAGE_LAST_REQUEST_KEY, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeLastRequestStore(sessionId: string) {
+  if (!sessionId) return;
+  const next = { ...loadLastRequestStore() };
+  delete next[sessionId];
+  saveLastRequestStore(next);
+}
+
 function markdownToHtml(raw: string): string {
   try {
     return String(marked.parse(raw || ''));
@@ -210,6 +298,7 @@ function patchActiveSession(prev: ChatStore, recipe: (s: ChatSession) => ChatSes
 }
 
 export const OverviewChatSection: React.FC = () => {
+  const initialRetryStore = useMemo(() => loadLastRequestStore(), []);
   const [store, setStore] = useState<ChatStore>(() => loadChatStore());
   const [configs, setConfigs] = useState<LlmConfigItem[]>([]);
   const [managedProfiles, setManagedProfiles] = useState<{ id: number; name: string }[]>([]);
@@ -220,7 +309,18 @@ export const OverviewChatSection: React.FC = () => {
   const [streaming, setStreaming] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const stopByUserRef = useRef(false);
+  const lastRequestBySessionRef = useRef<RetryPayloadStore>(initialRetryStore);
+  const [retrySourceBySession, setRetrySourceBySession] = useState<Record<string, RetrySource>>(() => {
+    const source: Record<string, RetrySource> = {};
+    for (const sid of Object.keys(initialRetryStore)) {
+      source[sid] = 'persisted';
+    }
+    return source;
+  });
   const listEndRef = useRef<HTMLDivElement | null>(null);
+  const listWrapRef = useRef<HTMLDivElement | null>(null);
+  const autoFollowRef = useRef(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const activeSession = useMemo(
@@ -240,6 +340,33 @@ export const OverviewChatSection: React.FC = () => {
     }, 400);
     return () => window.clearTimeout(t);
   }, [store]);
+
+  useEffect(() => {
+    const alive = new Set(store.sessions.map((s) => s.id));
+    const all = { ...lastRequestBySessionRef.current };
+    let changed = false;
+    let sourceChanged = false;
+    const nextSource = { ...retrySourceBySession };
+    for (const sid of Object.keys(all)) {
+      if (!alive.has(sid)) {
+        delete all[sid];
+        changed = true;
+      }
+    }
+    for (const sid of Object.keys(nextSource)) {
+      if (!alive.has(sid)) {
+        delete nextSource[sid];
+        sourceChanged = true;
+      }
+    }
+    if (changed) {
+      lastRequestBySessionRef.current = all;
+      saveLastRequestStore(all);
+    }
+    if (sourceChanged) {
+      setRetrySourceBySession(nextSource);
+    }
+  }, [store.sessions, retrySourceBySession]);
 
   const fetchConfigs = useCallback(async () => {
     setLoadingModels(true);
@@ -299,9 +426,61 @@ export const OverviewChatSection: React.FC = () => {
     }
   }, [managedProfiles, managedAgentId]);
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    listEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+  }, []);
+
+  const handleListScroll = useCallback(() => {
+    const el = listWrapRef.current;
+    if (!el) return;
+    const threshold = 88;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+    autoFollowRef.current = nearBottom;
+  }, []);
+
+  /** 中断当前与服务器的流式请求（与底部按钮共用） */
+  const pauseCurrentExecution = useCallback(() => {
+    if (!streaming) return;
+    stopByUserRef.current = true;
+    abortRef.current?.abort();
+    setStreaming(false);
+  }, [streaming]);
+
+  /** fetch 被 Abort 后整理最后一条助手气泡：用户主动暂停时保留已生成内容并追加说明 */
+  const applyAbortErrorToAssistant = useCallback((userRequested: boolean) => {
+    setStore((prev) =>
+      patchActiveSession(prev, (s) => {
+        const next = [...s.messages];
+        const last = next[next.length - 1];
+        if (last?.role !== 'assistant') {
+          return s;
+        }
+        if (!last.content.trim()) {
+          next.pop();
+          return { ...s, messages: next };
+        }
+        if (userRequested) {
+          next[next.length - 1] = {
+            ...last,
+            content:
+              last.content.trimEnd() +
+              '\n\n> 已暂停执行（已中断流式输出，上文已生成内容已保留）。',
+          };
+        }
+        return { ...s, messages: next };
+      })
+    );
+  }, []);
+
   useEffect(() => {
-    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streaming]);
+    autoFollowRef.current = true;
+    scrollToBottom('auto');
+  }, [store.activeId, scrollToBottom]);
+
+  useEffect(() => {
+    if (!autoFollowRef.current) return;
+    scrollToBottom(streaming ? 'auto' : 'smooth');
+  }, [messages, streaming, scrollToBottom]);
 
   const sortedSessions = useMemo(
     () => [...store.sessions].sort((a, b) => b.updatedAt - a.updatedAt),
@@ -336,6 +515,14 @@ export const OverviewChatSection: React.FC = () => {
   const deleteSession = (id: string) => {
     abortRef.current?.abort();
     setStreaming(false);
+    delete lastRequestBySessionRef.current[id];
+    removeLastRequestStore(id);
+    setRetrySourceBySession((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     setStore((prev) => {
       const rest = prev.sessions.filter((s) => s.id !== id);
       if (rest.length === 0) {
@@ -380,6 +567,7 @@ export const OverviewChatSection: React.FC = () => {
     setPendingFiles([]);
     setInput('');
     setStreaming(true);
+    stopByUserRef.current = false;
 
     let attachments: ChatAttachmentPayload[] = [];
     try {
@@ -396,6 +584,22 @@ export const OverviewChatSection: React.FC = () => {
     const displayUser = mergeMessageForChatDisplay(text, attachments);
     const userMsg: Msg = { role: 'user', content: displayUser };
     let assistantBuf = '';
+    const requestPayload: ChatStreamPayload = {
+      message: text,
+      attachments: attachments.length ? attachments : undefined,
+      history,
+      llmConfigId: modelPick?.configId ?? 0,
+      llmModelEntryId: modelPick?.entryId ?? 0,
+      ...(managedAgentId > 0 ? { managedAgentId } : {}),
+    };
+    if (store.activeId) {
+      lastRequestBySessionRef.current[store.activeId] = requestPayload;
+      const ok = upsertLastRequestStore(store.activeId, requestPayload);
+      setRetrySourceBySession((prev) => ({ ...prev, [store.activeId as string]: ok ? 'persisted' : 'memory' }));
+      if (!ok && requestPayload.attachments?.length) {
+        Toast.warning({ content: '附件较大：已仅在当前页面保留重试快照，刷新后可能无法重试' });
+      }
+    }
 
     setStore((prev) =>
       patchActiveSession(prev, (s) => ({
@@ -409,14 +613,7 @@ export const OverviewChatSection: React.FC = () => {
 
     try {
       await streamChat(
-        {
-          message: text,
-          attachments: attachments.length ? attachments : undefined,
-          history,
-          llmConfigId: modelPick?.configId ?? 0,
-          llmModelEntryId: modelPick?.entryId ?? 0,
-          ...(managedAgentId > 0 ? { managedAgentId } : {}),
-        },
+        requestPayload,
         (chunk, done, err) => {
           if (err) {
             Toast.error({ content: err });
@@ -442,24 +639,229 @@ export const OverviewChatSection: React.FC = () => {
         abortRef.current.signal
       );
     } catch (e) {
-      const msg = String((e as Error)?.message ?? e);
+      const aborted = (e as Error)?.name === 'AbortError';
+      if (aborted) {
+        applyAbortErrorToAssistant(stopByUserRef.current);
+        return;
+      }
+      const msg = String((e as Error)?.message ?? e) || '请求失败';
       Toast.error({ content: msg });
       setStore((prev) =>
         patchActiveSession(prev, (s) => ({
           ...s,
-          messages: s.messages.slice(0, -2),
+          messages: (() => {
+            const next = [...s.messages];
+            const last = next[next.length - 1];
+            if (last?.role === 'assistant') {
+              const merged = (assistantBuf || '').trim();
+              next[next.length - 1] = {
+                role: 'assistant',
+                content: merged
+                  ? `${merged}\n\n> ⚠️ 生成中断：${msg}`
+                  : `> ⚠️ 生成失败：${msg}`,
+              };
+            }
+            return next;
+          })(),
         }))
       );
-      setInput(text);
-      setPendingFiles(filesSnapshot);
     } finally {
       setStreaming(false);
+      stopByUserRef.current = false;
+    }
+  };
+
+  const handleRegenerateLast = async () => {
+    if (streaming) return;
+    if (messages.length < 2) {
+      Toast.warning({ content: '暂无可重新生成的回答' });
+      return;
+    }
+    const last = messages[messages.length - 1];
+    const prev = messages[messages.length - 2];
+    if (last.role !== 'assistant' || prev.role !== 'user') {
+      Toast.warning({ content: '当前仅支持对最近一轮问答重新生成' });
+      return;
+    }
+    if (!managedAgentId && !modelPick) {
+      Toast.warning({
+        content:
+          '请在顶部选择对话模型（模型管理），或选择「Agent 配置」托管配置其一',
+      });
+      return;
+    }
+
+    const sid = store.activeId;
+    if (!sid) return;
+    const requestPayload = lastRequestBySessionRef.current[sid];
+    if (!requestPayload) {
+      Toast.warning({ content: '缺少上次请求快照，无法重新生成' });
+      return;
+    }
+
+    setStreaming(true);
+    stopByUserRef.current = false;
+    setStore((p) =>
+      patchActiveSession(p, (s) => {
+        const next = [...s.messages];
+        next[next.length - 1] = { role: 'assistant', content: '' };
+        return { ...s, messages: next };
+      })
+    );
+
+    let assistantBuf = '';
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    try {
+      await streamChat(
+        requestPayload,
+        (chunk, done, err) => {
+          if (err) {
+            Toast.error({ content: err });
+            return;
+          }
+          if (chunk) {
+            assistantBuf += chunk;
+            setStore((prevStore) =>
+              patchActiveSession(prevStore, (s) => {
+                const next = [...s.messages];
+                const tail = next[next.length - 1];
+                if (tail?.role === 'assistant') {
+                  next[next.length - 1] = { ...tail, content: assistantBuf };
+                }
+                return { ...s, messages: next };
+              })
+            );
+          }
+          if (done) setStreaming(false);
+        },
+        abortRef.current.signal
+      );
+    } catch (e) {
+      const aborted = (e as Error)?.name === 'AbortError';
+      if (aborted) {
+        applyAbortErrorToAssistant(stopByUserRef.current);
+      } else {
+        const msg = String((e as Error)?.message ?? e) || '请求失败';
+        Toast.error({ content: msg });
+        setStore((prevStore) =>
+          patchActiveSession(prevStore, (s) => {
+            const next = [...s.messages];
+            const tail = next[next.length - 1];
+            if (tail?.role === 'assistant') {
+              next[next.length - 1] = {
+                role: 'assistant',
+                content: assistantBuf.trim()
+                  ? `${assistantBuf.trim()}\n\n> ⚠️ 重新生成中断：${msg}`
+                  : `> ⚠️ 重新生成失败：${msg}`,
+              };
+            }
+            return { ...s, messages: next };
+          })
+        );
+      }
+    } finally {
+      setStreaming(false);
+      stopByUserRef.current = false;
+    }
+  };
+
+  const handleRetryLastRequest = async () => {
+    if (streaming) return;
+    const sid = store.activeId;
+    if (!sid) return;
+    const requestPayload = lastRequestBySessionRef.current[sid];
+    if (!requestPayload) {
+      Toast.warning({ content: '暂无可重试的上次请求' });
+      return;
+    }
+    setStreaming(true);
+    stopByUserRef.current = false;
+    setStore((prev) =>
+      patchActiveSession(prev, (s) => {
+        const next = [...s.messages];
+        if (next.length > 0 && next[next.length - 1]?.role === 'assistant') {
+          next[next.length - 1] = { role: 'assistant', content: '' };
+        } else {
+          next.push({ role: 'assistant', content: '' });
+        }
+        return { ...s, messages: next };
+      })
+    );
+
+    let assistantBuf = '';
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
+    try {
+      await streamChat(
+        requestPayload,
+        (chunk, done, err) => {
+          if (err) {
+            Toast.error({ content: err });
+            return;
+          }
+          if (chunk) {
+            assistantBuf += chunk;
+            setStore((prevStore) =>
+              patchActiveSession(prevStore, (s) => {
+                const next = [...s.messages];
+                const tail = next[next.length - 1];
+                if (tail?.role === 'assistant') {
+                  next[next.length - 1] = { ...tail, content: assistantBuf };
+                } else {
+                  next.push({ role: 'assistant', content: assistantBuf });
+                }
+                return { ...s, messages: next };
+              })
+            );
+          }
+          if (done) setStreaming(false);
+        },
+        abortRef.current.signal
+      );
+    } catch (e) {
+      const aborted = (e as Error)?.name === 'AbortError';
+      if (aborted) {
+        applyAbortErrorToAssistant(stopByUserRef.current);
+      } else {
+        const msg = String((e as Error)?.message ?? e) || '请求失败';
+        Toast.error({ content: msg });
+        setStore((prevStore) =>
+          patchActiveSession(prevStore, (s) => {
+            const next = [...s.messages];
+            const tail = next[next.length - 1];
+            if (tail?.role === 'assistant') {
+              next[next.length - 1] = {
+                role: 'assistant',
+                content: assistantBuf.trim()
+                  ? `${assistantBuf.trim()}\n\n> ⚠️ 重试中断：${msg}`
+                  : `> ⚠️ 重试失败：${msg}`,
+              };
+            }
+            return { ...s, messages: next };
+          })
+        );
+      }
+    } finally {
+      setStreaming(false);
+      stopByUserRef.current = false;
     }
   };
 
   const resetChat = () => {
     abortRef.current?.abort();
     setStreaming(false);
+    if (store.activeId) {
+      delete lastRequestBySessionRef.current[store.activeId];
+      removeLastRequestStore(store.activeId);
+      setRetrySourceBySession((prev) => {
+        const next = { ...prev };
+        delete next[store.activeId as string];
+        return next;
+      });
+    }
     setStore((prev) =>
       patchActiveSession(prev, (s) => ({
         ...s,
@@ -521,13 +923,23 @@ export const OverviewChatSection: React.FC = () => {
     }
   };
 
+  const waitingFirstToken =
+    streaming &&
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === 'assistant' &&
+    !messages[messages.length - 1]?.content?.trim();
+  const activeRetrySource = store.activeId ? retrySourceBySession[store.activeId] : undefined;
+  const canRetryLastRequest =
+    !!(store.activeId && lastRequestBySessionRef.current[store.activeId]);
+
   return (
     <div
       style={{
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        minHeight: 480,
+        minHeight: 0,
         background: '#F7F8FA',
       }}
     >
@@ -581,6 +993,15 @@ export const OverviewChatSection: React.FC = () => {
         />
         <Button size="small" onClick={() => fetchConfigs()}>
           刷新模型列表
+        </Button>
+        <Button
+          size="small"
+          type="warning"
+          theme={streaming ? 'solid' : 'light'}
+          disabled={!streaming}
+          onClick={pauseCurrentExecution}
+        >
+          暂停执行
         </Button>
         <div style={{ flex: 1 }} />
         <Button size="small" onClick={clearContextOnly} disabled={streaming}>
@@ -693,12 +1114,23 @@ export const OverviewChatSection: React.FC = () => {
           style={{
             flex: 1,
             minWidth: 0,
+            minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             background: '#F7F8FA',
           }}
         >
-          <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', minWidth: 0 }}>
+          <div
+            ref={listWrapRef}
+            onScroll={handleListScroll}
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: 'auto',
+              padding: '12px 14px',
+              minWidth: 0,
+            }}
+          >
             <style>{`
           .overview-chat-md { word-break: break-word; }
           .overview-chat-md :first-child { margin-top: 0; }
@@ -717,15 +1149,52 @@ export const OverviewChatSection: React.FC = () => {
             font-size: 0.92em;
             padding: 1px 6px; border-radius: 4px; background: rgba(6,7,9,0.06);
           }
+          .overview-chat-code-wrap { margin: 0.55em 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(6,7,9,0.06); }
+          .overview-chat-code-toolbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 10px; background: rgba(6,7,9,0.04); border-bottom: 1px solid rgba(6,7,9,0.06);
+          }
+          .overview-chat-code-lang { font-size: 12px; color: rgba(28,32,41,0.62); text-transform: lowercase; }
+          .overview-chat-code-copy {
+            border: 0; background: transparent; cursor: pointer; font-size: 12px;
+            color: #1664ff; padding: 0;
+          }
           .overview-chat-md pre {
-            margin: 0.55em 0; padding: 12px 14px; border-radius: 8px;
-            background: rgba(6,7,9,0.055); overflow-x: auto; border: 1px solid rgba(6,7,9,0.06);
+            margin: 0; padding: 12px 14px; border-radius: 0;
+            background: rgba(6,7,9,0.055); overflow-x: auto; border: 0;
           }
           .overview-chat-md pre code { padding: 0; background: transparent; font-size: 13px; line-height: 1.5; }
+          .overview-chat-md .hljs { background: transparent; color: inherit; }
           .overview-chat-md table { border-collapse: collapse; width: 100%; margin: 0.5em 0; font-size: 13px; }
           .overview-chat-md th, .overview-chat-md td { border: 1px solid rgba(6,7,9,0.1); padding: 6px 10px; text-align: left; }
           .overview-chat-md th { background: rgba(6,7,9,0.04); }
           .overview-chat-md a { color: #1664ff; }
+          .overview-chat-stream-cursor {
+            display: inline-block;
+            width: 8px;
+            margin-left: 2px;
+            color: rgba(22,100,255,0.92);
+            animation: overviewChatBlink 1s steps(1, end) infinite;
+          }
+          .overview-chat-thinking-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin: 0 3px;
+            border-radius: 50%;
+            background: rgba(22,100,255,0.75);
+            animation: overviewChatThinking 1.1s infinite ease-in-out;
+          }
+          .overview-chat-thinking-dot:nth-child(2) { animation-delay: .15s; }
+          .overview-chat-thinking-dot:nth-child(3) { animation-delay: .3s; }
+          @keyframes overviewChatBlink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+          }
+          @keyframes overviewChatThinking {
+            0%, 80%, 100% { transform: translateY(0); opacity: .35; }
+            40% { transform: translateY(-2px); opacity: 1; }
+          }
         `}</style>
             <div style={{ width: '100%', boxSizing: 'border-box' }}>
               {messages.length === 0 ? (
@@ -765,9 +1234,7 @@ export const OverviewChatSection: React.FC = () => {
                   {messages.map((m, i) => {
                     const isLastAssistantStreaming =
                       streaming && i === messages.length - 1 && m.role === 'assistant';
-                    const showPlainStream = isLastAssistantStreaming;
-                    const html =
-                      !showPlainStream && m.content.trim() !== '' ? markdownToHtml(m.content) : '';
+                    const html = m.content.trim() !== '' ? markdownToHtml(m.content) : '';
                     const bubbleKey = `${store.activeId}-${i}`;
                     const isUser = m.role === 'user';
                     return (
@@ -815,21 +1282,46 @@ export const OverviewChatSection: React.FC = () => {
                               复制
                             </Button>
                           </div>
-                          {showPlainStream ? (
-                            <div style={{ ...MD_SURFACE_STYLE, whiteSpace: 'pre-wrap' }}>
-                              {m.content}
-                            </div>
-                          ) : (
-                            <div
-                              className="overview-chat-md"
-                              style={MD_SURFACE_STYLE}
-                              dangerouslySetInnerHTML={{ __html: html || '<p></p>' }}
-                            />
-                          )}
+                          <div
+                            className="overview-chat-md"
+                            style={MD_SURFACE_STYLE}
+                              onClick={async (evt) => {
+                                const target = evt.target as HTMLElement | null;
+                                const btn = target?.closest?.('[data-copy-code]') as HTMLElement | null;
+                                if (!btn) return;
+                                const encoded = btn.getAttribute('data-copy-code') || '';
+                                const code = decodeURIComponent(encoded);
+                                const ok = await copyToClipboard(code);
+                                if (ok) Toast.success({ content: '代码已复制' });
+                                else Toast.error({ content: '代码复制失败' });
+                              }}
+                            dangerouslySetInnerHTML={{ __html: html || '<p></p>' }}
+                          />
+                          {isLastAssistantStreaming && <span className="overview-chat-stream-cursor">▍</span>}
                         </div>
                       </div>
                     );
                   })}
+                  {waitingFirstToken && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+                      <div
+                        style={{
+                          maxWidth: '100%',
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          background: '#fff',
+                          border: '1px solid rgba(6,7,9,0.06)',
+                          color: 'rgba(28,32,41,0.72)',
+                          fontSize: 14,
+                        }}
+                      >
+                        助手正在思考
+                        <span className="overview-chat-thinking-dot" />
+                        <span className="overview-chat-thinking-dot" />
+                        <span className="overview-chat-thinking-dot" />
+                      </div>
+                    </div>
+                  )}
                   <div ref={listEndRef} />
                 </div>
               )}
@@ -859,7 +1351,8 @@ export const OverviewChatSection: React.FC = () => {
                   e.target.value = '';
                 }}
               />
-              <Spin spinning={streaming}>
+              {/* Spin spinning 时 semi-spin-block::after 会盖住子节点，按钮须放在 Spin 外 */}
+              <Spin spinning={streaming} style={{ width: '100%', display: 'block' }}>
                 <TextArea
                   value={input}
                   onChange={setInput}
@@ -873,77 +1366,94 @@ export const OverviewChatSection: React.FC = () => {
                   }}
                   disabled={streaming}
                 />
-                {pendingFiles.length > 0 && (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 8,
-                      alignItems: 'center',
-                    }}
-                  >
-                    {pendingFiles.map((f, idx) => (
-                      <Typography.Text
-                        key={`${f.name}_${f.size}_${idx}`}
-                        size="small"
-                        style={{
-                          padding: '4px 10px',
-                          background: 'rgba(46,50,56,0.06)',
-                          borderRadius: 6,
-                          maxWidth: '100%',
-                          wordBreak: 'break-all',
-                        }}
-                      >
-                        {f.name}
-                        <Button
-                          theme="borderless"
-                          size="small"
-                          type="tertiary"
-                          style={{ marginLeft: 6, padding: '0 4px' }}
-                          onClick={() =>
-                            setPendingFiles((prev) => prev.filter((_, i) => i !== idx))
-                          }
-                        >
-                          移除
-                        </Button>
-                      </Typography.Text>
-                    ))}
-                  </div>
-                )}
-                <Typography.Text
-                  type="tertiary"
-                  size="small"
-                  style={{ display: 'block', marginTop: 8, lineHeight: 1.55 }}
-                >
-                  {CHAT_GUIDE.inputHint}
-                </Typography.Text>
+              </Spin>
+              {pendingFiles.length > 0 && (
                 <div
                   style={{
+                    marginTop: 8,
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 8,
                     alignItems: 'center',
-                    marginTop: 10,
-                    gap: 10,
                   }}
                 >
-                  <Button
-                    icon={<IconUpload />}
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={streaming}
-                  >
-                    附件
-                  </Button>
-                  <Button
-                    theme="solid"
-                    type="primary"
-                    onClick={handleSend}
-                    disabled={streaming || (!input.trim() && pendingFiles.length === 0)}
-                  >
-                    发送
-                  </Button>
+                  {pendingFiles.map((f, idx) => (
+                    <Typography.Text
+                      key={`${f.name}_${f.size}_${idx}`}
+                      size="small"
+                      style={{
+                        padding: '4px 10px',
+                        background: 'rgba(46,50,56,0.06)',
+                        borderRadius: 6,
+                        maxWidth: '100%',
+                        wordBreak: 'break-all',
+                      }}
+                    >
+                      {f.name}
+                      <Button
+                        theme="borderless"
+                        size="small"
+                        type="tertiary"
+                        style={{ marginLeft: 6, padding: '0 4px' }}
+                        onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        移除
+                      </Button>
+                    </Typography.Text>
+                  ))}
                 </div>
-              </Spin>
+              )}
+              <Typography.Text
+                type="tertiary"
+                size="small"
+                style={{ display: 'block', marginTop: 8, lineHeight: 1.55 }}
+              >
+                {CHAT_GUIDE.inputHint}
+              </Typography.Text>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 10,
+                  gap: 10,
+                }}
+              >
+                <Button
+                  icon={<IconUpload />}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={streaming}
+                >
+                  附件
+                </Button>
+                <Button
+                  theme="solid"
+                  type="primary"
+                  onClick={handleSend}
+                  disabled={streaming || (!input.trim() && pendingFiles.length === 0)}
+                >
+                  发送
+                </Button>
+                {streaming && (
+                  <Button type="tertiary" onClick={pauseCurrentExecution}>
+                    暂停执行
+                  </Button>
+                )}
+                {!streaming && (
+                  <Button type="tertiary" onClick={handleRegenerateLast}>
+                    重新生成上一条
+                  </Button>
+                )}
+                {!streaming && (
+                  <Button type="tertiary" onClick={handleRetryLastRequest} disabled={!canRetryLastRequest}>
+                    {!canRetryLastRequest
+                      ? '暂无可重试请求'
+                      : activeRetrySource === 'persisted'
+                      ? '重试上次请求（含附件）'
+                      : '重试上次请求（仅当前页）'}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
