@@ -106,6 +106,38 @@ func TestTraceEngine_EmitEvents(t *testing.T) {
 	}
 }
 
+func TestTraceEngine_ToolResultRunSubAgentAddsConcurrencyMetadata(t *testing.T) {
+	repo := playgrounddata.NewTraceRepo()
+	engine := NewTraceEngine(repo)
+	ctx := context.Background()
+	run, _ := engine.StartRun(ctx, "scheme-1", "测试")
+
+	engine.ToolResult(ctx, run.RunID, "designer", "run_sub_agent", `{"task_count":3,"effective_concurrency":2,"concurrency_reason":"auto_estimated_by_task_count"}`, true)
+	events, err := engine.GetEvents(ctx, &entity.TraceFilter{RunID: run.RunID, Limit: 100})
+	if err != nil {
+		t.Fatalf("GetEvents failed: %v", err)
+	}
+	var got *entity.TraceEvent
+	for _, ev := range events {
+		if ev.Type == entity.TraceEventToolResult && ev.Metadata["toolName"] == "run_sub_agent" {
+			got = ev
+			break
+		}
+	}
+	if got == nil {
+		t.Fatal("expected run_sub_agent tool result event")
+	}
+	if got.Metadata["subAgentTaskCount"] != 3 {
+		t.Fatalf("unexpected subAgentTaskCount: %#v", got.Metadata["subAgentTaskCount"])
+	}
+	if got.Metadata["subAgentEffectiveConcurrency"] != 2 {
+		t.Fatalf("unexpected subAgentEffectiveConcurrency: %#v", got.Metadata["subAgentEffectiveConcurrency"])
+	}
+	if got.Metadata["subAgentConcurrencyReason"] != "auto_estimated_by_task_count" {
+		t.Fatalf("unexpected subAgentConcurrencyReason: %#v", got.Metadata["subAgentConcurrencyReason"])
+	}
+}
+
 func TestTraceEngine_Handoff(t *testing.T) {
 	repo := playgrounddata.NewTraceRepo()
 	engine := NewTraceEngine(repo)

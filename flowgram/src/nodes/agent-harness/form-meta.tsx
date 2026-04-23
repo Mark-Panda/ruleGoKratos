@@ -92,6 +92,7 @@ const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
   'workspaceId',
   'enableSkillTool',
   'enableMcpTool',
+  'enableSubAgentTool',
   'maxIterations',
   'maxToolCalls',
   'toolTimeoutSecs',
@@ -499,7 +500,7 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
     <FormHeader />
     <FormContent>
       <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 10px' }}>
-        上方须选择模型管理中的 LLM 配置与模型条目（运行时解析密钥与模型名）；可选绑定工作区并自动注入约束提示。generate_uuid 与 workspace 工具由服务端固定启用。
+        上方须选择模型管理中的 LLM 配置与模型条目（运行时解析密钥与模型名）；可选绑定工作区并自动注入约束提示。generate_uuid 与 workspace 工具由服务端固定启用；可开启 run_sub_agent 让 Agent 自动分派子任务（支持批量并发 sub_tasks_json，未指定并发时自动估算）。
       </Typography.Paragraph>
       <AgentHarnessManagedModelPick />
       <AgentHarnessWorkspacePick />

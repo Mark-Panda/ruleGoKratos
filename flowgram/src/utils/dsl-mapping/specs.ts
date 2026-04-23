@@ -87,6 +87,12 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       defaultValue: true,
     },
     {
+      inputKey: 'enableSubAgentTool',
+      dslKey: 'enableSubAgentTool',
+      valueType: 'boolean',
+      defaultValue: true,
+    },
+    {
       inputKey: 'skillAllowlist',
       dslKey: 'skillAllowlist',
       valueType: 'json',

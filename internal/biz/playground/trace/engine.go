@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"ruleGoKratos/internal/biz/entity"
 	"strings"
@@ -292,14 +293,45 @@ func (e *TraceEngine) ToolCall(ctx context.Context, runID, agentID, toolName, ar
 
 // ToolResult 记录工具结果
 func (e *TraceEngine) ToolResult(ctx context.Context, runID, agentID, toolName, result string, success bool) {
-	e.EmitEvent(ctx, entity.NewTraceEvent(
+	ev := entity.NewTraceEvent(
 		runID,
 		entity.TraceEventToolResult,
 		agentID,
 		"",
 		"",
 		fmt.Sprintf("工具 %s 执行%s", toolName, map[bool]string{true: "成功", false: "失败"}[success]),
-	).WithMetadata("toolName", toolName).WithMetadata("result", truncate(result, 500)).WithMetadata("success", success))
+	).WithMetadata("toolName", toolName).WithMetadata("result", truncate(result, 500)).WithMetadata("success", success)
+	if toolName == "run_sub_agent" {
+		if taskCount, effective, reason, ok := parseSubAgentConcurrency(result); ok {
+			ev.Message = fmt.Sprintf(
+				"工具 %s 执行%s（子任务=%d，并发=%d，原因=%s）",
+				toolName,
+				map[bool]string{true: "成功", false: "失败"}[success],
+				taskCount,
+				effective,
+				reason,
+			)
+			ev.WithMetadata("subAgentTaskCount", taskCount)
+			ev.WithMetadata("subAgentEffectiveConcurrency", effective)
+			ev.WithMetadata("subAgentConcurrencyReason", reason)
+		}
+	}
+	e.EmitEvent(ctx, ev)
+}
+
+func parseSubAgentConcurrency(raw string) (taskCount int, effectiveConcurrency int, reason string, ok bool) {
+	var parsed struct {
+		TaskCount            int    `json:"task_count"`
+		EffectiveConcurrency int    `json:"effective_concurrency"`
+		ConcurrencyReason    string `json:"concurrency_reason"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &parsed); err != nil {
+		return 0, 0, "", false
+	}
+	if parsed.TaskCount <= 0 || parsed.EffectiveConcurrency <= 0 || strings.TrimSpace(parsed.ConcurrencyReason) == "" {
+		return 0, 0, "", false
+	}
+	return parsed.TaskCount, parsed.EffectiveConcurrency, strings.TrimSpace(parsed.ConcurrencyReason), true
 }
 
 // Handoff 记录任务交接

@@ -12,6 +12,7 @@ import (
 	"ruleGoKratos/internal/conf"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -23,9 +24,10 @@ import (
 )
 
 const (
-	defaultMaxIterations   = 32
-	defaultMaxToolCalls    = 64
-	defaultToolTimeoutSecs = 5
+	defaultMaxIterations    = 32
+	defaultMaxToolCalls     = 64
+	defaultToolTimeoutSecs  = 5
+	defaultMaxSubAgentDepth = 2
 	// LLM HTTP 流式读取超时（OpenAI SDK Client.Timeout）；规划/长推理需显著大于旧版 60s。
 	defaultStreamTimeoutSecs = 600
 	defaultChunkSize         = 120
@@ -103,12 +105,40 @@ type HarnessRequest struct {
 	PlaygroundRunID   string
 	PlaygroundAgentID string
 	TraceSink         HarnessTraceSink
+	// SubAgentDepth 仅用于 run_sub_agent 递归保护；根请求为 0。
+	SubAgentDepth int
 }
 
 // HarnessTraceSink Playground 注入，映射到 TraceEngine 的工具事件。
 type HarnessTraceSink interface {
 	EmitToolCall(runID, agentID, toolName, args string)
 	EmitToolResult(runID, agentID, toolName, result string, success bool)
+}
+
+type harnessSubAgentCtxKey struct{}
+
+type harnessSubAgentContext struct {
+	Request HarnessRequest
+	Config  HarnessConfig
+}
+
+func withHarnessSubAgentContext(ctx context.Context, req HarnessRequest, cfg HarnessConfig) context.Context {
+	return context.WithValue(ctx, harnessSubAgentCtxKey{}, harnessSubAgentContext{
+		Request: req,
+		Config:  cfg,
+	})
+}
+
+func getHarnessSubAgentContext(ctx context.Context) (harnessSubAgentContext, bool) {
+	if ctx == nil {
+		return harnessSubAgentContext{}, false
+	}
+	v := ctx.Value(harnessSubAgentCtxKey{})
+	if v == nil {
+		return harnessSubAgentContext{}, false
+	}
+	info, ok := v.(harnessSubAgentContext)
+	return info, ok
 }
 
 type SkillExecutor interface {
@@ -320,11 +350,11 @@ func userFacingError(msg string) error {
 const harnessErrDetailMaxRunes = 280
 
 var (
-	reBearerLike     = regexp.MustCompile(`(?i)\bBearer\s+\S+`)
-	reSkOpenAIStyle  = regexp.MustCompile(`\bsk-[a-zA-Z0-9]{10,}\b`)
-	reUnixLikePath   = regexp.MustCompile(`(?:/Users|/home|/var|/tmp)(?:/[\w.-]+)+`)
-	reWinLikePath    = regexp.MustCompile(`\b[A-Za-z]:\\(?:[\w.-]+\\)+[\w.-]+`)
-	reLongOpaqueTok  = regexp.MustCompile(`\b[A-Za-z0-9+/=_-]{64,}\b`)
+	reBearerLike    = regexp.MustCompile(`(?i)\bBearer\s+\S+`)
+	reSkOpenAIStyle = regexp.MustCompile(`\bsk-[a-zA-Z0-9]{10,}\b`)
+	reUnixLikePath  = regexp.MustCompile(`(?:/Users|/home|/var|/tmp)(?:/[\w.-]+)+`)
+	reWinLikePath   = regexp.MustCompile(`\b[A-Za-z]:\\(?:[\w.-]+\\)+[\w.-]+`)
+	reLongOpaqueTok = regexp.MustCompile(`\b[A-Za-z0-9+/=_-]{64,}\b`)
 )
 
 func redactErrorText(s string) string {
@@ -487,6 +517,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				workCtx = withHarnessWorkspaceRoot(ctx, sessionRoot)
 			}
 		}
+		workCtx = withHarnessSubAgentContext(workCtx, req, cfg)
 
 		einoModel, err := uc.newChatModel(workCtx, req)
 		if err != nil {
@@ -694,6 +725,10 @@ func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.
 	if err != nil {
 		return nil, nil, err
 	}
+	subAgentTool, err := uc.BuildSubAgentTool()
+	if err != nil {
+		return nil, nil, err
+	}
 	registry := map[string]*HarnessTool{
 		uuidTool.Info.Name:      uuidTool,
 		skillTool.Info.Name:     skillTool,
@@ -701,10 +736,11 @@ func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.
 		readFileTool.Info.Name:  readFileTool,
 		writeFileTool.Info.Name: writeFileTool,
 		shellTool.Info.Name:     shellTool,
+		subAgentTool.Info.Name:  subAgentTool,
 	}
 	infos := []*schema.ToolInfo{
 		uuidTool.Info, skillTool.Info, mcpTool.Info,
-		readFileTool.Info, writeFileTool.Info, shellTool.Info,
+		readFileTool.Info, writeFileTool.Info, shellTool.Info, subAgentTool.Info,
 	}
 	if uc.mcpConfigAdmin != nil {
 		saveTool, err := uc.BuildSaveMcpConfigTool()
@@ -832,6 +868,315 @@ func (uc *AgentUsecase) BuildMCPTool() (*HarnessTool, error) {
 	}, nil
 }
 
+func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
+	toolInfo := &schema.ToolInfo{
+		Name: "run_sub_agent",
+		Desc: "拉起子 Agent 执行子任务；支持单任务或 sub_tasks_json 批量任务，并可并发聚合结果。",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"task": {
+				Type:     schema.String,
+				Desc:     "单个子任务描述；与 sub_tasks_json 二选一或并用",
+				Required: false,
+			},
+			"sub_tasks_json": {
+				Type:     schema.String,
+				Desc:     "可选；子任务数组 JSON 字符串，例如 [\"任务A\",\"任务B\"]",
+				Required: false,
+			},
+			"system_prompt": {
+				Type:     schema.String,
+				Desc:     "可选；子 Agent 的系统提示词，默认继承当前 Agent",
+				Required: false,
+			},
+			"managed_agent_id": {
+				Type:     schema.Integer,
+				Desc:     "可选；指定托管 Agent 配置 id",
+				Required: false,
+			},
+			"max_iterations": {
+				Type:     schema.Integer,
+				Desc:     "可选；覆盖子 Agent 最大迭代轮次",
+				Required: false,
+			},
+			"max_tool_calls": {
+				Type:     schema.Integer,
+				Desc:     "可选；覆盖子 Agent 最大工具调用次数",
+				Required: false,
+			},
+			"tool_timeout_secs": {
+				Type:     schema.Integer,
+				Desc:     "可选；覆盖子 Agent 单次工具超时秒数",
+				Required: false,
+			},
+			"max_concurrency": {
+				Type:     schema.Integer,
+				Desc:     "可选；批量任务并发度（1~8）。不传则按子任务数量自动估算",
+				Required: false,
+			},
+		}),
+	}
+	type runSubAgentArgs struct {
+		Task            string `json:"task"`
+		SubTasksJSON    string `json:"sub_tasks_json"`
+		SystemPrompt    string `json:"system_prompt"`
+		ManagedAgentID  int64  `json:"managed_agent_id"`
+		MaxIterations   int    `json:"max_iterations"`
+		MaxToolCalls    int    `json:"max_tool_calls"`
+		ToolTimeoutSecs int    `json:"tool_timeout_secs"`
+		MaxConcurrency  int    `json:"max_concurrency"`
+	}
+	type subAgentBatchItem struct {
+		Task      string   `json:"task"`
+		Summary   string   `json:"summary"`
+		Findings  []string `json:"findings"`
+		NextSteps []string `json:"next_steps"`
+		Error     string   `json:"error,omitempty"`
+		Raw       string   `json:"raw,omitempty"`
+	}
+	type subAgentNormalizedOutput struct {
+		Summary              string              `json:"summary"`
+		Findings             []string            `json:"findings"`
+		NextSteps            []string            `json:"next_steps"`
+		SubResults           []subAgentBatchItem `json:"sub_results,omitempty"`
+		TaskCount            int                 `json:"task_count,omitempty"`
+		RequestedConcurrency int                 `json:"requested_concurrency,omitempty"`
+		EffectiveConcurrency int                 `json:"effective_concurrency,omitempty"`
+		ConcurrencyReason    string              `json:"concurrency_reason,omitempty"`
+		Raw                  string              `json:"raw,omitempty"`
+	}
+	normalizeOutput := func(raw string) subAgentNormalizedOutput {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return subAgentNormalizedOutput{
+				Summary:   "子 Agent 未返回内容",
+				Findings:  []string{},
+				NextSteps: []string{},
+			}
+		}
+		var parsed subAgentNormalizedOutput
+		if err := json.Unmarshal([]byte(raw), &parsed); err == nil {
+			if strings.TrimSpace(parsed.Summary) == "" {
+				parsed.Summary = "子 Agent 已执行（summary 为空）"
+			}
+			if parsed.Findings == nil {
+				parsed.Findings = []string{}
+			}
+			if parsed.NextSteps == nil {
+				parsed.NextSteps = []string{}
+			}
+			return parsed
+		}
+		return subAgentNormalizedOutput{
+			Summary:   "子 Agent 返回了非结构化内容，已自动兜底归一化",
+			Findings:  []string{},
+			NextSteps: []string{},
+			Raw:       raw,
+		}
+	}
+	marshalOutput := func(out subAgentNormalizedOutput) string {
+		b, _ := json.Marshal(out)
+		return string(b)
+	}
+	parseTasks := func(singleTask string, subTasksJSON string) ([]string, error) {
+		tasks := make([]string, 0, 4)
+		if t := strings.TrimSpace(singleTask); t != "" {
+			tasks = append(tasks, t)
+		}
+		raw := strings.TrimSpace(subTasksJSON)
+		if raw != "" {
+			var arr []string
+			if err := json.Unmarshal([]byte(raw), &arr); err == nil {
+				for _, item := range arr {
+					if t := strings.TrimSpace(item); t != "" {
+						tasks = append(tasks, t)
+					}
+				}
+			} else {
+				return nil, fmt.Errorf("sub_tasks_json 不是合法 JSON 数组: %w", err)
+			}
+		}
+		if len(tasks) == 0 {
+			return nil, errors.New("task 与 sub_tasks_json 不能同时为空")
+		}
+		return tasks, nil
+	}
+	estimateConcurrency := func(taskCount int) int {
+		if taskCount <= 1 {
+			return 1
+		}
+		if taskCount <= 3 {
+			return taskCount
+		}
+		if taskCount <= 6 {
+			return 3
+		}
+		if taskCount <= 12 {
+			return 4
+		}
+		return 6
+	}
+	buildChildReq := func(parentReq HarnessRequest, args runSubAgentArgs, task string, nextDepth int) HarnessRequest {
+		childReq := parentReq
+		childReq.History = nil
+		childReq.Input = task + "\n\n请严格返回 JSON 对象，字段仅包含：summary(string), findings(string[]), next_steps(string[])。不要输出 markdown 代码块，不要输出额外字段。"
+		childReq.Attachments = nil
+		childReq.SubAgentDepth = nextDepth
+		childReq.PlaygroundRunID = ""
+		childReq.PlaygroundAgentID = ""
+		childReq.TraceSink = nil
+
+		if sp := strings.TrimSpace(args.SystemPrompt); sp != "" {
+			childReq.SystemPrompt = sp
+		}
+		if args.ManagedAgentID > 0 {
+			childReq.ManagedAgentID = args.ManagedAgentID
+			childReq.LlmConfigID = 0
+			childReq.LlmModelEntryID = 0
+			childReq.Model = ""
+		}
+		if childReq.ToolOptions != nil {
+			childReq.ToolOptions = cloneHarnessToolOptions(childReq.ToolOptions)
+			childReq.ToolOptions.EnableSubAgentTool = nextDepth < defaultMaxSubAgentDepth
+		}
+		if args.MaxIterations > 0 || args.MaxToolCalls > 0 || args.ToolTimeoutSecs > 0 {
+			override := &HarnessConfig{}
+			if args.MaxIterations > 0 {
+				override.MaxIterations = args.MaxIterations
+			}
+			if args.MaxToolCalls > 0 {
+				override.MaxToolCalls = args.MaxToolCalls
+			}
+			if args.ToolTimeoutSecs > 0 {
+				override.ToolTimeoutSecs = args.ToolTimeoutSecs
+			}
+			childReq.ConfigOverride = override
+		}
+		return childReq
+	}
+	return &HarnessTool{
+		Info: toolInfo,
+		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
+			var args runSubAgentArgs
+			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
+				return "", err
+			}
+			tasks, err := parseTasks(args.Task, args.SubTasksJSON)
+			if err != nil {
+				return "", err
+			}
+			parentCtx, ok := getHarnessSubAgentContext(ctx)
+			if !ok {
+				return "", errors.New("当前上下文不支持 run_sub_agent")
+			}
+			parentReq := parentCtx.Request
+			nextDepth := parentReq.SubAgentDepth + 1
+			if nextDepth > defaultMaxSubAgentDepth {
+				return "", fmt.Errorf("sub-agent 递归深度超过限制（max=%d）", defaultMaxSubAgentDepth)
+			}
+
+			executeTask := func(task string) subAgentBatchItem {
+				childReq := buildChildReq(parentReq, args, task, nextDepth)
+				out, execErr := uc.ExecuteHarnessSync(ctx, childReq)
+				if execErr != nil {
+					return subAgentBatchItem{
+						Task:      task,
+						Summary:   "子任务执行失败",
+						Findings:  []string{execErr.Error()},
+						NextSteps: []string{"检查子任务描述、工具权限或模型配置后重试"},
+						Error:     execErr.Error(),
+					}
+				}
+				norm := normalizeOutput(out)
+				return subAgentBatchItem{
+					Task:      task,
+					Summary:   norm.Summary,
+					Findings:  norm.Findings,
+					NextSteps: norm.NextSteps,
+					Raw:       norm.Raw,
+				}
+			}
+
+			if len(tasks) == 1 {
+				item := executeTask(tasks[0])
+				reason := "single_task_forced_1"
+				if args.MaxConcurrency > 0 {
+					reason = "single_task_ignores_user_concurrency"
+				}
+				return marshalOutput(subAgentNormalizedOutput{
+					Summary:              item.Summary,
+					Findings:             item.Findings,
+					NextSteps:            item.NextSteps,
+					SubResults:           []subAgentBatchItem{item},
+					TaskCount:            1,
+					RequestedConcurrency: args.MaxConcurrency,
+					EffectiveConcurrency: 1,
+					ConcurrencyReason:    reason,
+					Raw:                  item.Raw,
+				}), nil
+			}
+
+			maxConc := args.MaxConcurrency
+			reason := "user_specified"
+			if maxConc <= 0 {
+				maxConc = estimateConcurrency(len(tasks))
+				reason = "auto_estimated_by_task_count"
+			}
+			if maxConc < 1 {
+				maxConc = 1
+				reason = "clamped_to_min_1"
+			}
+			if maxConc > 8 {
+				maxConc = 8
+				reason = "clamped_to_max_8"
+			}
+			type indexedResult struct {
+				Index int
+				Item  subAgentBatchItem
+			}
+			sem := make(chan struct{}, maxConc)
+			outCh := make(chan indexedResult, len(tasks))
+			var wg sync.WaitGroup
+			for idx, task := range tasks {
+				wg.Add(1)
+				go func(i int, t string) {
+					defer wg.Done()
+					sem <- struct{}{}
+					item := executeTask(t)
+					<-sem
+					outCh <- indexedResult{Index: i, Item: item}
+				}(idx, task)
+			}
+			wg.Wait()
+			close(outCh)
+
+			items := make([]subAgentBatchItem, len(tasks))
+			success := 0
+			findings := make([]string, 0, len(tasks))
+			nextSteps := make([]string, 0, len(tasks)*2)
+			for res := range outCh {
+				items[res.Index] = res.Item
+			}
+			for idx, item := range items {
+				if item.Error == "" {
+					success++
+				}
+				findings = append(findings, fmt.Sprintf("[%d] %s => %s", idx+1, item.Task, item.Summary))
+				nextSteps = append(nextSteps, item.NextSteps...)
+			}
+			return marshalOutput(subAgentNormalizedOutput{
+				Summary:              fmt.Sprintf("批量子任务完成：成功 %d / 总计 %d", success, len(tasks)),
+				Findings:             findings,
+				NextSteps:            nextSteps,
+				SubResults:           items,
+				TaskCount:            len(tasks),
+				RequestedConcurrency: args.MaxConcurrency,
+				EffectiveConcurrency: maxConc,
+				ConcurrencyReason:    reason,
+			}), nil
+		},
+	}, nil
+}
+
 // BuildSaveMcpConfigTool 将一条 MCP 登记到本机「MCP 配置」表（与 Code 助手 / 管理后台同源）；需已注入 McpConfigAdmin。
 func (uc *AgentUsecase) BuildSaveMcpConfigTool() (*HarnessTool, error) {
 	if uc.mcpConfigAdmin == nil {
@@ -900,16 +1245,16 @@ func (uc *AgentUsecase) BuildSaveMcpConfigTool() (*HarnessTool, error) {
 	}
 	type saveMcpArgs struct {
 		ID            interface{} `json:"id"`
-		Name          string        `json:"name"`
-		Server        string        `json:"server"`
-		Transport     string        `json:"transport"`
-		Endpoint      string        `json:"endpoint"`
-		HeadersJSON   string        `json:"headers_json"`
-		StdioCommand  string        `json:"stdio_command"`
-		StdioArgsJSON string        `json:"stdio_args_json"`
-		StdioEnvJSON  string        `json:"stdio_env_json"`
-		Enabled       *bool         `json:"enabled"`
-		Description   string        `json:"description"`
+		Name          string      `json:"name"`
+		Server        string      `json:"server"`
+		Transport     string      `json:"transport"`
+		Endpoint      string      `json:"endpoint"`
+		HeadersJSON   string      `json:"headers_json"`
+		StdioCommand  string      `json:"stdio_command"`
+		StdioArgsJSON string      `json:"stdio_args_json"`
+		StdioEnvJSON  string      `json:"stdio_env_json"`
+		Enabled       *bool       `json:"enabled"`
+		Description   string      `json:"description"`
 	}
 	parseIDAny := func(v interface{}) int64 {
 		if v == nil {

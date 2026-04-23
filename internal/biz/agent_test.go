@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,10 +39,10 @@ func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildToolRegistry failed: %v", err)
 	}
-	if len(registry) != 6 {
+	if len(registry) != 7 {
 		t.Fatalf("unexpected tool registry size: %d", len(registry))
 	}
-	if len(infos) != 6 {
+	if len(infos) != 7 {
 		t.Fatalf("unexpected tool infos size: %d", len(infos))
 	}
 	if _, ok := registry["run_skill"]; !ok {
@@ -54,6 +55,9 @@ func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
 		if _, ok := registry[name]; !ok {
 			t.Fatalf("tool %s missing", name)
 		}
+	}
+	if _, ok := registry["run_sub_agent"]; !ok {
+		t.Fatalf("run_sub_agent tool missing")
 	}
 }
 
@@ -219,6 +223,24 @@ func (f *fakeToolCallingModel) WithTools(tools []*schema.ToolInfo) (model.ToolCa
 	return f, nil
 }
 
+type fakeStaticToolCallingModel struct {
+	output string
+}
+
+func (f *fakeStaticToolCallingModel) Generate(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.Message, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeStaticToolCallingModel) Stream(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.StreamReader[*schema.Message], error) {
+	return schema.StreamReaderFromArray([]*schema.Message{
+		schema.AssistantMessage(f.output, nil),
+	}), nil
+}
+
+func (f *fakeStaticToolCallingModel) WithTools(tools []*schema.ToolInfo) (model.ToolCallingChatModel, error) {
+	return f, nil
+}
+
 func TestExecuteHarnessShouldYieldErrorWhenModelStreamFailed(t *testing.T) {
 	uc := newTestAgentUsecase()
 	uc.chatModelFunc = func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error) {
@@ -238,6 +260,64 @@ func TestExecuteHarnessShouldYieldErrorWhenModelStreamFailed(t *testing.T) {
 	}
 	if !strings.Contains(gotErr.Error(), "stream init failed") {
 		t.Fatalf("expected redacted detail to retain safe message, got: %v", gotErr)
+	}
+}
+
+func TestRunSubAgentToolBatchShouldAggregate(t *testing.T) {
+	uc := newTestAgentUsecase()
+	uc.chatModelFunc = func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error) {
+		return &fakeStaticToolCallingModel{
+			output: `{"summary":"子任务已完成","findings":["完成执行"],"next_steps":["继续下一个子任务"]}`,
+		}, nil
+	}
+	tool, err := uc.BuildSubAgentTool()
+	if err != nil {
+		t.Fatalf("BuildSubAgentTool failed: %v", err)
+	}
+
+	parentReq := HarnessRequest{
+		Model:           "test-model",
+		LlmConfigID:     1,
+		LlmModelEntryID: 1,
+		ToolOptions: &HarnessToolOptions{
+			EnableSubAgentTool: true,
+		},
+	}
+	ctx := withHarnessSubAgentContext(context.Background(), parentReq, HarnessConfig{})
+	out, err := tool.Invoke(ctx, `{"sub_tasks_json":"[\"任务A\",\"任务B\"]","max_concurrency":2}`)
+	if err != nil {
+		t.Fatalf("run_sub_agent batch invoke failed: %v", err)
+	}
+	var got struct {
+		Summary              string   `json:"summary"`
+		Findings             []string `json:"findings"`
+		TaskCount            int      `json:"task_count"`
+		RequestedConcurrency int      `json:"requested_concurrency"`
+		EffectiveConcurrency int      `json:"effective_concurrency"`
+		ConcurrencyReason    string   `json:"concurrency_reason"`
+		SubResults           []struct {
+			Task    string `json:"task"`
+			Summary string `json:"summary"`
+			Error   string `json:"error,omitempty"`
+		} `json:"sub_results"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("batch output must be valid json, got err=%v out=%s", err, out)
+	}
+	if !strings.Contains(got.Summary, "成功 2 / 总计 2") {
+		t.Fatalf("unexpected summary: %s", got.Summary)
+	}
+	if len(got.Findings) != 2 || len(got.SubResults) != 2 {
+		t.Fatalf("unexpected aggregate size findings=%d sub_results=%d", len(got.Findings), len(got.SubResults))
+	}
+	if got.RequestedConcurrency != 2 || got.EffectiveConcurrency != 2 {
+		t.Fatalf("unexpected concurrency requested=%d effective=%d", got.RequestedConcurrency, got.EffectiveConcurrency)
+	}
+	if got.TaskCount != 2 {
+		t.Fatalf("unexpected task count: %d", got.TaskCount)
+	}
+	if got.ConcurrencyReason != "user_specified" {
+		t.Fatalf("unexpected concurrency reason: %s", got.ConcurrencyReason)
 	}
 }
 

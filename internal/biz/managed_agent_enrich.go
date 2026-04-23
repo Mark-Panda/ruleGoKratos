@@ -78,6 +78,7 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 		EnableSkillTool:      enableSkill,
 		EnableMcpTool:        len(mcpAllow) > 0,
 		EnableWorkspaceTools: true,
+		EnableSubAgentTool:   true,
 		SkillAllowlist:       skillAllow,
 		McpAllowlist:         mcpAllow,
 	}

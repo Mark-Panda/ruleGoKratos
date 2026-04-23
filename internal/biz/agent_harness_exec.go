@@ -16,8 +16,19 @@ type HarnessToolOptions struct {
 	EnableSkillTool      bool
 	EnableMcpTool        bool
 	EnableWorkspaceTools bool
+	EnableSubAgentTool   bool
 	SkillAllowlist       []string
 	McpAllowlist         []string
+}
+
+func cloneHarnessToolOptions(in *HarnessToolOptions) *HarnessToolOptions {
+	if in == nil {
+		return nil
+	}
+	out := *in
+	out.SkillAllowlist = append([]string(nil), in.SkillAllowlist...)
+	out.McpAllowlist = append([]string(nil), in.McpAllowlist...)
+	return &out
 }
 
 // ParseCommaSeparated 解析逗号分隔列表，去空、去首尾空格。
@@ -250,6 +261,14 @@ func (uc *AgentUsecase) BuildToolRegistryWithOptions(opts *HarnessToolOptions) (
 		registry[writeFileTool.Info.Name] = writeFileTool
 		registry[shellTool.Info.Name] = shellTool
 		infos = append(infos, readFileTool.Info, writeFileTool.Info, shellTool.Info)
+	}
+	if opts.EnableSubAgentTool {
+		t, err := uc.BuildSubAgentTool()
+		if err != nil {
+			return nil, nil, err
+		}
+		registry[t.Info.Name] = t
+		infos = append(infos, t.Info)
 	}
 
 	return registry, infos, nil

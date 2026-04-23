@@ -43,15 +43,16 @@ type AgentHarnessLLM struct {
 
 // AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）；白名单见 skillAllow / mcpAllow。
 type AgentHarnessLLMConfig struct {
-	LlmConfigID     int64  `json:"llmConfigId"`
-	LlmModelEntryID int64  `json:"llmModelEntryId"`
-	ManagedAgentID  int64  `json:"managedAgentId"`
-	WorkspaceID     string `json:"workspaceId"`
-	Model           string `json:"model"`
-	SystemPrompt    string `json:"systemPrompt"`
-	UserPrompt      string `json:"userPrompt"`
-	EnableSkillTool bool   `json:"enableSkillTool"`
-	EnableMcpTool   bool   `json:"enableMcpTool"`
+	LlmConfigID        int64  `json:"llmConfigId"`
+	LlmModelEntryID    int64  `json:"llmModelEntryId"`
+	ManagedAgentID     int64  `json:"managedAgentId"`
+	WorkspaceID        string `json:"workspaceId"`
+	Model              string `json:"model"`
+	SystemPrompt       string `json:"systemPrompt"`
+	UserPrompt         string `json:"userPrompt"`
+	EnableSkillTool    bool   `json:"enableSkillTool"`
+	EnableMcpTool      bool   `json:"enableMcpTool"`
+	EnableSubAgentTool bool   `json:"enableSubAgentTool"`
 	// EnableUUIDTool 已废弃：运行时固定启用 UUID 工具，DSL 若仍含该字段会被忽略。
 	EnableUUIDTool       bool `json:"enableUUIDTool"`
 	EnableWorkspaceTools bool `json:"enableWorkspaceTools"`
@@ -66,8 +67,9 @@ func (x *AgentHarnessLLM) Type() string {
 
 func (x *AgentHarnessLLM) New() types.Node {
 	return &AgentHarnessLLM{Config: AgentHarnessLLMConfig{
-		EnableSkillTool: true,
-		EnableMcpTool:   true,
+		EnableSkillTool:    true,
+		EnableMcpTool:      true,
+		EnableSubAgentTool: true,
 	}}
 }
 
@@ -91,6 +93,9 @@ func (x *AgentHarnessLLM) Init(_ types.Config, configuration types.Configuration
 	x.mcpAllow = biz.NormalizeMcpAllowlistInput(raw["mcpAllowlist"])
 	delete(raw, "skillAllowlist")
 	delete(raw, "mcpAllowlist")
+	if _, ok := raw["enableSubAgentTool"]; !ok {
+		raw["enableSubAgentTool"] = true
+	}
 	b2, err := json.Marshal(raw)
 	if err != nil {
 		return err
@@ -142,6 +147,7 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		EnableSkillTool:      x.Config.EnableSkillTool,
 		EnableMcpTool:        x.Config.EnableMcpTool,
 		EnableWorkspaceTools: true, // Agent-LLM 节点固定开启，不允许关闭
+		EnableSubAgentTool:   x.Config.EnableSubAgentTool,
 		SkillAllowlist:       x.skillAllow,
 		McpAllowlist:         x.mcpAllow,
 	}

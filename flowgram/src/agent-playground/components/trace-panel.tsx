@@ -189,7 +189,10 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     </Text>
                     <span style={{ fontSize: 12, flexShrink: 0 }}>{getEventIcon(event.type)}</span>
                     {event.agentId ? <Tag size="small">{event.agentId}</Tag> : null}
-                    <Text style={{ flex: 1, wordBreak: 'break-all' }}>{event.message}</Text>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ wordBreak: 'break-all', display: 'block' }}>{event.message}</Text>
+                      {renderSubAgentConcurrency(event)}
+                    </div>
                     {event.metadata && Object.keys(event.metadata).length > 0 ? (
                       <details style={{ fontSize: 10, flexShrink: 0 }}>
                         <summary style={{ cursor: 'pointer', color: 'var(--semi-color-tertiary)' }}>...</summary>
@@ -394,4 +397,21 @@ function formatTime(timestamp: number): string {
     minute: '2-digit',
     second: '2-digit',
   });
+}
+
+function renderSubAgentConcurrency(event: TraceEvent): React.ReactNode {
+  if (event.type !== 'TOOL_RESULT') return null;
+  const toolName = event.metadata?.toolName;
+  if (toolName !== 'run_sub_agent') return null;
+  const taskCount = event.metadata?.subAgentTaskCount;
+  const conc = event.metadata?.subAgentEffectiveConcurrency;
+  const reason = event.metadata?.subAgentConcurrencyReason;
+  if (!taskCount || !conc || !reason) return null;
+  return (
+    <Space spacing={4} wrap>
+      <Tag size="small" color="cyan">tasks {taskCount}</Tag>
+      <Tag size="small" color="blue">conc {conc}</Tag>
+      <Tag size="small" color="grey">{reason}</Tag>
+    </Space>
+  );
 }

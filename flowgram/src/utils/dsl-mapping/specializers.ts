@@ -248,6 +248,11 @@ export function transformAgentHarnessConfigIn(config: Record<string, unknown>): 
   const next = { ...config };
   // Workspace 工具在 Agent-LLM 节点中固定开启，不允许关闭。
   next.enableWorkspaceTools = true;
+  // 默认启用子 Agent 工具；旧 DSL 缺失该字段时回填 true。
+  const sub = next.enableSubAgentTool;
+  if (sub === undefined || sub === null || String(sub).trim() === '') {
+    next.enableSubAgentTool = true;
+  }
   const skill = next.skillAllowlist;
   if (typeof skill === 'string') {
     const t = skill.trim();

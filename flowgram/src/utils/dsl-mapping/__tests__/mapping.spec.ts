@@ -382,7 +382,8 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.enableSkillTool).toBe(true);
     expect(cfg.enableMcpTool).toBe(true);
     expect(cfg.enableUUIDTool).toBe(true);
-    expect(cfg.enableWorkspaceTools).toBe(false);
+    expect(cfg.enableWorkspaceTools).toBe(true);
+    expect(cfg.enableSubAgentTool).toBe(true);
     expect(cfg.skillAllowlist).toEqual([]);
     expect(cfg.mcpAllowlist).toEqual([]);
     expect(cfg.maxIterations).toBe(0);

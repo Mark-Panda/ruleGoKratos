@@ -49,11 +49,12 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           systemPrompt: {
             type: 'template',
             content:
-              'You are a helpful assistant. You may call run_skill and call_mcp_tool when they help answer the user.',
+              'You are a helpful assistant. You may call run_skill, call_mcp_tool and run_sub_agent when they help answer the user. Use this delegation policy: (1) if the work has 2+ independent subtasks, call run_sub_agent with sub_tasks_json; max_concurrency is optional and can be auto-estimated by runtime, (2) if the work is tightly coupled, use one sub-agent task; (3) if the work is trivial, finish directly without delegation. When you call run_sub_agent, require JSON output with summary/findings/next_steps.',
           },
           enableSkillTool: { type: 'constant', content: true },
           enableMcpTool: { type: 'constant', content: true },
           enableWorkspaceTools: { type: 'constant', content: true },
+          enableSubAgentTool: { type: 'constant', content: true },
           skillAllowlist: { type: 'constant', content: [] as string[] },
           mcpAllowlist: { type: 'constant', content: [] as string[] },
           maxIterations: { type: 'constant', content: 0 },
@@ -72,6 +73,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             'enableSkillTool',
             'enableMcpTool',
             'enableWorkspaceTools',
+            'enableSubAgentTool',
             'skillAllowlist',
             'mcpAllowlist',
             'maxIterations',
@@ -98,8 +100,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '模型名称（可选）',
                 formComponent: 'prompt-editor',
-                description:
-                  '调用时以模型管理解析结果为准；该字段仅为兼容历史 DSL，界面默认不展示',
+                description: '调用时以模型管理解析结果为准；该字段仅为兼容历史 DSL，界面默认不展示',
               },
             },
             userPrompt: {
@@ -130,6 +131,13 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '启用 Workspace 工具',
                 description: '读/写文件与 shell（固定开启，不允许关闭）',
+              },
+            },
+            enableSubAgentTool: {
+              type: 'boolean',
+              extra: {
+                label: '启用 run_sub_agent',
+                description: '允许主 Agent 自动拉起子 Agent 分工执行',
               },
             },
             skillAllowlist: {
