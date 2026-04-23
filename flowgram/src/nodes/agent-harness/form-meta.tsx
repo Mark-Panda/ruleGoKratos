@@ -20,6 +20,7 @@ import {
   type MCPConfigItem,
   type SkillItem,
 } from '../../services/api-agent';
+import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
 import { groupSkillPackages } from '../../utils/skill-packages';
 
 function flowStr(v: unknown): string {
@@ -56,14 +57,41 @@ function flowStringList(v: unknown): string[] {
   return [];
 }
 
+function buildWorkspacePromptPreview(workspace: WorkspaceItem): string {
+  const workspaceId = String(workspace.id || '').trim();
+  const workspaceName = String(workspace.name || '').trim() || workspaceId;
+  const rootDir =
+    String(workspace.rootDir || '').trim() ||
+    `/app/code_workspace/${workspaceId}`;
+  const repos = Array.isArray(workspace.repositories)
+    ? workspace.repositories
+        .map((r) => {
+          const url = String(r?.url || '').trim();
+          if (!url) return '';
+          const dir = String(r?.dir || '').trim();
+          return dir ? `- ${url}（目录: ${dir}）` : `- ${url}`;
+        })
+        .filter(Boolean)
+    : [];
+  const reposText = repos.length > 0 ? repos.join('\n') : '（未配置仓库）';
+  return [
+    '【工作区使用模式（自动注入）】',
+    `你当前绑定的工作区为「${workspaceName}」（id=${workspaceId}）。`,
+    '请遵循以下强制约束：',
+    `1. 仅允许在该工作区目录及其子目录内进行文件读写与命令执行：${rootDir}`,
+    '2. 仅允许在以下仓库范围内完成任务：',
+    reposText,
+    '3. 严禁访问、读取、修改工作区外的任何路径或未列出的仓库。',
+  ].join('\n');
+}
+
 /** 不渲染白名单字段（由下方勾选区维护）；LLM 配置/模型条目由专用下拉维护。 */
 const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
-  'model',
   'userPrompt',
   'systemPrompt',
+  'workspaceId',
   'enableSkillTool',
   'enableMcpTool',
-  'enableWorkspaceTools',
   'maxIterations',
   'maxToolCalls',
   'toolTimeoutSecs',
@@ -71,7 +99,7 @@ const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
 
 const agentFormInputsProps: FormInputsProps = {
   propertyFilter: (k) =>
-    !['skillAllowlist', 'mcpAllowlist', 'llmConfigId', 'llmModelEntryId'].includes(k),
+    !['model', 'skillAllowlist', 'mcpAllowlist', 'llmConfigId', 'llmModelEntryId', 'workspaceId', 'enableWorkspaceTools'].includes(k),
   propertyKeyOrder: AGENT_FORM_KEYS_NO_ALLOWLIST,
 };
 
@@ -213,6 +241,96 @@ function AgentHarnessManagedModelPick() {
               }}
             </Field>
           )}
+        </Field>
+      )}
+    </div>
+  );
+}
+
+function AgentHarnessWorkspacePick() {
+  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listWorkspaces();
+        if (!cancelled) {
+          setWorkspaces(Array.isArray(rows) ? rows : []);
+        }
+      } catch {
+        if (!cancelled) setWorkspaces([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
+        工作区（可选）
+      </Typography.Text>
+      <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 10 }}>
+        选择后会在运行时自动注入“工作区使用模式”到系统提示词；Workspace 工具固定开启且不可关闭。
+      </Typography.Paragraph>
+      {loading ? (
+        <Spin size="small" />
+      ) : (
+        <Field name="inputsValues.workspaceId">
+          {({ field }) => {
+            const current = flowStr(field.value);
+            const selected = workspaces.find((w) => String(w.id || '') === current);
+            const preview = selected ? buildWorkspacePromptPreview(selected) : '';
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Select
+                  style={{ width: '100%' }}
+                  placeholder="不绑定工作区"
+                  value={current || undefined}
+                  onChange={(v) => {
+                    field.onChange({ type: 'constant', content: String(v || '') } as any);
+                  }}
+                >
+                  <Select.Option value="">不绑定工作区</Select.Option>
+                  {workspaces.map((w) => (
+                    <Select.Option key={w.id} value={w.id}>
+                      {w.name}（{w.id}）
+                    </Select.Option>
+                  ))}
+                </Select>
+                {preview ? (
+                  <div
+                    style={{
+                      border: '1px solid var(--semi-color-border)',
+                      borderRadius: 8,
+                      padding: 10,
+                      background: 'var(--semi-color-fill-0)',
+                    }}
+                  >
+                    <Typography.Text strong size="small" style={{ display: 'block', marginBottom: 6 }}>
+                      自动注入提示词预览
+                    </Typography.Text>
+                    <Typography.Paragraph
+                      style={{
+                        margin: 0,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: 12,
+                        lineHeight: '18px',
+                      }}
+                    >
+                      {preview}
+                    </Typography.Paragraph>
+                  </div>
+                ) : null}
+              </div>
+            );
+          }}
         </Field>
       )}
     </div>
@@ -381,9 +499,10 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
     <FormHeader />
     <FormContent>
       <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 10px' }}>
-        上方须选择模型管理中的 LLM 配置与模型条目（运行时解析密钥与模型名）；下方可编辑提示词与各工具选项。generate_uuid 由服务端固定启用。
+        上方须选择模型管理中的 LLM 配置与模型条目（运行时解析密钥与模型名）；可选绑定工作区并自动注入约束提示。generate_uuid 与 workspace 工具由服务端固定启用。
       </Typography.Paragraph>
       <AgentHarnessManagedModelPick />
+      <AgentHarnessWorkspacePick />
       <FormInputs {...agentFormInputsProps} />
       <Divider />
       <AgentHarnessToolAllowlists />

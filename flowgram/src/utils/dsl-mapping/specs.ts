@@ -39,6 +39,12 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       defaultValue: 0,
     },
     {
+      inputKey: 'workspaceId',
+      dslKey: 'workspaceId',
+      valueType: 'template',
+      defaultValue: '',
+    },
+    {
       inputKey: 'model',
       dslKey: 'model',
       valueType: 'template',
@@ -78,7 +84,7 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       inputKey: 'enableWorkspaceTools',
       dslKey: 'enableWorkspaceTools',
       valueType: 'boolean',
-      defaultValue: false,
+      defaultValue: true,
     },
     {
       inputKey: 'skillAllowlist',

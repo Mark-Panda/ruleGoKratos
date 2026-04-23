@@ -16,7 +16,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLLM,
     description:
-      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；可选填写「模型名称」模板（${}）仅影响日志等旁路；Skill / MCP / Workspace 与白名单可按节点配置。generate_uuid 由运行时固定启用。',
+      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；Skill / MCP / Workspace 与白名单可按节点配置。',
   },
   meta: {
     defaultPorts: [
@@ -45,6 +45,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           llmModelEntryId: { type: 'constant', content: 0 },
           model: { type: 'constant', content: '' },
           userPrompt: { type: 'template', content: '' },
+          workspaceId: { type: 'constant', content: '' },
           systemPrompt: {
             type: 'template',
             content:
@@ -52,7 +53,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           },
           enableSkillTool: { type: 'constant', content: true },
           enableMcpTool: { type: 'constant', content: true },
-          enableWorkspaceTools: { type: 'constant', content: false },
+          enableWorkspaceTools: { type: 'constant', content: true },
           skillAllowlist: { type: 'constant', content: [] as string[] },
           mcpAllowlist: { type: 'constant', content: [] as string[] },
           maxIterations: { type: 'constant', content: 0 },
@@ -66,6 +67,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             'llmModelEntryId',
             'model',
             'userPrompt',
+            'workspaceId',
             'systemPrompt',
             'enableSkillTool',
             'enableMcpTool',
@@ -97,12 +99,19 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
                 label: '模型名称（可选）',
                 formComponent: 'prompt-editor',
                 description:
-                  '调用时以模型管理解析结果为准；此处一般留空。填写则可用于 ${} 模板或日志展示',
+                  '调用时以模型管理解析结果为准；该字段仅为兼容历史 DSL，界面默认不展示',
               },
             },
             userPrompt: {
               type: 'string',
               extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+            },
+            workspaceId: {
+              type: 'string',
+              extra: {
+                label: '工作区',
+                description: '可选；在侧边栏专用选择器中维护',
+              },
             },
             systemPrompt: {
               type: 'string',
@@ -120,7 +129,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               type: 'boolean',
               extra: {
                 label: '启用 Workspace 工具',
-                description: '读/写文件与 shell（与 Chat Agent 一致）',
+                description: '读/写文件与 shell（固定开启，不允许关闭）',
               },
             },
             skillAllowlist: {

@@ -246,6 +246,8 @@ export function transformCursorCliConfigIn(
 /** fromDSL：agentHarness 白名单历史为逗号分隔字符串时转为 string[]，便于勾选组件与 JSON 数组 DSL。 */
 export function transformAgentHarnessConfigIn(config: Record<string, unknown>): Record<string, unknown> {
   const next = { ...config };
+  // Workspace 工具在 Agent-LLM 节点中固定开启，不允许关闭。
+  next.enableWorkspaceTools = true;
   const skill = next.skillAllowlist;
   if (typeof skill === 'string') {
     const t = skill.trim();

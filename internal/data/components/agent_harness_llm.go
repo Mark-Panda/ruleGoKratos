@@ -3,6 +3,10 @@ package data
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"ruleGoKratos/internal/biz"
@@ -39,20 +43,21 @@ type AgentHarnessLLM struct {
 
 // AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）；白名单见 skillAllow / mcpAllow。
 type AgentHarnessLLMConfig struct {
-	LlmConfigID      int64 `json:"llmConfigId"`
-	LlmModelEntryID int64 `json:"llmModelEntryId"`
-	ManagedAgentID       int64  `json:"managedAgentId"`
-	Model                string `json:"model"`
-	SystemPrompt         string `json:"systemPrompt"`
-	UserPrompt           string `json:"userPrompt"`
-	EnableSkillTool      bool   `json:"enableSkillTool"`
-	EnableMcpTool        bool   `json:"enableMcpTool"`
+	LlmConfigID     int64  `json:"llmConfigId"`
+	LlmModelEntryID int64  `json:"llmModelEntryId"`
+	ManagedAgentID  int64  `json:"managedAgentId"`
+	WorkspaceID     string `json:"workspaceId"`
+	Model           string `json:"model"`
+	SystemPrompt    string `json:"systemPrompt"`
+	UserPrompt      string `json:"userPrompt"`
+	EnableSkillTool bool   `json:"enableSkillTool"`
+	EnableMcpTool   bool   `json:"enableMcpTool"`
 	// EnableUUIDTool 已废弃：运行时固定启用 UUID 工具，DSL 若仍含该字段会被忽略。
-	EnableUUIDTool bool `json:"enableUUIDTool"`
-	EnableWorkspaceTools bool   `json:"enableWorkspaceTools"`
-	MaxIterations        int    `json:"maxIterations"`
-	MaxToolCalls         int    `json:"maxToolCalls"`
-	ToolTimeoutSecs      int    `json:"toolTimeoutSecs"`
+	EnableUUIDTool       bool `json:"enableUUIDTool"`
+	EnableWorkspaceTools bool `json:"enableWorkspaceTools"`
+	MaxIterations        int  `json:"maxIterations"`
+	MaxToolCalls         int  `json:"maxToolCalls"`
+	ToolTimeoutSecs      int  `json:"toolTimeoutSecs"`
 }
 
 func (x *AgentHarnessLLM) Type() string {
@@ -124,12 +129,19 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	modelName := x.modelTpl.Execute(env)
 	systemPrompt := x.systemTpl.Execute(env)
 	userPrompt := x.userTpl.Execute(env)
+	if wp := buildWorkspacePromptForComponent(strings.TrimSpace(x.Config.WorkspaceID)); wp != "" {
+		if strings.TrimSpace(systemPrompt) == "" {
+			systemPrompt = wp
+		} else {
+			systemPrompt = systemPrompt + "\n\n" + wp
+		}
+	}
 
 	toolOpts := &biz.HarnessToolOptions{
 		EnableUUIDTool:       true, // 不在节点上暴露开关，固定启用 generate_uuid
 		EnableSkillTool:      x.Config.EnableSkillTool,
 		EnableMcpTool:        x.Config.EnableMcpTool,
-		EnableWorkspaceTools: x.Config.EnableWorkspaceTools,
+		EnableWorkspaceTools: true, // Agent-LLM 节点固定开启，不允许关闭
 		SkillAllowlist:       x.skillAllow,
 		McpAllowlist:         x.mcpAllow,
 	}
@@ -166,3 +178,76 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 }
 
 func (x *AgentHarnessLLM) Destroy() {}
+
+func buildWorkspacePromptForComponent(workspaceID string) string {
+	if workspaceID == "" {
+		return ""
+	}
+	filename := workspaceID + ".code-workspace"
+	candidates := []string{
+		filepath.Join("/app/code_workspace", filename),
+		filepath.Join("code_workspace", filename),
+	}
+	var cfgPath string
+	for _, p := range candidates {
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			cfgPath = p
+			break
+		}
+	}
+	if cfgPath == "" {
+		return ""
+	}
+	type repoItem struct {
+		URL string `json:"url"`
+		Dir string `json:"dir"`
+	}
+	type meta struct {
+		Name         string     `json:"name"`
+		RootDir      string     `json:"rootDir"`
+		Repositories []repoItem `json:"repositories"`
+	}
+	type ws struct {
+		Meta meta `json:"ruleGoWorkspace"`
+	}
+	b, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return ""
+	}
+	var parsed ws
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		return ""
+	}
+	name := strings.TrimSpace(parsed.Meta.Name)
+	if name == "" {
+		name = workspaceID
+	}
+	root := strings.TrimSpace(parsed.Meta.RootDir)
+	if root == "" {
+		root = filepath.Join("/app/code_workspace", workspaceID)
+	}
+	lines := make([]string, 0, len(parsed.Meta.Repositories))
+	for _, repo := range parsed.Meta.Repositories {
+		url := strings.TrimSpace(repo.URL)
+		if url == "" {
+			continue
+		}
+		if d := strings.TrimSpace(repo.Dir); d != "" {
+			lines = append(lines, fmt.Sprintf("- %s（目录: %s）", url, d))
+		} else {
+			lines = append(lines, fmt.Sprintf("- %s", url))
+		}
+	}
+	sort.Strings(lines)
+	repos := "（未配置仓库）"
+	if len(lines) > 0 {
+		repos = strings.Join(lines, "\n")
+	}
+	return fmt.Sprintf(
+		"【工作区使用模式（自动注入）】\n你当前绑定的工作区为「%s」（id=%s）。\n请遵循以下强制约束：\n1. 仅允许在该工作区目录及其子目录内进行文件读写与命令执行：%s\n2. 仅允许在以下仓库范围内完成任务：\n%s\n3. 严禁访问、读取、修改工作区外的任何路径或未列出的仓库。",
+		name,
+		workspaceID,
+		root,
+		repos,
+	)
+}
