@@ -76,7 +76,7 @@ func (x *AgentHarnessLLM) New() types.Node {
 func (x *AgentHarnessLLM) Def() types.ComponentForm {
 	return types.ComponentForm{
 		Label: "agentHarness",
-		Desc:  "Agent LLM（可配置 Skill / MCP 工具，与 Chat Harness 一致）",
+		Desc:  "Agent LLM（可配置 Skill / MCP 工具，与 Chat Harness 一致；支持从 msg.data.attachments / metadata.attachments 读取多模态附件）",
 	}
 }
 
@@ -165,6 +165,7 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		Model:           strings.TrimSpace(modelName),
 		History:         nil,
 		Input:           userPrompt,
+		Attachments:     extractHarnessAttachments(msg.GetData(), env),
 		SystemPrompt:    systemPrompt,
 		ConfigOverride:  cfgOverride,
 		ToolOptions:     toolOpts,
@@ -184,6 +185,96 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 }
 
 func (x *AgentHarnessLLM) Destroy() {}
+
+type harnessAttachmentPayload struct {
+	Filename      string `json:"filename"`
+	MimeType      string `json:"mimeType"`
+	Text          string `json:"text"`
+	ContentBase64 string `json:"contentBase64"`
+}
+
+func extractHarnessAttachments(msgData string, env map[string]interface{}) []biz.HarnessAttachment {
+	candidates := make([]interface{}, 0, 4)
+	if s := strings.TrimSpace(msgData); s != "" {
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(s), &parsed); err == nil {
+			candidates = append(candidates, parsed)
+		}
+	}
+	if env != nil {
+		candidates = append(candidates, env)
+		if md, ok := env["metadata"]; ok {
+			candidates = append(candidates, md)
+		}
+		if msgVal, ok := env["msg"]; ok {
+			candidates = append(candidates, msgVal)
+		}
+	}
+	for _, candidate := range candidates {
+		if atts := extractHarnessAttachmentsFromValue(candidate); len(atts) > 0 {
+			return atts
+		}
+	}
+	return nil
+}
+
+func extractHarnessAttachmentsFromValue(v interface{}) []biz.HarnessAttachment {
+	switch typed := v.(type) {
+	case map[string]interface{}:
+		if raw, ok := typed["attachments"]; ok {
+			return decodeHarnessAttachments(raw)
+		}
+	case []interface{}:
+		return decodeHarnessAttachments(typed)
+	case string:
+		return decodeHarnessAttachments(typed)
+	}
+	return nil
+}
+
+func decodeHarnessAttachments(raw interface{}) []biz.HarnessAttachment {
+	switch typed := raw.(type) {
+	case nil:
+		return nil
+	case string:
+		if strings.TrimSpace(typed) == "" {
+			return nil
+		}
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(typed), &parsed); err != nil {
+			return nil
+		}
+		return decodeHarnessAttachments(parsed)
+	}
+
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil
+	}
+	var payloads []harnessAttachmentPayload
+	if err := json.Unmarshal(b, &payloads); err != nil {
+		return nil
+	}
+	out := make([]biz.HarnessAttachment, 0, len(payloads))
+	for _, item := range payloads {
+		if strings.TrimSpace(item.Filename) == "" &&
+			strings.TrimSpace(item.MimeType) == "" &&
+			strings.TrimSpace(item.Text) == "" &&
+			strings.TrimSpace(item.ContentBase64) == "" {
+			continue
+		}
+		out = append(out, biz.HarnessAttachment{
+			Filename:      item.Filename,
+			MimeType:      item.MimeType,
+			Text:          item.Text,
+			ContentBase64: item.ContentBase64,
+		})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
 
 func buildWorkspacePromptForComponent(workspaceID string) string {
 	if workspaceID == "" {

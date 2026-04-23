@@ -288,9 +288,16 @@ func (uc *AgentUsecase) composeMessages(req *HarnessRequest, systemPrompt string
 			msgs = append(msgs, schema.UserMessage(item.Content))
 		}
 	}
-	parts := buildHarnessInputParts(userText, attachments)
+	parts := buildHarnessInputPartsWithOptions(userText, attachments, uc.harnessMultimodalOptions(req))
 	msgs = append(msgs, lastUserMessageFromParts(parts))
 	return msgs
+}
+
+func (uc *AgentUsecase) harnessMultimodalOptions(req *HarnessRequest) HarnessMultimodalOptions {
+	_ = req
+	// 当前项目使用的 eino-ext OpenAI 适配层尚未消费 Eino 的通用 file_url part。
+	// 因此图片/音频/视频继续走原生多模态，普通文件默认回退为可读文本附件块，避免线上请求被模型适配层拒绝。
+	return HarnessMultimodalOptions{DisableGenericFilePart: true}
 }
 
 func (uc *AgentUsecase) getSystemPrompt() string {

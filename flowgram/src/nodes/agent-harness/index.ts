@@ -16,7 +16,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLLM,
     description:
-      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；Skill / MCP / Workspace 与白名单可按节点配置。',
+      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；Skill / MCP / Workspace 与白名单可按节点配置。支持从 `msg.data.attachments` 或 `metadata.attachments` 读取多模态附件，图片/视频/音频优先走原生多模态。',
   },
   meta: {
     defaultPorts: [
@@ -105,7 +105,12 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             },
             userPrompt: {
               type: 'string',
-              extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+              extra: {
+                label: '用户提示词',
+                formComponent: 'prompt-editor',
+                description:
+                  '正文提示词写在这里；多模态附件不要直接拼进 prompt，请放在 `msg.data.attachments` 或 `metadata.attachments`，字段使用 `filename / mimeType / text / contentBase64`',
+              },
             },
             workspaceId: {
               type: 'string',

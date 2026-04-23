@@ -28,6 +28,10 @@ var harnessAudioMIMEForMultimodal = map[string]struct{}{
 	"audio/x-mpeg-3": {},
 }
 
+type HarnessMultimodalOptions struct {
+	DisableGenericFilePart bool
+}
+
 func legacyAttachmentBlock(fn, mime, txtIn, b64In string) string {
 	txt := strings.TrimSpace(txtIn)
 	b64 := strings.TrimSpace(b64In)
@@ -144,6 +148,10 @@ func resolveAttachmentMIME(filename, declared string, b64 string) string {
 
 // buildHarnessInputParts 将用户输入与附件转为 Eino UserInputMultiContent（图片/音视频走 OpenAI 兼容多模态；其余附件退回纯文本块）。
 func buildHarnessInputParts(userText string, attachments []HarnessAttachment) []schema.MessageInputPart {
+	return buildHarnessInputPartsWithOptions(userText, attachments, HarnessMultimodalOptions{})
+}
+
+func buildHarnessInputPartsWithOptions(userText string, attachments []HarnessAttachment, opts HarnessMultimodalOptions) []schema.MessageInputPart {
 	userText = strings.TrimSpace(userText)
 	var parts []schema.MessageInputPart
 	var legacyBuf strings.Builder
@@ -231,7 +239,30 @@ func buildHarnessInputParts(userText string, attachments []HarnessAttachment) []
 				legacyBuf.WriteString(legacyAttachmentBlock(fn, mime, txt, b64))
 			}
 		default:
-			legacyBuf.WriteString(legacyAttachmentBlock(fn, mime, txt, b64))
+			if opts.DisableGenericFilePart {
+				legacyBuf.WriteString(legacyAttachmentBlock(fn, mime, txt, b64))
+				continue
+			}
+			fm := effective
+			if fm == "" {
+				fm = mime
+			}
+			parts = append(parts, schema.MessageInputPart{
+				Type: schema.ChatMessagePartTypeFileURL,
+				File: &schema.MessageInputFile{
+					MessagePartCommon: schema.MessagePartCommon{
+						Base64Data: &data,
+						MIMEType:   fm,
+					},
+					Name: fn,
+				},
+			})
+			if txt != "" {
+				parts = append(parts, schema.MessageInputPart{
+					Type: schema.ChatMessagePartTypeText,
+					Text: legacyAttachmentBlock(fn, mime, txt, ""),
+				})
+			}
 		}
 	}
 

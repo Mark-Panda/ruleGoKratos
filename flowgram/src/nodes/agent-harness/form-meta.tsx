@@ -504,6 +504,45 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
       </Typography.Paragraph>
       <AgentHarnessManagedModelPick />
       <AgentHarnessWorkspacePick />
+      <div
+        style={{
+          margin: '0 10px 12px',
+          padding: 10,
+          borderRadius: 8,
+          border: '1px solid var(--semi-color-border)',
+          background: 'var(--semi-color-fill-0)',
+        }}
+      >
+        <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
+          多模态附件输入约定
+        </Typography.Text>
+        <Typography.Paragraph type="tertiary" size="small" style={{ margin: 0 }}>
+          `ai/agentHarness` 会从进入节点的 `msg.data.attachments` 或 `metadata.attachments` 中读取附件。统一字段为
+          `filename / mimeType / text / contentBase64`；图片、视频、音频优先走原生多模态，普通文件当前会按统一结构接入，并在模型适配层不支持时自动降级为文本附件块。
+        </Typography.Paragraph>
+        <Typography.Paragraph
+          style={{
+            margin: '8px 0 0',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            fontSize: 12,
+            lineHeight: '18px',
+          }}
+        >
+          {`msg.data:
+{
+  "query": "请分析附件",
+  "attachments": [
+    { "filename": "screen.png", "mimeType": "image/png", "contentBase64": "..." }
+  ]
+}
+
+metadata.attachments:
+[
+  { "filename": "spec.pdf", "mimeType": "application/pdf", "contentBase64": "..." }
+]`}
+        </Typography.Paragraph>
+      </div>
       <FormInputs {...agentFormInputsProps} />
       <Divider />
       <AgentHarnessToolAllowlists />

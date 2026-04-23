@@ -74,7 +74,12 @@ function demoAgentHarnessNodeData(opts: {
         },
         userPrompt: {
           type: 'string',
-          extra: { label: '用户提示词', formComponent: 'prompt-editor' },
+          extra: {
+            label: '用户提示词',
+            formComponent: 'prompt-editor',
+            description:
+              '正文提示词写在这里；多模态附件不要直接拼进 prompt，请放在 `msg.data.attachments` 或 `metadata.attachments`，字段使用 `filename / mimeType / text / contentBase64`',
+          },
         },
         systemPrompt: {
           type: 'string',
