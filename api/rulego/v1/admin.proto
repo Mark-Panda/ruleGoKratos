@@ -123,6 +123,84 @@ service Admin {
       body: "*"
     };
   }
+
+  // 工作区管理（统一走 proto/http 契约）
+  rpc ListWorkspaces (ListWorkspacesRequest) returns (ListWorkspacesReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/workspaces"
+    };
+  }
+
+  rpc GetWorkspace (GetWorkspaceRequest) returns (GetWorkspaceReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/workspaces/{id}"
+    };
+  }
+
+  rpc CreateWorkspace (CreateWorkspaceRequest) returns (CreateWorkspaceReply) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/workspaces"
+      body: "*"
+    };
+  }
+
+  rpc UpdateWorkspace (UpdateWorkspaceRequest) returns (UpdateWorkspaceReply) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/workspaces/{id}"
+      body: "*"
+    };
+  }
+
+  rpc SyncWorkspace (SyncWorkspaceRequest) returns (SyncWorkspaceReply) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/workspaces/{id}/sync"
+    };
+  }
+
+  rpc DeleteWorkspace (DeleteWorkspaceRequest) returns (DeleteWorkspaceReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/admin/workspaces/{id}"
+    };
+  }
+
+  // 可编排 Agent 配置管理
+  rpc ListManagedAgents (ListManagedAgentsRequest) returns (ListManagedAgentsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/managed-agents"
+    };
+  }
+
+  rpc GetManagedAgent (GetManagedAgentRequest) returns (GetManagedAgentReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/managed-agents/{id}"
+    };
+  }
+
+  rpc CreateManagedAgent (CreateManagedAgentRequest) returns (CreateManagedAgentReply) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/managed-agents"
+      body: "*"
+    };
+  }
+
+  rpc UpdateManagedAgent (UpdateManagedAgentRequest) returns (UpdateManagedAgentReply) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/managed-agents/{id}"
+      body: "*"
+    };
+  }
+
+  rpc DeleteManagedAgent (DeleteManagedAgentRequest) returns (DeleteManagedAgentReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/admin/managed-agents/{id}"
+    };
+  }
+
+  rpc ListSkillPackages (ListSkillPackagesRequest) returns (ListSkillPackagesReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/skill-packages"
+    };
+  }
 }
 
 message ListSkillsRequest {}
@@ -247,6 +325,158 @@ message SaveLarkCliConfigRequest {
 }
 
 message SaveLarkCliConfigReply {}
+
+message ListWorkspacesRequest {}
+
+message WorkspaceRepoItem {
+  string url = 1;
+  string dir = 2;
+}
+
+message WorkspaceItem {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string root_dir = 4 [json_name = "rootDir"];
+  string config_file = 5 [json_name = "configFile"];
+  repeated string repository_urls = 6 [json_name = "repositoryUrls"];
+  repeated WorkspaceRepoItem repositories = 7;
+  string created_at = 8 [json_name = "createdAt"];
+  string updated_at = 9 [json_name = "updatedAt"];
+}
+
+message ListWorkspacesReply {
+  repeated WorkspaceItem items = 1;
+}
+
+message GetWorkspaceRequest {
+  string id = 1;
+}
+
+message GetWorkspaceReply {
+  WorkspaceItem item = 1;
+}
+
+message CreateWorkspaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string repository_urls = 4 [json_name = "repositoryUrls"];
+}
+
+message CreateWorkspaceReply {
+  WorkspaceItem item = 1;
+}
+
+message UpdateWorkspaceRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string repository_urls = 4 [json_name = "repositoryUrls"];
+}
+
+message UpdateWorkspaceReply {
+  WorkspaceItem item = 1;
+}
+
+message SyncWorkspaceRequest {
+  string id = 1;
+}
+
+message SyncWorkspaceReply {
+  WorkspaceItem item = 1;
+  string message = 2;
+}
+
+message DeleteWorkspaceRequest {
+  string id = 1;
+}
+
+message DeleteWorkspaceReply {
+  bool ok = 1;
+}
+
+message ListManagedAgentsRequest {}
+
+message ManagedAgentItem {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string system_prompt = 4 [json_name = "systemPrompt"];
+  repeated string skill_package_ids = 5 [json_name = "skillPackageIds"];
+  repeated int64 mcp_ids = 6 [json_name = "mcpIds"];
+  int64 llm_config_id = 7 [json_name = "llmConfigId"];
+  string model_scope = 8 [json_name = "modelScope"];
+  repeated int64 model_entry_ids = 9 [json_name = "modelEntryIds"];
+  bool enabled = 10;
+  string created_at = 11 [json_name = "createdAt"];
+  string updated_at = 12 [json_name = "updatedAt"];
+}
+
+message ListManagedAgentsReply {
+  repeated ManagedAgentItem items = 1;
+}
+
+message GetManagedAgentRequest {
+  int64 id = 1;
+}
+
+message GetManagedAgentReply {
+  ManagedAgentItem item = 1;
+}
+
+message CreateManagedAgentRequest {
+  string name = 1;
+  string description = 2;
+  string system_prompt = 3 [json_name = "systemPrompt"];
+  repeated string skill_package_ids = 4 [json_name = "skillPackageIds"];
+  repeated int64 mcp_ids = 5 [json_name = "mcpIds"];
+  int64 llm_config_id = 6 [json_name = "llmConfigId"];
+  string model_scope = 7 [json_name = "modelScope"];
+  repeated int64 model_entry_ids = 8 [json_name = "modelEntryIds"];
+  bool enabled = 9;
+}
+
+message CreateManagedAgentReply {
+  ManagedAgentItem item = 1;
+}
+
+message UpdateManagedAgentRequest {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string system_prompt = 4 [json_name = "systemPrompt"];
+  repeated string skill_package_ids = 5 [json_name = "skillPackageIds"];
+  repeated int64 mcp_ids = 6 [json_name = "mcpIds"];
+  int64 llm_config_id = 7 [json_name = "llmConfigId"];
+  string model_scope = 8 [json_name = "modelScope"];
+  repeated int64 model_entry_ids = 9 [json_name = "modelEntryIds"];
+  bool enabled = 10;
+}
+
+message UpdateManagedAgentReply {
+  ManagedAgentItem item = 1;
+}
+
+message DeleteManagedAgentRequest {
+  int64 id = 1;
+}
+
+message DeleteManagedAgentReply {
+  bool ok = 1;
+}
+
+message ListSkillPackagesRequest {}
+
+message SkillPackageItem {
+  string id = 1;
+  int64 skill_file_count = 2 [json_name = "skillFileCount"];
+}
+
+message ListSkillPackagesReply {
+  string root = 1;
+  repeated SkillPackageItem items = 2;
+}
 
 message ListLlmConfigsRequest {}
 

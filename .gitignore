@@ -46,3 +46,4 @@ deploy/docker-cursor-overlay/.cursor/*
 
 # Cursor Superpowers 插件本地会话状态（进程、日志等）
 .superpowers/**/state/
+code_workspace/

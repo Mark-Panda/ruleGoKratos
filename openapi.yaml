@@ -3,9 +3,40 @@
 
 openapi: 3.0.3
 info:
-    title: ""
+    title: Admin API
     version: 0.0.1
 paths:
+    /api/v1/admin/lark-cli/config:
+        get:
+            tags:
+                - Admin
+            description: GetLarkCliConfig 读取 lark-cli 配置文件（默认 ~/.lark-cli/config.json）及终端超时配置。
+            operationId: Admin_GetLarkCliConfig
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetLarkCliConfigReply'
+        put:
+            tags:
+                - Admin
+            description: SaveLarkCliConfig 写入 lark-cli 配置文件（须为合法 JSON）。
+            operationId: Admin_SaveLarkCliConfig
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.SaveLarkCliConfigRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.SaveLarkCliConfigReply'
     /api/v1/admin/llm-configs:
         get:
             tags:
@@ -141,6 +172,94 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.DeleteLlmModelEntryReply'
+    /api/v1/admin/managed-agents:
+        get:
+            tags:
+                - Admin
+            description: 可编排 Agent 配置管理
+            operationId: Admin_ListManagedAgents
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListManagedAgentsReply'
+        post:
+            tags:
+                - Admin
+            operationId: Admin_CreateManagedAgent
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateManagedAgentRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateManagedAgentReply'
+    /api/v1/admin/managed-agents/{id}:
+        get:
+            tags:
+                - Admin
+            operationId: Admin_GetManagedAgent
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetManagedAgentReply'
+        put:
+            tags:
+                - Admin
+            operationId: Admin_UpdateManagedAgent
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateManagedAgentRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateManagedAgentReply'
+        delete:
+            tags:
+                - Admin
+            operationId: Admin_DeleteManagedAgent
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteManagedAgentReply'
     /api/v1/admin/mcps:
         get:
             tags:
@@ -215,6 +334,7 @@ paths:
         post:
             tags:
                 - Admin
+            description: TestMcpConfig：http 模式用 SSE 连 endpoint；stdio 模式在本机拉起子进程。均执行 initialize 与 tools/list。
             operationId: Admin_TestMcpConfig
             parameters:
                 - name: id
@@ -235,6 +355,18 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.TestMcpConfigReply'
+    /api/v1/admin/skill-packages:
+        get:
+            tags:
+                - Admin
+            operationId: Admin_ListSkillPackages
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListSkillPackagesReply'
     /api/v1/admin/skills:
         get:
             tags:
@@ -265,19 +397,17 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.UploadSkillReply'
-    /api/v1/chat/stream:
+    /api/v1/admin/terminal/run:
         post:
             tags:
-                - Chat
-                - Chat
-            summary: 与大模型流式对话
-            description: 使用Server-Sent Events (SSE)实现与大模型的流式对话
-            operationId: ChatStream
+                - Admin
+            description: RunTerminal 在服务端执行 shell 命令（仅管理端；cwd 须在白名单目录下）。
+            operationId: Admin_RunTerminal
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/rulego.v1.ChatStreamReq'
+                            $ref: '#/components/schemas/rulego.v1.RunTerminalRequest'
                 required: true
             responses:
                 "200":
@@ -285,17 +415,29 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rulego.v1.ChatStreamReply'
-    /api/v1/componentUseRule/create:
+                                $ref: '#/components/schemas/rulego.v1.RunTerminalReply'
+    /api/v1/admin/workspaces:
+        get:
+            tags:
+                - Admin
+            description: 工作区管理（统一走 proto/http 契约）
+            operationId: Admin_ListWorkspaces
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListWorkspacesReply'
         post:
             tags:
-                - Component
-            operationId: Component_CreateComponentUseRule
+                - Admin
+            operationId: Admin_CreateWorkspace
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/rulego.v1.CreateComponentUseRuleRequest'
+                            $ref: '#/components/schemas/rulego.v1.CreateWorkspaceRequest'
                 required: true
             responses:
                 "200":
@@ -303,160 +445,12 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rulego.v1.CreateComponentUseRuleReply'
-    /api/v1/componentUseRule/page:
+                                $ref: '#/components/schemas/rulego.v1.CreateWorkspaceReply'
+    /api/v1/admin/workspaces/{id}:
         get:
             tags:
-                - Component
-            operationId: Component_ListComponentUseRule
-            parameters:
-                - name: page
-                  in: query
-                  schema:
-                    type: integer
-                    format: int32
-                - name: size
-                  in: query
-                  schema:
-                    type: integer
-                    format: int32
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.ListComponentUseRuleReply'
-    /api/v1/componentUseRule/update:
-        post:
-            tags:
-                - Component
-            operationId: Component_UpdateComponentUseRule
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/rulego.v1.UpdateComponentUseRuleRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.UpdateComponentUseRuleReply'
-    /api/v1/components:
-        get:
-            tags:
-                - RuleGo
-                - RuleGo
-            summary: 获取所有组件
-            description: |-
-                获取所有可用的组件列表，包括端点、节点和内置组件。
-                注意: 请求 header 中的 uid 字段不能为空
-            operationId: GetComponents
-            parameters:
-                - name: uid
-                  in: header
-                  description: 用户ID，必填字段
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.GetComponentsReply'
-    /api/v1/logs/runs:
-        get:
-            tags:
-                - RunLog
-            operationId: RunLog_ListRunLogs
-            parameters:
-                - name: size
-                  in: query
-                  schema:
-                    type: integer
-                    format: int32
-                - name: page
-                  in: query
-                  schema:
-                    type: integer
-                    format: int32
-                - name: startTime
-                  in: query
-                  schema:
-                    type: string
-                - name: endTime
-                  in: query
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.ListRunLogsReply'
-    /api/v1/logs/runs/msgId:
-        get:
-            tags:
-                - RunLog
-            operationId: RunLog_GetRunLogByMsgId
-            parameters:
-                - name: msgId
-                  in: query
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.RunLogItem'
-    /api/v1/rules:
-        get:
-            tags:
-                - RuleGo
-            description: 获取所有规则链列表
-            operationId: RuleGo_GetRegulationsList
-            parameters:
-                - name: page
-                  in: query
-                  schema:
-                    type: string
-                - name: size
-                  in: query
-                  schema:
-                    type: string
-                - name: keywords
-                  in: query
-                  schema:
-                    type: string
-                - name: root
-                  in: query
-                  schema:
-                    type: string
-                - name: disabled
-                  in: query
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.GetRegulationsListReply'
-    /api/v1/rules/{id}:
-        get:
-            tags:
-                - RuleGo
-            description: 获取单个规则链
-            operationId: RuleGo_GetRuleChain
+                - Admin
+            operationId: Admin_GetWorkspace
             parameters:
                 - name: id
                   in: path
@@ -469,12 +463,11 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rulego.v1.GetRuleChainReply'
-        post:
+                                $ref: '#/components/schemas/rulego.v1.GetWorkspaceReply'
+        put:
             tags:
-                - RuleGo
-            description: 新增或修改规则链
-            operationId: RuleGo_UpsertRuleChain
+                - Admin
+            operationId: Admin_UpdateWorkspace
             parameters:
                 - name: id
                   in: path
@@ -485,7 +478,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReq'
+                            $ref: '#/components/schemas/rulego.v1.UpdateWorkspaceRequest'
                 required: true
             responses:
                 "200":
@@ -493,12 +486,11 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReply'
+                                $ref: '#/components/schemas/rulego.v1.UpdateWorkspaceReply'
         delete:
             tags:
-                - RuleGo
-            description: 删除规则链
-            operationId: RuleGo_DeleteRuleChain
+                - Admin
+            operationId: Admin_DeleteWorkspace
             parameters:
                 - name: id
                   in: path
@@ -511,238 +503,27 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rulego.v1.DeleteRuleChainReply'
-    /api/v1/rules/{id}/base:
+                                $ref: '#/components/schemas/rulego.v1.DeleteWorkspaceReply'
+    /api/v1/admin/workspaces/{id}/sync:
         post:
             tags:
-                - RuleGo
-            description: 保存规则链附加信息
-            operationId: RuleGo_UpdateRuleChainBaseInfo
+                - Admin
+            operationId: Admin_SyncWorkspace
             parameters:
                 - name: id
                   in: path
                   required: true
                   schema:
                     type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/rulego.v1.UpdateRuleChainBaseInfoReq'
-                required: true
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/rulego.v1.UpdateRuleChainBaseInfoReply'
-    /api/v1/rules/{id}/execute/{msgType}:
-        post:
-            tags:
-                - RuleGo
-            description: 同步执行规则链
-            operationId: RuleGo_ExecuteRuleChainSync
-            parameters:
-                - name: id
-                  in: path
-                  description: 不能为空
-                  required: true
-                  schema:
-                    type: string
-                - name: msgType
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-                - name: debugMode
-                  in: query
-                  schema:
-                    type: boolean
-                - name: msgId
-                  in: query
-                  schema:
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainSyncReply'
-    /api/v1/rules/{id}/notify/{msgType}:
-        post:
-            tags:
-                - RuleGo
-            description: 异步执行规则链
-            operationId: RuleGo_ExecuteRuleChain
-            parameters:
-                - name: id
-                  in: path
-                  description: 不能为空
-                  required: true
-                  schema:
-                    type: string
-                - name: msgType
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-                - name: debugMode
-                  in: query
-                  schema:
-                    type: boolean
-                - name: msgId
-                  in: query
-                  schema:
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReply'
-    /api/v1/rules/{id}/operate/{type}:
-        post:
-            tags:
-                - RuleGo
-            description: 部署或者下线规则链
-            operationId: RuleGo_DeployRuleChain
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-                - name: type
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/rulego.v1.DeployRuleChainReq'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/rulego.v1.DeployRuleChainReply'
+                                $ref: '#/components/schemas/rulego.v1.SyncWorkspaceReply'
 components:
     schemas:
-        google.protobuf.ListValue:
-            type: object
-            properties:
-                values:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/google.protobuf.Value'
-                    description: Repeated field of dynamically typed values.
-            description: |-
-                `ListValue` is a wrapper around a repeated field of values.
-
-                 The JSON representation for `ListValue` is JSON array.
-        google.protobuf.Value:
-            description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
-        rulego.v1.ChatAttachment:
-            type: object
-            properties:
-                filename:
-                    type: string
-                mimeType:
-                    type: string
-                text:
-                    type: string
-                contentBase64:
-                    type: string
-            description: 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。
-        rulego.v1.ChatMessage:
-            type: object
-            properties:
-                role:
-                    type: string
-                content:
-                    type: string
-        rulego.v1.ChatStreamReply:
-            type: object
-            properties:
-                content:
-                    type: string
-                done:
-                    type: boolean
-                error:
-                    type: string
-        rulego.v1.ChatStreamReq:
-            type: object
-            properties:
-                message:
-                    type: string
-                model:
-                    type: string
-                history:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/rulego.v1.ChatMessage'
-                llmConfigId:
-                    type: string
-                llmModelEntryId:
-                    type: string
-                attachments:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/rulego.v1.ChatAttachment'
-        rulego.v1.ComponentUseRuleItem:
-            type: object
-            properties:
-                id:
-                    type: string
-                componentName:
-                    type: string
-                componentType:
-                    type: string
-                disabled:
-                    type: boolean
-                useDesc:
-                    type: string
-                useRuleDesc:
-                    type: string
-                createdAt:
-                    type: string
-                updatedAt:
-                    type: string
-        rulego.v1.CreateComponentUseRuleReply:
-            type: object
-            properties: {}
-        rulego.v1.CreateComponentUseRuleRequest:
-            type: object
-            properties:
-                componentName:
-                    type: string
-                componentType:
-                    type: string
-                disabled:
-                    type: boolean
-                useDesc:
-                    type: string
-                useRuleDesc:
-                    type: string
         rulego.v1.CreateLlmConfigRequest:
             type: object
             properties:
@@ -773,6 +554,38 @@ components:
                     type: string
                 enabled:
                     type: boolean
+        rulego.v1.CreateManagedAgentReply:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/rulego.v1.ManagedAgentItem'
+        rulego.v1.CreateManagedAgentRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                systemPrompt:
+                    type: string
+                skillPackageIds:
+                    type: array
+                    items:
+                        type: string
+                mcpIds:
+                    type: array
+                    items:
+                        type: string
+                llmConfigId:
+                    type: string
+                modelScope:
+                    type: string
+                modelEntryIds:
+                    type: array
+                    items:
+                        type: string
+                enabled:
+                    type: boolean
         rulego.v1.CreateMcpConfigRequest:
             type: object
             properties:
@@ -788,108 +601,76 @@ components:
                     type: boolean
                 description:
                     type: string
-        rulego.v1.CreateMdRequest:
+                transport:
+                    type: string
+                stdioCommand:
+                    type: string
+                stdioArgsJson:
+                    type: string
+                stdioEnvJson:
+                    type: string
+        rulego.v1.CreateWorkspaceReply:
             type: object
             properties:
-                title:
+                item:
+                    $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
+        rulego.v1.CreateWorkspaceRequest:
+            type: object
+            properties:
+                id:
                     type: string
-                content:
+                name:
                     type: string
-                desc:
+                description:
                     type: string
-                chainId:
-                    type: string
+                repositoryUrls:
+                    type: array
+                    items:
+                        type: string
         rulego.v1.DeleteLlmConfigReply:
             type: object
             properties: {}
         rulego.v1.DeleteLlmModelEntryReply:
             type: object
             properties: {}
-        rulego.v1.DeleteMcpConfigReply:
-            type: object
-            properties: {}
-        rulego.v1.TestMcpConfigRequest:
-            type: object
-            properties:
-                id:
-                    type: string
-        rulego.v1.TestMcpConfigReply:
+        rulego.v1.DeleteManagedAgentReply:
             type: object
             properties:
                 ok:
                     type: boolean
-                message:
-                    type: string
-                toolNames:
-                    type: array
-                    items:
-                        type: string
-                serverName:
-                    type: string
-                protocolVersion:
-                    type: string
-        rulego.v1.DeleteRuleChainReply:
+        rulego.v1.DeleteMcpConfigReply:
             type: object
             properties: {}
-        rulego.v1.DeployRuleChainReply:
-            type: object
-            properties: {}
-        rulego.v1.DeployRuleChainReq:
+        rulego.v1.DeleteWorkspaceReply:
             type: object
             properties:
-                id:
+                ok:
+                    type: boolean
+        rulego.v1.GetLarkCliConfigReply:
+            type: object
+            properties:
+                content:
                     type: string
-                type:
+                    description: 配置文件文本（不存在时为空）
+                resolvedPath:
                     type: string
-        rulego.v1.ExecuteRuleChainReply:
-            type: object
-            properties: {}
-        rulego.v1.ExecuteRuleChainSyncReply:
-            type: object
-            properties:
-                data:
-                    type: object
-        rulego.v1.GetComponentsReply:
-            type: object
-            properties:
-                endpoints:
-                    $ref: '#/components/schemas/google.protobuf.ListValue'
-                nodes:
-                    $ref: '#/components/schemas/google.protobuf.ListValue'
-                builtins:
-                    type: object
-        rulego.v1.GetRegulationsListReply:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        type: object
-                total:
+                    description: 服务端解析后的绝对路径，便于对照 ~/.lark-cli/config.json
+                exists:
+                    type: boolean
+                terminalExecTimeoutSec:
                     type: integer
+                    description: 当前生效的 RunTerminal 超时（秒），来自 configs agent.terminal_exec_timeout
                     format: int32
-                page:
-                    type: integer
-                    format: int32
-                size:
-                    type: integer
-                    format: int32
-        rulego.v1.GetRuleChainReply:
+        rulego.v1.GetManagedAgentReply:
             type: object
             properties:
-                ruleChain:
-                    type: object
-                metadata:
-                    type: object
-        rulego.v1.ListComponentUseRuleReply:
+                item:
+                    $ref: '#/components/schemas/rulego.v1.ManagedAgentItem'
+        rulego.v1.GetWorkspaceReply:
             type: object
             properties:
-                list:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/rulego.v1.ComponentUseRuleItem'
-                total:
-                    type: string
+                item:
+                    $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
         rulego.v1.ListLlmConfigsReply:
             type: object
             properties:
@@ -897,6 +678,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.LlmConfigItem'
+        rulego.v1.ListManagedAgentsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ManagedAgentItem'
         rulego.v1.ListMcpConfigsReply:
             type: object
             properties:
@@ -904,37 +692,15 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.McpConfigItem'
-        rulego.v1.ListMdReply:
+        rulego.v1.ListSkillPackagesReply:
             type: object
             properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/rulego.v1.MdItem'
-                page:
-                    type: integer
-                    format: int32
-                size:
-                    type: integer
-                    format: int32
-                total:
+                root:
                     type: string
-        rulego.v1.ListRunLogsReply:
-            type: object
-            properties:
                 items:
                     type: array
                     items:
-                        $ref: '#/components/schemas/rulego.v1.RunLogItem'
-                page:
-                    type: integer
-                    format: int32
-                size:
-                    type: integer
-                    format: int32
-                total:
-                    type: integer
-                    format: int32
+                        $ref: '#/components/schemas/rulego.v1.SkillPackageItem'
         rulego.v1.ListSkillsReply:
             type: object
             properties:
@@ -944,6 +710,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.SkillItem'
+        rulego.v1.ListWorkspacesReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
         rulego.v1.LlmConfigItem:
             type: object
             properties:
@@ -995,6 +768,39 @@ components:
                     type: string
                 updatedAt:
                     type: string
+        rulego.v1.ManagedAgentItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                systemPrompt:
+                    type: string
+                skillPackageIds:
+                    type: array
+                    items:
+                        type: string
+                mcpIds:
+                    type: array
+                    items:
+                        type: string
+                llmConfigId:
+                    type: string
+                modelScope:
+                    type: string
+                modelEntryIds:
+                    type: array
+                    items:
+                        type: string
+                enabled:
+                    type: boolean
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
         rulego.v1.McpConfigItem:
             type: object
             properties:
@@ -1016,45 +822,42 @@ components:
                     type: string
                 updatedAt:
                     type: string
-        rulego.v1.MdItem:
+                transport:
+                    type: string
+                    description: http | stdio；stdio 时使用 stdio_command / stdio_args_json / stdio_env_json，endpoint 可为空。
+                stdioCommand:
+                    type: string
+                stdioArgsJson:
+                    type: string
+                stdioEnvJson:
+                    type: string
+        rulego.v1.RunTerminalReply:
             type: object
             properties:
-                id:
-                    type: string
-                title:
-                    type: string
-                content:
-                    type: string
-                desc:
-                    type: string
-                chainId:
-                    type: string
-                chainName:
-                    type: string
-                chainVersion:
+                exitCode:
                     type: integer
                     format: int32
-                createdAt:
+                stdout:
                     type: string
-                updatedAt:
+                stderr:
                     type: string
-        rulego.v1.RunLogItem:
+                diagnostic:
+                    type: string
+        rulego.v1.RunTerminalRequest:
             type: object
             properties:
-                id:
+                command:
                     type: string
-                ruleChain:
-                    type: object
-                metadata:
-                    type: object
-                startTs:
+                cwd:
                     type: string
-                endTs:
+        rulego.v1.SaveLarkCliConfigReply:
+            type: object
+            properties: {}
+        rulego.v1.SaveLarkCliConfigRequest:
+            type: object
+            properties:
+                jsonRaw:
                     type: string
-                logs:
-                    type: array
-                    items:
-                        type: object
         rulego.v1.SkillItem:
             type: object
             properties:
@@ -1066,23 +869,39 @@ components:
                     type: string
                 updatedAt:
                     type: string
-        rulego.v1.UpdateComponentUseRuleReply:
-            type: object
-            properties: {}
-        rulego.v1.UpdateComponentUseRuleRequest:
+        rulego.v1.SkillPackageItem:
             type: object
             properties:
                 id:
                     type: string
-                componentName:
+                skillFileCount:
                     type: string
-                componentType:
+        rulego.v1.SyncWorkspaceReply:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
+                message:
                     type: string
-                disabled:
+        rulego.v1.TestMcpConfigReply:
+            type: object
+            properties:
+                ok:
                     type: boolean
-                useDesc:
+                message:
                     type: string
-                useRuleDesc:
+                toolNames:
+                    type: array
+                    items:
+                        type: string
+                serverName:
+                    type: string
+                protocolVersion:
+                    type: string
+        rulego.v1.TestMcpConfigRequest:
+            type: object
+            properties:
+                id:
                     type: string
         rulego.v1.UpdateLlmConfigReply:
             type: object
@@ -1118,6 +937,40 @@ components:
                     type: string
                 enabled:
                     type: boolean
+        rulego.v1.UpdateManagedAgentReply:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/rulego.v1.ManagedAgentItem'
+        rulego.v1.UpdateManagedAgentRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                systemPrompt:
+                    type: string
+                skillPackageIds:
+                    type: array
+                    items:
+                        type: string
+                mcpIds:
+                    type: array
+                    items:
+                        type: string
+                llmConfigId:
+                    type: string
+                modelScope:
+                    type: string
+                modelEntryIds:
+                    type: array
+                    items:
+                        type: string
+                enabled:
+                    type: boolean
         rulego.v1.UpdateMcpConfigReply:
             type: object
             properties: {}
@@ -1138,39 +991,32 @@ components:
                     type: boolean
                 description:
                     type: string
-        rulego.v1.UpdateMdRequest:
+                transport:
+                    type: string
+                stdioCommand:
+                    type: string
+                stdioArgsJson:
+                    type: string
+                stdioEnvJson:
+                    type: string
+        rulego.v1.UpdateWorkspaceReply:
             type: object
             properties:
-                id:
-                    type: string
-                title:
-                    type: string
-                content:
-                    type: string
-                desc:
-                    type: string
-                chainId:
-                    type: string
-        rulego.v1.UpdateRuleChainBaseInfoReply:
-            type: object
-            properties: {}
-        rulego.v1.UpdateRuleChainBaseInfoReq:
+                item:
+                    $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
+        rulego.v1.UpdateWorkspaceRequest:
             type: object
             properties:
                 id:
                     type: string
                 name:
                     type: string
-                root:
-                    type: boolean
-                disabled:
-                    type: boolean
-                debugMode:
-                    type: boolean
-                additionalInfo:
-                    type: object
-                configuration:
-                    type: object
+                description:
+                    type: string
+                repositoryUrls:
+                    type: array
+                    items:
+                        type: string
         rulego.v1.UploadSkillReply:
             type: object
             properties:
@@ -1183,27 +1029,37 @@ components:
                     type: string
                 contentBase64:
                     type: string
-        rulego.v1.UpsertRuleChainReply:
-            type: object
-            properties: {}
-        rulego.v1.UpsertRuleChainReq:
+        rulego.v1.WorkspaceItem:
             type: object
             properties:
                 id:
                     type: string
-                ruleChain:
-                    type: object
-                metadata:
-                    type: object
+                name:
+                    type: string
+                description:
+                    type: string
+                rootDir:
+                    type: string
+                configFile:
+                    type: string
+                repositoryUrls:
+                    type: array
+                    items:
+                        type: string
+                repositories:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.WorkspaceRepoItem'
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        rulego.v1.WorkspaceRepoItem:
+            type: object
+            properties:
+                url:
+                    type: string
+                dir:
+                    type: string
 tags:
     - name: Admin
-    - name: Chat
-      description: Chat服务定义
-    - name: Component
-      description: The greeting service definition.
-    - name: MdWorkflow
-      description: The greeting service definition.
-    - name: RuleGo
-      description: The greeting service definition.
-    - name: RunLog
-      description: The greeting service definition.

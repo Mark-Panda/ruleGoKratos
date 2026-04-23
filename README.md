@@ -50,3 +50,7 @@ docker run --rm -p 8000:8000 -p 9000:9000 -v </path/to/your/configs>:/data/conf 
 ```
 
 # ruleGoKratos
+
+## 开发规范
+
+- 项目规范见 `docs/project-conventions.md`（包含管理端 API 必须先定义 proto 契约等强制规则）。

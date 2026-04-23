@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
+	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz"
 	"ruleGoKratos/internal/data/dao"
 	"strings"
 	"time"
-
-	khttp "github.com/go-kratos/kratos/v2/transport/http"
 )
 
 const (
@@ -19,215 +17,169 @@ const (
 )
 
 type managedAgentDTO struct {
-	ID               int64    `json:"id"`
-	Name             string   `json:"name"`
-	Description      string   `json:"description"`
-	SystemPrompt     string   `json:"systemPrompt"`
-	SkillPackageIDs  []string `json:"skillPackageIds"`
-	McpIDs           []int64  `json:"mcpIds"`
-	LLMConfigID      int64    `json:"llmConfigId"`
-	ModelScope       string   `json:"modelScope"`
-	ModelEntryIDs    []int64  `json:"modelEntryIds"`
-	Enabled          bool     `json:"enabled"`
-	CreatedAt        string   `json:"createdAt,omitempty"`
-	UpdatedAt        string   `json:"updatedAt,omitempty"`
+	ID              int64    `json:"id"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	SystemPrompt    string   `json:"systemPrompt"`
+	SkillPackageIDs []string `json:"skillPackageIds"`
+	McpIDs          []int64  `json:"mcpIds"`
+	LLMConfigID     int64    `json:"llmConfigId"`
+	ModelScope      string   `json:"modelScope"`
+	ModelEntryIDs   []int64  `json:"modelEntryIds"`
+	Enabled         bool     `json:"enabled"`
+	CreatedAt       string   `json:"createdAt,omitempty"`
+	UpdatedAt       string   `json:"updatedAt,omitempty"`
 }
 
 type managedAgentWriteReq struct {
-	Name              string   `json:"name"`
-	Description       string   `json:"description"`
-	SystemPrompt      string   `json:"systemPrompt"`
-	SkillPackageIDs   []string `json:"skillPackageIds"`
-	McpIDs            []int64  `json:"mcpIds"`
-	LLMConfigID       int64    `json:"llmConfigId"`
-	ModelScope        string   `json:"modelScope"`
-	ModelEntryIDs     []int64  `json:"modelEntryIds"`
-	Enabled           bool     `json:"enabled"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	SystemPrompt    string   `json:"systemPrompt"`
+	SkillPackageIDs []string `json:"skillPackageIds"`
+	McpIDs          []int64  `json:"mcpIds"`
+	LLMConfigID     int64    `json:"llmConfigId"`
+	ModelScope      string   `json:"modelScope"`
+	ModelEntryIDs   []int64  `json:"modelEntryIds"`
+	Enabled         bool     `json:"enabled"`
 }
 
-// RegisterManagedAgentHTTPRoutes 注册可编排 Agent（Managed Agent）JSON API。
-func RegisterManagedAgentHTTPRoutes(s *khttp.Server, admin *AdminService) {
-	r := s.Route("/api/v1/admin/managed-agents")
-	r.GET("", admin.listManagedAgents)
-	r.GET("/{id}", admin.getManagedAgent)
-	r.POST("", admin.createManagedAgent)
-	r.PUT("/{id}", admin.updateManagedAgent)
-	r.DELETE("/{id}", admin.deleteManagedAgent)
-
-	p := s.Route("/api/v1/admin/skill-packages")
-	p.GET("", admin.listSkillPackagesHTTP)
-}
-
-func (s *AdminService) listManagedAgents(ctx khttp.Context) error {
-	c := ctx.Request().Context()
-	list, err := dao.NewManagedAgent().FindAll(c)
+func (s *AdminService) ListManagedAgents(ctx context.Context, _ *v1.ListManagedAgentsRequest) (*v1.ListManagedAgentsReply, error) {
+	list, err := dao.NewManagedAgent().FindAll(ctx)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	out := make([]managedAgentDTO, 0, len(list))
+	out := make([]*v1.ManagedAgentItem, 0, len(list))
 	for _, row := range list {
 		dto, err := managedAgentToDTO(&row)
 		if err != nil {
-			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return nil, err
 		}
-		out = append(out, *dto)
+		out = append(out, managedAgentDTOToProto(dto))
 	}
-	return ctx.JSON(http.StatusOK, map[string]interface{}{"items": out})
+	return &v1.ListManagedAgentsReply{Items: out}, nil
 }
 
-func (s *AdminService) getManagedAgent(ctx khttp.Context) error {
-	var path struct {
-		// BindVars 使用 form 解码器，默认读取 json struct tag（与 path tag 无关）
-		ID int64 `json:"id"`
-	}
-	if err := ctx.BindVars(&path); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-	row, err := dao.NewManagedAgent().FindByID(ctx.Request().Context(), path.ID)
+func (s *AdminService) GetManagedAgent(ctx context.Context, req *v1.GetManagedAgentRequest) (*v1.GetManagedAgentReply, error) {
+	row, err := dao.NewManagedAgent().FindByID(ctx, req.GetId())
 	if err != nil {
-		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+		return nil, err
 	}
 	dto, err := managedAgentToDTO(row)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	return ctx.JSON(http.StatusOK, map[string]interface{}{"item": dto})
+	return &v1.GetManagedAgentReply{Item: managedAgentDTOToProto(dto)}, nil
 }
 
-func (s *AdminService) createManagedAgent(ctx khttp.Context) error {
-	var req managedAgentWriteReq
-	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-	if err := s.validateManagedAgentPayload(ctx.Request().Context(), &req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+func (s *AdminService) CreateManagedAgent(ctx context.Context, req *v1.CreateManagedAgentRequest) (*v1.CreateManagedAgentReply, error) {
+	writeReq := managedAgentWriteReqFromCreate(req)
+	if err := s.validateManagedAgentPayload(ctx, &writeReq); err != nil {
+		return nil, err
 	}
 	now := time.Now()
 	row := &dao.ManagedAgent{
-		Name:         strings.TrimSpace(req.Name),
-		Description:  strings.TrimSpace(req.Description),
-		SystemPrompt: req.SystemPrompt,
-		LLMConfigID:  req.LLMConfigID,
-		ModelScope:   normalizeModelScope(req.ModelScope),
-		Enabled:      req.Enabled,
+		Name:         strings.TrimSpace(writeReq.Name),
+		Description:  strings.TrimSpace(writeReq.Description),
+		SystemPrompt: writeReq.SystemPrompt,
+		LLMConfigID:  writeReq.LLMConfigID,
+		ModelScope:   normalizeModelScope(writeReq.ModelScope),
+		Enabled:      writeReq.Enabled,
 		CreatedAt:    &now,
 		UpdatedAt:    &now,
 	}
 	var err error
-	row.SkillPathsJSON, err = marshalJSON(biz.NormalizeStoredSkillPackageIDs(req.SkillPackageIDs))
+	row.SkillPathsJSON, err = marshalJSON(biz.NormalizeStoredSkillPackageIDs(writeReq.SkillPackageIDs))
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	row.McpIDsJSON, err = marshalJSON(req.McpIDs)
+	row.McpIDsJSON, err = marshalJSON(writeReq.McpIDs)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	row.ModelEntryIDsJSON, err = marshalJSON(filterEntryIDs(req.ModelScope, req.ModelEntryIDs))
+	row.ModelEntryIDsJSON, err = marshalJSON(filterEntryIDs(writeReq.ModelScope, writeReq.ModelEntryIDs))
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	if err := row.Create(ctx.Request().Context()); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := row.Create(ctx); err != nil {
+		return nil, err
 	}
 	dto, err := managedAgentToDTO(row)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	return ctx.JSON(http.StatusCreated, map[string]interface{}{"item": dto})
+	return &v1.CreateManagedAgentReply{Item: managedAgentDTOToProto(dto)}, nil
 }
 
-func (s *AdminService) updateManagedAgent(ctx khttp.Context) error {
-	var path struct {
-		ID int64 `json:"id"`
+func (s *AdminService) UpdateManagedAgent(ctx context.Context, req *v1.UpdateManagedAgentRequest) (*v1.UpdateManagedAgentReply, error) {
+	if req.GetId() <= 0 {
+		return nil, fmt.Errorf("无效的 id")
 	}
-	if err := ctx.BindVars(&path); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	if _, err := dao.NewManagedAgent().FindByID(ctx, req.GetId()); err != nil {
+		return nil, fmt.Errorf("Agent 配置不存在（id=%d）。请先在「Agent 管理 → Agent 配置」新建并保存，或刷新列表后重试。", req.GetId())
 	}
-	if path.ID <= 0 {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "无效的 id"})
+	writeReq := managedAgentWriteReqFromUpdate(req)
+	if err := s.validateManagedAgentPayload(ctx, &writeReq); err != nil {
+		return nil, err
 	}
-	if _, err := dao.NewManagedAgent().FindByID(ctx.Request().Context(), path.ID); err != nil {
-		return ctx.JSON(http.StatusNotFound, map[string]string{
-			"error": fmt.Sprintf("Agent 配置不存在（id=%d）。请先在「Agent 管理 → Agent 配置」新建并保存，或刷新列表后重试。", path.ID),
-		})
-	}
-	var req managedAgentWriteReq
-	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-	if err := s.validateManagedAgentPayload(ctx.Request().Context(), &req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-	sp, err := marshalJSON(biz.NormalizeStoredSkillPackageIDs(req.SkillPackageIDs))
+	sp, err := marshalJSON(biz.NormalizeStoredSkillPackageIDs(writeReq.SkillPackageIDs))
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	mp, err := marshalJSON(req.McpIDs)
+	mp, err := marshalJSON(writeReq.McpIDs)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	me, err := marshalJSON(filterEntryIDs(req.ModelScope, req.ModelEntryIDs))
+	me, err := marshalJSON(filterEntryIDs(writeReq.ModelScope, writeReq.ModelEntryIDs))
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return nil, err
 	}
 	data := map[string]interface{}{
-		"name":              strings.TrimSpace(req.Name),
-		"description":       strings.TrimSpace(req.Description),
-		"system_prompt":     req.SystemPrompt,
-		"skill_paths":       sp,
-		"mcp_ids":           mp,
-		"llm_config_id":     req.LLMConfigID,
-		"model_scope":       normalizeModelScope(req.ModelScope),
-		"model_entry_ids":   me,
-		"enabled":           req.Enabled,
-		"updated_at":        time.Now(),
+		"name":            strings.TrimSpace(writeReq.Name),
+		"description":     strings.TrimSpace(writeReq.Description),
+		"system_prompt":   writeReq.SystemPrompt,
+		"skill_paths":     sp,
+		"mcp_ids":         mp,
+		"llm_config_id":   writeReq.LLMConfigID,
+		"model_scope":     normalizeModelScope(writeReq.ModelScope),
+		"model_entry_ids": me,
+		"enabled":         writeReq.Enabled,
+		"updated_at":      time.Now(),
 	}
-	if err := dao.NewManagedAgent().Updates(ctx.Request().Context(), map[string]interface{}{"id": path.ID}, data); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := dao.NewManagedAgent().Updates(ctx, map[string]interface{}{"id": req.GetId()}, data); err != nil {
+		return nil, err
 	}
-	row, err := dao.NewManagedAgent().FindByID(ctx.Request().Context(), path.ID)
+	row, err := dao.NewManagedAgent().FindByID(ctx, req.GetId())
 	if err != nil {
-		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+		return nil, err
 	}
 	dto, err := managedAgentToDTO(row)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	return ctx.JSON(http.StatusOK, map[string]interface{}{"item": dto})
+	return &v1.UpdateManagedAgentReply{Item: managedAgentDTOToProto(dto)}, nil
 }
 
-func (s *AdminService) deleteManagedAgent(ctx khttp.Context) error {
-	var path struct {
-		ID int64 `json:"id"`
-	}
-	if err := ctx.BindVars(&path); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-	if path.ID <= 0 {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "无效的 id"})
+func (s *AdminService) DeleteManagedAgent(ctx context.Context, req *v1.DeleteManagedAgentRequest) (*v1.DeleteManagedAgentReply, error) {
+	if req.GetId() <= 0 {
+		return nil, fmt.Errorf("无效的 id")
 	}
 	if s.poolSvc != nil {
-		refs, err := s.poolSvc.PoolsReferencingManagedAgent(ctx.Request().Context(), path.ID)
+		refs, err := s.poolSvc.PoolsReferencingManagedAgent(ctx, req.GetId())
 		if err != nil {
-			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return nil, err
 		}
 		if len(refs) > 0 {
 			parts := make([]string, len(refs))
 			for i, r := range refs {
 				parts[i] = fmt.Sprintf("%s（%s）", r.Name, r.ID)
 			}
-			return ctx.JSON(http.StatusConflict, map[string]string{
-				"error": fmt.Sprintf(
-					"无法删除：该 Agent 配置仍被 Agent Playground 中的 Agent 池引用：%s。请先删除或调整相关 Agent 池后再删除。",
-					strings.Join(parts, "、"),
-				),
-			})
+			return nil, fmt.Errorf("无法删除：该 Agent 配置仍被 Agent Playground 中的 Agent 池引用：%s。请先删除或调整相关 Agent 池后再删除。", strings.Join(parts, "、"))
 		}
 	}
-	if err := dao.NewManagedAgent().Delete(ctx.Request().Context(), map[string]interface{}{"id": path.ID}); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := dao.NewManagedAgent().Delete(ctx, map[string]interface{}{"id": req.GetId()}); err != nil {
+		return nil, err
 	}
-	return ctx.JSON(http.StatusOK, map[string]string{"ok": "true"})
+	return &v1.DeleteManagedAgentReply{Ok: true}, nil
 }
 
 func (s *AdminService) validateManagedAgentPayload(ctx context.Context, req *managedAgentWriteReq) error {
@@ -285,15 +237,22 @@ func (s *AdminService) validateSkillPackageIDs(ids []string) error {
 	return nil
 }
 
-func (s *AdminService) listSkillPackagesHTTP(ctx khttp.Context) error {
+func (s *AdminService) ListSkillPackages(_ context.Context, _ *v1.ListSkillPackagesRequest) (*v1.ListSkillPackagesReply, error) {
 	items, err := discoverSkillPackages(s.skillRoot)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return nil, err
 	}
-	return ctx.JSON(http.StatusOK, map[string]interface{}{
-		"root":  s.skillRoot,
-		"items": items,
-	})
+	out := make([]*v1.SkillPackageItem, 0, len(items))
+	for _, it := range items {
+		out = append(out, &v1.SkillPackageItem{
+			Id:             it.ID,
+			SkillFileCount: int64(it.SkillFileCount),
+		})
+	}
+	return &v1.ListSkillPackagesReply{
+		Root:  s.skillRoot,
+		Items: out,
+	}, nil
 }
 
 func validateMcpIDsExist(ctx context.Context, ids []int64) error {
@@ -361,10 +320,10 @@ func managedAgentToDTO(row *dao.ManagedAgent) (*managedAgentDTO, error) {
 		SystemPrompt:    row.SystemPrompt,
 		SkillPackageIDs: pkgs,
 		McpIDs:          mcpIDs,
-		LLMConfigID:   row.LLMConfigID,
-		ModelScope:    row.ModelScope,
-		ModelEntryIDs: entryIDs,
-		Enabled:       row.Enabled,
+		LLMConfigID:     row.LLMConfigID,
+		ModelScope:      row.ModelScope,
+		ModelEntryIDs:   entryIDs,
+		Enabled:         row.Enabled,
 	}
 	if row.CreatedAt != nil {
 		dto.CreatedAt = row.CreatedAt.Format(time.RFC3339)
@@ -373,4 +332,52 @@ func managedAgentToDTO(row *dao.ManagedAgent) (*managedAgentDTO, error) {
 		dto.UpdatedAt = row.UpdatedAt.Format(time.RFC3339)
 	}
 	return dto, nil
+}
+
+func managedAgentDTOToProto(in *managedAgentDTO) *v1.ManagedAgentItem {
+	if in == nil {
+		return nil
+	}
+	return &v1.ManagedAgentItem{
+		Id:              in.ID,
+		Name:            in.Name,
+		Description:     in.Description,
+		SystemPrompt:    in.SystemPrompt,
+		SkillPackageIds: in.SkillPackageIDs,
+		McpIds:          in.McpIDs,
+		LlmConfigId:     in.LLMConfigID,
+		ModelScope:      in.ModelScope,
+		ModelEntryIds:   in.ModelEntryIDs,
+		Enabled:         in.Enabled,
+		CreatedAt:       in.CreatedAt,
+		UpdatedAt:       in.UpdatedAt,
+	}
+}
+
+func managedAgentWriteReqFromCreate(req *v1.CreateManagedAgentRequest) managedAgentWriteReq {
+	return managedAgentWriteReq{
+		Name:            req.GetName(),
+		Description:     req.GetDescription(),
+		SystemPrompt:    req.GetSystemPrompt(),
+		SkillPackageIDs: req.GetSkillPackageIds(),
+		McpIDs:          req.GetMcpIds(),
+		LLMConfigID:     req.GetLlmConfigId(),
+		ModelScope:      req.GetModelScope(),
+		ModelEntryIDs:   req.GetModelEntryIds(),
+		Enabled:         req.GetEnabled(),
+	}
+}
+
+func managedAgentWriteReqFromUpdate(req *v1.UpdateManagedAgentRequest) managedAgentWriteReq {
+	return managedAgentWriteReq{
+		Name:            req.GetName(),
+		Description:     req.GetDescription(),
+		SystemPrompt:    req.GetSystemPrompt(),
+		SkillPackageIDs: req.GetSkillPackageIds(),
+		McpIDs:          req.GetMcpIds(),
+		LLMConfigID:     req.GetLlmConfigId(),
+		ModelScope:      req.GetModelScope(),
+		ModelEntryIDs:   req.GetModelEntryIds(),
+		Enabled:         req.GetEnabled(),
+	}
 }

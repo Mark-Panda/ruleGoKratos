@@ -43,6 +43,20 @@ type AdminClient interface {
 	GetLarkCliConfig(ctx context.Context, in *GetLarkCliConfigRequest, opts ...grpc.CallOption) (*GetLarkCliConfigReply, error)
 	// SaveLarkCliConfig 写入 lark-cli 配置文件（须为合法 JSON）。
 	SaveLarkCliConfig(ctx context.Context, in *SaveLarkCliConfigRequest, opts ...grpc.CallOption) (*SaveLarkCliConfigReply, error)
+	// 工作区管理（统一走 proto/http 契约）
+	ListWorkspaces(ctx context.Context, in *ListWorkspacesRequest, opts ...grpc.CallOption) (*ListWorkspacesReply, error)
+	GetWorkspace(ctx context.Context, in *GetWorkspaceRequest, opts ...grpc.CallOption) (*GetWorkspaceReply, error)
+	CreateWorkspace(ctx context.Context, in *CreateWorkspaceRequest, opts ...grpc.CallOption) (*CreateWorkspaceReply, error)
+	UpdateWorkspace(ctx context.Context, in *UpdateWorkspaceRequest, opts ...grpc.CallOption) (*UpdateWorkspaceReply, error)
+	SyncWorkspace(ctx context.Context, in *SyncWorkspaceRequest, opts ...grpc.CallOption) (*SyncWorkspaceReply, error)
+	DeleteWorkspace(ctx context.Context, in *DeleteWorkspaceRequest, opts ...grpc.CallOption) (*DeleteWorkspaceReply, error)
+	// 可编排 Agent 配置管理
+	ListManagedAgents(ctx context.Context, in *ListManagedAgentsRequest, opts ...grpc.CallOption) (*ListManagedAgentsReply, error)
+	GetManagedAgent(ctx context.Context, in *GetManagedAgentRequest, opts ...grpc.CallOption) (*GetManagedAgentReply, error)
+	CreateManagedAgent(ctx context.Context, in *CreateManagedAgentRequest, opts ...grpc.CallOption) (*CreateManagedAgentReply, error)
+	UpdateManagedAgent(ctx context.Context, in *UpdateManagedAgentRequest, opts ...grpc.CallOption) (*UpdateManagedAgentReply, error)
+	DeleteManagedAgent(ctx context.Context, in *DeleteManagedAgentRequest, opts ...grpc.CallOption) (*DeleteManagedAgentReply, error)
+	ListSkillPackages(ctx context.Context, in *ListSkillPackagesRequest, opts ...grpc.CallOption) (*ListSkillPackagesReply, error)
 }
 
 type adminClient struct {
@@ -206,6 +220,114 @@ func (c *adminClient) SaveLarkCliConfig(ctx context.Context, in *SaveLarkCliConf
 	return out, nil
 }
 
+func (c *adminClient) ListWorkspaces(ctx context.Context, in *ListWorkspacesRequest, opts ...grpc.CallOption) (*ListWorkspacesReply, error) {
+	out := new(ListWorkspacesReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/ListWorkspaces", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) GetWorkspace(ctx context.Context, in *GetWorkspaceRequest, opts ...grpc.CallOption) (*GetWorkspaceReply, error) {
+	out := new(GetWorkspaceReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/GetWorkspace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) CreateWorkspace(ctx context.Context, in *CreateWorkspaceRequest, opts ...grpc.CallOption) (*CreateWorkspaceReply, error) {
+	out := new(CreateWorkspaceReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/CreateWorkspace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) UpdateWorkspace(ctx context.Context, in *UpdateWorkspaceRequest, opts ...grpc.CallOption) (*UpdateWorkspaceReply, error) {
+	out := new(UpdateWorkspaceReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/UpdateWorkspace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) SyncWorkspace(ctx context.Context, in *SyncWorkspaceRequest, opts ...grpc.CallOption) (*SyncWorkspaceReply, error) {
+	out := new(SyncWorkspaceReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/SyncWorkspace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) DeleteWorkspace(ctx context.Context, in *DeleteWorkspaceRequest, opts ...grpc.CallOption) (*DeleteWorkspaceReply, error) {
+	out := new(DeleteWorkspaceReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/DeleteWorkspace", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) ListManagedAgents(ctx context.Context, in *ListManagedAgentsRequest, opts ...grpc.CallOption) (*ListManagedAgentsReply, error) {
+	out := new(ListManagedAgentsReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/ListManagedAgents", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) GetManagedAgent(ctx context.Context, in *GetManagedAgentRequest, opts ...grpc.CallOption) (*GetManagedAgentReply, error) {
+	out := new(GetManagedAgentReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/GetManagedAgent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) CreateManagedAgent(ctx context.Context, in *CreateManagedAgentRequest, opts ...grpc.CallOption) (*CreateManagedAgentReply, error) {
+	out := new(CreateManagedAgentReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/CreateManagedAgent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) UpdateManagedAgent(ctx context.Context, in *UpdateManagedAgentRequest, opts ...grpc.CallOption) (*UpdateManagedAgentReply, error) {
+	out := new(UpdateManagedAgentReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/UpdateManagedAgent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) DeleteManagedAgent(ctx context.Context, in *DeleteManagedAgentRequest, opts ...grpc.CallOption) (*DeleteManagedAgentReply, error) {
+	out := new(DeleteManagedAgentReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/DeleteManagedAgent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) ListSkillPackages(ctx context.Context, in *ListSkillPackagesRequest, opts ...grpc.CallOption) (*ListSkillPackagesReply, error) {
+	out := new(ListSkillPackagesReply)
+	err := c.cc.Invoke(ctx, "/rulego.v1.Admin/ListSkillPackages", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServer is the server API for Admin service.
 // All implementations must embed UnimplementedAdminServer
 // for forward compatibility
@@ -231,6 +353,20 @@ type AdminServer interface {
 	GetLarkCliConfig(context.Context, *GetLarkCliConfigRequest) (*GetLarkCliConfigReply, error)
 	// SaveLarkCliConfig 写入 lark-cli 配置文件（须为合法 JSON）。
 	SaveLarkCliConfig(context.Context, *SaveLarkCliConfigRequest) (*SaveLarkCliConfigReply, error)
+	// 工作区管理（统一走 proto/http 契约）
+	ListWorkspaces(context.Context, *ListWorkspacesRequest) (*ListWorkspacesReply, error)
+	GetWorkspace(context.Context, *GetWorkspaceRequest) (*GetWorkspaceReply, error)
+	CreateWorkspace(context.Context, *CreateWorkspaceRequest) (*CreateWorkspaceReply, error)
+	UpdateWorkspace(context.Context, *UpdateWorkspaceRequest) (*UpdateWorkspaceReply, error)
+	SyncWorkspace(context.Context, *SyncWorkspaceRequest) (*SyncWorkspaceReply, error)
+	DeleteWorkspace(context.Context, *DeleteWorkspaceRequest) (*DeleteWorkspaceReply, error)
+	// 可编排 Agent 配置管理
+	ListManagedAgents(context.Context, *ListManagedAgentsRequest) (*ListManagedAgentsReply, error)
+	GetManagedAgent(context.Context, *GetManagedAgentRequest) (*GetManagedAgentReply, error)
+	CreateManagedAgent(context.Context, *CreateManagedAgentRequest) (*CreateManagedAgentReply, error)
+	UpdateManagedAgent(context.Context, *UpdateManagedAgentRequest) (*UpdateManagedAgentReply, error)
+	DeleteManagedAgent(context.Context, *DeleteManagedAgentRequest) (*DeleteManagedAgentReply, error)
+	ListSkillPackages(context.Context, *ListSkillPackagesRequest) (*ListSkillPackagesReply, error)
 	mustEmbedUnimplementedAdminServer()
 }
 
@@ -288,6 +424,42 @@ func (UnimplementedAdminServer) GetLarkCliConfig(context.Context, *GetLarkCliCon
 }
 func (UnimplementedAdminServer) SaveLarkCliConfig(context.Context, *SaveLarkCliConfigRequest) (*SaveLarkCliConfigReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveLarkCliConfig not implemented")
+}
+func (UnimplementedAdminServer) ListWorkspaces(context.Context, *ListWorkspacesRequest) (*ListWorkspacesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWorkspaces not implemented")
+}
+func (UnimplementedAdminServer) GetWorkspace(context.Context, *GetWorkspaceRequest) (*GetWorkspaceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkspace not implemented")
+}
+func (UnimplementedAdminServer) CreateWorkspace(context.Context, *CreateWorkspaceRequest) (*CreateWorkspaceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateWorkspace not implemented")
+}
+func (UnimplementedAdminServer) UpdateWorkspace(context.Context, *UpdateWorkspaceRequest) (*UpdateWorkspaceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkspace not implemented")
+}
+func (UnimplementedAdminServer) SyncWorkspace(context.Context, *SyncWorkspaceRequest) (*SyncWorkspaceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SyncWorkspace not implemented")
+}
+func (UnimplementedAdminServer) DeleteWorkspace(context.Context, *DeleteWorkspaceRequest) (*DeleteWorkspaceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorkspace not implemented")
+}
+func (UnimplementedAdminServer) ListManagedAgents(context.Context, *ListManagedAgentsRequest) (*ListManagedAgentsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListManagedAgents not implemented")
+}
+func (UnimplementedAdminServer) GetManagedAgent(context.Context, *GetManagedAgentRequest) (*GetManagedAgentReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetManagedAgent not implemented")
+}
+func (UnimplementedAdminServer) CreateManagedAgent(context.Context, *CreateManagedAgentRequest) (*CreateManagedAgentReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateManagedAgent not implemented")
+}
+func (UnimplementedAdminServer) UpdateManagedAgent(context.Context, *UpdateManagedAgentRequest) (*UpdateManagedAgentReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateManagedAgent not implemented")
+}
+func (UnimplementedAdminServer) DeleteManagedAgent(context.Context, *DeleteManagedAgentRequest) (*DeleteManagedAgentReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteManagedAgent not implemented")
+}
+func (UnimplementedAdminServer) ListSkillPackages(context.Context, *ListSkillPackagesRequest) (*ListSkillPackagesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListSkillPackages not implemented")
 }
 func (UnimplementedAdminServer) mustEmbedUnimplementedAdminServer() {}
 
@@ -608,6 +780,222 @@ func _Admin_SaveLarkCliConfig_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Admin_ListWorkspaces_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWorkspacesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).ListWorkspaces(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/ListWorkspaces",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).ListWorkspaces(ctx, req.(*ListWorkspacesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_GetWorkspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkspaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).GetWorkspace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/GetWorkspace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).GetWorkspace(ctx, req.(*GetWorkspaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_CreateWorkspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateWorkspaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).CreateWorkspace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/CreateWorkspace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).CreateWorkspace(ctx, req.(*CreateWorkspaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_UpdateWorkspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWorkspaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).UpdateWorkspace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/UpdateWorkspace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).UpdateWorkspace(ctx, req.(*UpdateWorkspaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_SyncWorkspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncWorkspaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).SyncWorkspace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/SyncWorkspace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).SyncWorkspace(ctx, req.(*SyncWorkspaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_DeleteWorkspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteWorkspaceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).DeleteWorkspace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/DeleteWorkspace",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).DeleteWorkspace(ctx, req.(*DeleteWorkspaceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_ListManagedAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListManagedAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).ListManagedAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/ListManagedAgents",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).ListManagedAgents(ctx, req.(*ListManagedAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_GetManagedAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetManagedAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).GetManagedAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/GetManagedAgent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).GetManagedAgent(ctx, req.(*GetManagedAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_CreateManagedAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateManagedAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).CreateManagedAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/CreateManagedAgent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).CreateManagedAgent(ctx, req.(*CreateManagedAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_UpdateManagedAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateManagedAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).UpdateManagedAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/UpdateManagedAgent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).UpdateManagedAgent(ctx, req.(*UpdateManagedAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_DeleteManagedAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteManagedAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).DeleteManagedAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/DeleteManagedAgent",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).DeleteManagedAgent(ctx, req.(*DeleteManagedAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_ListSkillPackages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSkillPackagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).ListSkillPackages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rulego.v1.Admin/ListSkillPackages",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).ListSkillPackages(ctx, req.(*ListSkillPackagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Admin_ServiceDesc is the grpc.ServiceDesc for Admin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -682,6 +1070,54 @@ var Admin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveLarkCliConfig",
 			Handler:    _Admin_SaveLarkCliConfig_Handler,
+		},
+		{
+			MethodName: "ListWorkspaces",
+			Handler:    _Admin_ListWorkspaces_Handler,
+		},
+		{
+			MethodName: "GetWorkspace",
+			Handler:    _Admin_GetWorkspace_Handler,
+		},
+		{
+			MethodName: "CreateWorkspace",
+			Handler:    _Admin_CreateWorkspace_Handler,
+		},
+		{
+			MethodName: "UpdateWorkspace",
+			Handler:    _Admin_UpdateWorkspace_Handler,
+		},
+		{
+			MethodName: "SyncWorkspace",
+			Handler:    _Admin_SyncWorkspace_Handler,
+		},
+		{
+			MethodName: "DeleteWorkspace",
+			Handler:    _Admin_DeleteWorkspace_Handler,
+		},
+		{
+			MethodName: "ListManagedAgents",
+			Handler:    _Admin_ListManagedAgents_Handler,
+		},
+		{
+			MethodName: "GetManagedAgent",
+			Handler:    _Admin_GetManagedAgent_Handler,
+		},
+		{
+			MethodName: "CreateManagedAgent",
+			Handler:    _Admin_CreateManagedAgent_Handler,
+		},
+		{
+			MethodName: "UpdateManagedAgent",
+			Handler:    _Admin_UpdateManagedAgent_Handler,
+		},
+		{
+			MethodName: "DeleteManagedAgent",
+			Handler:    _Admin_DeleteManagedAgent_Handler,
+		},
+		{
+			MethodName: "ListSkillPackages",
+			Handler:    _Admin_ListSkillPackages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

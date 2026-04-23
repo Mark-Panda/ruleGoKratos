@@ -21,39 +21,63 @@ const _ = http.SupportPackageIsVersion1
 
 const OperationAdminCreateLlmConfig = "/rulego.v1.Admin/CreateLlmConfig"
 const OperationAdminCreateLlmModelEntry = "/rulego.v1.Admin/CreateLlmModelEntry"
+const OperationAdminCreateManagedAgent = "/rulego.v1.Admin/CreateManagedAgent"
 const OperationAdminCreateMcpConfig = "/rulego.v1.Admin/CreateMcpConfig"
+const OperationAdminCreateWorkspace = "/rulego.v1.Admin/CreateWorkspace"
 const OperationAdminDeleteLlmConfig = "/rulego.v1.Admin/DeleteLlmConfig"
 const OperationAdminDeleteLlmModelEntry = "/rulego.v1.Admin/DeleteLlmModelEntry"
+const OperationAdminDeleteManagedAgent = "/rulego.v1.Admin/DeleteManagedAgent"
 const OperationAdminDeleteMcpConfig = "/rulego.v1.Admin/DeleteMcpConfig"
+const OperationAdminDeleteWorkspace = "/rulego.v1.Admin/DeleteWorkspace"
 const OperationAdminGetLarkCliConfig = "/rulego.v1.Admin/GetLarkCliConfig"
+const OperationAdminGetManagedAgent = "/rulego.v1.Admin/GetManagedAgent"
+const OperationAdminGetWorkspace = "/rulego.v1.Admin/GetWorkspace"
 const OperationAdminListLlmConfigs = "/rulego.v1.Admin/ListLlmConfigs"
+const OperationAdminListManagedAgents = "/rulego.v1.Admin/ListManagedAgents"
 const OperationAdminListMcpConfigs = "/rulego.v1.Admin/ListMcpConfigs"
+const OperationAdminListSkillPackages = "/rulego.v1.Admin/ListSkillPackages"
 const OperationAdminListSkills = "/rulego.v1.Admin/ListSkills"
+const OperationAdminListWorkspaces = "/rulego.v1.Admin/ListWorkspaces"
 const OperationAdminRunTerminal = "/rulego.v1.Admin/RunTerminal"
 const OperationAdminSaveLarkCliConfig = "/rulego.v1.Admin/SaveLarkCliConfig"
+const OperationAdminSyncWorkspace = "/rulego.v1.Admin/SyncWorkspace"
 const OperationAdminTestMcpConfig = "/rulego.v1.Admin/TestMcpConfig"
 const OperationAdminUpdateLlmConfig = "/rulego.v1.Admin/UpdateLlmConfig"
 const OperationAdminUpdateLlmModelEntry = "/rulego.v1.Admin/UpdateLlmModelEntry"
+const OperationAdminUpdateManagedAgent = "/rulego.v1.Admin/UpdateManagedAgent"
 const OperationAdminUpdateMcpConfig = "/rulego.v1.Admin/UpdateMcpConfig"
+const OperationAdminUpdateWorkspace = "/rulego.v1.Admin/UpdateWorkspace"
 const OperationAdminUploadSkill = "/rulego.v1.Admin/UploadSkill"
 
 type AdminHTTPServer interface {
 	CreateLlmConfig(context.Context, *CreateLlmConfigRequest) (*LlmConfigItem, error)
 	CreateLlmModelEntry(context.Context, *CreateLlmModelEntryRequest) (*LlmModelEntryItem, error)
+	CreateManagedAgent(context.Context, *CreateManagedAgentRequest) (*CreateManagedAgentReply, error)
 	CreateMcpConfig(context.Context, *CreateMcpConfigRequest) (*McpConfigItem, error)
+	CreateWorkspace(context.Context, *CreateWorkspaceRequest) (*CreateWorkspaceReply, error)
 	DeleteLlmConfig(context.Context, *DeleteLlmConfigRequest) (*DeleteLlmConfigReply, error)
 	DeleteLlmModelEntry(context.Context, *DeleteLlmModelEntryRequest) (*DeleteLlmModelEntryReply, error)
+	DeleteManagedAgent(context.Context, *DeleteManagedAgentRequest) (*DeleteManagedAgentReply, error)
 	DeleteMcpConfig(context.Context, *DeleteMcpConfigRequest) (*DeleteMcpConfigReply, error)
+	DeleteWorkspace(context.Context, *DeleteWorkspaceRequest) (*DeleteWorkspaceReply, error)
 	GetLarkCliConfig(context.Context, *GetLarkCliConfigRequest) (*GetLarkCliConfigReply, error)
+	GetManagedAgent(context.Context, *GetManagedAgentRequest) (*GetManagedAgentReply, error)
+	GetWorkspace(context.Context, *GetWorkspaceRequest) (*GetWorkspaceReply, error)
 	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
+	ListManagedAgents(context.Context, *ListManagedAgentsRequest) (*ListManagedAgentsReply, error)
 	ListMcpConfigs(context.Context, *ListMcpConfigsRequest) (*ListMcpConfigsReply, error)
+	ListSkillPackages(context.Context, *ListSkillPackagesRequest) (*ListSkillPackagesReply, error)
 	ListSkills(context.Context, *ListSkillsRequest) (*ListSkillsReply, error)
+	ListWorkspaces(context.Context, *ListWorkspacesRequest) (*ListWorkspacesReply, error)
 	RunTerminal(context.Context, *RunTerminalRequest) (*RunTerminalReply, error)
 	SaveLarkCliConfig(context.Context, *SaveLarkCliConfigRequest) (*SaveLarkCliConfigReply, error)
+	SyncWorkspace(context.Context, *SyncWorkspaceRequest) (*SyncWorkspaceReply, error)
 	TestMcpConfig(context.Context, *TestMcpConfigRequest) (*TestMcpConfigReply, error)
 	UpdateLlmConfig(context.Context, *UpdateLlmConfigRequest) (*UpdateLlmConfigReply, error)
 	UpdateLlmModelEntry(context.Context, *UpdateLlmModelEntryRequest) (*UpdateLlmModelEntryReply, error)
+	UpdateManagedAgent(context.Context, *UpdateManagedAgentRequest) (*UpdateManagedAgentReply, error)
 	UpdateMcpConfig(context.Context, *UpdateMcpConfigRequest) (*UpdateMcpConfigReply, error)
+	UpdateWorkspace(context.Context, *UpdateWorkspaceRequest) (*UpdateWorkspaceReply, error)
 	UploadSkill(context.Context, *UploadSkillRequest) (*UploadSkillReply, error)
 }
 
@@ -76,6 +100,18 @@ func RegisterAdminHTTPServer(s *http.Server, srv AdminHTTPServer) {
 	r.POST("/api/v1/admin/terminal/run", _Admin_RunTerminal0_HTTP_Handler(srv))
 	r.GET("/api/v1/admin/lark-cli/config", _Admin_GetLarkCliConfig0_HTTP_Handler(srv))
 	r.PUT("/api/v1/admin/lark-cli/config", _Admin_SaveLarkCliConfig0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/workspaces", _Admin_ListWorkspaces0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/workspaces/{id}", _Admin_GetWorkspace0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/workspaces", _Admin_CreateWorkspace0_HTTP_Handler(srv))
+	r.PUT("/api/v1/admin/workspaces/{id}", _Admin_UpdateWorkspace0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/workspaces/{id}/sync", _Admin_SyncWorkspace0_HTTP_Handler(srv))
+	r.DELETE("/api/v1/admin/workspaces/{id}", _Admin_DeleteWorkspace0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/managed-agents", _Admin_ListManagedAgents0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/managed-agents/{id}", _Admin_GetManagedAgent0_HTTP_Handler(srv))
+	r.POST("/api/v1/admin/managed-agents", _Admin_CreateManagedAgent0_HTTP_Handler(srv))
+	r.PUT("/api/v1/admin/managed-agents/{id}", _Admin_UpdateManagedAgent0_HTTP_Handler(srv))
+	r.DELETE("/api/v1/admin/managed-agents/{id}", _Admin_DeleteManagedAgent0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/skill-packages", _Admin_ListSkillPackages0_HTTP_Handler(srv))
 }
 
 func _Admin_ListSkills0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
@@ -425,23 +461,284 @@ func _Admin_SaveLarkCliConfig0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.C
 	}
 }
 
+func _Admin_ListWorkspaces0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListWorkspacesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminListWorkspaces)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListWorkspaces(ctx, req.(*ListWorkspacesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListWorkspacesReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_GetWorkspace0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetWorkspaceRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminGetWorkspace)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetWorkspace(ctx, req.(*GetWorkspaceRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GetWorkspaceReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_CreateWorkspace0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateWorkspaceRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminCreateWorkspace)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateWorkspace(ctx, req.(*CreateWorkspaceRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*CreateWorkspaceReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_UpdateWorkspace0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateWorkspaceRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminUpdateWorkspace)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateWorkspace(ctx, req.(*UpdateWorkspaceRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UpdateWorkspaceReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_SyncWorkspace0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in SyncWorkspaceRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminSyncWorkspace)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.SyncWorkspace(ctx, req.(*SyncWorkspaceRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*SyncWorkspaceReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_DeleteWorkspace0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in DeleteWorkspaceRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminDeleteWorkspace)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.DeleteWorkspace(ctx, req.(*DeleteWorkspaceRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*DeleteWorkspaceReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_ListManagedAgents0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListManagedAgentsRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminListManagedAgents)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListManagedAgents(ctx, req.(*ListManagedAgentsRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListManagedAgentsReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_GetManagedAgent0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetManagedAgentRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminGetManagedAgent)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetManagedAgent(ctx, req.(*GetManagedAgentRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GetManagedAgentReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_CreateManagedAgent0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateManagedAgentRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminCreateManagedAgent)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateManagedAgent(ctx, req.(*CreateManagedAgentRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*CreateManagedAgentReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_UpdateManagedAgent0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in UpdateManagedAgentRequest
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminUpdateManagedAgent)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.UpdateManagedAgent(ctx, req.(*UpdateManagedAgentRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*UpdateManagedAgentReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_DeleteManagedAgent0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in DeleteManagedAgentRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminDeleteManagedAgent)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.DeleteManagedAgent(ctx, req.(*DeleteManagedAgentRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*DeleteManagedAgentReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_ListSkillPackages0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListSkillPackagesRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminListSkillPackages)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListSkillPackages(ctx, req.(*ListSkillPackagesRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListSkillPackagesReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type AdminHTTPClient interface {
 	CreateLlmConfig(ctx context.Context, req *CreateLlmConfigRequest, opts ...http.CallOption) (rsp *LlmConfigItem, err error)
 	CreateLlmModelEntry(ctx context.Context, req *CreateLlmModelEntryRequest, opts ...http.CallOption) (rsp *LlmModelEntryItem, err error)
+	CreateManagedAgent(ctx context.Context, req *CreateManagedAgentRequest, opts ...http.CallOption) (rsp *CreateManagedAgentReply, err error)
 	CreateMcpConfig(ctx context.Context, req *CreateMcpConfigRequest, opts ...http.CallOption) (rsp *McpConfigItem, err error)
+	CreateWorkspace(ctx context.Context, req *CreateWorkspaceRequest, opts ...http.CallOption) (rsp *CreateWorkspaceReply, err error)
 	DeleteLlmConfig(ctx context.Context, req *DeleteLlmConfigRequest, opts ...http.CallOption) (rsp *DeleteLlmConfigReply, err error)
 	DeleteLlmModelEntry(ctx context.Context, req *DeleteLlmModelEntryRequest, opts ...http.CallOption) (rsp *DeleteLlmModelEntryReply, err error)
+	DeleteManagedAgent(ctx context.Context, req *DeleteManagedAgentRequest, opts ...http.CallOption) (rsp *DeleteManagedAgentReply, err error)
 	DeleteMcpConfig(ctx context.Context, req *DeleteMcpConfigRequest, opts ...http.CallOption) (rsp *DeleteMcpConfigReply, err error)
+	DeleteWorkspace(ctx context.Context, req *DeleteWorkspaceRequest, opts ...http.CallOption) (rsp *DeleteWorkspaceReply, err error)
 	GetLarkCliConfig(ctx context.Context, req *GetLarkCliConfigRequest, opts ...http.CallOption) (rsp *GetLarkCliConfigReply, err error)
+	GetManagedAgent(ctx context.Context, req *GetManagedAgentRequest, opts ...http.CallOption) (rsp *GetManagedAgentReply, err error)
+	GetWorkspace(ctx context.Context, req *GetWorkspaceRequest, opts ...http.CallOption) (rsp *GetWorkspaceReply, err error)
 	ListLlmConfigs(ctx context.Context, req *ListLlmConfigsRequest, opts ...http.CallOption) (rsp *ListLlmConfigsReply, err error)
+	ListManagedAgents(ctx context.Context, req *ListManagedAgentsRequest, opts ...http.CallOption) (rsp *ListManagedAgentsReply, err error)
 	ListMcpConfigs(ctx context.Context, req *ListMcpConfigsRequest, opts ...http.CallOption) (rsp *ListMcpConfigsReply, err error)
+	ListSkillPackages(ctx context.Context, req *ListSkillPackagesRequest, opts ...http.CallOption) (rsp *ListSkillPackagesReply, err error)
 	ListSkills(ctx context.Context, req *ListSkillsRequest, opts ...http.CallOption) (rsp *ListSkillsReply, err error)
+	ListWorkspaces(ctx context.Context, req *ListWorkspacesRequest, opts ...http.CallOption) (rsp *ListWorkspacesReply, err error)
 	RunTerminal(ctx context.Context, req *RunTerminalRequest, opts ...http.CallOption) (rsp *RunTerminalReply, err error)
 	SaveLarkCliConfig(ctx context.Context, req *SaveLarkCliConfigRequest, opts ...http.CallOption) (rsp *SaveLarkCliConfigReply, err error)
+	SyncWorkspace(ctx context.Context, req *SyncWorkspaceRequest, opts ...http.CallOption) (rsp *SyncWorkspaceReply, err error)
 	TestMcpConfig(ctx context.Context, req *TestMcpConfigRequest, opts ...http.CallOption) (rsp *TestMcpConfigReply, err error)
 	UpdateLlmConfig(ctx context.Context, req *UpdateLlmConfigRequest, opts ...http.CallOption) (rsp *UpdateLlmConfigReply, err error)
 	UpdateLlmModelEntry(ctx context.Context, req *UpdateLlmModelEntryRequest, opts ...http.CallOption) (rsp *UpdateLlmModelEntryReply, err error)
+	UpdateManagedAgent(ctx context.Context, req *UpdateManagedAgentRequest, opts ...http.CallOption) (rsp *UpdateManagedAgentReply, err error)
 	UpdateMcpConfig(ctx context.Context, req *UpdateMcpConfigRequest, opts ...http.CallOption) (rsp *UpdateMcpConfigReply, err error)
+	UpdateWorkspace(ctx context.Context, req *UpdateWorkspaceRequest, opts ...http.CallOption) (rsp *UpdateWorkspaceReply, err error)
 	UploadSkill(ctx context.Context, req *UploadSkillRequest, opts ...http.CallOption) (rsp *UploadSkillReply, err error)
 }
 
@@ -479,11 +776,37 @@ func (c *AdminHTTPClientImpl) CreateLlmModelEntry(ctx context.Context, in *Creat
 	return &out, err
 }
 
+func (c *AdminHTTPClientImpl) CreateManagedAgent(ctx context.Context, in *CreateManagedAgentRequest, opts ...http.CallOption) (*CreateManagedAgentReply, error) {
+	var out CreateManagedAgentReply
+	pattern := "/api/v1/admin/managed-agents"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminCreateManagedAgent))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
 func (c *AdminHTTPClientImpl) CreateMcpConfig(ctx context.Context, in *CreateMcpConfigRequest, opts ...http.CallOption) (*McpConfigItem, error) {
 	var out McpConfigItem
 	pattern := "/api/v1/admin/mcps"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationAdminCreateMcpConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) CreateWorkspace(ctx context.Context, in *CreateWorkspaceRequest, opts ...http.CallOption) (*CreateWorkspaceReply, error) {
+	var out CreateWorkspaceReply
+	pattern := "/api/v1/admin/workspaces"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminCreateWorkspace))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
@@ -518,11 +841,37 @@ func (c *AdminHTTPClientImpl) DeleteLlmModelEntry(ctx context.Context, in *Delet
 	return &out, err
 }
 
+func (c *AdminHTTPClientImpl) DeleteManagedAgent(ctx context.Context, in *DeleteManagedAgentRequest, opts ...http.CallOption) (*DeleteManagedAgentReply, error) {
+	var out DeleteManagedAgentReply
+	pattern := "/api/v1/admin/managed-agents/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminDeleteManagedAgent))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
 func (c *AdminHTTPClientImpl) DeleteMcpConfig(ctx context.Context, in *DeleteMcpConfigRequest, opts ...http.CallOption) (*DeleteMcpConfigReply, error) {
 	var out DeleteMcpConfigReply
 	pattern := "/api/v1/admin/mcps/{id}"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationAdminDeleteMcpConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) DeleteWorkspace(ctx context.Context, in *DeleteWorkspaceRequest, opts ...http.CallOption) (*DeleteWorkspaceReply, error) {
+	var out DeleteWorkspaceReply
+	pattern := "/api/v1/admin/workspaces/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminDeleteWorkspace))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "DELETE", path, nil, &out, opts...)
 	if err != nil {
@@ -544,11 +893,50 @@ func (c *AdminHTTPClientImpl) GetLarkCliConfig(ctx context.Context, in *GetLarkC
 	return &out, err
 }
 
+func (c *AdminHTTPClientImpl) GetManagedAgent(ctx context.Context, in *GetManagedAgentRequest, opts ...http.CallOption) (*GetManagedAgentReply, error) {
+	var out GetManagedAgentReply
+	pattern := "/api/v1/admin/managed-agents/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminGetManagedAgent))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) GetWorkspace(ctx context.Context, in *GetWorkspaceRequest, opts ...http.CallOption) (*GetWorkspaceReply, error) {
+	var out GetWorkspaceReply
+	pattern := "/api/v1/admin/workspaces/{id}"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminGetWorkspace))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
 func (c *AdminHTTPClientImpl) ListLlmConfigs(ctx context.Context, in *ListLlmConfigsRequest, opts ...http.CallOption) (*ListLlmConfigsReply, error) {
 	var out ListLlmConfigsReply
 	pattern := "/api/v1/admin/llm-configs"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationAdminListLlmConfigs))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) ListManagedAgents(ctx context.Context, in *ListManagedAgentsRequest, opts ...http.CallOption) (*ListManagedAgentsReply, error) {
+	var out ListManagedAgentsReply
+	pattern := "/api/v1/admin/managed-agents"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminListManagedAgents))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {
@@ -570,11 +958,37 @@ func (c *AdminHTTPClientImpl) ListMcpConfigs(ctx context.Context, in *ListMcpCon
 	return &out, err
 }
 
+func (c *AdminHTTPClientImpl) ListSkillPackages(ctx context.Context, in *ListSkillPackagesRequest, opts ...http.CallOption) (*ListSkillPackagesReply, error) {
+	var out ListSkillPackagesReply
+	pattern := "/api/v1/admin/skill-packages"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminListSkillPackages))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
 func (c *AdminHTTPClientImpl) ListSkills(ctx context.Context, in *ListSkillsRequest, opts ...http.CallOption) (*ListSkillsReply, error) {
 	var out ListSkillsReply
 	pattern := "/api/v1/admin/skills"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationAdminListSkills))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) ListWorkspaces(ctx context.Context, in *ListWorkspacesRequest, opts ...http.CallOption) (*ListWorkspacesReply, error) {
+	var out ListWorkspacesReply
+	pattern := "/api/v1/admin/workspaces"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminListWorkspaces))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {
@@ -603,6 +1017,19 @@ func (c *AdminHTTPClientImpl) SaveLarkCliConfig(ctx context.Context, in *SaveLar
 	opts = append(opts, http.Operation(OperationAdminSaveLarkCliConfig))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) SyncWorkspace(ctx context.Context, in *SyncWorkspaceRequest, opts ...http.CallOption) (*SyncWorkspaceReply, error) {
+	var out SyncWorkspaceReply
+	pattern := "/api/v1/admin/workspaces/{id}/sync"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminSyncWorkspace))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, nil, &out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -648,11 +1075,37 @@ func (c *AdminHTTPClientImpl) UpdateLlmModelEntry(ctx context.Context, in *Updat
 	return &out, err
 }
 
+func (c *AdminHTTPClientImpl) UpdateManagedAgent(ctx context.Context, in *UpdateManagedAgentRequest, opts ...http.CallOption) (*UpdateManagedAgentReply, error) {
+	var out UpdateManagedAgentReply
+	pattern := "/api/v1/admin/managed-agents/{id}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminUpdateManagedAgent))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
 func (c *AdminHTTPClientImpl) UpdateMcpConfig(ctx context.Context, in *UpdateMcpConfigRequest, opts ...http.CallOption) (*UpdateMcpConfigReply, error) {
 	var out UpdateMcpConfigReply
 	pattern := "/api/v1/admin/mcps/{id}"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationAdminUpdateMcpConfig))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, err
+}
+
+func (c *AdminHTTPClientImpl) UpdateWorkspace(ctx context.Context, in *UpdateWorkspaceRequest, opts ...http.CallOption) (*UpdateWorkspaceReply, error) {
+	var out UpdateWorkspaceReply
+	pattern := "/api/v1/admin/workspaces/{id}"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationAdminUpdateWorkspace))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "PUT", path, in, &out, opts...)
 	if err != nil {

@@ -27,6 +27,7 @@ import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
 import { AgentPlaygroundPage } from '../agent-playground';
 import { TerminalSection } from './sections/TerminalSection';
 import { LarkCliSection } from './sections/LarkCliSection';
+import { WorkspacesSection } from './sections/WorkspacesSection';
 
 type MenuKey =
   | 'intro'
@@ -40,6 +41,7 @@ type MenuKey =
   | 'agent-models'
   | 'agent-playground'
   | 'agent-profiles'
+  | 'workspace-manager'
   | 'admin-terminal'
   | 'admin-lark-cli'
   | 'engine'
@@ -59,6 +61,7 @@ const MENU_KEYS: MenuKey[] = [
   'agent-models',
   'agent-playground',
   'agent-profiles',
+  'workspace-manager',
   'admin-terminal',
   'admin-lark-cli',
 ];
@@ -67,6 +70,7 @@ function getMenuFromHash(h: string): MenuKey {
   if (h === '#/' || h === '' || h === '#') return 'intro';
   if (h.startsWith('#/terminal')) return 'admin-terminal';
   if (h.startsWith('#/lark-cli')) return 'admin-lark-cli';
+  if (h.startsWith('#/workspaces')) return 'workspace-manager';
   if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
   if (h.startsWith('#/agent/skills')) return 'agent-skills';
   if (h.startsWith('#/agent/models')) return 'agent-models';
@@ -91,6 +95,7 @@ function setHashForMenu(key: MenuKey) {
   else if (key === 'agent-mcp') window.location.hash = '#/agent/mcp';
   else if (key === 'agent-playground') window.location.hash = '#/playground';
   else if (key === 'agent-profiles') window.location.hash = '#/agent/profiles';
+  else if (key === 'workspace-manager') window.location.hash = '#/workspaces';
   else if (key === 'admin-terminal') window.location.hash = '#/terminal';
   else if (key === 'admin-lark-cli') window.location.hash = '#/lark-cli';
 }
@@ -138,6 +143,7 @@ export const AdminPanel: React.FC = () => {
     if (key === 'agent-models') return <AgentSection view="models" />;
     if (key === 'agent-mcp') return <AgentSection view="mcps" />;
     if (key === 'agent-playground') return <AgentPlaygroundPage />;
+    if (key === 'workspace-manager') return <WorkspacesSection />;
     if (key === 'admin-terminal') return <TerminalSection />;
     if (key === 'admin-lark-cli') return <LarkCliSection />;
     if (key === 'component-rules') return <ComponentsSection view="rules" />;
@@ -168,6 +174,8 @@ export const AdminPanel: React.FC = () => {
         return 'Agent Playground';
       case 'agent-profiles':
         return 'Agent 配置';
+      case 'workspace-manager':
+        return '工作区管理';
       case 'admin-terminal':
         return '终端';
       case 'admin-lark-cli':
@@ -192,7 +200,7 @@ export const AdminPanel: React.FC = () => {
       return '模型与工具';
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
     if (activeMenu === 'intro') return '工作台';
-    if (activeMenu === 'agent-playground' || activeMenu === 'agent-profiles') return '智能体';
+    if (activeMenu === 'agent-playground' || activeMenu === 'agent-profiles' || activeMenu === 'workspace-manager') return '智能体';
     if (activeMenu === 'admin-terminal' || activeMenu === 'admin-lark-cli') return '运维';
     return '系统';
   };
@@ -268,6 +276,7 @@ export const AdminPanel: React.FC = () => {
               { itemKey: 'intro', text: 'Code 助手', icon: <IconHome /> },
               { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <IconUser /> },
               { itemKey: 'agent-playground', text: 'Agent Playground', icon: <IconBranch /> },
+              { itemKey: 'workspace-manager', text: '工作区管理', icon: <IconList /> },
               { itemKey: 'admin-terminal', text: '终端', icon: <IconDesktop /> },
               { itemKey: 'admin-lark-cli', text: '飞书 CLI 配置', icon: <IconSetting /> },
               {

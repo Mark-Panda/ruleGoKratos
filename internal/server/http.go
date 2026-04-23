@@ -35,7 +35,6 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	v1.RegisterAdminHTTPServer(srv, admin)
 	service.RegisterChatHTTPRoute(srv, chat)
 	service.RegisterPlaygroundHTTPRoutes(srv, playground)
-	service.RegisterManagedAgentHTTPRoutes(srv, admin)
 	RegisterTerminalWebSocket(srv, admin, logger)
 
 	return srv

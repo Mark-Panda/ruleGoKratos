@@ -58,7 +58,7 @@ export const updateManagedAgent = async (id: number, body: ManagedAgentPayload) 
   );
 
 export const deleteManagedAgent = async (id: number) =>
-  requestJSON<{ ok: string }>(`/admin/managed-agents/${encodeURIComponent(String(id))}`, {
+  requestJSON<{ ok: boolean }>(`/admin/managed-agents/${encodeURIComponent(String(id))}`, {
     method: 'DELETE',
   });
 

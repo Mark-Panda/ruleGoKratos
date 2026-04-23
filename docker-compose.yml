@@ -17,6 +17,9 @@ services:
       # 部分模型会写成 /agents/tavily-search/...（无 skills、且 agents 复数），与上条同源目录
       - ./skills:/agents
       - ./agent_workspace:/app/agent_workspace
+      - ./code_workspace:/app/code_workspace
+      # 自动使用宿主机 SSH（免手动同步 overlay）；只读挂载更安全
+      - ${HOME}/.ssh:/root/.ssh:ro
     environment:
       # HTTP / gRPC 监听地址（容器内需 0.0.0.0；宿主机映射见 ports）
       - SERVER_HTTP_ADDR=0.0.0.0:8000
