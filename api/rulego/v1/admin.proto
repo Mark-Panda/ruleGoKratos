@@ -411,6 +411,7 @@ message ManagedAgentItem {
   bool enabled = 10;
   string created_at = 11 [json_name = "createdAt"];
   string updated_at = 12 [json_name = "updatedAt"];
+  string workspace_id = 13 [json_name = "workspaceId"];
 }
 
 message ListManagedAgentsReply {
@@ -435,6 +436,7 @@ message CreateManagedAgentRequest {
   string model_scope = 7 [json_name = "modelScope"];
   repeated int64 model_entry_ids = 8 [json_name = "modelEntryIds"];
   bool enabled = 9;
+  string workspace_id = 10 [json_name = "workspaceId"];
 }
 
 message CreateManagedAgentReply {
@@ -452,6 +454,7 @@ message UpdateManagedAgentRequest {
   string model_scope = 8 [json_name = "modelScope"];
   repeated int64 model_entry_ids = 9 [json_name = "modelEntryIds"];
   bool enabled = 10;
+  string workspace_id = 11 [json_name = "workspaceId"];
 }
 
 message UpdateManagedAgentReply {

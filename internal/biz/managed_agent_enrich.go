@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 func (uc *AgentUsecase) SetManagedAgentLoader(l ManagedAgentLoader) {
@@ -35,6 +36,13 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 	}
 	out := req
 	out.SystemPrompt = p.SystemPrompt
+	if strings.TrimSpace(p.WorkspacePrompt) != "" {
+		if strings.TrimSpace(out.SystemPrompt) == "" {
+			out.SystemPrompt = p.WorkspacePrompt
+		} else {
+			out.SystemPrompt = out.SystemPrompt + "\n\n" + p.WorkspacePrompt
+		}
+	}
 	cfgID, entryID, err := uc.managedAgentLoader.ResolveModelEntryForHarness(ctx, p)
 	if err != nil {
 		return req, err

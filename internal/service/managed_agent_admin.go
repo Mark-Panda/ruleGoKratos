@@ -21,6 +21,7 @@ type managedAgentDTO struct {
 	Name            string   `json:"name"`
 	Description     string   `json:"description"`
 	SystemPrompt    string   `json:"systemPrompt"`
+	WorkspaceID     string   `json:"workspaceId"`
 	SkillPackageIDs []string `json:"skillPackageIds"`
 	McpIDs          []int64  `json:"mcpIds"`
 	LLMConfigID     int64    `json:"llmConfigId"`
@@ -35,6 +36,7 @@ type managedAgentWriteReq struct {
 	Name            string   `json:"name"`
 	Description     string   `json:"description"`
 	SystemPrompt    string   `json:"systemPrompt"`
+	WorkspaceID     string   `json:"workspaceId"`
 	SkillPackageIDs []string `json:"skillPackageIds"`
 	McpIDs          []int64  `json:"mcpIds"`
 	LLMConfigID     int64    `json:"llmConfigId"`
@@ -81,6 +83,7 @@ func (s *AdminService) CreateManagedAgent(ctx context.Context, req *v1.CreateMan
 		Name:         strings.TrimSpace(writeReq.Name),
 		Description:  strings.TrimSpace(writeReq.Description),
 		SystemPrompt: writeReq.SystemPrompt,
+		WorkspaceID:  strings.TrimSpace(writeReq.WorkspaceID),
 		LLMConfigID:  writeReq.LLMConfigID,
 		ModelScope:   normalizeModelScope(writeReq.ModelScope),
 		Enabled:      writeReq.Enabled,
@@ -137,6 +140,7 @@ func (s *AdminService) UpdateManagedAgent(ctx context.Context, req *v1.UpdateMan
 		"name":            strings.TrimSpace(writeReq.Name),
 		"description":     strings.TrimSpace(writeReq.Description),
 		"system_prompt":   writeReq.SystemPrompt,
+		"workspace_id":    strings.TrimSpace(writeReq.WorkspaceID),
 		"skill_paths":     sp,
 		"mcp_ids":         mp,
 		"llm_config_id":   writeReq.LLMConfigID,
@@ -213,6 +217,11 @@ func (s *AdminService) validateManagedAgentPayload(ctx context.Context, req *man
 	}
 	if err := validateMcpIDsExist(ctx, req.McpIDs); err != nil {
 		return err
+	}
+	if wid := strings.TrimSpace(req.WorkspaceID); wid != "" {
+		if _, err := loadWorkspaceDTO(wid); err != nil {
+			return fmt.Errorf("工作区不存在: %s", wid)
+		}
 	}
 	return s.validateSkillPackageIDs(req.SkillPackageIDs)
 }
@@ -318,6 +327,7 @@ func managedAgentToDTO(row *dao.ManagedAgent) (*managedAgentDTO, error) {
 		Name:            row.Name,
 		Description:     row.Description,
 		SystemPrompt:    row.SystemPrompt,
+		WorkspaceID:     strings.TrimSpace(row.WorkspaceID),
 		SkillPackageIDs: pkgs,
 		McpIDs:          mcpIDs,
 		LLMConfigID:     row.LLMConfigID,
@@ -351,6 +361,7 @@ func managedAgentDTOToProto(in *managedAgentDTO) *v1.ManagedAgentItem {
 		Enabled:         in.Enabled,
 		CreatedAt:       in.CreatedAt,
 		UpdatedAt:       in.UpdatedAt,
+		WorkspaceId:     in.WorkspaceID,
 	}
 }
 
@@ -359,6 +370,7 @@ func managedAgentWriteReqFromCreate(req *v1.CreateManagedAgentRequest) managedAg
 		Name:            req.GetName(),
 		Description:     req.GetDescription(),
 		SystemPrompt:    req.GetSystemPrompt(),
+		WorkspaceID:     req.GetWorkspaceId(),
 		SkillPackageIDs: req.GetSkillPackageIds(),
 		McpIDs:          req.GetMcpIds(),
 		LLMConfigID:     req.GetLlmConfigId(),
@@ -373,6 +385,7 @@ func managedAgentWriteReqFromUpdate(req *v1.UpdateManagedAgentRequest) managedAg
 		Name:            req.GetName(),
 		Description:     req.GetDescription(),
 		SystemPrompt:    req.GetSystemPrompt(),
+		WorkspaceID:     req.GetWorkspaceId(),
 		SkillPackageIDs: req.GetSkillPackageIds(),
 		McpIDs:          req.GetMcpIds(),
 		LLMConfigID:     req.GetLlmConfigId(),

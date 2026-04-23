@@ -14,6 +14,7 @@ export interface ManagedAgentItem {
   name: string;
   description: string;
   systemPrompt: string;
+  workspaceId?: string;
   skillPackageIds: string[];
   mcpIds: number[];
   llmConfigId: number;
@@ -28,6 +29,7 @@ export interface ManagedAgentPayload {
   name: string;
   description?: string;
   systemPrompt?: string;
+  workspaceId?: string;
   skillPackageIds?: string[];
   mcpIds?: number[];
   llmConfigId: number;

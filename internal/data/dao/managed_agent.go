@@ -9,18 +9,19 @@ import (
 
 // ManagedAgent 可编排的 Agent 配置（系统提示、SKILL/MCP、模型站点与范围）。
 type ManagedAgent struct {
-	ID                  int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	Name                string     `gorm:"column:name;size:255;not null"`
-	Description         string     `gorm:"column:description;type:text"`
-	SystemPrompt        string     `gorm:"column:system_prompt;type:text"`
-	SkillPathsJSON      string     `gorm:"column:skill_paths;type:text"`       // JSON []string，存技能包 id（路径首段）；读取时兼容旧版文件路径
-	McpIDsJSON          string     `gorm:"column:mcp_ids;type:text"`           // JSON []int64
-	LLMConfigID         int64      `gorm:"column:llm_config_id"`
-	ModelScope          string     `gorm:"column:model_scope;size:16;not null"` // all | explicit
-	ModelEntryIDsJSON   string     `gorm:"column:model_entry_ids;type:text"`   // JSON []int64，explicit 时使用
-	Enabled             bool       `gorm:"column:enabled"`
-	CreatedAt           *time.Time `gorm:"column:created_at"`
-	UpdatedAt           *time.Time `gorm:"column:updated_at"`
+	ID                int64      `gorm:"column:id;primaryKey;autoIncrement"`
+	Name              string     `gorm:"column:name;size:255;not null"`
+	Description       string     `gorm:"column:description;type:text"`
+	SystemPrompt      string     `gorm:"column:system_prompt;type:text"`
+	SkillPathsJSON    string     `gorm:"column:skill_paths;type:text"` // JSON []string，存技能包 id（路径首段）；读取时兼容旧版文件路径
+	McpIDsJSON        string     `gorm:"column:mcp_ids;type:text"`     // JSON []int64
+	LLMConfigID       int64      `gorm:"column:llm_config_id"`
+	ModelScope        string     `gorm:"column:model_scope;size:16;not null"`              // all | explicit
+	ModelEntryIDsJSON string     `gorm:"column:model_entry_ids;type:text"`                 // JSON []int64，explicit 时使用
+	WorkspaceID       string     `gorm:"column:workspace_id;size:128;not null;default:''"` // 关联工作区 id（可空）
+	Enabled           bool       `gorm:"column:enabled"`
+	CreatedAt         *time.Time `gorm:"column:created_at"`
+	UpdatedAt         *time.Time `gorm:"column:updated_at"`
 }
 
 func (ManagedAgent) TableName() string {

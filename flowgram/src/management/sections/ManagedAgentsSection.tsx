@@ -40,6 +40,7 @@ import {
   type ManagedAgentPayload,
   type SkillPackageItem,
 } from '../../services/api-managed-agents';
+import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
 
 const { Text, Title } = Typography;
 
@@ -56,6 +57,7 @@ function emptyPayload(): ManagedAgentPayload {
     name: '',
     description: '',
     systemPrompt: '',
+    workspaceId: '',
     skillPackageIds: [],
     mcpIds: [],
     llmConfigId: 0,
@@ -71,6 +73,7 @@ export const ManagedAgentsSection: React.FC = () => {
   const [skillPackages, setSkillPackages] = useState<SkillPackageItem[]>([]);
   const [mcps, setMcps] = useState<MCPConfigItem[]>([]);
   const [llmConfigs, setLlmConfigs] = useState<LlmConfigItem[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [skillPackageFilter, setSkillPackageFilter] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,16 +84,18 @@ export const ManagedAgentsSection: React.FC = () => {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [agents, pkgRes, mcpList, llm] = await Promise.all([
+      const [agents, pkgRes, mcpList, llm, ws] = await Promise.all([
         listManagedAgents(),
         listSkillPackages(),
         listMCPConfigs(),
         listLlmConfigs(),
+        listWorkspaces(),
       ]);
       setRows(agents);
       setSkillPackages(pkgRes.items || []);
       setMcps(Array.isArray(mcpList) ? mcpList : []);
       setLlmConfigs(Array.isArray(llm) ? llm : []);
+      setWorkspaces(Array.isArray(ws) ? ws : []);
     } catch (e) {
       Toast.error(`加载失败：${e}`);
     } finally {
@@ -152,6 +157,7 @@ export const ManagedAgentsSection: React.FC = () => {
       name: r.name,
       description: r.description || '',
       systemPrompt: r.systemPrompt || '',
+      workspaceId: r.workspaceId || '',
       skillPackageIds: [...(r.skillPackageIds || [])],
       mcpIds: normalizeMcpIdList(r.mcpIds),
       llmConfigId: r.llmConfigId,
@@ -241,6 +247,18 @@ export const ManagedAgentsSection: React.FC = () => {
         ) : (
           <Tag color="green">站点下全部启用模型</Tag>
         ),
+    },
+    {
+      title: '工作区',
+      key: 'workspace',
+      width: 220,
+      ellipsis: true,
+      render: (_: unknown, r: ManagedAgentItem) => {
+        const wid = (r.workspaceId || '').trim();
+        if (!wid) return '—';
+        const matched = workspaces.find((w) => (w.id || '').trim() === wid);
+        return matched ? `${matched.name}（${matched.id}）` : wid;
+      },
     },
     {
       title: '技能包',
@@ -344,6 +362,27 @@ export const ManagedAgentsSection: React.FC = () => {
               onChange={v => setForm(f => ({ ...f, systemPrompt: v }))}
               placeholder="定义 Agent 的角色与行为约束"
             />
+            <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
+              若选择工作区，系统会在运行时自动把“工作区使用模式”提示注入到系统提示词中。
+            </Text>
+          </div>
+
+          <div style={{ width: '100%' }}>
+            <Text type="tertiary">工作区（可选）</Text>
+            <Select
+              style={{ width: '100%', marginTop: 8 }}
+              value={form.workspaceId || ''}
+              onChange={(v) => setForm((f) => ({ ...f, workspaceId: String(v || '') }))}
+              placeholder="不选择则不注入工作区使用模式"
+              filter
+            >
+              <Select.Option value="">不绑定工作区</Select.Option>
+              {workspaces.map((w) => (
+                <Select.Option key={w.id} value={w.id} text={`${w.name}（${w.id}）`}>
+                  {w.name}（{w.id}）
+                </Select.Option>
+              ))}
+            </Select>
           </div>
 
           <Divider margin="12px" />

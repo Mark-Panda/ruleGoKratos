@@ -10,6 +10,8 @@ import (
 type ManagedAgentProfile struct {
 	Enabled         bool
 	SystemPrompt    string
+	WorkspaceID     string
+	WorkspacePrompt string
 	SkillPackageIDs []string
 	McpIDs          []int64
 	LLMConfigID     int64

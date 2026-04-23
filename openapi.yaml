@@ -586,6 +586,8 @@ components:
                         type: string
                 enabled:
                     type: boolean
+                workspaceId:
+                    type: string
         rulego.v1.CreateMcpConfigRequest:
             type: object
             properties:
@@ -801,6 +803,8 @@ components:
                     type: string
                 updatedAt:
                     type: string
+                workspaceId:
+                    type: string
         rulego.v1.McpConfigItem:
             type: object
             properties:
@@ -971,6 +975,8 @@ components:
                         type: string
                 enabled:
                     type: boolean
+                workspaceId:
+                    type: string
         rulego.v1.UpdateMcpConfigReply:
             type: object
             properties: {}
