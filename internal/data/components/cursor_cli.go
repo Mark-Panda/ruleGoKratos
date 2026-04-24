@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -32,7 +32,6 @@ type CursorCliDsl struct {
 	promptTpl        el.Template // PrintMode 时接在 -p 后的任务文案
 	outputFormatTpl  el.Template // PrintMode 时追加 --output-format（仅与 -p 同时生效）；空则视为 text
 	modelTpl         el.Template // 非空则追加 --model <值>
-	apiKeyTpl     el.Template // 渲染后非空则注入 argv：--api-key <值>（官方身份验证方式之一）
 	workspaceTpl  el.Template // 渲染后非空则注入 argv：--workspace <路径>（指定代码仓根，作为 Agent 上下文）
 	workTpl       el.Template
 	hasVar        bool
@@ -53,11 +52,12 @@ type CursorCliConfiguration struct {
 	Model string `json:"model"`
 	// OutputFormat 在 PrintMode 时追加 --output-format（text / json / stream-json）；空则按 text 处理（与 CLI 文档默认一致）。
 	OutputFormat string `json:"outputFormat"`
-	// ApiKey 非空时由运行时在 Args 前插入 --api-key；配置为空时使用进程环境变量 CURSOR_API_KEY（与官方文档一致）。
-	ApiKey string `json:"apiKey"`
 	// WorkspacePath 非空时插入 --workspace <路径>，指定「代码仓库根」供 CLI 解析规则与代码上下文（区别于 WorkDir 的进程 cwd）。
 	WorkspacePath string `json:"workspacePath"`
-	Log           bool   `json:"log"`
+	// Worktree 为 true 时注入 --worktree（无参数值），让 Agent 在新的 Git worktree 中运行而非直接编辑当前 checkout；
+	// 配合 --workspace 使用可显式指定仓库根（见官方文档）。
+	Worktree bool `json:"worktree"`
+	Log      bool `json:"log"`
 	ReplaceData   bool   `json:"replaceData"`
 	// WorkDir 子进程操作系统工作目录（cmd.Dir）；留空则用 metadata.workDir。
 	WorkDir   string `json:"workDir"`
@@ -119,14 +119,6 @@ func (c *CursorCliDsl) Init(_ types.Config, configuration types.Configuration) e
 		}
 	}
 	c.argsTpl = argsTpl
-	akTpl, err := el.NewTemplate(c.Config.ApiKey)
-	if err != nil {
-		return err
-	}
-	c.apiKeyTpl = akTpl
-	if akTpl.HasVar() {
-		c.hasVar = true
-	}
 	wsPathTpl, err := el.NewTemplate(c.Config.WorkspacePath)
 	if err != nil {
 		return err
@@ -170,23 +162,14 @@ func (c *CursorCliDsl) Init(_ types.Config, configuration types.Configuration) e
 	return nil
 }
 
-// resolveAPIKey 优先使用配置的 apiKey（模板渲染）；用户未配置或为空时改用环境变量 CURSOR_API_KEY。
-func resolveAPIKey(evn map[string]interface{}, apiKeyTpl el.Template) string {
-	k := strings.TrimSpace(apiKeyTpl.ExecuteAsString(evn))
-	if k != "" {
-		return k
-	}
-	return strings.TrimSpace(os.Getenv("CURSOR_API_KEY"))
-}
-
-// buildAgentArgv 在业务 Args 之前插入官方全局选项：--api-key、--workspace（见 Cursor CLI 参数文档）。
-func buildAgentArgv(evn map[string]interface{}, apiKeyTpl, workspaceTpl el.Template, userArgs []string) []string {
+// buildAgentArgv 在业务 Args 之前插入官方全局选项：--workspace、--worktree（见 Cursor CLI 参数文档）。
+func buildAgentArgv(evn map[string]interface{}, workspaceTpl el.Template, worktree bool, userArgs []string) []string {
 	out := make([]string, 0, len(userArgs)+4)
-	if k := resolveAPIKey(evn, apiKeyTpl); k != "" {
-		out = append(out, "--api-key", k)
-	}
 	if ws := strings.TrimSpace(workspaceTpl.ExecuteAsString(evn)); ws != "" {
 		out = append(out, "--workspace", ws)
+	}
+	if worktree {
+		out = append(out, "--worktree")
 	}
 	out = append(out, userArgs...)
 	return out
@@ -245,13 +228,28 @@ func (c *CursorCliDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		return
 	}
 	midArgs := c.buildCliMidArgs(evn)
-	args := buildAgentArgv(evn, c.apiKeyTpl, c.workspaceTpl, midArgs)
+	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, midArgs)
 	workDir := strings.TrimSpace(c.workTpl.ExecuteAsString(evn))
 	if workDir == "" {
 		workDir = msg.Metadata.GetValue(action.KeyWorkDir)
 	}
 
 	runCtx := context.Background()
+	if c.Config.PrintMode {
+		statusArgv := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, []string{"status"})
+		sOut, sErr, stErr := runAgentStatusCheck(runCtx, bin, statusArgv, workDir)
+		combined := strings.TrimSpace(strings.TrimSpace(sOut) + "\n" + strings.TrimSpace(sErr))
+		if stErr != nil {
+			ctx.TellFailure(msg, fmt.Errorf("cursorCli: agent status 预检失败（无法判断 Cursor CLI 是否已登录，常见于未安装 agent、PATH 错误或 CLI 报错）: %w; stdout=%q; stderr=%q",
+				stErr, cursorAgentTruncateForErr(sOut, 2000), cursorAgentTruncateForErr(sErr, 2000)))
+			return
+		}
+		if !cursorAgentStatusLooksAuthed(combined) {
+			ctx.TellFailure(msg, fmt.Errorf("cursorCli: Cursor CLI 未登录或 agent status 未显示已登录。无头 -p 任务需要先认证：请在运行环境执行 agent login（或配置 CURSOR_API_KEY 等官方支持的方式）。当前 agent status 输出=%q",
+				cursorAgentTruncateForErr(combined, 2000)))
+			return
+		}
+	}
 	var cancel context.CancelFunc
 	if c.Config.TimeoutMs > 0 {
 		runCtx, cancel = context.WithTimeout(runCtx, time.Duration(c.Config.TimeoutMs)*time.Millisecond)
@@ -282,7 +280,7 @@ func (c *CursorCliDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		return
 	}
 	if err := cmd.Wait(); err != nil {
-		ctx.TellFailure(msg, err)
+		ctx.TellFailure(msg, cursorAgentWrapExecErr("cursorCli", err, stdoutBuf.String(), stderrBuf.String()))
 		return
 	}
 	if c.Config.ReplaceData {
@@ -307,6 +305,6 @@ type agentCliDebugWriter struct {
 
 func (w *agentCliDebugWriter) Write(p []byte) (n int, err error) {
 	w.msg.SetData(string(p))
-	w.ctx.Config().OnDebug(w.chainID, types.Log, w.ctx.GetSelfId(), w.msg, w.relationType, nil)
+	w.ctx.OnDebug(w.chainID, types.Log, w.ctx.GetSelfId(), w.msg, w.relationType, nil)
 	return len(p), nil
 }

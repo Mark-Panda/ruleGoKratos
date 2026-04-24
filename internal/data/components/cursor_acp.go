@@ -33,7 +33,6 @@ type CursorAcpDsl struct {
 	pathTpl       el.Template
 	argsTpl       []el.Template
 	stdinLinesTpl []el.Template
-	apiKeyTpl     el.Template // 非空则注入 --api-key（与 CLI 一致）
 	workspaceTpl  el.Template // 非空则注入 --workspace（代码仓根 / 上下文）
 	workTpl       el.Template
 	taskTpl       el.Template // 简易模式 session/prompt 文案
@@ -44,15 +43,15 @@ type CursorAcpDsl struct {
 type CursorAcpConfiguration struct {
 	AgentPath  string `json:"agentPath"`
 	CursorPath string `json:"cursorPath"`
-	// Args 须以 acp 为首项；勿手写 --api-key/--workspace，请用 ApiKey、WorkspacePath。
+	// Args 须以 acp 为首项；勿手写 --workspace，请用 WorkspacePath。
 	Args       []string `json:"args"`
 	// StdinLines 每行一条 JSON-RPC；用户要说的内容在对应方法的 JSON 内（如 session/prompt 的 params），非独立配置键。
 	StdinLines []string `json:"stdinLines"`
-	// ApiKey 非空时在 argv 最前插入 --api-key；配置为空时使用环境变量 CURSOR_API_KEY（参见身份验证文档）。
-	ApiKey string `json:"apiKey"`
 	// WorkspacePath 非空时插入 --workspace，指定仓库根目录（与「在命令行界面中使用 Agent」文档一致）。
 	WorkspacePath string `json:"workspacePath"`
-	Log           bool   `json:"log"`
+	// Worktree 为 true 时注入 --worktree（无参数值），让 Agent 在新的 Git worktree 中运行而非直接编辑当前 checkout。
+	Worktree bool `json:"worktree"`
+	Log      bool `json:"log"`
 	ReplaceData   bool   `json:"replaceData"`
 	// WorkDir 子进程 cwd；留空则用 metadata.workDir。
 	WorkDir   string `json:"workDir"`
@@ -145,14 +144,6 @@ func (c *CursorAcpDsl) Init(_ types.Config, configuration types.Configuration) e
 			}
 		}
 	}
-	akTpl, err := el.NewTemplate(c.Config.ApiKey)
-	if err != nil {
-		return err
-	}
-	c.apiKeyTpl = akTpl
-	if akTpl.HasVar() {
-		c.hasVar = true
-	}
 	wsPathTpl, err := el.NewTemplate(c.Config.WorkspacePath)
 	if err != nil {
 		return err
@@ -170,6 +161,24 @@ func (c *CursorAcpDsl) Init(_ types.Config, configuration types.Configuration) e
 		c.hasVar = true
 	}
 	return nil
+}
+
+// cursorAcpPreflightAgentLoggedIn 执行 agent status；未登录或 CLI 异常时 TellFailure 并返回 false。
+func (c *CursorAcpDsl) cursorAcpPreflightAgentLoggedIn(ctx types.RuleContext, msg types.RuleMsg, bin string, evn map[string]interface{}, workDir string) bool {
+	statusArgv := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, []string{"status"})
+	sOut, sErr, stErr := runAgentStatusCheck(context.Background(), bin, statusArgv, workDir)
+	combined := strings.TrimSpace(strings.TrimSpace(sOut) + "\n" + strings.TrimSpace(sErr))
+	if stErr != nil {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: agent status 预检失败（无法判断 Cursor CLI 是否已登录，常见于未安装 agent、PATH 错误或 CLI 报错）: %w; stdout=%q; stderr=%q",
+			stErr, cursorAgentTruncateForErr(sOut, 2000), cursorAgentTruncateForErr(sErr, 2000)))
+		return false
+	}
+	if !cursorAgentStatusLooksAuthed(combined) {
+		ctx.TellFailure(msg, fmt.Errorf("cursorAcp: Cursor CLI 未登录或 agent status 未显示已登录。执行 agent acp 前请先执行 agent login（或配置 CURSOR_API_KEY 等）。当前 agent status 输出=%q",
+			cursorAgentTruncateForErr(combined, 2000)))
+		return false
+	}
+	return true
 }
 
 func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
@@ -197,7 +206,7 @@ func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		ctx.TellFailure(msg, errors.New("cursorAcp: args 首项须为 acp"))
 		return
 	}
-	args := buildAgentArgv(evn, c.apiKeyTpl, c.workspaceTpl, userArgs)
+	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, userArgs)
 	stdinLines := make([]string, 0, len(c.stdinLinesTpl))
 	for _, t := range c.stdinLinesTpl {
 		stdinLines = append(stdinLines, t.ExecuteAsString(evn))
@@ -209,6 +218,9 @@ func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	workDir := strings.TrimSpace(c.workTpl.ExecuteAsString(evn))
 	if workDir == "" {
 		workDir = msg.Metadata.GetValue(action.KeyWorkDir)
+	}
+	if !c.cursorAcpPreflightAgentLoggedIn(ctx, msg, bin, evn, workDir) {
+		return
 	}
 
 	timeout := c.Config.TimeoutMs
@@ -292,10 +304,11 @@ func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	wg.Wait()
 	if waitErr != nil {
 		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-			ctx.TellFailure(msg, fmt.Errorf("cursorAcp: 超时 (%d ms): %w", timeout, waitErr))
+			ctx.TellFailure(msg, fmt.Errorf("cursorAcp: 超时 (%d ms): %w | stderr=%q", timeout, waitErr,
+				cursorAgentTruncateForErr(stderrBuf.String(), 4000)))
 			return
 		}
-		ctx.TellFailure(msg, waitErr)
+		ctx.TellFailure(msg, cursorAgentWrapExecErr("cursorAcp", waitErr, stdoutBuf.String(), stderrBuf.String()))
 		return
 	}
 	if c.Config.ReplaceData {
@@ -368,7 +381,7 @@ func (c *CursorAcpDsl) onMsgSimpleMode(ctx types.RuleContext, msg types.RuleMsg,
 		ctx.TellFailure(msg, errors.New("cursorAcp: args 首项须为 acp"))
 		return
 	}
-	args := buildAgentArgv(evn, c.apiKeyTpl, c.workspaceTpl, userArgs)
+	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, userArgs)
 	task := strings.TrimSpace(c.taskTpl.ExecuteAsString(evn))
 	if task == "" {
 		ctx.TellFailure(msg, errors.New("cursorAcp: 简易模式下请填写「任务说明」（或关闭简易模式自行配置 JSON-RPC 行）"))
@@ -377,6 +390,9 @@ func (c *CursorAcpDsl) onMsgSimpleMode(ctx types.RuleContext, msg types.RuleMsg,
 	workDir := strings.TrimSpace(c.workTpl.ExecuteAsString(evn))
 	if workDir == "" {
 		workDir = msg.Metadata.GetValue(action.KeyWorkDir)
+	}
+	if !c.cursorAcpPreflightAgentLoggedIn(ctx, msg, bin, evn, workDir) {
+		return
 	}
 	timeout := c.Config.TimeoutMs
 	if timeout <= 0 {
@@ -523,10 +539,11 @@ func (c *CursorAcpDsl) onMsgSimpleMode(ctx types.RuleContext, msg types.RuleMsg,
 	stderrWg.Wait()
 	if waitErr != nil {
 		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
-			ctx.TellFailure(msg, fmt.Errorf("cursorAcp: 超时 (%d ms): %w", timeout, waitErr))
+			ctx.TellFailure(msg, fmt.Errorf("cursorAcp: 超时 (%d ms): %w | stderr=%q", timeout, waitErr,
+				cursorAgentTruncateForErr(stderrBuf.String(), 4000)))
 			return
 		}
-		ctx.TellFailure(msg, waitErr)
+		ctx.TellFailure(msg, cursorAgentWrapExecErr("cursorAcp", waitErr, "", stderrBuf.String()))
 		return
 	}
 	if c.Config.ReplaceData {

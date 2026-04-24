@@ -16,7 +16,7 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLaptop,
     description:
-      '无头调用：打印模式 + 任务说明 + 输出格式（text/json/stream-json）+ 模型下拉，对应 agent -p "…" --output-format …；除 auto 外追加 --model。密钥用 apiKey 或环境变量；仓库根用 workspacePath。「额外参数」仅作补充。',
+      '无头调用：打印模式 + 任务说明 + 输出格式（text/json/stream-json）+ 模型下拉，对应 agent -p "…" --output-format …；除 auto 外追加 --model。仓库根用 workspacePath。「额外参数」仅作补充。',
   },
   meta: {
     defaultPorts: [
@@ -42,13 +42,13 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
         positionType: 'middle',
         inputsValues: {
           agentPath: { type: 'constant', content: 'agent' },
-          apiKey: { type: 'template', content: '' },
           model: { type: 'constant', content: 'auto' },
           prompt: {
             type: 'template',
             content: 'find and fix performance issues',
           },
           workspacePath: { type: 'template', content: '' },
+          worktree: { type: 'constant', content: false },
           workDir: { type: 'template', content: '' },
           outputFormat: { type: 'constant', content: 'text' },
           printMode: { type: 'constant', content: true },
@@ -67,15 +67,6 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
                 label: 'agent 可执行文件',
                 description:
                   '安装后多为 ~/.local/bin/agent（见官方安装文档）；留空或 agent 表示 PATH；后端允许 basename 为 agent 或 cursor',
-              },
-            },
-            apiKey: {
-              type: 'string',
-              extra: {
-                label: 'API 密钥（--api-key）',
-                formComponent: 'prompt-editor',
-                description:
-                  '非空时插入 --api-key；留空则由运行进程读取环境变量 CURSOR_API_KEY 并同样以 --api-key 传入。建议用 ${metadata.xxx} 注入，避免明文落库。',
               },
             },
             model: {
@@ -113,6 +104,14 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
                 formComponent: 'prompt-editor',
                 description:
                   '指定代码仓库根目录，Agent 以此作为代码上下文（官方全局参数 --workspace）。示例：/path/to/repo 或 ${metadata.repoRoot}。与「进程工作目录」不同：后者是子进程 cwd（workDir/metadata.workDir）。',
+              },
+            },
+            worktree: {
+              type: 'boolean',
+              extra: {
+                label: 'Git Worktree（--worktree）',
+                description:
+                  '开启后注入 --worktree，让 Agent 在新建的 Git worktree 中运行，而非直接编辑当前 checkout。Cursor 会在 ~/.cursor/worktrees 下自动创建并按规则清理。可与「工作区路径」配合使用显式指定仓库根。',
               },
             },
             workDir: {

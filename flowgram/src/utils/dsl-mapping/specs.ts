@@ -502,10 +502,10 @@ export const cursorCliMappingSpec: NodeMappingSpec = {
       defaultValue: 'text',
     },
     { inputKey: 'model', dslKey: 'model', valueType: 'template', defaultValue: '' },
-    // 非空时插入 --api-key；留空则运行时读 CURSOR_API_KEY；可用 ${metadata.xxx}，勿硬编码进仓库。
-    { inputKey: 'apiKey', dslKey: 'apiKey', valueType: 'template', defaultValue: '' },
     // 非空时插入 --workspace（仓库根 / 代码上下文）；与 workDir（进程 cwd）不同。
     { inputKey: 'workspacePath', dslKey: 'workspacePath', valueType: 'template', defaultValue: '' },
+    // true 时插入 --worktree（无参数值），让 Agent 在新 Git worktree 中运行；可配合 --workspace 使用。
+    { inputKey: 'worktree', dslKey: 'worktree', valueType: 'boolean', defaultValue: false },
     { inputKey: 'log', dslKey: 'log', valueType: 'boolean', defaultValue: false },
     { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
     { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
@@ -595,8 +595,8 @@ export const cursorAcpMappingSpec: NodeMappingSpec = {
     { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
     { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: ['acp'] },
     { inputKey: 'stdinLines', dslKey: 'stdinLines', valueType: 'json', defaultValue: [] },
-    { inputKey: 'apiKey', dslKey: 'apiKey', valueType: 'template', defaultValue: '' },
     { inputKey: 'workspacePath', dslKey: 'workspacePath', valueType: 'template', defaultValue: '' },
+    { inputKey: 'worktree', dslKey: 'worktree', valueType: 'boolean', defaultValue: false },
     { inputKey: 'log', dslKey: 'log', valueType: 'boolean', defaultValue: false },
     { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
     { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },

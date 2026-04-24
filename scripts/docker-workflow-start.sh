@@ -17,6 +17,15 @@ for _ in $(seq 1 90); do
     exit 1
   fi
   if curl -s -o /dev/null --connect-timeout 1 --max-time 3 "http://127.0.0.1:8000/" 2>/dev/null; then
+    # 后台监控 server 进程：一旦 server 崩溃就停止 nginx，
+    # 让容器以非零码退出，从而触发 Docker restart: always
+    (
+      while kill -0 "$backend_pid" 2>/dev/null; do
+        sleep 5
+      done
+      echo "ERROR: backend (pid=$backend_pid) died, stopping nginx to trigger container restart" >&2
+      nginx -s stop 2>/dev/null || true
+    ) &
     exec nginx -g "daemon off;"
   fi
   sleep 1

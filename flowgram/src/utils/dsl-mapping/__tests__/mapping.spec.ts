@@ -773,7 +773,6 @@ describe('remaining node specs round-trip', () => {
             outputFormat: { content: 'json' },
             prompt: { content: 'find and fix performance issues' },
             model: { content: 'gpt-5.2' },
-            apiKey: { content: 'sk-from-metadata' },
             workspacePath: { content: '/data/repo' },
             log: { content: true },
             replaceData: { content: false },
@@ -791,7 +790,6 @@ describe('remaining node specs round-trip', () => {
       outputFormat: 'json',
       prompt: 'find and fix performance issues',
       model: 'gpt-5.2',
-      apiKey: 'sk-from-metadata',
       workspacePath: '/data/repo',
       log: true,
       replaceData: false,
@@ -825,7 +823,6 @@ describe('remaining node specs round-trip', () => {
             agentPath: { content: 'agent' },
             args: { content: ['acp'] },
             stdinLines: { content: ['{"jsonrpc":"2.0","id":1,"method":"ping"}'] },
-            apiKey: { content: 'k' },
             workspacePath: { content: '/ws' },
             log: { content: false },
             replaceData: { content: true },
@@ -840,7 +837,6 @@ describe('remaining node specs round-trip', () => {
       agentPath: 'agent',
       args: ['acp'],
       stdinLines: ['{"jsonrpc":"2.0","id":1,"method":"ping"}'],
-      apiKey: 'k',
       workspacePath: '/ws',
       timeoutMs: 90000,
     });
@@ -1315,7 +1311,6 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
                 model: { type: 'template', content: '' },
                 outputFormat: { type: 'constant', content: 'text' },
                 args: { type: 'constant', content: ['--version'] },
-                apiKey: { type: 'template', content: '' },
                 workspacePath: { type: 'template', content: '/repo/root' },
                 log: { type: 'constant', content: false },
                 replaceData: { type: 'constant', content: true },
@@ -1388,7 +1383,6 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
                 agentPath: { type: 'constant', content: 'agent' },
                 args: { type: 'constant', content: ['acp'] },
                 stdinLines: { type: 'constant', content: [initLine] },
-                apiKey: { type: 'template', content: 'test-key' },
                 workspacePath: { type: 'template', content: '/repo/acp' },
                 log: { type: 'constant', content: false },
                 replaceData: { type: 'constant', content: true },
@@ -1409,13 +1403,11 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     expect(meta?.type).toBe('x/cursorAcp');
     expect(meta.configuration.args).toEqual(['acp']);
     expect(meta.configuration.stdinLines).toEqual([initLine]);
-    expect(meta.configuration.apiKey).toBe('test-key');
     expect(meta.configuration.workspacePath).toBe('/repo/acp');
 
     const back = buildDocumentFromRuleChainJSON(parsed);
     const node = back.nodes.find((n: any) => n.id === 'acp1');
     expect((node as any)?.data?.inputsValues?.stdinLines?.content).toEqual([initLine]);
-    expect((node as any)?.data?.inputsValues?.apiKey?.content).toBe('test-key');
     expect((node as any)?.data?.inputsValues?.workspacePath?.content).toBe('/repo/acp');
     expect((node as any)?.data?.inputsValues?.timeoutMs?.content).toBe(60000);
   });

@@ -14,8 +14,8 @@ const CURSOR_ACP_FIELD_ORDER: readonly string[] = [
   'acpSimpleMode',
   'acpTask',
   'agentPath',
-  'apiKey',
   'workspacePath',
+  'worktree',
   'workDir',
   'replaceData',
   'timeoutMs',
@@ -29,8 +29,7 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
     <FormHeader />
     <FormContent>
       <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 8px' }}>
-        简易模式打开时：填写「API 密钥」与「任务说明」即可；引擎会用 API Key 启动
-        CLI（--api-key），并按官方 ACP 流程发送 JSON-RPC。关闭简易模式后可自行编辑「stdin JSON-RPC
+        简易模式打开时：填写「任务说明」即可；引擎会按官方 ACP 流程发送 JSON-RPC。关闭简易模式后可自行编辑「stdin JSON-RPC
         行」。文档：{' '}
         <a href="https://cursor.com/cn/docs/cli/acp" target="_blank" rel="noreferrer">
           cursor.com/docs/cli/acp

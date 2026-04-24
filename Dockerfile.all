@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM docker.m.daocloud.io/node:22 AS frontend-builder
+FROM node:22 AS frontend-builder
 WORKDIR /web
 
 # Set npm registry for faster installation in China
@@ -14,7 +14,7 @@ COPY flowgram/ .
 RUN npm run build:prod
 
 # Stage 2: Build Backend
-FROM docker.m.daocloud.io/golang:1.24 AS backend-builder
+FROM golang:1.24 AS backend-builder
 
 COPY . /src
 WORKDIR /src
@@ -24,7 +24,7 @@ RUN GOPROXY=https://goproxy.cn make build
 
 # Stage 3: Feishu / Lark CLI (@larksuite/cli, npm global)
 # 使用与 frontend-builder 相同的 node:22，便于复用镜像层并避免单独拉 node:*-slim 时偶发的镜像站 EOF
-FROM docker.m.daocloud.io/node:22 AS lark-cli-installer
+FROM node:22 AS lark-cli-installer
 # npx skills add 内部 git clone 固定 60s 超时；慢网易失败。改为系统 git clone（lowSpeed* 放宽）+ skills add 本地路径。
 # 无法访问 GitHub 时自行指定镜像，例如：--build-arg LARK_CLI_GIT_URL=https://gitclone.com/github.com/larksuite/cli.git
 ARG LARK_CLI_GIT_URL=https://github.com/larksuite/cli.git
@@ -46,7 +46,7 @@ RUN npm config set registry https://registry.npmmirror.com \
     || (echo "skills add failed: missing /root/.agents/skills"; ls -la /root/.agents/skills /root/.claude/skills 2>&1; exit 1)
 
 # Stage 4: Final Image
-FROM docker.m.daocloud.io/debian:stable-slim
+FROM debian:stable-slim
 
 # Replace sources with Aliyun mirror for speed in China
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \

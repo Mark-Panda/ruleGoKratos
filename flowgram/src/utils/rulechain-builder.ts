@@ -922,7 +922,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   type: 'boolean',
                   extra: {
                     label: '打印模式（-p）',
-                    description: '开启后插入 -p；任务说明、模型用下方独立字段，与 apiKey 同级配置',
+                    description: '开启后插入 -p；任务说明、模型用下方独立字段',
                   },
                 },
                 prompt: {
@@ -949,7 +949,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   extra: {
                     label: '模型（--model）',
                     formComponent: 'prompt-editor',
-                    description: '非空追加 --model <值>；与 apiKey 一样单独配置',
+                    description: '非空追加 --model <值>；单独配置',
                   },
                 },
                 agentPath: {
@@ -960,15 +960,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                       '官方 CLI 为 agent（默认 ~/.local/bin/agent 或 PATH）；后端允许 basename 为 agent 或 cursor',
                   },
                 },
-                apiKey: {
-                  type: 'string',
-                  extra: {
-                    label: 'API 密钥（--api-key）',
-                    formComponent: 'prompt-editor',
-                    description:
-                      '非空时插入 --api-key；留空则后端读取进程环境变量 CURSOR_API_KEY 并注入。建议 ${metadata.xxx}',
-                  },
-                },
                 workspacePath: {
                   type: 'string',
                   extra: {
@@ -976,6 +967,14 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     formComponent: 'prompt-editor',
                     description:
                       '代码仓库根目录，作为 Agent 代码上下文；与 workDir（进程 cwd）不同',
+                  },
+                },
+                worktree: {
+                  type: 'boolean',
+                  extra: {
+                    label: 'Git Worktree（--worktree）',
+                    description:
+                      '开启后注入 --worktree，让 Agent 在新建的 Git worktree 中运行，而非直接编辑当前 checkout',
                   },
                 },
                 workDir: {
@@ -1024,7 +1023,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     type: 'constant',
                     content: agentPathFallback,
                   },
-                  apiKey: { type: 'template', content: String((cfg as any).apiKey ?? '') },
+                  worktree: { type: 'constant', content: !!(cfg as any).worktree },
                   workspacePath: {
                     type: 'template',
                     content: String((cfg as any).workspacePath ?? ''),
@@ -1064,21 +1063,20 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                       '每行一条 JSON-RPC。任务/说明放在 session/prompt（等）那一行的 params 里；支持 ${msg.*}。须至少一行。',
                   },
                 },
-                apiKey: {
-                  type: 'string',
-                  extra: {
-                    label: 'API 密钥（--api-key）',
-                    formComponent: 'prompt-editor',
-                    description:
-                      '非空时插入 --api-key；留空则使用环境变量 CURSOR_API_KEY。建议 ${metadata.xxx}',
-                  },
-                },
                 workspacePath: {
                   type: 'string',
                   extra: {
                     label: '工作区路径（--workspace）',
                     formComponent: 'prompt-editor',
                     description: '非空时插入 --workspace，指定仓库根（代码上下文）',
+                  },
+                },
+                worktree: {
+                  type: 'boolean',
+                  extra: {
+                    label: 'Git Worktree（--worktree）',
+                    description:
+                      '开启后注入 --worktree，让 Agent 在新建的 Git worktree 中运行，而非直接编辑当前 checkout',
                   },
                 },
                 workDir: {
@@ -1102,7 +1100,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   extra: {
                     label: 'argv',
                     formComponent: 'array-editor',
-                    description: '首项须为 acp，如 ["acp"]；--api-key/--workspace 用下方专用字段',
+                    description: '首项须为 acp，如 ["acp"]；--workspace 用下方专用字段',
                   },
                 },
                 log: { type: 'boolean', extra: { label: '输出到调试日志' } },
@@ -1123,7 +1121,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     type: 'constant',
                     content: Array.isArray((cfg as any).stdinLines) ? (cfg as any).stdinLines : [],
                   },
-                  apiKey: { type: 'template', content: String((cfg as any).apiKey ?? '') },
+                  worktree: { type: 'constant', content: !!(cfg as any).worktree },
                   workspacePath: {
                     type: 'template',
                     content: String((cfg as any).workspacePath ?? ''),

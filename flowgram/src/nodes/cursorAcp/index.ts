@@ -16,7 +16,7 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLaptop,
     description:
-      'ACP（Agent Client Protocol）：简易模式下只需填写 API Key 与任务说明，后端按官方文档自动完成 initialize → authenticate(cursor_login) → session/new → session/prompt；认证优先使用下方 API 密钥（等价 CLI --api-key）。详见 cursor.com/docs/cli/acp。',
+      'ACP（Agent Client Protocol）：简易模式下只需填写任务说明，后端按官方文档自动完成 initialize → authenticate(cursor_login) → session/new → session/prompt。详见 cursor.com/docs/cli/acp。',
   },
   meta: {
     defaultPorts: [
@@ -47,8 +47,8 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
             content: '请根据当前消息说明要完成的工作。',
           },
           agentPath: { type: 'constant', content: 'agent' },
-          apiKey: { type: 'template', content: '' },
           workspacePath: { type: 'template', content: '' },
+          worktree: { type: 'constant', content: false },
           workDir: { type: 'template', content: '' },
           replaceData: { type: 'constant', content: true },
           timeoutMs: { type: 'constant', content: 120000 },
@@ -65,7 +65,7 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '简易模式（推荐）',
                 description:
-                  '开启后只需配置 API Key 与「任务说明」，由规则引擎按 Cursor ACP 文档自动发送 JSON-RPC（initialize → authenticate → session/new → session/prompt）；关闭后可自行编辑下方 stdin 行。',
+                  '开启后只需配置「任务说明」，由规则引擎按 Cursor ACP 文档自动发送 JSON-RPC（initialize → authenticate → session/new → session/prompt）；关闭后可自行编辑下方 stdin 行。',
               },
             },
             acpTask: {
@@ -84,15 +84,6 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
                 description: '默认 agent；常见路径 ~/.local/bin/agent',
               },
             },
-            apiKey: {
-              type: 'string',
-              extra: {
-                label: 'API 密钥（推荐）',
-                formComponent: 'prompt-editor',
-                description:
-                  '对应官方 CLI 的 --api-key；留空则使用运行环境变量 CURSOR_API_KEY。与 agent login 二选一即可，建议 ${metadata.xxx} 注入。authenticate 步骤仍会发送 methodId: cursor_login（与文档一致）。',
-              },
-            },
             workspacePath: {
               type: 'string',
               extra: {
@@ -100,6 +91,14 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
                 formComponent: 'prompt-editor',
                 description:
                   '代码仓库根目录，供 CLI 加载上下文；简易模式下同时作为 session/new 的 cwd。',
+              },
+            },
+            worktree: {
+              type: 'boolean',
+              extra: {
+                label: 'Git Worktree（--worktree）',
+                description:
+                  '开启后注入 --worktree，让 Agent 在新建的 Git worktree 中运行，而非直接编辑当前 checkout。可与「工作区」配合显式指定仓库根。',
               },
             },
             workDir: {
