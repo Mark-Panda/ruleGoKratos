@@ -94,7 +94,7 @@ WORKDIR /app
 COPY --from=backend-builder /src/bin/server /app/server
 # Copy default skills directory for Agent runtime
 COPY --from=backend-builder /src/skills /app/skills
-COPY --from=backend-builder /src/mcp /app/mcp
+# COPY --from=backend-builder /src/mcp /app/mcp
 
 # Copy frontend static files to a dedicated directory
 COPY --from=frontend-builder /web/dist /app/dist
