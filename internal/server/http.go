@@ -68,6 +68,33 @@ func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 		_, _ = ctx.Response().Write(b)
 		return nil
 	})
+	// PUT /api/v1/admin/skills/file 写入技能文件内容
+	r.PUT("/skills/file", func(ctx http.Context) error {
+		var payload struct {
+			Path    string `json:"path"`
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(ctx.Request().Body).Decode(&payload); err != nil {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			_, _ = ctx.Response().Write([]byte(`{"error":"invalid request body"}`))
+			return nil
+		}
+		if payload.Path == "" {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			_, _ = ctx.Response().Write([]byte(`{"error":"path is required"}`))
+			return nil
+		}
+		if err := admin.WriteSkillFileContent(payload.Path, payload.Content); err != nil {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			b, _ := json.Marshal(map[string]string{"error": err.Error()})
+			_, _ = ctx.Response().Write(b)
+			return nil
+		}
+		ctx.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
+		b, _ := json.Marshal(map[string]string{"path": payload.Path})
+		_, _ = ctx.Response().Write(b)
+		return nil
+	})
 }
 
 func corsFilter(h nethttp.Handler) nethttp.Handler {

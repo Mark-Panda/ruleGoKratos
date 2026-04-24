@@ -112,18 +112,19 @@ export const listSkills = () => requestJSON<{ root: string; items: SkillItem[] }
 export const readSkillFile = (path: string) =>
   requestJSON<{ content: string; path: string }>(`/admin/skills/file?path=${encodeURIComponent(path)}`);
 
-/** 保存 skill 文件（直接传文本内容，内部 base64 编码后调 upload 接口） */
+/** 保存 skill 文件内容（文本保存走独立接口，不复用 zip 上传） */
 export const saveSkillFile = (path: string, content: string): Promise<{ path: string }> => {
-  const contentBase64 = btoa(
-    encodeURIComponent(content).replace(/%([0-9A-F]{2})/g, (_, p) => String.fromCharCode(parseInt(p, 16))),
-  );
-  return requestJSON<{ path: string }>('/admin/skills/upload', {
-    method: 'POST',
-    body: { path, contentBase64 },
+  return requestJSON<{ path: string }>('/admin/skills/file', {
+    method: 'PUT',
+    body: { path, content },
   });
 };
 
 export const uploadSkill = async (file: File, path?: string) => {
+  const uploadPath = path || file.name;
+  if (!/\.zip$/i.test(uploadPath)) {
+    throw new Error('仅支持上传 .zip 技能包');
+  }
   const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);
   let binary = '';
@@ -135,7 +136,7 @@ export const uploadSkill = async (file: File, path?: string) => {
   return requestJSON<{ path: string }>('/admin/skills/upload', {
     method: 'POST',
     body: {
-      path: path || file.name,
+      path: uploadPath,
       contentBase64,
     },
   });

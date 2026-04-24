@@ -611,6 +611,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
               <input
                 ref={fileInputRef}
                 type="file"
+                accept=".zip,application/zip"
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
@@ -626,7 +627,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                   }
                 }}
               />
-              <Tooltip content="上传文件">
+              <Tooltip content="上传技能包(zip)">
                 <Button
                   size="small"
                   theme="borderless"

@@ -1,12 +1,14 @@
 package service
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,8 +22,8 @@ import (
 	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
-	"gorm.io/gorm"
 	"google.golang.org/protobuf/types/known/structpb"
+	"gorm.io/gorm"
 )
 
 type AdminService struct {
@@ -71,6 +73,19 @@ func (s *AdminService) ReadSkillFileContent(path string) (content string, err er
 		return "", readErr
 	}
 	return string(b), nil
+}
+
+// WriteSkillFileContent 写入技能文件内容（供 HTTP 额外路由调用，非 proto 接口）。
+func (s *AdminService) WriteSkillFileContent(path string, content string) error {
+	safe, err := sanitizeSkillFileName(path)
+	if err != nil {
+		return err
+	}
+	abs := filepath.Join(s.skillRoot, safe)
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(abs, []byte(content), 0o644)
 }
 
 // SkillRoot 返回 skill 根目录（供路由注册时使用）。
@@ -124,6 +139,9 @@ func (s *AdminService) UploadSkill(ctx context.Context, req *v1.UploadSkillReque
 	if err != nil {
 		return nil, err
 	}
+	if strings.ToLower(filepath.Ext(safeName)) != ".zip" {
+		return nil, errors.New("仅支持上传.zip压缩包")
+	}
 	raw := strings.TrimSpace(req.GetContentBase64())
 	if raw == "" {
 		return nil, errors.New("contentBase64不能为空")
@@ -132,15 +150,11 @@ func (s *AdminService) UploadSkill(ctx context.Context, req *v1.UploadSkillReque
 	if err != nil {
 		return nil, errors.New("contentBase64格式错误")
 	}
-	dstPath := filepath.Join(s.skillRoot, safeName)
-	dstDir := filepath.Dir(dstPath)
-	if err := os.MkdirAll(dstDir, 0o755); err != nil {
+	packagePath, err := unzipSkillArchive(s.skillRoot, safeName, content)
+	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(dstPath, content, 0o644); err != nil {
-		return nil, err
-	}
-	return &v1.UploadSkillReply{Path: filepath.ToSlash(safeName)}, nil
+	return &v1.UploadSkillReply{Path: filepath.ToSlash(packagePath)}, nil
 }
 
 func (s *AdminService) ListMcpConfigs(ctx context.Context, _ *v1.ListMcpConfigsRequest) (*v1.ListMcpConfigsReply, error) {
@@ -287,11 +301,11 @@ func (s *AdminService) TestMcpConfig(ctx context.Context, req *v1.TestMcpConfigR
 			}, nil
 		}
 		return &v1.TestMcpConfigReply{
-			Ok:      true,
-			Message: fmt.Sprintf("stdio 子进程启动成功，共列出 %d 个工具", len(tools)),
-			ToolNames:        tools,
-			ServerName:       serverName,
-			ProtocolVersion:  protoVer,
+			Ok:              true,
+			Message:         fmt.Sprintf("stdio 子进程启动成功，共列出 %d 个工具", len(tools)),
+			ToolNames:       tools,
+			ServerName:      serverName,
+			ProtocolVersion: protoVer,
 		}, nil
 	}
 	headers := headersJSONToStringMap(row.HeadersJSON)
@@ -305,17 +319,17 @@ func (s *AdminService) TestMcpConfig(ctx context.Context, req *v1.TestMcpConfigR
 		}, nil
 	}
 	return &v1.TestMcpConfigReply{
-		Ok:               true,
-		Message:          fmt.Sprintf("连接成功，共列出 %d 个工具", len(tools)),
-		ToolNames:        tools,
-		ServerName:       serverName,
-		ProtocolVersion:  protoVer,
+		Ok:              true,
+		Message:         fmt.Sprintf("连接成功，共列出 %d 个工具", len(tools)),
+		ToolNames:       tools,
+		ServerName:      serverName,
+		ProtocolVersion: protoVer,
 	}, nil
 }
 
 const (
-	terminalMaxCommandLen = 8000
-	terminalMaxOutputEach = 256 * 1024
+	terminalMaxCommandLen      = 8000
+	terminalMaxOutputEach      = 256 * 1024
 	defaultTerminalExecTimeout = 120 * time.Second
 )
 
@@ -384,10 +398,10 @@ func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalReque
 	if runErr != nil {
 		if errors.Is(runErr, context.DeadlineExceeded) || errors.Is(execCtx.Err(), context.DeadlineExceeded) {
 			return &v1.RunTerminalReply{
-				ExitCode:    -1,
-				Stdout:      outStr,
-				Stderr:      errStr,
-				Diagnostic:  fmt.Sprintf("命令执行超时（%ds，可在 configs 中调整 agent.terminal_exec_timeout）", sec),
+				ExitCode:   -1,
+				Stdout:     outStr,
+				Stderr:     errStr,
+				Diagnostic: fmt.Sprintf("命令执行超时（%ds，可在 configs 中调整 agent.terminal_exec_timeout）", sec),
 			}, nil
 		}
 		var ee *exec.ExitError
@@ -396,10 +410,10 @@ func (s *AdminService) RunTerminal(ctx context.Context, req *v1.RunTerminalReque
 			return &v1.RunTerminalReply{ExitCode: exit, Stdout: outStr, Stderr: errStr}, nil
 		}
 		return &v1.RunTerminalReply{
-			ExitCode:    -1,
-			Stdout:      outStr,
-			Stderr:      errStr,
-			Diagnostic:  runErr.Error(),
+			ExitCode:   -1,
+			Stdout:     outStr,
+			Stderr:     errStr,
+			Diagnostic: runErr.Error(),
 		}, nil
 	}
 	return &v1.RunTerminalReply{ExitCode: exit, Stdout: outStr, Stderr: errStr}, nil
@@ -827,6 +841,92 @@ func sanitizeSkillFileName(name string) (string, error) {
 		return "", errors.New("文件名不合法")
 	}
 	return cleaned, nil
+}
+
+func sanitizeSkillArchiveEntry(name string) (string, error) {
+	name = strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
+	name = strings.TrimPrefix(name, "/")
+	if name == "" {
+		return "", errors.New("压缩包条目不能为空")
+	}
+	cleaned := filepath.Clean(name)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "..") || filepath.IsAbs(cleaned) {
+		return "", errors.New("压缩包条目不合法")
+	}
+	return cleaned, nil
+}
+
+func unzipSkillArchive(skillRoot string, archiveName string, content []byte) (string, error) {
+	reader, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
+	if err != nil {
+		return "", errors.New("上传内容不是合法zip压缩包")
+	}
+	packagePath := strings.TrimSuffix(filepath.ToSlash(archiveName), filepath.Ext(archiveName))
+	if packagePath == "" {
+		return "", errors.New("压缩包名称不合法")
+	}
+	absRoot, err := filepath.Abs(skillRoot)
+	if err != nil {
+		return "", err
+	}
+	rootPrefix := absRoot + string(os.PathSeparator)
+	extractedCount := 0
+	for _, file := range reader.File {
+		entryPath, err := sanitizeSkillArchiveEntry(file.Name)
+		if err != nil {
+			return "", fmt.Errorf("压缩包内容不合法: %w", err)
+		}
+		targetPath := filepath.Join(absRoot, filepath.FromSlash(packagePath), entryPath)
+		absTargetPath, err := filepath.Abs(targetPath)
+		if err != nil {
+			return "", err
+		}
+		if absTargetPath != absRoot && !strings.HasPrefix(absTargetPath, rootPrefix) {
+			return "", errors.New("压缩包内容不合法")
+		}
+		if file.Mode()&os.ModeSymlink != 0 {
+			return "", errors.New("压缩包内容不合法")
+		}
+		if file.FileInfo().IsDir() {
+			if err := os.MkdirAll(absTargetPath, 0o755); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(absTargetPath), 0o755); err != nil {
+			return "", err
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return "", err
+		}
+		mode := file.Mode().Perm()
+		if mode == 0 {
+			mode = 0o644
+		}
+		dst, err := os.OpenFile(absTargetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+		if err != nil {
+			_ = rc.Close()
+			return "", err
+		}
+		if _, err := io.Copy(dst, rc); err != nil {
+			_ = dst.Close()
+			_ = rc.Close()
+			return "", err
+		}
+		if err := dst.Close(); err != nil {
+			_ = rc.Close()
+			return "", err
+		}
+		if err := rc.Close(); err != nil {
+			return "", err
+		}
+		extractedCount++
+	}
+	if extractedCount == 0 {
+		return "", errors.New("压缩包中没有可解压文件")
+	}
+	return packagePath, nil
 }
 
 func toMCPProto(it dao.MCPConfig) *v1.McpConfigItem {
