@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/entity"
 	"strconv"
@@ -455,6 +456,13 @@ func (s *RuleChainUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRul
 		err = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
 			"rule_chain_id": in.Id,
 		}, updateData)
+		if err == nil {
+			// 同步刷新内存引擎：若该规则链已部署，保存后立即 ReloadSelf，
+			// 防止「只改 DB、引擎仍持旧定义」导致执行日志无法生成。
+			if reloadErr := s.reloadEngineIfDeployed(ctx, in.Id, &ruleChain); reloadErr != nil {
+				return nil, reloadErr
+			}
+		}
 	} else {
 		// Create
 		t := time.Now()
@@ -641,6 +649,39 @@ func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.U
 	}
 
 	return &v1.UpdateRuleChainBaseInfoReply{}, nil
+}
+
+// reloadEngineIfDeployed 若规则链已在内存引擎中，则用新定义热重载，保持 DB 与引擎同步。
+// 仅在链已在引擎池中（即已部署）时才执行，避免把下线的链意外上线。
+// 热重载失败时：同步将 DB 中该链标记为 disabled=true（与 deployRuleChain 失败逻辑一致），
+// 并将错误透传给前端，使用户明确感知。
+func (s *RuleChainUsecase) reloadEngineIfDeployed(ctx context.Context, chainId string, ruleChain *types.RuleChain) error {
+	existingEngine, ok := s.ruleEngine.Get(chainId)
+	if !ok {
+		return nil
+	}
+	clone := *ruleChain
+	clone.RuleChain.Disabled = false
+	def, err := json.Marshal(&clone)
+	if err != nil {
+		// marshal 出错一般是程序 bug，同样下线以保证一致性
+		_ = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
+			"rule_chain_id": chainId,
+		}, map[string]interface{}{
+			"disabled": true,
+		})
+		return fmt.Errorf("规则链热重载失败（marshal）: %w", err)
+	}
+	if err = existingEngine.ReloadSelf(def); err != nil {
+		// 重载失败：引擎仍持旧定义，将 DB 标记为下线，保持 DB 与引擎状态一致
+		_ = s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
+			"rule_chain_id": chainId,
+		}, map[string]interface{}{
+			"disabled": true,
+		})
+		return fmt.Errorf("规则链热重载失败: %w", err)
+	}
+	return nil
 }
 
 func (s *RuleChainUsecase) DeleteRuleChain(ctx context.Context, in *v1.DeleteRuleChainReq) (*v1.DeleteRuleChainReply, error) {
