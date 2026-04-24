@@ -108,6 +108,21 @@ export interface TestMcpConfigReply {
 
 export const listSkills = () => requestJSON<{ root: string; items: SkillItem[] }>('/admin/skills');
 
+/** 读取 skill 文件内容（path 为相对于 skillRoot 的路径） */
+export const readSkillFile = (path: string) =>
+  requestJSON<{ content: string; path: string }>(`/admin/skills/file?path=${encodeURIComponent(path)}`);
+
+/** 保存 skill 文件（直接传文本内容，内部 base64 编码后调 upload 接口） */
+export const saveSkillFile = (path: string, content: string): Promise<{ path: string }> => {
+  const contentBase64 = btoa(
+    encodeURIComponent(content).replace(/%([0-9A-F]{2})/g, (_, p) => String.fromCharCode(parseInt(p, 16))),
+  );
+  return requestJSON<{ path: string }>('/admin/skills/upload', {
+    method: 'POST',
+    body: { path, contentBase64 },
+  });
+};
+
 export const uploadSkill = async (file: File, path?: string) => {
   const buf = await file.arrayBuffer();
   const bytes = new Uint8Array(buf);

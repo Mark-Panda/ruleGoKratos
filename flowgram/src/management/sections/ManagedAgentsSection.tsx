@@ -304,11 +304,6 @@ export const ManagedAgentsSection: React.FC = () => {
           <Title heading={5} style={{ margin: 0 }}>
             Agent 配置
           </Title>
-          <Text type="tertiary">
-            为每个 Agent 配置系统提示词，按技能包勾选 SKILL（与目录首层一致）、勾选
-            MCP，模型来源与「模型管理」一致：可选择某 LLM
-            站点下的全部启用模型，或仅勾选部分模型条目。
-          </Text>
           <Space style={{ marginTop: 8 }}>
             <Button type="primary" theme="solid" icon={<IconPlus />} onClick={openCreate}>
               新建 Agent

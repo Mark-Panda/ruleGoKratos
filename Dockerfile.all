@@ -35,15 +35,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN npm config set registry https://registry.npmmirror.com \
     && git clone --depth 1 \
-        -c http.lowSpeedLimit=0 \
-        -c http.lowSpeedTime=9999 \
-        "${LARK_CLI_GIT_URL}" /tmp/larksuite-cli \
+    -c http.lowSpeedLimit=0 \
+    -c http.lowSpeedTime=9999 \
+    "${LARK_CLI_GIT_URL}" /tmp/larksuite-cli \
     && npm install -g @larksuite/cli \
     && npx --yes skills add /tmp/larksuite-cli -y -g --copy \
     && rm -rf /tmp/larksuite-cli \
     && mkdir -p /root/.cursor/skills \
     && test -f /root/.agents/skills/lark-shared/SKILL.md \
-        || (echo "skills add failed: missing /root/.agents/skills"; ls -la /root/.agents/skills /root/.claude/skills 2>&1; exit 1)
+    || (echo "skills add failed: missing /root/.agents/skills"; ls -la /root/.agents/skills /root/.claude/skills 2>&1; exit 1)
 
 # Stage 4: Final Image
 FROM docker.m.daocloud.io/debian:stable-slim

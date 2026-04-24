@@ -828,7 +828,7 @@ func (uc *AgentUsecase) BuildUUIDTool() (*HarnessTool, error) {
 }
 
 func (uc *AgentUsecase) BuildSkillTool() (*HarnessTool, error) {
-	desc := "执行 SKILL：读取磁盘上的技能文件（Markdown/YAML 等）。skill_name 必须与系统提示中「SKILL 目录」里的某一 id 完全一致。"
+	desc := "执行 Skill 技能：读取并返回磁盘上技能文件的内容（Markdown 指令等），供模型阅读后按 Skill 指令行动。skill_name 须与系统提示「SKILL 目录」里的 id 完全一致。注意：Skill 和 MCP 是两套独立工具，call_mcp_tool 无法调用 Skill，请勿混用。"
 	if fe, ok := uc.skillExecutor.(*FileSkillExecutor); ok {
 		names := fe.ListAvailableSkillNames()
 		if n := len(names); n > 0 {
@@ -882,7 +882,7 @@ func (uc *AgentUsecase) BuildSkillTool() (*HarnessTool, error) {
 func (uc *AgentUsecase) BuildMCPTool() (*HarnessTool, error) {
 	toolInfo := &schema.ToolInfo{
 		Name: "call_mcp_tool",
-		Desc: "调用MCP工具，输入服务名、工具名和参数",
+		Desc: "调用已在服务端注册并启用的 MCP server 工具。server 须是已配置的 MCP 服务名（非 Skill 名）；若要执行 Skill，请用 run_skill，两者互不兼容，不可混用。",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"server": {
 				Type:     schema.String,

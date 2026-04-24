@@ -63,6 +63,15 @@ func defaultSkillDirs(dir string, dirsCSV string) []string {
 	return dirs
 }
 
+// Dirs 返回当前已加载的技能目录列表（绝对路径化后的副本）。
+func (e *FileSkillExecutor) Dirs() []string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	result := make([]string, len(e.dirs))
+	copy(result, e.dirs)
+	return result
+}
+
 // isSkillFile 判断文件是否属于可加载的技能文件类型。
 func isSkillFile(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))

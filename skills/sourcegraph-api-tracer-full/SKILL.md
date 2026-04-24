@@ -64,6 +64,7 @@ npx playwright install chromium
 {
   "SOURCEGRAPH_URL": "https://sourcegraph.yc345.tv",
   "SOURCEGRAPH_TOKEN": "",
+  "SOURCEGRAPH_REPO_URL_TEMPLATE": "ssh",
   "SOURCEGRAPH_REPO_FRONTEND": "teacher/fe/.*|frontend/.*",
   "SOURCEGRAPH_REPO_BACKEND":  "teacher/backend/.*|backend/.*",
   "SOURCEGRAPH_INCLUDE_FORKED": "1",

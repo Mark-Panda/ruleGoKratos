@@ -97,15 +97,31 @@ func absPathUnderWorkspace(rootAbs, userPath string) (string, error) {
 	return p, nil
 }
 
-// BuildReadWorkspaceFileTool 读取 workspace 内 UTF-8 文本文件（二进制会按错误提示）。
+// resolveReadablePath 解析文件/目录路径：
+//   - 相对路径 → 必须在 workspace 根目录内（禁止 ..）
+//   - 绝对路径 → 文件/目录本身存在即可（skill 目录、WORK_DIR、任意已存在路径）
+func (uc *AgentUsecase) resolveReadablePath(ctx context.Context, userPath string) (string, error) {
+	userPath = strings.TrimSpace(userPath)
+	if filepath.IsAbs(userPath) {
+		clean := filepath.Clean(userPath)
+		return clean, nil
+	}
+	root, err := uc.effectiveWorkspaceRoot(ctx)
+	if err != nil {
+		return "", err
+	}
+	return absPathUnderWorkspace(root, userPath)
+}
+
+// BuildReadWorkspaceFileTool 读取 workspace 内或任意已存在绝对路径的 UTF-8 文本文件。
 func (uc *AgentUsecase) BuildReadWorkspaceFileTool() (*HarnessTool, error) {
 	toolInfo := &schema.ToolInfo{
 		Name: "read_workspace_file",
-		Desc: "读取 Agent workspace 根目录下的文件内容（文本）。path 为相对根目录的路径，禁止含 .. 越权。",
+		Desc: "读取文件内容（文本）。path 可为：相对 workspace 的路径（禁止 ..）；或任意已存在的绝对路径（如 /app/skills/...、/root/bizCompareWarehouse/... 等）。注意：路径须含完整文件名及扩展名（如 SKILL.md，不可省略 .md）。",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"path": {
 				Type:     schema.String,
-				Desc:     "相对 workspace 的文件路径，例如 notes/a.txt",
+				Desc:     "相对 workspace 的路径（如 notes/a.txt），或任意绝对路径（如 /root/bizCompareWarehouse/repo/file.js）",
 				Required: true,
 			},
 		}),
@@ -120,13 +136,19 @@ func (uc *AgentUsecase) BuildReadWorkspaceFileTool() (*HarnessTool, error) {
 			if err := json.Unmarshal([]byte(rawArgs), &a); err != nil {
 				return "", err
 			}
-			root, err := uc.effectiveWorkspaceRoot(ctx)
+			full, err := uc.resolveReadablePath(ctx, a.Path)
 			if err != nil {
 				return "", err
 			}
-			full, err := absPathUnderWorkspace(root, a.Path)
-			if err != nil {
-				return "", err
+			// 若文件不存在且路径无扩展名，自动尝试追加常见文档扩展名（SKILL → SKILL.md 等）
+			if _, statErr := os.Stat(full); os.IsNotExist(statErr) && filepath.Ext(full) == "" {
+				for _, ext := range []string{".md", ".txt"} {
+					candidate := full + ext
+					if _, candErr := os.Stat(candidate); candErr == nil {
+						full = candidate
+						break
+					}
+				}
 			}
 			st, err := os.Stat(full)
 			if err != nil {
@@ -219,11 +241,11 @@ func (uc *AgentUsecase) BuildWriteWorkspaceFileTool() (*HarnessTool, error) {
 	}, nil
 }
 
-// BuildRunWorkspaceShellTool 在 workspace 下用 bash -lc 执行命令（工作目录可指定相对路径）。
+// BuildRunWorkspaceShellTool 在 workspace 下用 bash -lc 执行命令（工作目录可指定相对路径或 skill 目录绝对路径）。
 func (uc *AgentUsecase) BuildRunWorkspaceShellTool() (*HarnessTool, error) {
 	toolInfo := &schema.ToolInfo{
 		Name: "run_workspace_shell",
-		Desc: "在 workspace 沙箱内执行 shell：使用 bash -lc。working_directory 可选、相对 workspace；勿执行破坏性操作。",
+		Desc: "在沙箱内执行 shell：使用 bash -lc。working_directory 可选：留空表示 workspace 根；相对路径须在 workspace 内；绝对路径须是已存在的目录（如 /app/skills/...、/root/bizCompareWarehouse 等）。勿执行破坏性操作。",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"command": {
 				Type:     schema.String,
@@ -232,7 +254,7 @@ func (uc *AgentUsecase) BuildRunWorkspaceShellTool() (*HarnessTool, error) {
 			},
 			"working_directory": {
 				Type:     schema.String,
-				Desc:     "相对 workspace 的工作目录，默认可留空表示 workspace 根",
+				Desc:     "工作目录：留空=workspace 根；相对路径=workspace 内；绝对路径=任意已存在目录（skill 目录 /app/skills/... 或 WORK_DIR 等）",
 				Required: false,
 			},
 		}),
@@ -258,11 +280,18 @@ func (uc *AgentUsecase) BuildRunWorkspaceShellTool() (*HarnessTool, error) {
 			}
 			cwd := root
 			if wd := strings.TrimSpace(a.WorkingDirectory); wd != "" {
-				cwd, err = absPathUnderWorkspace(root, wd)
-				if err != nil {
-					return "", err
+				if filepath.IsAbs(wd) {
+					// 绝对路径 working_directory：只要目录存在即允许。
+					// run_workspace_shell 的命令本身已可访问任意路径（bash 权限），
+					// 限制 CWD 参数不能实际提升安全性，反而阻碍 skill 在 WORK_DIR 等目录下执行。
+					cwd = filepath.Clean(wd)
+				} else {
+					cwd, err = absPathUnderWorkspace(root, wd)
+					if err != nil {
+						return "", err
+					}
 				}
-				if fi, err := os.Stat(cwd); err != nil || !fi.IsDir() {
+				if fi, statErr := os.Stat(cwd); statErr != nil || !fi.IsDir() {
 					return "", fmt.Errorf("working_directory 不是有效目录: %s", wd)
 				}
 			}

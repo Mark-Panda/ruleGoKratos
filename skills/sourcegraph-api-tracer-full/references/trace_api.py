@@ -251,6 +251,9 @@ def run_agent_analysis(service_path: Path, project_name: str, url: str, method: 
         return False
     prompt = _build_agent_prompt(url, method, project_type, output_md_path)
     agent_args = ["agent", "--print", "--trust"]
+    # api_key = os.environ.get("CURSOR_API_KEY", "").strip()
+    # if api_key:
+    #     agent_args.extend(["--api-key", api_key])
     if agent_model:
         agent_args.extend(["--model", agent_model])
     agent_args.append(prompt)

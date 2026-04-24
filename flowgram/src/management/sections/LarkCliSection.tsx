@@ -324,7 +324,19 @@ export const LarkCliSection: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ padding: 24, maxWidth: 960 }}>
+    <div
+      style={{
+        padding: '24px clamp(16px, 2.5vw, 40px) 32px',
+        width: '100%',
+        maxWidth: '100%',
+        alignSelf: 'stretch',
+        flex: 1,
+        minHeight: 0,
+        minWidth: 0,
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+      }}
+    >
       <Typography.Title heading={6} style={{ margin: 0 }}>
         飞书 CLI（lark-cli）配置
       </Typography.Title>

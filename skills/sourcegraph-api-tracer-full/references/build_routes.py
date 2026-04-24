@@ -33,6 +33,17 @@ def repo_to_local_repo_dir(repo_name: str) -> str:
 
 
 def repo_to_clone_url(repo_name: str, template: str = "https://%s.git") -> str:
+    """
+    根据模板生成克隆 URL。
+    template 为 "ssh" 或形如 "git@..." 时，自动转换为 SSH URL：
+      gitlab.yc345.tv/teacher/fe/repo → git@gitlab.yc345.tv:teacher/fe/repo.git
+    否则按 printf 风格替换 %s。
+    """
+    t = template.strip()
+    if t.lower() == "ssh" or t.startswith("git@"):
+        parts = repo_name.strip("/").split("/", 1)
+        if len(parts) == 2:
+            return f"git@{parts[0]}:{parts[1]}.git"
     return template % repo_name
 
 

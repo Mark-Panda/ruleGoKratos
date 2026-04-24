@@ -73,19 +73,9 @@ const STORAGE_MANAGED_AGENT_KEY = 'flowgram-overview-chat-managed-agent-v1';
 const STORAGE_LAST_REQUEST_KEY = 'flowgram-overview-chat-last-request-v1';
 const RETRY_PAYLOAD_MAX_BYTES = 380000;
 
-/** 页面引导：能力与「如何提问」（空状态 + 输入区提示） */
+/** 空状态标题与输入框占位 */
 const CHAT_GUIDE = {
   title: 'Code 助手',
-  subtitle:
-    '对接 RuleGo Agent Harness（与画布「Agent LLM / ai/agentHarness」同源）。在凭证与模型就绪时，可通过工具增强回答（SKILL、MCP、工作区文件与 Shell 等，以服务端实际启用为准）。',
-  steps: [
-    '在顶部可选「Agent 配置」托管档案（统一系统提示/SKILL/MCP/模型），或选择「对话模型」：条目来自「Agent 管理 → 模型管理」。二者至少选其一。',
-    '输入时尽量包含：要解决什么、当前现象或报错、期望交付物（示例代码 / 步骤列表 / 取舍说明）；可粘贴日志或代码。',
-    '「清除上下文」：之后请求不再附带此前对话历史，界面记录仍保留。「重置聊天」：清空本会话消息。',
-    '可点击「附件」上传多个文件（文本直接嵌入，二进制以 Base64 交由模型按说明解析）；数据保存在本机浏览器。',
-  ],
-  inputHint:
-    '提问建议：背景 → 现状或报错 → 期望结果；可附加代码/日志文件；涉及仓库时请写路径、分支或相关接口名。',
   placeholder: '目标 + 现状/报错 + 期望输出（可贴代码）。Enter 发送，Shift+Enter 换行',
 };
 
@@ -622,6 +612,21 @@ export const OverviewChatSection: React.FC = () => {
         (chunk, done, err) => {
           if (err) {
             Toast.error({ content: err });
+            setStore((prev) =>
+              patchActiveSession(prev, (s) => {
+                const next = [...s.messages];
+                const last = next[next.length - 1];
+                if (last?.role === 'assistant') {
+                  const merged = (assistantBuf || '').trim();
+                  next[next.length - 1] = {
+                    role: 'assistant',
+                    content: merged ? `${merged}\n\n> ⚠️ 工具执行失败：${err}` : `> ⚠️ 执行失败：${err}`,
+                  };
+                }
+                return { ...s, messages: next };
+              })
+            );
+            setStreaming(false);
             return;
           }
           if (chunk) {
@@ -802,6 +807,21 @@ export const OverviewChatSection: React.FC = () => {
         (chunk, done, err) => {
           if (err) {
             Toast.error({ content: err });
+            setStore((prevStore) =>
+              patchActiveSession(prevStore, (s) => {
+                const next = [...s.messages];
+                const tail = next[next.length - 1];
+                if (tail?.role === 'assistant') {
+                  const merged = (assistantBuf || '').trim();
+                  next[next.length - 1] = {
+                    role: 'assistant',
+                    content: merged ? `${merged}\n\n> ⚠️ 工具执行失败：${err}` : `> ⚠️ 执行失败：${err}`,
+                  };
+                }
+                return { ...s, messages: next };
+              })
+            );
+            setStreaming(false);
             return;
           }
           if (chunk) {
@@ -1205,34 +1225,6 @@ export const OverviewChatSection: React.FC = () => {
               {messages.length === 0 ? (
                 <div style={{ paddingTop: 28, paddingBottom: 24 }}>
                   <Empty title={CHAT_GUIDE.title} description="" style={{ marginBottom: 16 }} />
-                  <Typography.Paragraph
-                    spacing="extended"
-                    style={{ margin: '0 0 12px', color: 'rgba(28,32,41,0.78)' }}
-                  >
-                    {CHAT_GUIDE.subtitle}
-                  </Typography.Paragraph>
-                  <Typography.Title heading={6} style={{ margin: '16px 0 8px' }}>
-                    怎么用
-                  </Typography.Title>
-                  <ul
-                    style={{
-                      margin: '0 0 16px',
-                      paddingLeft: 20,
-                      color: 'rgba(28,32,41,0.78)',
-                      lineHeight: 1.75,
-                    }}
-                  >
-                    {CHAT_GUIDE.steps.map((line, idx) => (
-                      <li key={`chat-step-${idx}`}>{line}</li>
-                    ))}
-                  </ul>
-                  <Typography.Text
-                    type="tertiary"
-                    size="small"
-                    style={{ display: 'block', lineHeight: 1.65 }}
-                  >
-                    {CHAT_GUIDE.inputHint}
-                  </Typography.Text>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
@@ -1412,13 +1404,6 @@ export const OverviewChatSection: React.FC = () => {
                   ))}
                 </div>
               )}
-              <Typography.Text
-                type="tertiary"
-                size="small"
-                style={{ display: 'block', marginTop: 8, lineHeight: 1.55 }}
-              >
-                {CHAT_GUIDE.inputHint}
-              </Typography.Text>
               <div
                 style={{
                   display: 'flex',

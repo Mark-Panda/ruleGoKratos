@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	nethttp "net/http"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/conf"
@@ -33,6 +34,7 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	v1.RegisterRunLogHTTPServer(srv, runLogs)
 	v1.RegisterComponentHTTPServer(srv, components)
 	v1.RegisterAdminHTTPServer(srv, admin)
+	registerAdminExtraRoutes(srv, admin)
 	service.RegisterChatHTTPRoute(srv, chat)
 	service.RegisterPlaygroundHTTPRoutes(srv, playground)
 	v1.RegisterTaskBoardServiceHTTPServer(srv, taskService)
@@ -40,6 +42,32 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	RegisterTerminalWebSocket(srv, admin, logger)
 
 	return srv
+}
+
+// registerAdminExtraRoutes 注册不走 proto 生成的管理后台补充接口。
+func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
+	r := s.Route("/api/v1/admin")
+	// GET /api/v1/admin/skills/file?path=<relative> 读取技能文件内容
+	r.GET("/skills/file", func(ctx http.Context) error {
+		req := ctx.Request()
+		path := req.URL.Query().Get("path")
+		if path == "" {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			_, _ = ctx.Response().Write([]byte(`{"error":"path is required"}`))
+			return nil
+		}
+		content, err := admin.ReadSkillFileContent(path)
+		if err != nil {
+			ctx.Response().WriteHeader(nethttp.StatusNotFound)
+			b, _ := json.Marshal(map[string]string{"error": err.Error()})
+			_, _ = ctx.Response().Write(b)
+			return nil
+		}
+		ctx.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
+		b, _ := json.Marshal(map[string]string{"content": content, "path": path})
+		_, _ = ctx.Response().Write(b)
+		return nil
+	})
 }
 
 func corsFilter(h nethttp.Handler) nethttp.Handler {

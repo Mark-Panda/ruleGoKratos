@@ -59,6 +59,25 @@ func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpo
 	}
 }
 
+// ReadSkillFileContent 读取技能文件内容（供 HTTP 额外路由调用，非 proto 接口）。
+func (s *AdminService) ReadSkillFileContent(path string) (content string, err error) {
+	safe, err := sanitizeSkillFileName(path)
+	if err != nil {
+		return "", err
+	}
+	abs := filepath.Join(s.skillRoot, safe)
+	b, readErr := os.ReadFile(abs)
+	if readErr != nil {
+		return "", readErr
+	}
+	return string(b), nil
+}
+
+// SkillRoot 返回 skill 根目录（供路由注册时使用）。
+func (s *AdminService) SkillRoot() string {
+	return s.skillRoot
+}
+
 func (s *AdminService) ListSkills(ctx context.Context, _ *v1.ListSkillsRequest) (*v1.ListSkillsReply, error) {
 	root := s.skillRoot
 	items := make([]*v1.SkillItem, 0, 64)

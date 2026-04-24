@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   Button,
@@ -7,10 +7,23 @@ import {
   Select,
   Spin,
   Table,
+  Tag,
   TextArea,
   Toast,
+  Tooltip,
   Typography,
 } from '@douyinfe/semi-ui';
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFile,
+  IconFolder,
+  IconFolderOpen,
+  IconRefresh,
+  IconSave,
+  IconSearch,
+  IconUpload,
+} from '@douyinfe/semi-icons';
 
 import { groupSkillPackages } from '../../utils/skill-packages';
 import {
@@ -29,6 +42,8 @@ import {
   listMCPConfigs,
   listLlmConfigs,
   listSkills,
+  readSkillFile,
+  saveSkillFile,
   type SkillItem,
   testMCPConfig,
   updateMCPConfig,
@@ -36,6 +51,32 @@ import {
   updateLlmModelEntry,
   uploadSkill,
 } from '../../services/api-agent';
+
+// ────────── 文件树结构（用于包内子目录分层展示）──────────
+type FileTreeLeaf = { type: 'file'; name: string; file: SkillItem };
+type FileTreeDir = { type: 'dir'; name: string; children: FileTreeNode[] };
+type FileTreeNode = FileTreeLeaf | FileTreeDir;
+
+function buildFileTree(pkgId: string, files: SkillItem[]): FileTreeNode[] {
+  const root: FileTreeNode[] = [];
+  for (const file of files) {
+    let rel = file.path;
+    if (rel.startsWith(pkgId + '/')) rel = rel.slice(pkgId.length + 1);
+    const parts = rel.split('/');
+    let cur: FileTreeNode[] = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      let dir = cur.find((n): n is FileTreeDir => n.type === 'dir' && n.name === parts[i]);
+      if (!dir) {
+        dir = { type: 'dir', name: parts[i], children: [] };
+        cur.push(dir);
+      }
+      cur = dir.children;
+    }
+    cur.push({ type: 'file', name: parts[parts.length - 1], file });
+  }
+  return root;
+}
+// ─────────────────────────────────────────────────────────
 
 const defaultMCPForm: MCPConfigPayload = {
   name: '',
@@ -75,6 +116,16 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
   const [skillKeyword, setSkillKeyword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 文件系统浏览器状态
+  const [expandedPkgs, setExpandedPkgs] = useState<Set<string>>(new Set());
+  /** key = `${pkgId}::${dirRelPath}`，控制包内子目录的折叠 */
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [selectedFile, setSelectedFile] = useState<SkillItem | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileSaving, setFileSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
   const [mcpList, setMcpList] = useState<MCPConfigItem[]>([]);
   const [mcpLoading, setMcpLoading] = useState(false);
   const [mcpModalVisible, setMcpModalVisible] = useState(false);
@@ -108,6 +159,65 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
       setSkillLoading(false);
     }
   };
+
+  const openSkillFile = useCallback(async (file: SkillItem) => {
+    if (isDirty) {
+      const ok = window.confirm('当前文件有未保存的修改，是否放弃？');
+      if (!ok) return;
+    }
+    setSelectedFile(file);
+    setIsDirty(false);
+    setEditContent('');
+    setFileLoading(true);
+    try {
+      const res = await readSkillFile(file.path);
+      setEditContent(res.content);
+    } catch (e) {
+      Toast.error({ content: `读取失败: ${String((e as Error)?.message ?? e)}` });
+      setEditContent('');
+    } finally {
+      setFileLoading(false);
+    }
+  }, [isDirty]);
+
+  const saveCurrentFile = useCallback(async () => {
+    if (!selectedFile) return;
+    setFileSaving(true);
+    try {
+      await saveSkillFile(selectedFile.path, editContent);
+      Toast.success({ content: '保存成功' });
+      setIsDirty(false);
+      await fetchSkills();
+    } catch (e) {
+      Toast.error({ content: `保存失败: ${String((e as Error)?.message ?? e)}` });
+    } finally {
+      setFileSaving(false);
+    }
+  }, [selectedFile, editContent]);
+
+  const togglePackage = useCallback((pkgId: string) => {
+    setExpandedPkgs((prev) => {
+      const next = new Set(prev);
+      if (next.has(pkgId)) {
+        next.delete(pkgId);
+      } else {
+        next.add(pkgId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleDir = useCallback((dirKey: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      if (next.has(dirKey)) {
+        next.delete(dirKey);
+      } else {
+        next.add(dirKey);
+      }
+      return next;
+    });
+  }, []);
 
   const fetchMCPs = async () => {
     setMcpLoading(true);
@@ -440,33 +550,64 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
     }
   };
 
+  const fileExt = (path: string) => {
+    const i = path.lastIndexOf('.');
+    return i >= 0 ? path.slice(i + 1).toLowerCase() : '';
+  };
+
+  const extColor = (ext: string): string => {
+    if (ext === 'md') return '#1677ff';
+    if (ext === 'json') return '#d46b08';
+    if (ext === 'yaml' || ext === 'yml') return '#389e0d';
+    if (ext === 'txt') return '#722ed1';
+    return '#595959';
+  };
+
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {view === 'skills' && (
-        <>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', padding: '12px 16px', gap: 12 }}>
+          {/* 左侧文件树 */}
           <div
             style={{
-              background: '#fff',
-              borderRadius: 12,
-              border: '1px solid rgba(6,7,9,0.06)',
-              padding: 12,
+              width: 260,
+              flexShrink: 0,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
+              flexDirection: 'column',
+              border: '1px solid rgba(28,31,35,0.08)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              background: '#fff',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+            {/* 文件树顶部操作栏 */}
+            <div
+              style={{
+                padding: '8px 10px',
+                borderBottom: '1px solid rgba(28,31,35,0.06)',
+                display: 'flex',
+                gap: 6,
+                alignItems: 'center',
+              }}
+            >
               <Input
+                prefix={<IconSearch size="small" />}
                 value={skillKeyword}
                 onChange={setSkillKeyword}
-                placeholder="搜索套装 id、路径或文件名"
+                placeholder="搜索文件"
                 showClear
-                style={{ maxWidth: 360 }}
+                size="small"
+                style={{ flex: 1 }}
               />
-              <Typography.Text type="tertiary">目录：{skillRoot}</Typography.Text>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+              <Tooltip content="刷新">
+                <Button
+                  size="small"
+                  theme="borderless"
+                  icon={<IconRefresh />}
+                  loading={skillLoading}
+                  onClick={() => fetchSkills()}
+                />
+              </Tooltip>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -485,38 +626,342 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                   }
                 }}
               />
-              <Button onClick={() => fileInputRef.current?.click()} theme="solid" type="primary">
-                上传 SKILL
-              </Button>
-              <Button onClick={() => fetchSkills()}>刷新</Button>
+              <Tooltip content="上传文件">
+                <Button
+                  size="small"
+                  theme="borderless"
+                  icon={<IconUpload />}
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              </Tooltip>
+            </div>
+
+            {/* 目录提示 */}
+            <div
+              style={{
+                padding: '4px 10px',
+                background: 'rgba(22,119,255,0.04)',
+                borderBottom: '1px solid rgba(28,31,35,0.06)',
+              }}
+            >
+              <Typography.Text type="tertiary" size="small" ellipsis={{ showTooltip: true }}>
+                {skillRoot}
+              </Typography.Text>
+            </div>
+
+            {/* 文件树列表：flex: 1 + minHeight:0 保证可滚动；不用 Spin 包裹以免破坏高度链 */}
+            <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+              {skillLoading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.7)',
+                    zIndex: 1,
+                  }}
+                >
+                  <Spin spinning />
+                </div>
+              )}
+              <div style={{ height: '100%', overflowY: 'auto', padding: '4px 0' }}>
+                {filteredSkillPackages.length === 0 && !skillLoading && (
+                  <div style={{ padding: '16px 12px', textAlign: 'center' }}>
+                    <Typography.Text type="tertiary" size="small">
+                      暂无技能文件
+                    </Typography.Text>
+                  </div>
+                )}
+                {filteredSkillPackages.map((pkg) => {
+                  const isExpanded = expandedPkgs.has(pkg.id);
+                  const tree = isExpanded ? buildFileTree(pkg.id, pkg.files) : [];
+
+                  const renderTree = (nodes: FileTreeNode[], depth: number, pathPrefix: string): React.ReactNode =>
+                    nodes.map((node) => {
+                      if (node.type === 'file') {
+                        const f = node.file;
+                        const isSelected = selectedFile?.path === f.path;
+                        const ext = fileExt(f.path);
+                        return (
+                          <div
+                            key={f.path}
+                            onClick={() => void openSkillFile(f)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: `3px 8px 3px ${10 + depth * 14}px`,
+                              cursor: 'pointer',
+                              borderRadius: 4,
+                              margin: '1px 4px',
+                              background: isSelected ? 'rgba(22,119,255,0.10)' : 'transparent',
+                              borderLeft: isSelected ? '2px solid #1677ff' : '2px solid transparent',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected)
+                                (e.currentTarget as HTMLDivElement).style.background = 'rgba(28,31,35,0.04)';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLDivElement).style.background = isSelected
+                                ? 'rgba(22,119,255,0.10)'
+                                : 'transparent';
+                            }}
+                          >
+                            <IconFile size="small" style={{ color: extColor(ext), flexShrink: 0 }} />
+                            <Typography.Text
+                              ellipsis={{ showTooltip: true }}
+                              style={{ flex: 1, fontSize: 12, color: isSelected ? '#1677ff' : undefined }}
+                            >
+                              {node.name}
+                            </Typography.Text>
+                            <Tag size="small" style={{ flexShrink: 0, fontSize: 10, padding: '0 4px' }}>
+                              {ext}
+                            </Tag>
+                          </div>
+                        );
+                      }
+                      // dir node：支持折叠
+                      const dirFullKey = `${pkg.id}::${pathPrefix}${node.name}`;
+                      const isDirExpanded = expandedDirs.has(dirFullKey);
+                      return (
+                        <div key={dirFullKey}>
+                          <div
+                            onClick={() => toggleDir(dirFullKey)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: `3px 8px 3px ${10 + depth * 14}px`,
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                              borderRadius: 4,
+                              margin: '1px 4px',
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLDivElement).style.background = 'rgba(28,31,35,0.04)';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+                            }}
+                          >
+                            <span style={{ color: '#9ca3af', flexShrink: 0, fontSize: 12, lineHeight: 1 }}>
+                              {isDirExpanded ? <IconChevronDown size="small" /> : <IconChevronRight size="small" />}
+                            </span>
+                            {isDirExpanded ? (
+                              <IconFolderOpen size="small" style={{ color: '#faad14', flexShrink: 0 }} />
+                            ) : (
+                              <IconFolder size="small" style={{ color: '#faad14', flexShrink: 0 }} />
+                            )}
+                            <Typography.Text style={{ fontSize: 12, color: '#374151' }}>
+                              {node.name}
+                            </Typography.Text>
+                          </div>
+                          {isDirExpanded && renderTree(node.children, depth + 1, `${pathPrefix}${node.name}/`)}
+                        </div>
+                      );
+                    });
+
+                  return (
+                    <div key={pkg.id}>
+                      {/* 套装行 */}
+                      <div
+                        onClick={() => togglePackage(pkg.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 8px',
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          borderRadius: 4,
+                          margin: '1px 4px',
+                          background: isExpanded ? 'rgba(22,119,255,0.06)' : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded) (e.currentTarget as HTMLDivElement).style.background = 'rgba(28,31,35,0.04)';
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.background = isExpanded
+                            ? 'rgba(22,119,255,0.06)'
+                            : 'transparent';
+                        }}
+                      >
+                        <span style={{ color: '#6b7280', flexShrink: 0, fontSize: 12 }}>
+                          {isExpanded ? <IconChevronDown size="small" /> : <IconChevronRight size="small" />}
+                        </span>
+                        {isExpanded ? (
+                          <IconFolderOpen size="small" style={{ color: '#faad14', flexShrink: 0 }} />
+                        ) : (
+                          <IconFolder size="small" style={{ color: '#faad14', flexShrink: 0 }} />
+                        )}
+                        <Typography.Text
+                          ellipsis={{ showTooltip: true }}
+                          style={{ flex: 1, fontSize: 13, fontWeight: 500 }}
+                        >
+                          {pkg.id}
+                        </Typography.Text>
+                        <Tag size="small" color="blue" style={{ flexShrink: 0 }}>
+                          {pkg.files.length}
+                        </Tag>
+                      </div>
+
+                      {/* 递归文件树 */}
+                      {isExpanded && renderTree(tree, 1, '')}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-          <Spin spinning={skillLoading}>
-            <Table
-              dataSource={filteredSkillPackages}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-              columns={[
-                { title: '套装', dataIndex: 'id' },
-                {
-                  title: '文件数',
-                  width: 100,
-                  render: (_, r) => r.files.length,
-                },
-              ]}
-            />
-          </Spin>
-        </>
+
+          {/* 右侧编辑器 */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              border: '1px solid rgba(28,31,35,0.08)',
+              borderRadius: 8,
+              overflow: 'hidden',
+              background: '#fff',
+            }}
+          >
+            {/* 编辑器顶部工具栏 */}
+            <div
+              style={{
+                padding: '8px 12px',
+                borderBottom: '1px solid rgba(28,31,35,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'rgba(28,31,35,0.02)',
+              }}
+            >
+              {selectedFile ? (
+                <>
+                  <IconFile size="small" style={{ color: extColor(fileExt(selectedFile.path)), flexShrink: 0 }} />
+                  <Typography.Text style={{ flex: 1, fontSize: 13, fontFamily: 'monospace' }}>
+                    {selectedFile.path}
+                  </Typography.Text>
+                  {isDirty && (
+                    <Tag color="orange" size="small">
+                      未保存
+                    </Tag>
+                  )}
+                  <Button
+                    size="small"
+                    type="primary"
+                    theme="solid"
+                    icon={<IconSave />}
+                    loading={fileSaving}
+                    disabled={!isDirty}
+                    onClick={() => void saveCurrentFile()}
+                  >
+                    保存
+                  </Button>
+                </>
+              ) : (
+                <Typography.Text type="tertiary" size="small">
+                  从左侧选择文件进行查看或编辑
+                </Typography.Text>
+              )}
+            </div>
+
+            {/* 编辑区：flex:1 + minHeight:0 保证高度填满；不用 Spin 包裹（Spin 内部 wrapper 会截断高度） */}
+            <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+              {selectedFile ? (
+                <>
+                  {fileLoading && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(255,255,255,0.75)',
+                        zIndex: 2,
+                      }}
+                    >
+                      <Spin spinning />
+                    </div>
+                  )}
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => {
+                      setEditContent(e.target.value);
+                      setIsDirty(true);
+                    }}
+                    spellCheck={false}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      height: '100%',
+                      resize: 'none',
+                      border: 'none',
+                      outline: 'none',
+                      padding: '12px 16px',
+                      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
+                      fontSize: 13,
+                      lineHeight: 1.6,
+                      background: 'transparent',
+                      color: '#1c1f23',
+                      boxSizing: 'border-box',
+                      overflowY: 'auto',
+                      tabSize: 2,
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                        e.preventDefault();
+                        void saveCurrentFile();
+                      }
+                      if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const el = e.currentTarget;
+                        const start = el.selectionStart;
+                        const end = el.selectionEnd;
+                        const newVal = editContent.substring(0, start) + '  ' + editContent.substring(end);
+                        setEditContent(newVal);
+                        setIsDirty(true);
+                        requestAnimationFrame(() => {
+                          el.selectionStart = start + 2;
+                          el.selectionEnd = start + 2;
+                        });
+                      }
+                    }}
+                  />
+                </>
+              ) : (
+                <div
+                  style={{
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    gap: 8,
+                    color: 'rgba(28,31,35,0.25)',
+                  }}
+                >
+                  <IconFile size="extra-large" />
+                  <Typography.Text type="quaternary">选择左侧文件开始编辑</Typography.Text>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {view === 'mcps' && (
-        <>
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div
             style={{
               background: '#fff',
-              borderRadius: 12,
+              borderRadius: 8,
               border: '1px solid rgba(6,7,9,0.06)',
-              padding: 12,
+              padding: '8px 12px',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: 8,
@@ -592,17 +1037,17 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
               ]}
             />
           </Spin>
-        </>
+        </div>
       )}
 
       {view === 'models' && (
-        <>
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div
             style={{
               background: '#fff',
-              borderRadius: 12,
+              borderRadius: 8,
               border: '1px solid rgba(6,7,9,0.06)',
-              padding: 12,
+              padding: '8px 12px',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: 8,
@@ -751,7 +1196,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
               ]}
             />
           </Spin>
-        </>
+        </div>
       )}
 
       <Modal

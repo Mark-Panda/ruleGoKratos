@@ -27,6 +27,7 @@ import { ServiceManagementSection } from './sections/ServiceManagementSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
 import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
 import { LarkCliSection } from './sections/LarkCliSection';
+import { CursorCliSection } from './sections/CursorCliSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AgentSection } from './sections/AgentSection';
 import { AgentPlaygroundPage } from '../agent-playground';
@@ -45,7 +46,9 @@ type MenuKey =
   | 'agent-profiles'
   | 'workspace-manager'
   | 'admin-terminal'
+  | 'admin-cli'
   | 'admin-lark-cli'
+  | 'admin-cursor-cli'
   | 'engine'
   | 'component'
   | 'agent'
@@ -68,6 +71,7 @@ const MENU_KEYS: MenuKey[] = [
   'workspace-manager',
   'admin-terminal',
   'admin-lark-cli',
+  'admin-cursor-cli',
   'task-board',
   'service-management',
 ];
@@ -76,6 +80,7 @@ function getMenuFromHash(h: string): MenuKey {
   if (h === '#/' || h === '' || h === '#') return 'intro';
   if (h.startsWith('#/terminal')) return 'admin-terminal';
   if (h.startsWith('#/lark-cli')) return 'admin-lark-cli';
+  if (h.startsWith('#/cursor-cli')) return 'admin-cursor-cli';
   if (h.startsWith('#/workspaces')) return 'workspace-manager';
   if (h.startsWith('#/agent/profiles')) return 'agent-profiles';
   if (h.startsWith('#/agent/skills')) return 'agent-skills';
@@ -106,6 +111,7 @@ function setHashForMenu(key: MenuKey) {
   else if (key === 'workspace-manager') window.location.hash = '#/workspaces';
   else if (key === 'admin-terminal') window.location.hash = '#/terminal';
   else if (key === 'admin-lark-cli') window.location.hash = '#/lark-cli';
+  else if (key === 'admin-cursor-cli') window.location.hash = '#/cursor-cli';
   else if (key === 'task-board') window.location.hash = '#/task-board';
   else if (key === 'service-management') window.location.hash = '#/service-management';
 }
@@ -156,6 +162,7 @@ export const AdminPanel: React.FC = () => {
     if (key === 'workspace-manager') return <WorkspacesSection />;
     if (key === 'admin-terminal') return <TerminalSection />;
     if (key === 'admin-lark-cli') return <LarkCliSection />;
+    if (key === 'admin-cursor-cli') return <CursorCliSection />;
     if (key === 'component-rules') return <ComponentsSection view="rules" />;
     if (key === 'task-board') return <TaskBoardSection />;
     if (key === 'service-management') return <ServiceManagementSection />;
@@ -192,6 +199,8 @@ export const AdminPanel: React.FC = () => {
         return '终端';
       case 'admin-lark-cli':
         return '飞书 CLI 配置';
+      case 'admin-cursor-cli':
+        return 'Cursor CLI 登录';
       case 'task-board':
         return '任务看板';
       case 'service-management':
@@ -222,9 +231,9 @@ export const AdminPanel: React.FC = () => {
       activeMenu === 'workspace-manager'
     )
       return '智能体';
+    if (activeMenu === 'admin-lark-cli' || activeMenu === 'admin-cursor-cli') return 'CLI 配置';
     if (
       activeMenu === 'admin-terminal' ||
-      activeMenu === 'admin-lark-cli' ||
       activeMenu === 'task-board' ||
       activeMenu === 'service-management'
     )
@@ -307,7 +316,15 @@ export const AdminPanel: React.FC = () => {
               { itemKey: 'task-board', text: '任务看板', icon: <IconList /> },
               { itemKey: 'service-management', text: '服务管理', icon: <IconSetting /> },
               { itemKey: 'admin-terminal', text: '终端', icon: <IconDesktop /> },
-              { itemKey: 'admin-lark-cli', text: '飞书 CLI 配置', icon: <IconSetting /> },
+              {
+                text: 'CLI 配置',
+                itemKey: 'admin-cli',
+                icon: <IconSetting />,
+                items: [
+                  { itemKey: 'admin-lark-cli', text: '飞书 CLI 配置' },
+                  { itemKey: 'admin-cursor-cli', text: 'Cursor CLI 登录' },
+                ],
+              },
               {
                 text: '工作流引擎',
                 itemKey: 'engine',
@@ -338,10 +355,11 @@ export const AdminPanel: React.FC = () => {
               },
             ]}
             selectedKeys={[activeMenu]}
-            defaultOpenKeys={['engine', 'component', 'agent']}
+            defaultOpenKeys={['engine', 'component', 'agent', 'admin-cli']}
             onSelect={(data) => {
               const key = data.itemKey as MenuKey;
-              if (key === 'engine' || key === 'component' || key === 'agent') return;
+              if (key === 'engine' || key === 'component' || key === 'agent' || key === 'admin-cli')
+                return;
               openMenu(key);
             }}
             style={{ background: 'transparent' }}
@@ -464,7 +482,9 @@ export const AdminPanel: React.FC = () => {
                     padding: 0,
                   }}
                 >
-                  <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>{renderPage(tabKey)}</div>
+                  <div style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex' }}>
+                    {renderPage(tabKey)}
+                  </div>
                 </div>
               </TabPane>
             ))}

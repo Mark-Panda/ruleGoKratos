@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import {
   Table,
   Button,
   Form,
-  Input,
   Select,
-  TextArea,
   Modal,
   Space,
   Tag,
@@ -14,11 +12,13 @@ import {
   Popconfirm,
   Card,
   Typography,
+  Spin,
 } from '@douyinfe/semi-ui';
-import { IconPlus, IconEdit, IconDelete } from '@douyinfe/semi-icons';
+import { IconPlus, IconEdit, IconDelete, IconInfoCircle } from '@douyinfe/semi-icons';
 
 import {
   listServices,
+  getService,
   createService,
   updateService,
   deleteService,
@@ -28,8 +28,6 @@ import {
   CreateServiceParams,
   UpdateServiceParams,
 } from '../../services/api-service';
-
-const { Option } = Select;
 
 export const ServiceManagementSection: React.FC = () => {
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -43,8 +41,16 @@ export const ServiceManagementSection: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'create' | 'edit'>('create');
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
-  const [formValues, setFormValues] = useState<Partial<CreateServiceParams>>({});
+  const [formInitSnapshot, setFormInitSnapshot] = useState<Record<string, unknown>>({});
+  const [formModalKey, setFormModalKey] = useState(0);
+  const serviceFormApiRef = useRef<{ validate: () => Promise<void>; getValues: () => Record<string, unknown> } | null>(
+    null
+  );
   const [submitting, setSubmitting] = useState(false);
+
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailService, setDetailService] = useState<ServiceItem | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // 获取服务列表
   const fetchServices = async (page = 1, size = pageSize) => {
@@ -70,47 +76,93 @@ export const ServiceManagementSection: React.FC = () => {
     fetchServices();
   }, [filters]);
 
-  // 打开新增/编辑弹窗
+  // 打开新增/编辑弹窗（initValues + key 重挂载，保证编辑回显）
   const openModal = (type: 'create' | 'edit', service?: ServiceItem) => {
     setModalType(type);
+    serviceFormApiRef.current = null;
     if (type === 'edit' && service) {
       setEditingService(service);
-      setFormValues({
+      setFormInitSnapshot({
         name: service.name,
-        status: service.status,
-        volc_log_service_id: service.volc_log_service_id,
-        git_repo_url: service.git_repo_url,
-        description: service.description,
+        status: Number(service.status) as ServiceStatus,
+        volc_log_service_id: service.volc_log_service_id ?? '',
+        git_repo_url: service.git_repo_url ?? '',
+        description: service.description ?? '',
       });
     } else {
       setEditingService(null);
-      setFormValues({
+      setFormInitSnapshot({
+        name: '',
         status: ServiceStatus.STOPPED,
+        volc_log_service_id: '',
+        git_repo_url: '',
+        description: '',
       });
     }
+    setFormModalKey((k) => k + 1);
     setModalVisible(true);
+  };
+
+  const openDetail = async (svc: ServiceItem) => {
+    setDetailVisible(true);
+    setDetailLoading(true);
+    setDetailService(svc);
+    try {
+      const { item } = await getService(svc.id);
+      setDetailService(item);
+    } catch {
+      Toast.warning('拉取详情失败，已显示列表中的数据');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetailVisible(false);
+    setDetailService(null);
   };
 
   // 关闭弹窗
   const closeModal = () => {
     setModalVisible(false);
-    setFormValues({});
+    setFormInitSnapshot({});
     setEditingService(null);
+    serviceFormApiRef.current = null;
   };
 
   // 提交表单
   const handleSubmit = async () => {
-    if (!formValues.name || !formValues.status) {
+    const api = serviceFormApiRef.current;
+    if (!api) {
+      Toast.warning('表单未就绪，请稍后重试');
+      return;
+    }
+    try {
+      await api.validate();
+    } catch {
+      return;
+    }
+    const v = api.getValues() as Record<string, unknown>;
+    const name = String(v.name ?? '').trim();
+    const status = Number(v.status) as ServiceStatus;
+    if (!name || !Number.isFinite(status)) {
       Toast.warning('请填写必填项');
       return;
     }
+    const body = {
+      name,
+      status,
+      volc_log_service_id: String(v.volc_log_service_id ?? '').trim(),
+      git_repo_url: String(v.git_repo_url ?? '').trim(),
+      description: String(v.description ?? ''),
+    };
     setSubmitting(true);
     try {
       if (modalType === 'create') {
-        await createService(formValues as CreateServiceParams);
+        await createService(body as CreateServiceParams);
         Toast.success('创建成功');
       } else if (modalType === 'edit' && editingService) {
-        await updateService(editingService.id, formValues as UpdateServiceParams);
+        await updateService(editingService.id, body as UpdateServiceParams);
         Toast.success('更新成功');
       }
       closeModal();
@@ -197,6 +249,14 @@ export const ServiceManagementSection: React.FC = () => {
       render: (_, record: ServiceItem) => (
         <Space>
           <Button
+            icon={<IconInfoCircle />}
+            size="small"
+            theme="borderless"
+            onClick={() => void openDetail(record)}
+          >
+            详情
+          </Button>
+          <Button
             icon={<IconEdit />}
             size="small"
             theme="borderless"
@@ -237,25 +297,26 @@ export const ServiceManagementSection: React.FC = () => {
           </Button>
         </div>
 
-        {/* 筛选区域 */}
+        {/* 筛选：勿在 Form 内对 field + 受控 value 混用，会导致状态不回显 */}
         <div style={{ marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
-          <Form labelPosition="left" labelAlign="right" labelWidth={80}>
-            <Form.Select
-              field="status"
-              label="状态"
-              placeholder="全部状态"
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Typography.Text type="tertiary" size="small">
+              状态
+            </Typography.Text>
+            <Select
               value={filters.status}
-              onChange={(val) => setFilters({ ...filters, status: val as ServiceStatus })}
+              onChange={(val) =>
+                setFilters({
+                  ...filters,
+                  status: (val === '' || val == null ? undefined : val) as ServiceStatus | undefined,
+                })
+              }
+              placeholder="全部状态"
               style={{ width: 160 }}
-            >
-              <Option value={null}>全部状态</Option>
-              {serviceStatusOptions.map((o) => (
-                <Option key={o.value} value={o.value}>
-                  {o.label}
-                </Option>
-              ))}
-            </Form.Select>
-          </Form>
+              allowClear
+              optionList={serviceStatusOptions.map((o) => ({ label: o.label, value: o.value }))}
+            />
+          </div>
           <Button onClick={() => setFilters({})}>重置筛选</Button>
         </div>
 
@@ -287,60 +348,98 @@ export const ServiceManagementSection: React.FC = () => {
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <Button onClick={closeModal}>取消</Button>
-            <Button type="primary" onClick={handleSubmit} loading={submitting}>
+            <Button type="primary" onClick={() => void handleSubmit()} loading={submitting}>
               {modalType === 'create' ? '创建' : '保存'}
             </Button>
           </div>
         }
         width={600}
       >
-        <Form labelPosition="left" labelAlign="right" labelWidth={120}>
+        <Form
+          key={formModalKey}
+          initValues={formInitSnapshot}
+          getFormApi={(api) => {
+            serviceFormApiRef.current = api;
+          }}
+          labelPosition="left"
+          labelAlign="right"
+          labelWidth={120}
+        >
           <Form.Input
             field="name"
             label="服务名称"
             placeholder="请输入服务名称"
-            value={formValues.name}
-            onChange={(val) => setFormValues({ ...formValues, name: val })}
             rules={[{ required: true, message: '请输入服务名称' }]}
           />
           <Form.Select
             field="status"
             label="服务状态"
             placeholder="请选择服务状态"
-            value={formValues.status}
-            onChange={(val) => setFormValues({ ...formValues, status: val as ServiceStatus })}
             style={{ width: '100%' }}
             rules={[{ required: true, message: '请选择服务状态' }]}
-          >
-            {serviceStatusOptions.map((o) => (
-              <Option key={o.value} value={o.value}>
-                {o.label}
-              </Option>
-            ))}
-          </Form.Select>
-          <Form.Input
-            field="volc_log_service_id"
-            label="火山日志服务ID"
-            placeholder="请输入火山日志服务ID"
-            value={formValues.volc_log_service_id}
-            onChange={(val) => setFormValues({ ...formValues, volc_log_service_id: val })}
+            optionList={serviceStatusOptions.map((o) => ({ label: o.label, value: o.value }))}
           />
-          <Form.Input
-            field="git_repo_url"
-            label="Git仓库地址"
-            placeholder="请输入Git仓库地址"
-            value={formValues.git_repo_url}
-            onChange={(val) => setFormValues({ ...formValues, git_repo_url: val })}
-          />
-          <Form.TextArea
-            field="description"
-            label="服务描述"
-            placeholder="请输入服务描述"
-            value={formValues.description}
-            onChange={(val) => setFormValues({ ...formValues, description: val })}
-            rows={4}
-          />
+          <Form.Input field="volc_log_service_id" label="火山日志服务ID" placeholder="请输入火山日志服务ID" />
+          <Form.Input field="git_repo_url" label="Git仓库地址" placeholder="请输入Git仓库地址" />
+          <Form.TextArea field="description" label="服务描述" placeholder="请输入服务描述" rows={4} />
         </Form>
+      </Modal>
+
+      <Modal
+        title="服务详情"
+        visible={detailVisible}
+        onCancel={closeDetail}
+        footer={
+          <Button type="primary" onClick={closeDetail}>
+            关闭
+          </Button>
+        }
+        width={560}
+      >
+        <Spin spinning={detailLoading}>
+          {detailService && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {(
+                [
+                  ['服务ID', detailService.id],
+                  ['服务名称', detailService.name],
+                  [
+                    '状态',
+                    serviceStatusOptions.find((o) => o.value === detailService.status)?.label ??
+                      detailService.status,
+                  ],
+                  ['火山日志ID', detailService.volc_log_service_id || '—'],
+                  [
+                    'Git 仓库',
+                    detailService.git_repo_url ? (
+                      <a href={detailService.git_repo_url} target="_blank" rel="noopener noreferrer">
+                        {detailService.git_repo_url}
+                      </a>
+                    ) : (
+                      '—'
+                    ),
+                  ],
+                  ['创建时间', detailService.created_at || '—'],
+                  ['更新时间', detailService.updated_at || '—'],
+                  ['描述', detailService.description || '—'],
+                ] as const
+              ).map(([label, val]) => (
+                <div
+                  key={String(label)}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '120px 1fr',
+                    gap: 12,
+                    alignItems: 'start',
+                  }}
+                >
+                  <Typography.Text type="tertiary">{label}</Typography.Text>
+                  <div style={{ wordBreak: 'break-word' }}>{val as React.ReactNode}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Spin>
       </Modal>
     </div>
   );
