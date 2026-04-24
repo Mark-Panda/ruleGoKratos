@@ -14,19 +14,19 @@ import { Button, Switch, TextArea, Toast } from '@douyinfe/semi-ui';
 import { VariablePicker } from '../variable-picker';
 import { FormItem } from '../form-item';
 import { Feedback } from '../feedback';
-import { JsonSchema } from '../../typings';
-import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
+import { tryFormatJsonPretty } from '../../utils/format-json-pretty';
 import {
   CANVAS_TWO_LINE_BOX_STYLE,
   normalizeCanvasPreviewText,
   summarizeFlowValue,
   truncateCanvasText,
 } from '../../utils/canvas-node-preview';
-import { tryFormatJsonPretty } from '../../utils/format-json-pretty';
+import { JsonSchema } from '../../typings';
+import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
+import { WhileDoTargetSelect } from './while-do-target';
 import { SqlTemplateEditor } from './sql-template-editor';
 import { RuleSelect } from './rule-select';
 import { NodeIdSelect } from './node-id-select';
-import { WhileDoTargetSelect } from './while-do-target';
 import { NodeIdMultiSelect } from './node-id-multi-select';
 import { CronEditor } from './cron-editor';
 
@@ -128,13 +128,15 @@ export function FormInputs(props?: FormInputsProps) {
                       );
                     }
                     const constantVal = (field.value as { type?: string; content?: unknown }) ?? {};
-                    const defVal = property.default as { type?: string; content?: unknown } | undefined;
+                    const defVal = property.default as
+                      | { type?: string; content?: unknown }
+                      | undefined;
                     const on =
                       constantVal.type === 'constant'
                         ? Boolean(constantVal.content)
                         : defVal?.type === 'constant'
-                          ? Boolean(defVal.content)
-                          : false;
+                        ? Boolean(defVal.content)
+                        : false;
                     if (!isSidebar) {
                       return (
                         <div
@@ -170,18 +172,20 @@ export function FormInputs(props?: FormInputsProps) {
                         content.trim() === ''
                           ? '(空)'
                           : truncateCanvasText(normalizeCanvasPreviewText(content), 220);
-                      return (
-                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
-                          {shown}
-                        </div>
-                      );
+                      return <div style={CANVAS_TWO_LINE_BOX_STYLE}>{shown}</div>;
                     }
                     // 在侧边栏中显示完整的编辑器
                     return (
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {!readonly && jsonFormat ? (
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                                marginBottom: 4,
+                              }}
+                            >
                               <Button size="small" type="tertiary" onClick={formatJsonField}>
                                 格式化 JSON
                               </Button>
@@ -221,9 +225,7 @@ export function FormInputs(props?: FormInputsProps) {
                           ? '(空)'
                           : truncateCanvasText(normalizeCanvasPreviewText(content), 220);
                       return (
-                        <div
-                          style={{ ...CANVAS_TWO_LINE_BOX_STYLE, fontFamily: 'monospace' }}
-                        >
+                        <div style={{ ...CANVAS_TWO_LINE_BOX_STYLE, fontFamily: 'monospace' }}>
                           {shown}
                         </div>
                       );
@@ -261,7 +263,13 @@ export function FormInputs(props?: FormInputsProps) {
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               {jsonFormat && !playgroundReadonly ? (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'flex-end',
+                                    marginBottom: 4,
+                                  }}
+                                >
                                   <Button size="small" type="tertiary" onClick={formatJsonField}>
                                     格式化 JSON
                                   </Button>
@@ -299,17 +307,19 @@ export function FormInputs(props?: FormInputsProps) {
                         pv.trim() === ''
                           ? '(空)'
                           : truncateCanvasText(normalizeCanvasPreviewText(pv), 220);
-                      return (
-                        <div style={CANVAS_TWO_LINE_BOX_STYLE}>
-                          {shown}
-                        </div>
-                      );
+                      return <div style={CANVAS_TWO_LINE_BOX_STYLE}>{shown}</div>;
                     }
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {!readonly && jsonFormat ? (
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                                marginBottom: 4,
+                              }}
+                            >
                               <Button size="small" type="tertiary" onClick={formatJsonField}>
                                 格式化 JSON
                               </Button>
@@ -366,7 +376,9 @@ export function FormInputs(props?: FormInputsProps) {
                         excludeSelf={extra?.nodeSelectorExcludeSelf === true}
                         excludeTypes={extra?.nodeSelectorExcludeTypes as string[] | undefined}
                         excludeIds={extra?.nodeSelectorExcludeIds as string[] | undefined}
-                        preferSuccessDownstream={extra?.nodeSelectorPreferSuccessDownstream === true}
+                        preferSuccessDownstream={
+                          extra?.nodeSelectorPreferSuccessDownstream === true
+                        }
                       />
                     );
                   }
@@ -398,7 +410,9 @@ export function FormInputs(props?: FormInputsProps) {
                         excludeSelf={extra?.nodeSelectorExcludeSelf === true}
                         excludeTypes={extra?.nodeSelectorExcludeTypes as string[] | undefined}
                         excludeIds={extra?.nodeSelectorExcludeIds as string[] | undefined}
-                        preferSuccessDownstream={extra?.nodeSelectorPreferSuccessDownstream === true}
+                        preferSuccessDownstream={
+                          extra?.nodeSelectorPreferSuccessDownstream === true
+                        }
                       />
                     );
                   }

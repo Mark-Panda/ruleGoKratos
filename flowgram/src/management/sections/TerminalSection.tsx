@@ -3,9 +3,9 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Button, Input, Typography } from '@douyinfe/semi-ui';
-import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { Button, Input, Typography } from '@douyinfe/semi-ui';
 
 import { getApiOrigin, getAuthToken } from '../../services/http';
 
@@ -123,13 +123,24 @@ export const TerminalSection: React.FC = () => {
   useEffect(() => () => disconnect(), [disconnect]);
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, height: '100%', boxSizing: 'border-box' }}>
+    <div
+      style={{
+        padding: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        height: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
       <Typography.Title heading={6} style={{ margin: 0 }}>
         服务端终端
       </Typography.Title>
       <Typography.Text type="tertiary" size="small">
-        通过 WebSocket + PTY 打开交互式 shell；工作目录须为 <Typography.Text code>/app</Typography.Text> 或配置的 Agent 工作区（绝对路径）。经 Nginx 反代时需已配置
-        Upgrade。REST <Typography.Text code>POST /admin/terminal/run</Typography.Text> 仍可用于单次命令。
+        通过 WebSocket + PTY 打开交互式 shell；工作目录须为{' '}
+        <Typography.Text code>/app</Typography.Text> 或配置的 Agent 工作区（绝对路径）。经 Nginx
+        反代时需已配置 Upgrade。REST{' '}
+        <Typography.Text code>POST /admin/terminal/run</Typography.Text> 仍可用于单次命令。
       </Typography.Text>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>

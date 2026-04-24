@@ -117,8 +117,7 @@ export const FeishuWebhookNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '富文本正文（post）',
                 formComponent: 'prompt-editor',
-                description:
-                  '与下方选项组合：可整段一块文本，或按行拆成多段；支持 @ 与成员列表。',
+                description: '与下方选项组合：可整段一块文本，或按行拆成多段；支持 @ 与成员列表。',
               },
             },
             postLang: {
@@ -134,8 +133,7 @@ export const FeishuWebhookNodeRegistry: FlowNodeRegistry = {
               type: 'boolean',
               extra: {
                 label: '正文按「换行」拆成多段',
-                description:
-                  '勾选：每一非空行单独成一段（适合多条要点）；不勾选：整段正文一块。',
+                description: '勾选：每一非空行单独成一段（适合多条要点）；不勾选：整段正文一块。',
               },
             },
             postAtAllBefore: {

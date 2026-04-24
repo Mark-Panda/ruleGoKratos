@@ -892,7 +892,10 @@ describe('remaining node specs round-trip', () => {
       timeoutMs: 8000,
       replaceData: true,
     });
-    const fwIv = mapDslToNodeInputsValues(fwCfg as Record<string, unknown>, feishuWebhookMappingSpec);
+    const fwIv = mapDslToNodeInputsValues(
+      fwCfg as Record<string, unknown>,
+      feishuWebhookMappingSpec
+    );
     expect(fwIv.msgType?.content).toBe('post');
     expect(fwIv.webhookUrl?.content).toBe('https://open.feishu.cn/open-apis/bot/v2/hook/x');
     expect(fwIv.text?.content).toBe('hello ${msg.id}');
@@ -1060,10 +1063,7 @@ describe('remaining node specs round-trip', () => {
     );
     expect(whileCfg.condition).toBe('msg.n < 3');
     expect(whileCfg.do).toBe('node_a');
-    const ivW = mapDslToNodeInputsValues(
-      whileCfg as Record<string, unknown>,
-      whileMappingSpec
-    );
+    const ivW = mapDslToNodeInputsValues(whileCfg as Record<string, unknown>, whileMappingSpec);
     expect(ivW.condition?.content).toBe('msg.n < 3');
     expect(ivW.do?.content).toBe('node_a');
 

@@ -282,7 +282,8 @@ export const opensearchSearchMappingSpec: NodeMappingSpec = {
       inputKey: 'defaultSearchBody',
       dslKey: 'defaultSearchBody',
       valueType: 'template',
-      defaultValue: '{"size":100,"sort":[{"@timestamp":{"order":"desc"}}],"query":{"match_all":{}}}',
+      defaultValue:
+        '{"size":100,"sort":[{"@timestamp":{"order":"desc"}}],"query":{"match_all":{}}}',
     },
   ],
 };
@@ -494,7 +495,12 @@ export const cursorCliMappingSpec: NodeMappingSpec = {
     { inputKey: 'printMode', dslKey: 'printMode', valueType: 'boolean', defaultValue: false },
     { inputKey: 'prompt', dslKey: 'prompt', valueType: 'template', defaultValue: '' },
     // 与 -p 同时生效；仅允许 text / json / stream-json，缺省由后端按 text 写入 argv。
-    { inputKey: 'outputFormat', dslKey: 'outputFormat', valueType: 'constant', defaultValue: 'text' },
+    {
+      inputKey: 'outputFormat',
+      dslKey: 'outputFormat',
+      valueType: 'constant',
+      defaultValue: 'text',
+    },
     { inputKey: 'model', dslKey: 'model', valueType: 'template', defaultValue: '' },
     // 非空时插入 --api-key；留空则运行时读 CURSOR_API_KEY；可用 ${metadata.xxx}，勿硬编码进仓库。
     { inputKey: 'apiKey', dslKey: 'apiKey', valueType: 'template', defaultValue: '' },
@@ -526,17 +532,42 @@ export const feishuWebhookMappingSpec: NodeMappingSpec = {
     { inputKey: 'postTitle', dslKey: 'postTitle', valueType: 'template', defaultValue: '' },
     { inputKey: 'postBody', dslKey: 'postBody', valueType: 'template', defaultValue: '' },
     { inputKey: 'postLang', dslKey: 'postLang', valueType: 'constant', defaultValue: 'zh_cn' },
-    { inputKey: 'postSplitByLine', dslKey: 'postSplitByLine', valueType: 'boolean', defaultValue: false },
-    { inputKey: 'postAtAllBefore', dslKey: 'postAtAllBefore', valueType: 'boolean', defaultValue: false },
-    { inputKey: 'postAtAllAfter', dslKey: 'postAtAllAfter', valueType: 'boolean', defaultValue: false },
-    { inputKey: 'postMentionUserIds', dslKey: 'postMentionUserIds', valueType: 'json', defaultValue: [] },
+    {
+      inputKey: 'postSplitByLine',
+      dslKey: 'postSplitByLine',
+      valueType: 'boolean',
+      defaultValue: false,
+    },
+    {
+      inputKey: 'postAtAllBefore',
+      dslKey: 'postAtAllBefore',
+      valueType: 'boolean',
+      defaultValue: false,
+    },
+    {
+      inputKey: 'postAtAllAfter',
+      dslKey: 'postAtAllAfter',
+      valueType: 'boolean',
+      defaultValue: false,
+    },
+    {
+      inputKey: 'postMentionUserIds',
+      dslKey: 'postMentionUserIds',
+      valueType: 'json',
+      defaultValue: [],
+    },
     {
       inputKey: 'interactivePreset',
       dslKey: 'interactivePreset',
       valueType: 'constant',
       defaultValue: 'card_json',
     },
-    { inputKey: 'cardNoticeTitle', dslKey: 'cardNoticeTitle', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'cardNoticeTitle',
+      dslKey: 'cardNoticeTitle',
+      valueType: 'template',
+      defaultValue: '',
+    },
     {
       inputKey: 'cardNoticeMarkdown',
       dslKey: 'cardNoticeMarkdown',
@@ -554,7 +585,12 @@ export const feishuWebhookMappingSpec: NodeMappingSpec = {
 export const cursorAcpMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorAcp',
   fields: [
-    { inputKey: 'acpSimpleMode', dslKey: 'acpSimpleMode', valueType: 'boolean', defaultValue: true },
+    {
+      inputKey: 'acpSimpleMode',
+      dslKey: 'acpSimpleMode',
+      valueType: 'boolean',
+      defaultValue: true,
+    },
     { inputKey: 'acpTask', dslKey: 'acpTask', valueType: 'template', defaultValue: '' },
     { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
     { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: ['acp'] },

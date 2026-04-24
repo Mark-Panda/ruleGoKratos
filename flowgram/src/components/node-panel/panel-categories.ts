@@ -51,12 +51,7 @@ const FLOW_CONTROL = new Set([
   'block-start',
   'block-end',
 ]);
-const DATA_TRANSFORM = new Set([
-  'jsTransform',
-  'jsFilter',
-  'luaTransform',
-  'fetch-node-output',
-]);
+const DATA_TRANSFORM = new Set(['jsTransform', 'jsFilter', 'luaTransform', 'fetch-node-output']);
 
 /** 根据节点 type 推断面板分组 id */
 export function inferPanelCategoryKey(nodeType: string): string {

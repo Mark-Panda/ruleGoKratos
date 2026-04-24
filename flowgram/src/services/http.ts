@@ -37,7 +37,7 @@ export interface RequestOptions {
   method?: HttpMethod;
   headers?: Record<string, string>;
   body?: any;
-  params?: Record<string, string | number | boolean | undefined>;
+  params?: Record<string, any>;
 }
 
 // 创建 axios 实例并设置拦截器

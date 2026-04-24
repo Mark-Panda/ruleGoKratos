@@ -3,6 +3,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+
 import {
   Button,
   ButtonGroup,
@@ -41,6 +42,26 @@ import {
   IconSetting,
 } from '@douyinfe/semi-icons';
 
+function mergeTraceEvents(prev: TraceEvent[], incoming: TraceEvent): TraceEvent[] {
+  const m = new Map(prev.map((e) => [e.id, e]));
+  m.set(incoming.id, incoming);
+  return [...m.values()].sort((a, b) => a.timestamp - b.timestamp);
+}
+import { buildRuntimeViewModel } from '../utils/runtime-view-model';
+import {
+  createRequestGuardSnapshot,
+  getDisplayedRuntimeState,
+  invalidateRequestGuards,
+  isRequestGuardCurrent,
+  shouldAutoRefreshRun,
+} from '../utils/runtime-page-guards';
+import { applyRecoveryActionAndRefresh } from '../utils/recovery-actions';
+import { WorkflowGraph } from '../components/workflow-graph';
+import { TracePanel } from '../components/trace-panel';
+import { RunConsole, PreviousRunSnapshot } from '../components/run-console';
+import { ModeSelector } from '../components/mode-selector';
+import { AgentManager } from '../components/agent-manager';
+import { getApiOrigin } from '../../services/http';
 import {
   AgentDefinition,
   AgentPool,
@@ -66,34 +87,13 @@ import {
   applyRecoveryAction,
   listAgentPools,
 } from '../../services/api-playground';
-import { getApiOrigin } from '../../services/http';
-
-function mergeTraceEvents(prev: TraceEvent[], incoming: TraceEvent): TraceEvent[] {
-  const m = new Map(prev.map(e => [e.id, e]));
-  m.set(incoming.id, incoming);
-  return [...m.values()].sort((a, b) => a.timestamp - b.timestamp);
-}
-import { AgentManager } from '../components/agent-manager';
-import { ModeSelector } from '../components/mode-selector';
-import { WorkflowGraph } from '../components/workflow-graph';
-import { TracePanel } from '../components/trace-panel';
-import { RunConsole, PreviousRunSnapshot } from '../components/run-console';
-import { buildRuntimeViewModel } from '../utils/runtime-view-model';
-import {
-  createRequestGuardSnapshot,
-  getDisplayedRuntimeState,
-  invalidateRequestGuards,
-  isRequestGuardCurrent,
-  shouldAutoRefreshRun,
-} from '../utils/runtime-page-guards';
-import { applyRecoveryActionAndRefresh } from '../utils/recovery-actions';
 
 const { Text, Title } = Typography;
 
 function splitCommaSeparated(value: string): string[] {
   return value
     .split(',')
-    .map(item => item.trim())
+    .map((item) => item.trim())
     .filter(Boolean);
 }
 
@@ -116,7 +116,10 @@ function extractLatestRoundUserOnly(storedUserInput: string): string {
 }
 
 /** 将上一轮 run 摘要拼入下一轮 userInput，避免新区间无法理解 Bug 语义 */
-function buildPlaygroundFollowUpUserPayload(snapshot: PreviousRunSnapshot, roundText: string): string {
+function buildPlaygroundFollowUpUserPayload(
+  snapshot: PreviousRunSnapshot,
+  roundText: string
+): string {
   const tail =
     snapshot.finalOutput.length > 4500
       ? `${snapshot.finalOutput.slice(-4500)}\n…（产出仅保留末尾 4500 字符）`
@@ -201,30 +204,32 @@ export const AgentPlaygroundPage: React.FC = () => {
   const [pools, setPools] = useState<AgentPool[]>([]);
   /** 协作运行固定使用服务端 default 池；无则退回列表首项兼容旧数据 */
   const defaultAgentPool = useMemo(
-    () => pools.find(p => p.id === 'default') ?? pools[0],
-    [pools],
+    () => pools.find((p) => p.id === 'default') ?? pools[0],
+    [pools]
   );
 
   /** default 池中已启用成员，用于方案编辑里下拉 / 勾选 */
   const poolAgentsSelectable = useMemo(() => {
     const list = defaultAgentPool?.agents || [];
-    return list.filter(a => a && a.enabled !== false);
+    return list.filter((a) => a && a.enabled !== false);
   }, [defaultAgentPool]);
 
   const poolAgentIdOptions = useMemo(
     () =>
-      poolAgentsSelectable.map(a => ({
+      poolAgentsSelectable.map((a) => ({
         value: a.id,
         label: `${a.name} (${a.id})`,
       })),
-    [poolAgentsSelectable],
+    [poolAgentsSelectable]
   );
 
   const [selectedScheme, setSelectedScheme] = useState<CollaborationScheme | undefined>();
   const [currentRunDetail, setCurrentRunDetail] = useState<RuntimeRunDetail | undefined>();
   const [currentRunSchemeId, setCurrentRunSchemeId] = useState<string | undefined>();
   const [events, setEvents] = useState<TraceEvent[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'schemes' | 'run' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'agents' | 'schemes' | 'run' | 'settings'
+  >('overview');
   const [lang, setLang] = useState<PlaygroundLang>('zh');
   const [running, setRunning] = useState(false);
   const [applyingRecoveryActionId, setApplyingRecoveryActionId] = useState<string | undefined>();
@@ -250,7 +255,9 @@ export const AgentPlaygroundPage: React.FC = () => {
 
   const applyRunDetailIfCurrent = useCallback((runRes: RuntimeRunDetail, guardVersion: number) => {
     const snapshot = createRequestGuardSnapshot(runRes.run.runId, guardVersion);
-    if (!isRequestGuardCurrent(snapshot, activeRunIdRef.current, runDetailRequestVersionRef.current)) {
+    if (
+      !isRequestGuardCurrent(snapshot, activeRunIdRef.current, runDetailRequestVersionRef.current)
+    ) {
       return false;
     }
     setCurrentRunDetail(runRes);
@@ -259,14 +266,19 @@ export const AgentPlaygroundPage: React.FC = () => {
     return true;
   }, []);
 
-  const applyEventsIfCurrent = useCallback((runId: string, nextEvents: TraceEvent[], guardVersion: number) => {
-    const snapshot = createRequestGuardSnapshot(runId, guardVersion);
-    if (!isRequestGuardCurrent(snapshot, activeRunIdRef.current, eventsRequestVersionRef.current)) {
-      return false;
-    }
-    setEvents(nextEvents);
-    return true;
-  }, []);
+  const applyEventsIfCurrent = useCallback(
+    (runId: string, nextEvents: TraceEvent[], guardVersion: number) => {
+      const snapshot = createRequestGuardSnapshot(runId, guardVersion);
+      if (
+        !isRequestGuardCurrent(snapshot, activeRunIdRef.current, eventsRequestVersionRef.current)
+      ) {
+        return false;
+      }
+      setEvents(nextEvents);
+      return true;
+    },
+    []
+  );
 
   const issueRunDetailGuard = useCallback(() => {
     const nextVersion = runDetailRequestVersionRef.current + 1;
@@ -312,7 +324,7 @@ export const AgentPlaygroundPage: React.FC = () => {
         events,
         running,
       }),
-    [selectedScheme?.id, currentRunSchemeId, currentRunDetail, events, running],
+    [selectedScheme?.id, currentRunSchemeId, currentRunDetail, events, running]
   );
 
   const runtimeViewModel = useMemo(
@@ -324,20 +336,23 @@ export const AgentPlaygroundPage: React.FC = () => {
         recoveryActions: displayedRuntimeState.currentRunDetail?.recoveryActions,
         events: displayedRuntimeState.events,
       }),
-    [displayedRuntimeState],
+    [displayedRuntimeState]
   );
 
-  const refreshRunState = useCallback(async (runId: string) => {
-    const runDetailGuardVersion = issueRunDetailGuard();
-    const eventsGuardVersion = issueEventsGuard();
-    const [runRes, eventsRes] = await Promise.all([
-      getRun(runId),
-      getRunEvents(runId).catch(() => ({ events: [] as TraceEvent[] })),
-    ]);
-    applyRunDetailIfCurrent(runRes, runDetailGuardVersion);
-    applyEventsIfCurrent(runId, eventsRes.events || [], eventsGuardVersion);
-    return runRes;
-  }, [applyEventsIfCurrent, applyRunDetailIfCurrent, issueEventsGuard, issueRunDetailGuard]);
+  const refreshRunState = useCallback(
+    async (runId: string) => {
+      const runDetailGuardVersion = issueRunDetailGuard();
+      const eventsGuardVersion = issueEventsGuard();
+      const [runRes, eventsRes] = await Promise.all([
+        getRun(runId),
+        getRunEvents(runId).catch(() => ({ events: [] as TraceEvent[] })),
+      ]);
+      applyRunDetailIfCurrent(runRes, runDetailGuardVersion);
+      applyEventsIfCurrent(runId, eventsRes.events || [], eventsGuardVersion);
+      return runRes;
+    },
+    [applyEventsIfCurrent, applyRunDetailIfCurrent, issueEventsGuard, issueRunDetailGuard]
+  );
 
   // 运行结束后 Toast 告知用户最终结果摘要（与中间栏「最终结果」一致）
   useEffect(() => {
@@ -350,9 +365,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     if (status === 'completed') {
       const raw = (finalOutput || '').trim();
       const preview =
-        raw.length > 0
-          ? [...raw].slice(0, 220).join('') + (raw.length > 220 ? '…' : '')
-          : '';
+        raw.length > 0 ? [...raw].slice(0, 220).join('') + (raw.length > 220 ? '…' : '') : '';
       Toast.success({
         content:
           preview.length > 0
@@ -364,7 +377,11 @@ export const AgentPlaygroundPage: React.FC = () => {
       Toast.warning({
         content:
           runtimeViewModel.run.failureSummary || runtimeViewModel.failedStep
-            ? `运行进入恢复等待。\n失败步骤：${runtimeViewModel.failedStep?.name || runtimeViewModel.failedStep?.stepId || '未知步骤'}`
+            ? `运行进入恢复等待。\n失败步骤：${
+                runtimeViewModel.failedStep?.name ||
+                runtimeViewModel.failedStep?.stepId ||
+                '未知步骤'
+              }`
             : '运行进入恢复等待。\n请在中间栏和右侧 Recovery 视图查看建议动作。',
         duration: 6,
       });
@@ -374,7 +391,12 @@ export const AgentPlaygroundPage: React.FC = () => {
         duration: 6,
       });
     }
-  }, [currentRunDetail?.run.runId, currentRunDetail?.run.status, currentRunDetail?.run.finalOutput, runtimeViewModel]);
+  }, [
+    currentRunDetail?.run.runId,
+    currentRunDetail?.run.status,
+    currentRunDetail?.run.finalOutput,
+    runtimeViewModel,
+  ]);
 
   // 记录「可附带的上一轮」：完成、失败或进入恢复时均可能需基于该 run 报 Bug
   useEffect(() => {
@@ -399,10 +421,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     setLoading(true);
     setError(undefined);
     try {
-      const [poolsRes, schemesRes] = await Promise.all([
-        listAgentPools(),
-        listSchemes(),
-      ]);
+      const [poolsRes, schemesRes] = await Promise.all([listAgentPools(), listSchemes()]);
       setPools(poolsRes.pools || []);
       setSchemes(schemesRes.schemes || []);
     } catch (err) {
@@ -488,20 +507,20 @@ export const AgentPlaygroundPage: React.FC = () => {
       typeof window !== 'undefined'
         ? window.localStorage.getItem('AUTH_TOKEN') || window.localStorage.getItem('token') || ''
         : '';
-    const streamUrl = `${getApiOrigin()}/api/v1/playground/run/${encodeURIComponent(runId)}/events/stream${
-      token ? `?token=${encodeURIComponent(token)}` : ''
-    }`;
+    const streamUrl = `${getApiOrigin()}/api/v1/playground/run/${encodeURIComponent(
+      runId
+    )}/events/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 
     const es = new EventSource(streamUrl);
     eventSourceRef.current = es;
 
-    es.onmessage = async event => {
+    es.onmessage = async (event) => {
       try {
         const raw = JSON.parse(event.data) as TraceEvent;
         if (activeRunIdRef.current !== runId) {
           return;
         }
-        setEvents(prev => mergeTraceEvents(prev, raw));
+        setEvents((prev) => mergeTraceEvents(prev, raw));
         if (raw.type === 'WORKFLOW_END') {
           es.close();
           eventSourceRef.current = null;
@@ -533,7 +552,14 @@ export const AgentPlaygroundPage: React.FC = () => {
       clearFallback();
       clearRunDetailPoll();
     };
-  }, [applyEventsIfCurrent, applyRunDetailIfCurrent, currentRunDetail?.run.runId, currentRunDetail?.run.status, issueEventsGuard, issueRunDetailGuard]);
+  }, [
+    applyEventsIfCurrent,
+    applyRunDetailIfCurrent,
+    currentRunDetail?.run.runId,
+    currentRunDetail?.run.status,
+    issueEventsGuard,
+    issueRunDetailGuard,
+  ]);
 
   const schemeFormBindAgents = useMemo(() => {
     if (schemeModalMode === 'edit' && editingScheme?.bindAgents?.length) {
@@ -551,11 +577,11 @@ export const AgentPlaygroundPage: React.FC = () => {
     if (!schemeFormBindAgents.length) {
       return '暂无可参考的绑定 Agent，可直接填写 Agent ID。';
     }
-    return `当前候选 Agent：${schemeFormBindAgents.map(agent => agent.agentId).join(', ')}`;
+    return `当前候选 Agent：${schemeFormBindAgents.map((agent) => agent.agentId).join(', ')}`;
   }, [schemeFormBindAgents]);
 
   const updateSchemeConfig = useCallback((updater: (config: SchemeConfig) => SchemeConfig) => {
-    setSchemeForm(prev => ({
+    setSchemeForm((prev) => ({
       ...prev,
       config: updater(prev.config),
     }));
@@ -568,7 +594,9 @@ export const AgentPlaygroundPage: React.FC = () => {
         return (
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>兜底 Agent</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                兜底 Agent
+              </Text>
               {poolAgentIdOptions.length > 0 ? (
                 <Select
                   style={{ width: '100%' }}
@@ -577,8 +605,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   optionList={poolAgentIdOptions}
                   value={routerConfig?.fallbackAgent || undefined}
                   placeholder="从 default 池内选择"
-                  onChange={v =>
-                    updateSchemeConfig(config => {
+                  onChange={(v) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('router_expert', config);
                       const id = typeof v === 'string' ? v : '';
                       return {
@@ -597,8 +625,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <Input
                   style={{ width: '100%' }}
                   value={routerConfig?.fallbackAgent ?? ''}
-                  onChange={value =>
-                    updateSchemeConfig(config => {
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('router_expert', config);
                       return {
                         ...normalized,
@@ -619,13 +647,15 @@ export const AgentPlaygroundPage: React.FC = () => {
               </Text>
             </div>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>路由提示词</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                路由提示词
+              </Text>
               <TextArea
                 rows={3}
                 style={{ width: '100%' }}
                 value={routerConfig?.routingPrompt ?? ''}
                 onChange={(value: string) =>
-                  updateSchemeConfig(config => {
+                  updateSchemeConfig((config) => {
                     const normalized = normalizeSchemeConfig('router_expert', config);
                     return {
                       ...normalized,
@@ -649,7 +679,9 @@ export const AgentPlaygroundPage: React.FC = () => {
         return (
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>规划 Agent</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                规划 Agent
+              </Text>
               {poolAgentIdOptions.length > 0 ? (
                 <Select
                   style={{ width: '100%' }}
@@ -658,8 +690,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   optionList={poolAgentIdOptions}
                   value={planExecConfig?.plannerAgent || undefined}
                   placeholder="从 default 池内选择"
-                  onChange={v =>
-                    updateSchemeConfig(config => {
+                  onChange={(v) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('plan_exec', config);
                       const id = typeof v === 'string' ? v : '';
                       return {
@@ -678,8 +710,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <Input
                   style={{ width: '100%' }}
                   value={planExecConfig?.plannerAgent ?? ''}
-                  onChange={value =>
-                    updateSchemeConfig(config => {
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('plan_exec', config);
                       return {
                         ...normalized,
@@ -700,7 +732,9 @@ export const AgentPlaygroundPage: React.FC = () => {
               </Text>
             </div>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>执行顺序</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                执行顺序
+              </Text>
               {poolAgentIdOptions.length > 0 ? (
                 <Select
                   multiple
@@ -711,9 +745,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                   optionList={poolAgentIdOptions}
                   value={planExecConfig?.executionOrder || []}
                   placeholder="多选：按点击选择顺序作为执行顺序"
-                  onChange={v => {
-                    const arr = Array.isArray(v) ? v.map(x => String(x)).filter(Boolean) : [];
-                    updateSchemeConfig(config => {
+                  onChange={(v) => {
+                    const arr = Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : [];
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('plan_exec', config);
                       return {
                         ...normalized,
@@ -731,8 +765,8 @@ export const AgentPlaygroundPage: React.FC = () => {
               <Input
                 style={{ width: '100%', marginTop: poolAgentIdOptions.length > 0 ? 8 : 0 }}
                 value={joinCommaSeparated(planExecConfig?.executionOrder)}
-                onChange={value =>
-                  updateSchemeConfig(config => {
+                onChange={(value) =>
+                  updateSchemeConfig((config) => {
                     const normalized = normalizeSchemeConfig('plan_exec', config);
                     return {
                       ...normalized,
@@ -760,7 +794,9 @@ export const AgentPlaygroundPage: React.FC = () => {
         return (
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>监督 Agent</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                监督 Agent
+              </Text>
               {poolAgentIdOptions.length > 0 ? (
                 <Select
                   style={{ width: '100%' }}
@@ -769,8 +805,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   optionList={poolAgentIdOptions}
                   value={supervisionConfig?.supervisorAgent || undefined}
                   placeholder="从 default 池内选择"
-                  onChange={v =>
-                    updateSchemeConfig(config => {
+                  onChange={(v) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('supervision', config);
                       const id = typeof v === 'string' ? v : '';
                       return {
@@ -789,8 +825,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <Input
                   style={{ width: '100%' }}
                   value={supervisionConfig?.supervisorAgent ?? ''}
-                  onChange={value =>
-                    updateSchemeConfig(config => {
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('supervision', config);
                       return {
                         ...normalized,
@@ -811,15 +847,19 @@ export const AgentPlaygroundPage: React.FC = () => {
               </Text>
             </div>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>Worker Agents</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                Worker Agents
+              </Text>
               {poolAgentsSelectable.length > 0 ? (
                 <>
                   <CheckboxGroup
                     direction="vertical"
                     value={supervisionConfig?.workerAgents || []}
-                    onChange={list => {
-                      const ids = (Array.isArray(list) ? list : []).map(x => String(x)).filter(Boolean);
-                      updateSchemeConfig(config => {
+                    onChange={(list) => {
+                      const ids = (Array.isArray(list) ? list : [])
+                        .map((x) => String(x))
+                        .filter(Boolean);
+                      updateSchemeConfig((config) => {
                         const normalized = normalizeSchemeConfig('supervision', config);
                         return {
                           ...normalized,
@@ -845,8 +885,8 @@ export const AgentPlaygroundPage: React.FC = () => {
               <Input
                 style={{ width: '100%', marginTop: poolAgentsSelectable.length > 0 ? 10 : 0 }}
                 value={joinCommaSeparated(supervisionConfig?.workerAgents)}
-                onChange={value =>
-                  updateSchemeConfig(config => {
+                onChange={(value) =>
+                  updateSchemeConfig((config) => {
                     const normalized = normalizeSchemeConfig('supervision', config);
                     return {
                       ...normalized,
@@ -867,21 +907,26 @@ export const AgentPlaygroundPage: React.FC = () => {
               />
             </div>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>检查间隔（秒）</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                检查间隔（秒）
+              </Text>
               <InputNumber
                 min={1}
                 precision={0}
                 style={{ width: '100%' }}
                 value={supervisionConfig?.checkInterval ?? 15}
-                onChange={value =>
-                  updateSchemeConfig(config => {
+                onChange={(value) =>
+                  updateSchemeConfig((config) => {
                     const normalized = normalizeSchemeConfig('supervision', config);
                     return {
                       ...normalized,
                       modeConfig: {
                         supervisionConfig: {
                           ...normalized.modeConfig?.supervisionConfig,
-                          checkInterval: coerceInteger(value, normalized.modeConfig?.supervisionConfig?.checkInterval ?? 15),
+                          checkInterval: coerceInteger(
+                            value,
+                            normalized.modeConfig?.supervisionConfig?.checkInterval ?? 15
+                          ),
                         },
                       },
                     };
@@ -898,7 +943,9 @@ export const AgentPlaygroundPage: React.FC = () => {
         return (
           <Space vertical align="start" spacing="medium" style={{ width: '100%' }}>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>入口 Agent</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                入口 Agent
+              </Text>
               {poolAgentIdOptions.length > 0 ? (
                 <Select
                   style={{ width: '100%' }}
@@ -907,8 +954,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   optionList={poolAgentIdOptions}
                   value={peerHandoffConfig?.entryAgent || undefined}
                   placeholder="从 default 池内选择"
-                  onChange={v =>
-                    updateSchemeConfig(config => {
+                  onChange={(v) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('peer_handoff', config);
                       const id = typeof v === 'string' ? v : '';
                       return {
@@ -927,8 +974,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <Input
                   style={{ width: '100%' }}
                   value={peerHandoffConfig?.entryAgent ?? ''}
-                  onChange={value =>
-                    updateSchemeConfig(config => {
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => {
                       const normalized = normalizeSchemeConfig('peer_handoff', config);
                       return {
                         ...normalized,
@@ -949,15 +996,19 @@ export const AgentPlaygroundPage: React.FC = () => {
               </Text>
             </div>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>Mesh Agents</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                Mesh Agents
+              </Text>
               {poolAgentsSelectable.length > 0 ? (
                 <>
                   <CheckboxGroup
                     direction="vertical"
                     value={peerHandoffConfig?.meshAgents || []}
-                    onChange={list => {
-                      const ids = (Array.isArray(list) ? list : []).map(x => String(x)).filter(Boolean);
-                      updateSchemeConfig(config => {
+                    onChange={(list) => {
+                      const ids = (Array.isArray(list) ? list : [])
+                        .map((x) => String(x))
+                        .filter(Boolean);
+                      updateSchemeConfig((config) => {
                         const normalized = normalizeSchemeConfig('peer_handoff', config);
                         return {
                           ...normalized,
@@ -983,8 +1034,8 @@ export const AgentPlaygroundPage: React.FC = () => {
               <Input
                 style={{ width: '100%', marginTop: poolAgentsSelectable.length > 0 ? 10 : 0 }}
                 value={joinCommaSeparated(peerHandoffConfig?.meshAgents)}
-                onChange={value =>
-                  updateSchemeConfig(config => {
+                onChange={(value) =>
+                  updateSchemeConfig((config) => {
                     const normalized = normalizeSchemeConfig('peer_handoff', config);
                     return {
                       ...normalized,
@@ -1005,13 +1056,15 @@ export const AgentPlaygroundPage: React.FC = () => {
               />
             </div>
             <div style={{ width: '100%' }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>交接规则</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                交接规则
+              </Text>
               <TextArea
                 rows={3}
                 style={{ width: '100%' }}
                 value={peerHandoffConfig?.handoffRules ?? ''}
                 onChange={(value: string) =>
-                  updateSchemeConfig(config => {
+                  updateSchemeConfig((config) => {
                     const normalized = normalizeSchemeConfig('peer_handoff', config);
                     return {
                       ...normalized,
@@ -1065,9 +1118,9 @@ export const AgentPlaygroundPage: React.FC = () => {
       if (schemeModalMode === 'create') {
         const pool = defaultAgentPool;
         const bindAgents = buildSchemeBindAgents(schemeForm.mode, pool);
-        if (schemeForm.mode === 'plan_exec' && !bindAgents.some(b => b.agentId === 'planner')) {
+        if (schemeForm.mode === 'plan_exec' && !bindAgents.some((b) => b.agentId === 'planner')) {
           Toast.warning(
-            '当前 Agent 池中缺少「规划师」(planner)，规划执行将无法启动。请在「智能体」页确认默认池含规划师或使用协调人提供的完整池。',
+            '当前 Agent 池中缺少「规划师」(planner)，规划执行将无法启动。请在「智能体」页确认默认池含规划师或使用协调人提供的完整池。'
           );
         }
         await createScheme({
@@ -1145,33 +1198,36 @@ export const AgentPlaygroundPage: React.FC = () => {
     }
   };
 
-  const handleApplyRecovery = useCallback(async (action: RecoveryAction) => {
-    const runId = runtimeViewModel.run.runId;
-    if (!runId) {
-      return;
-    }
-    setApplyingRecoveryActionId(action.id);
-    setRunning(true);
-    activeRunIdRef.current = runId;
-    try {
-      const detail = await applyRecoveryActionAndRefresh({
-        runId,
-        action,
-        submit: applyRecoveryAction,
-        refresh: refreshRunState,
-      });
-      if (detail.run.status === 'waiting_recovery') {
-        Toast.warning('恢复动作已提交，运行状态正在刷新');
-      } else {
-        Toast.success('已开始执行恢复动作');
+  const handleApplyRecovery = useCallback(
+    async (action: RecoveryAction) => {
+      const runId = runtimeViewModel.run.runId;
+      if (!runId) {
+        return;
       }
-    } catch (err) {
-      Toast.error(`恢复失败: ${err}`);
-      setRunning(false);
-    } finally {
-      setApplyingRecoveryActionId(undefined);
-    }
-  }, [refreshRunState, runtimeViewModel.run.runId]);
+      setApplyingRecoveryActionId(action.id);
+      setRunning(true);
+      activeRunIdRef.current = runId;
+      try {
+        const detail = await applyRecoveryActionAndRefresh({
+          runId,
+          action,
+          submit: applyRecoveryAction,
+          refresh: refreshRunState,
+        });
+        if (detail.run.status === 'waiting_recovery') {
+          Toast.warning('恢复动作已提交，运行状态正在刷新');
+        } else {
+          Toast.success('已开始执行恢复动作');
+        }
+      } catch (err) {
+        Toast.error(`恢复失败: ${err}`);
+        setRunning(false);
+      } finally {
+        setApplyingRecoveryActionId(undefined);
+      }
+    },
+    [refreshRunState, runtimeViewModel.run.runId]
+  );
 
   // Scheme 表格列
   const schemeColumns = [
@@ -1189,9 +1245,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     {
       title: '协作模式',
       dataIndex: 'mode',
-      render: (mode: CollaborationMode) => (
-        <Tag color="blue">{MODE_NAME_MAP[mode] || mode}</Tag>
-      ),
+      render: (mode: CollaborationMode) => <Tag color="blue">{MODE_NAME_MAP[mode] || mode}</Tag>,
     },
     {
       title: '绑定Agent',
@@ -1199,7 +1253,9 @@ export const AgentPlaygroundPage: React.FC = () => {
       render: (agents: any[]) => (
         <Space>
           {(agents || []).map((a, i) => (
-            <Tag key={i} type="ghost">{a.role || a.agentId}</Tag>
+            <Tag key={i} type="ghost">
+              {a.role || a.agentId}
+            </Tag>
           ))}
         </Space>
       ),
@@ -1207,33 +1263,27 @@ export const AgentPlaygroundPage: React.FC = () => {
     {
       title: 'Finalizer',
       dataIndex: 'enableFinalizer',
-      render: (enabled: boolean) => enabled ? <IconTick /> : <IconClose />,
+      render: (enabled: boolean) => (enabled ? <IconTick /> : <IconClose />),
       width: 80,
     },
     {
       title: '操作',
       render: (_: any, record: CollaborationScheme) => (
         <Space>
-          <Button
-            size="small"
-            icon={<IconPlay />}
-            onClick={() => setSelectedScheme(record)}
-          >
+          <Button size="small" icon={<IconPlay />} onClick={() => setSelectedScheme(record)}>
             选择
           </Button>
-          <Button
-            size="small"
-            icon={<IconEdit />}
-            onClick={() => openEditSchemeModal(record)}
-          />
+          <Button size="small" icon={<IconEdit />} onClick={() => openEditSchemeModal(record)} />
           <Button
             size="small"
             icon={<IconDelete />}
-            onClick={() => Modal.confirm({
-              title: '确认删除',
-              content: `确定要删除方案「${record.name}」吗？`,
-              onOk: () => handleDeleteScheme(record),
-            })}
+            onClick={() =>
+              Modal.confirm({
+                title: '确认删除',
+                content: `确定要删除方案「${record.name}」吗？`,
+                onOk: () => handleDeleteScheme(record),
+              })
+            }
           />
         </Space>
       ),
@@ -1245,8 +1295,14 @@ export const AgentPlaygroundPage: React.FC = () => {
   const ui = PLAYGROUND_UI[lang];
 
   const graphFooterLine = useMemo(() => {
-    if (runtimeViewModel.run.status === 'running' || runtimeViewModel.run.status === 'ready' || runtimeViewModel.run.status === 'pending') {
-      return `> ${runtimeViewModel.run.label} · 当前步骤 ${runtimeViewModel.activeStep?.name || '等待调度'}…`;
+    if (
+      runtimeViewModel.run.status === 'running' ||
+      runtimeViewModel.run.status === 'ready' ||
+      runtimeViewModel.run.status === 'pending'
+    ) {
+      return `> ${runtimeViewModel.run.label} · 当前步骤 ${
+        runtimeViewModel.activeStep?.name || '等待调度'
+      }…`;
     }
     if (runtimeViewModel.run.status === 'completed') {
       return `> 已完成 · 产物 ${runtimeViewModel.artifacts.total} 个`;
@@ -1379,7 +1435,7 @@ export const AgentPlaygroundPage: React.FC = () => {
         className="pg-shell-tabs"
         type="line"
         activeKey={activeTab}
-        onChange={k => setActiveTab(k as typeof activeTab)}
+        onChange={(k) => setActiveTab(k as typeof activeTab)}
         tabBarExtraContent={
           <Button icon={<IconRefresh />} size="small" onClick={() => void loadData()}>
             {ui.refresh}
@@ -1435,312 +1491,388 @@ export const AgentPlaygroundPage: React.FC = () => {
       </Tabs>
 
       <div style={{ marginTop: 16 }}>
-      {loading ? (
-        <Spin
-          tip="加载中..."
-          style={{ width: '100%', minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        />
-      ) : error ? (
-        <Card bodyStyle={{ textAlign: 'center', padding: '40px 24px' }}>
-          <Title heading={6} style={{ marginBottom: 8 }}>加载失败</Title>
-          <Text type="danger" style={{ display: 'block', marginBottom: 16 }}>{error}</Text>
-          <Button type="primary" icon={<IconRefresh />} onClick={() => void loadData()}>
-            重试
-          </Button>
-        </Card>
-      ) : (
-        <>
-          {/* 总览页 */}
-          {activeTab === 'overview' && (
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={8}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('agents')}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setActiveTab('agents');
-                    }
-                  }}
-                  style={cardClickStyle}
-                >
-                  <Card title="Agent 池" bodyStyle={{ paddingTop: 8 }}>
-                    <Text strong style={{ fontSize: 22 }}>{totalAgents}</Text>
-                    <Text type="tertiary" style={{ marginLeft: 8 }}>个 Agent</Text>
-                    <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
-                      协作使用 default 池 · 点此进入管理
-                    </Text>
-                    <Divider margin="12px" />
-                    <Space wrap>
-                      {(defaultAgentPool?.agents || []).slice(0, 6).map((a, i) => (
-                        <Tag key={`${a.id}-${i}`}>{a.name}</Tag>
-                      ))}
-                      {totalAgents === 0 ? <Text type="tertiary" size="small">暂无 Agent，请在默认池中绑定托管配置</Text> : null}
-                    </Space>
-                  </Card>
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('schemes')}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setActiveTab('schemes');
-                    }
-                  }}
-                  style={cardClickStyle}
-                >
-                  <Card title="协作方案" bodyStyle={{ paddingTop: 8 }}>
-                    <Text strong style={{ fontSize: 22 }}>{schemes.length}</Text>
-                    <Text type="tertiary" style={{ marginLeft: 8 }}>个方案</Text>
-                    <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
-                      点此进入方案列表
-                    </Text>
-                    <Divider margin="12px" />
-                    <Space vertical align="start">
-                      {schemes.slice(0, 5).map(s => (
-                        <Space key={s.id}>
-                          <Tag color="blue">{MODE_NAME_MAP[s.mode]}</Tag>
-                          <span title={s.name} style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', verticalAlign: 'bottom' }}>
-                            {s.name}
-                          </span>
-                        </Space>
-                      ))}
-                      {schemes.length === 0 ? <Text type="tertiary" size="small">暂无方案</Text> : null}
-                    </Space>
-                  </Card>
-                </div>
-              </Col>
-              <Col xs={24} md={8}>
-                <Card title="协作模式速览" bodyStyle={{ paddingTop: 8 }}>
-                  <Space vertical align="start" style={{ rowGap: 12 }}>
-                    {(Object.keys(MODE_NAME_MAP) as CollaborationMode[]).map(mode => (
-                      <div key={mode}>
-                        <Tag color="cyan" style={{ marginBottom: 4 }}>{MODE_NAME_MAP[mode]}</Tag>
-                        <Text type="tertiary" size="small" style={{ display: 'block', lineHeight: 1.5 }}>
-                          {MODE_DESC_MAP[mode]}
-                        </Text>
-                      </div>
-                    ))}
-                  </Space>
-                </Card>
-              </Col>
-            </Row>
-          )}
-
-          {/* Agent 管理页 */}
-          {activeTab === 'agents' && (
-            <AgentManager pools={pools} onPoolsChange={loadData} />
-          )}
-
-          {/* 方案管理页 */}
-          {activeTab === 'schemes' && (
-            <Card
-              title="协作方案"
-              headerExtraContent={
-                <Button type="primary" theme="solid" icon={<IconPlus />} onClick={openCreateSchemeModal}>
-                  新建方案
-                </Button>
-              }
-            >
-              <Table
-                size="small"
-                columns={schemeColumns}
-                dataSource={schemes}
-                rowKey="id"
-                pagination={{ pageSize: 10, showSizeChanger: true }}
-              />
-            </Card>
-          )}
-
-          {/* 设置占位 */}
-          {activeTab === 'settings' && (
-            <Card
-              style={{
-                borderRadius: 14,
-                boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
-              }}
-              title="设置"
-            >
-              <Text type="tertiary" style={{ lineHeight: 1.7 }}>
-                语言切换已在顶栏生效（标签与常用文案）。默认模型、超时与 Trace 采样等将后续在此集中配置；Agent 与模型绑定请使用后台「托管 Agent」相关页面。
-              </Text>
-            </Card>
-          )}
-
-          {/* 运行页：三栏等高，内部各自滚动 */}
-          {activeTab === 'run' && (
-            <Row gutter={[16, 16]} style={{ alignItems: 'stretch', minHeight: runAreaMinH }}>
-              <Col xs={24} xl={8} style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}>
-                <Card
-                  className="pg-graph-card"
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    minHeight: runAreaMinH,
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                    boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
-                  }}
-                  bodyStyle={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    padding: 0,
-                    minHeight: 0,
-                  }}
-                >
-                  <div style={{ padding: '16px 16px 8px' }}>
-                    <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-                      计划
-                    </Text>
-                    <Select
-                      placeholder={
-                        schemes.length ? '请选择要运行的方案' : '暂无方案，请先到「协作编排」新建'
-                      }
-                      style={{ width: '100%' }}
-                      value={selectedScheme?.id}
-                      disabled={!schemes.length}
-                      onChange={id => {
-                        const s = schemes.find(x => x.id === id);
-                        setSelectedScheme(s);
-                      }}
-                    >
-                      {schemes.map(s => (
-                        <Select.Option key={s.id} value={s.id}>
-                          <Space>
-                            <Badge dot type={s.enabled ? 'success' : 'danger'} />
-                            <span>{s.name}</span>
-                            <Tag size="small">{MODE_NAME_MAP[s.mode]}</Tag>
-                          </Space>
-                        </Select.Option>
-                      ))}
-                    </Select>
-                    {selectedScheme ? (
-                      <>
-                        <Divider margin="12px" />
-                        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-                          {MODE_DESC_MAP[selectedScheme.mode]}
-                        </Text>
-                        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 6 }}>
-                          绑定 Agent
-                        </Text>
-                        <Space wrap>
-                          {(selectedScheme.bindAgents || []).map((a, i) => (
-                            <Tag key={i}>{a.role || a.agentId}</Tag>
-                          ))}
-                        </Space>
-                      </>
-                    ) : (
-                      <Text type="tertiary" size="small" style={{ marginTop: 12, display: 'block' }}>
-                        选择方案后将展示示意图并可在中间发起运行
-                      </Text>
-                    )}
-                  </div>
-
+        {loading ? (
+          <Spin
+            tip="加载中..."
+            style={{
+              width: '100%',
+              minHeight: 220,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          />
+        ) : error ? (
+          <Card bodyStyle={{ textAlign: 'center', padding: '40px 24px' }}>
+            <Title heading={6} style={{ marginBottom: 8 }}>
+              加载失败
+            </Title>
+            <Text type="danger" style={{ display: 'block', marginBottom: 16 }}>
+              {error}
+            </Text>
+            <Button type="primary" icon={<IconRefresh />} onClick={() => void loadData()}>
+              重试
+            </Button>
+          </Card>
+        ) : (
+          <>
+            {/* 总览页 */}
+            {activeTab === 'overview' && (
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={8}>
                   <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setActiveTab('agents')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveTab('agents');
+                      }
+                    }}
+                    style={cardClickStyle}
+                  >
+                    <Card title="Agent 池" bodyStyle={{ paddingTop: 8 }}>
+                      <Text strong style={{ fontSize: 22 }}>
+                        {totalAgents}
+                      </Text>
+                      <Text type="tertiary" style={{ marginLeft: 8 }}>
+                        个 Agent
+                      </Text>
+                      <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
+                        协作使用 default 池 · 点此进入管理
+                      </Text>
+                      <Divider margin="12px" />
+                      <Space wrap>
+                        {(defaultAgentPool?.agents || []).slice(0, 6).map((a, i) => (
+                          <Tag key={`${a.id}-${i}`}>{a.name}</Tag>
+                        ))}
+                        {totalAgents === 0 ? (
+                          <Text type="tertiary" size="small">
+                            暂无 Agent，请在默认池中绑定托管配置
+                          </Text>
+                        ) : null}
+                      </Space>
+                    </Card>
+                  </div>
+                </Col>
+                <Col xs={24} md={8}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setActiveTab('schemes')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveTab('schemes');
+                      }
+                    }}
+                    style={cardClickStyle}
+                  >
+                    <Card title="协作方案" bodyStyle={{ paddingTop: 8 }}>
+                      <Text strong style={{ fontSize: 22 }}>
+                        {schemes.length}
+                      </Text>
+                      <Text type="tertiary" style={{ marginLeft: 8 }}>
+                        个方案
+                      </Text>
+                      <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
+                        点此进入方案列表
+                      </Text>
+                      <Divider margin="12px" />
+                      <Space vertical align="start">
+                        {schemes.slice(0, 5).map((s) => (
+                          <Space key={s.id}>
+                            <Tag color="blue">{MODE_NAME_MAP[s.mode]}</Tag>
+                            <span
+                              title={s.name}
+                              style={{
+                                maxWidth: 200,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-block',
+                                verticalAlign: 'bottom',
+                              }}
+                            >
+                              {s.name}
+                            </span>
+                          </Space>
+                        ))}
+                        {schemes.length === 0 ? (
+                          <Text type="tertiary" size="small">
+                            暂无方案
+                          </Text>
+                        ) : null}
+                      </Space>
+                    </Card>
+                  </div>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Card title="协作模式速览" bodyStyle={{ paddingTop: 8 }}>
+                    <Space vertical align="start" style={{ rowGap: 12 }}>
+                      {(Object.keys(MODE_NAME_MAP) as CollaborationMode[]).map((mode) => (
+                        <div key={mode}>
+                          <Tag color="cyan" style={{ marginBottom: 4 }}>
+                            {MODE_NAME_MAP[mode]}
+                          </Tag>
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', lineHeight: 1.5 }}
+                          >
+                            {MODE_DESC_MAP[mode]}
+                          </Text>
+                        </div>
+                      ))}
+                    </Space>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+
+            {/* Agent 管理页 */}
+            {activeTab === 'agents' && <AgentManager pools={pools} onPoolsChange={loadData} />}
+
+            {/* 方案管理页 */}
+            {activeTab === 'schemes' && (
+              <Card
+                title="协作方案"
+                headerExtraContent={
+                  <Button
+                    type="primary"
+                    theme="solid"
+                    icon={<IconPlus />}
+                    onClick={openCreateSchemeModal}
+                  >
+                    新建方案
+                  </Button>
+                }
+              >
+                <Table
+                  size="small"
+                  columns={schemeColumns}
+                  dataSource={schemes}
+                  rowKey="id"
+                  pagination={{ pageSize: 10, showSizeChanger: true }}
+                />
+              </Card>
+            )}
+
+            {/* 设置占位 */}
+            {activeTab === 'settings' && (
+              <Card
+                style={{
+                  borderRadius: 14,
+                  boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
+                }}
+                title="设置"
+              >
+                <Text type="tertiary" style={{ lineHeight: 1.7 }}>
+                  语言切换已在顶栏生效（标签与常用文案）。默认模型、超时与 Trace
+                  采样等将后续在此集中配置；Agent 与模型绑定请使用后台「托管 Agent」相关页面。
+                </Text>
+              </Card>
+            )}
+
+            {/* 运行页：三栏等高，内部各自滚动 */}
+            {activeTab === 'run' && (
+              <Row gutter={[16, 16]} style={{ alignItems: 'stretch', minHeight: runAreaMinH }}>
+                <Col
+                  xs={24}
+                  xl={8}
+                  style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
+                >
+                  <Card
+                    className="pg-graph-card"
                     style={{
-                      padding: '4px 16px 8px',
+                      flex: 1,
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
+                      flexDirection: 'column',
+                      minHeight: runAreaMinH,
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
+                    }}
+                    bodyStyle={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: 0,
+                      minHeight: 0,
                     }}
                   >
-                    <Text strong style={{ fontSize: 14 }}>
-                      Execution Plan
-                    </Text>
-                    <Tag size="small" color="grey">
-                      RUNTIME
-                    </Tag>
-                  </div>
-
-                  <div style={{ flex: 1, overflow: 'auto', padding: '0 16px 12px', minHeight: 200 }}>
-                    {selectedScheme ? (
-                      <WorkflowGraph
-                        variant="embedded"
-                        scheme={selectedScheme}
-                        runtimeViewModel={runtimeViewModel}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          height: '100%',
-                          minHeight: 160,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 12,
-                          border: `1px dashed var(--semi-color-border)`,
-                          color: 'var(--semi-color-tertiary)',
-                          fontSize: 13,
+                    <div style={{ padding: '16px 16px 8px' }}>
+                      <Text
+                        type="tertiary"
+                        size="small"
+                        style={{ display: 'block', marginBottom: 8 }}
+                      >
+                        计划
+                      </Text>
+                      <Select
+                        placeholder={
+                          schemes.length ? '请选择要运行的方案' : '暂无方案，请先到「协作编排」新建'
+                        }
+                        style={{ width: '100%' }}
+                        value={selectedScheme?.id}
+                        disabled={!schemes.length}
+                        onChange={(id) => {
+                          const s = schemes.find((x) => x.id === id);
+                          setSelectedScheme(s);
                         }}
                       >
-                        选择左侧计划后展示拓扑
-                      </div>
-                    )}
-                  </div>
+                        {schemes.map((s) => (
+                          <Select.Option key={s.id} value={s.id}>
+                            <Space>
+                              <Badge dot type={s.enabled ? 'success' : 'danger'} />
+                              <span>{s.name}</span>
+                              <Tag size="small">{MODE_NAME_MAP[s.mode]}</Tag>
+                            </Space>
+                          </Select.Option>
+                        ))}
+                      </Select>
+                      {selectedScheme ? (
+                        <>
+                          <Divider margin="12px" />
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', marginBottom: 8 }}
+                          >
+                            {MODE_DESC_MAP[selectedScheme.mode]}
+                          </Text>
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', marginBottom: 6 }}
+                          >
+                            绑定 Agent
+                          </Text>
+                          <Space wrap>
+                            {(selectedScheme.bindAgents || []).map((a, i) => (
+                              <Tag key={i}>{a.role || a.agentId}</Tag>
+                            ))}
+                          </Space>
+                        </>
+                      ) : (
+                        <Text
+                          type="tertiary"
+                          size="small"
+                          style={{ marginTop: 12, display: 'block' }}
+                        >
+                          选择方案后将展示示意图并可在中间发起运行
+                        </Text>
+                      )}
+                    </div>
 
-                  <div
-                    style={{
-                      flexShrink: 0,
-                      padding: '10px 16px',
-                      fontFamily: 'var(--semi-font-family-monospace)',
-                      fontSize: 12,
-                      background: 'rgba(28, 31, 35, 0.94)',
-                      color: 'rgba(232, 234, 237, 0.92)',
-                      letterSpacing: 0.2,
+                    <div
+                      style={{
+                        padding: '4px 16px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                      }}
+                    >
+                      <Text strong style={{ fontSize: 14 }}>
+                        Execution Plan
+                      </Text>
+                      <Tag size="small" color="grey">
+                        RUNTIME
+                      </Tag>
+                    </div>
+
+                    <div
+                      style={{ flex: 1, overflow: 'auto', padding: '0 16px 12px', minHeight: 200 }}
+                    >
+                      {selectedScheme ? (
+                        <WorkflowGraph
+                          variant="embedded"
+                          scheme={selectedScheme}
+                          runtimeViewModel={runtimeViewModel}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            height: '100%',
+                            minHeight: 160,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 12,
+                            border: `1px dashed var(--semi-color-border)`,
+                            color: 'var(--semi-color-tertiary)',
+                            fontSize: 13,
+                          }}
+                        >
+                          选择左侧计划后展示拓扑
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        padding: '10px 16px',
+                        fontFamily: 'var(--semi-font-family-monospace)',
+                        fontSize: 12,
+                        background: 'rgba(28, 31, 35, 0.94)',
+                        color: 'rgba(232, 234, 237, 0.92)',
+                        letterSpacing: 0.2,
+                      }}
+                    >
+                      {graphFooterLine}
+                    </div>
+                  </Card>
+                </Col>
+
+                <Col
+                  xs={24}
+                  xl={8}
+                  style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
+                >
+                  <RunConsole
+                    scheme={selectedScheme}
+                    onRun={(input) => selectedScheme && handleRunWorkflow(selectedScheme, input)}
+                    onClear={() => {
+                      invalidateActiveRunRequests();
+                      setCurrentRunDetail(undefined);
+                      setCurrentRunSchemeId(undefined);
+                      setEvents([]);
+                      setRunning(false);
                     }}
-                  >
-                    {graphFooterLine}
-                  </div>
-                </Card>
-              </Col>
+                    onApplyRecovery={handleApplyRecovery}
+                    applyingRecoveryActionId={applyingRecoveryActionId}
+                    running={displayedRuntimeState.running}
+                    runtimeViewModel={runtimeViewModel}
+                    attachPreviousRunContext={attachPreviousRunContext}
+                    onAttachPreviousRunContextChange={setAttachPreviousRunContext}
+                    previousRunSnapshot={previousRunSnapshot}
+                  />
+                </Col>
 
-              <Col xs={24} xl={8} style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}>
-                <RunConsole
-                  scheme={selectedScheme}
-                  onRun={input => selectedScheme && handleRunWorkflow(selectedScheme, input)}
-                  onClear={() => {
-                    invalidateActiveRunRequests();
-                    setCurrentRunDetail(undefined);
-                    setCurrentRunSchemeId(undefined);
-                    setEvents([]);
-                    setRunning(false);
-                  }}
-                  onApplyRecovery={handleApplyRecovery}
-                  applyingRecoveryActionId={applyingRecoveryActionId}
-                  running={displayedRuntimeState.running}
-                  runtimeViewModel={runtimeViewModel}
-                  attachPreviousRunContext={attachPreviousRunContext}
-                  onAttachPreviousRunContextChange={setAttachPreviousRunContext}
-                  previousRunSnapshot={previousRunSnapshot}
-                />
-              </Col>
-
-              <Col xs={24} xl={8} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                <TracePanel
-                  events={displayedRuntimeState.events}
-                  runtimeViewModel={runtimeViewModel}
-                  onRefresh={async () => {
-                    if (runtimeViewModel.run.runId) {
-                      await refreshRunState(runtimeViewModel.run.runId);
-                    }
-                  }}
-                  onApplyRecovery={handleApplyRecovery}
-                  applyingRecoveryActionId={applyingRecoveryActionId}
-                />
-              </Col>
-            </Row>
-          )}
-        </>
-      )}
+                <Col
+                  xs={24}
+                  xl={8}
+                  style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                >
+                  <TracePanel
+                    events={displayedRuntimeState.events}
+                    runtimeViewModel={runtimeViewModel}
+                    onRefresh={async () => {
+                      if (runtimeViewModel.run.runId) {
+                        await refreshRunState(runtimeViewModel.run.runId);
+                      }
+                    }}
+                    onApplyRecovery={handleApplyRecovery}
+                    applyingRecoveryActionId={applyingRecoveryActionId}
+                  />
+                </Col>
+              </Row>
+            )}
+          </>
+        )}
       </div>
 
       {/* Scheme 创建/编辑 Modal */}
@@ -1767,7 +1899,9 @@ export const AgentPlaygroundPage: React.FC = () => {
             />
           </div>
           <div style={{ width: '100%' }}>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>描述</Text>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              描述
+            </Text>
             <Input
               style={{ width: '100%' }}
               value={schemeForm.description}
@@ -1776,11 +1910,13 @@ export const AgentPlaygroundPage: React.FC = () => {
             />
           </div>
           <div style={{ width: '100%' }}>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>协作模式</Text>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              协作模式
+            </Text>
             <ModeSelector
               value={schemeForm.mode}
               onChange={(mode) =>
-                setSchemeForm(prev => ({
+                setSchemeForm((prev) => ({
                   ...prev,
                   mode,
                   config: normalizeSchemeConfig(mode, prev.config),
@@ -1790,7 +1926,9 @@ export const AgentPlaygroundPage: React.FC = () => {
           </div>
           <Divider margin="4px" />
           <div style={{ width: '100%' }}>
-            <Text strong style={{ display: 'block', marginBottom: 12 }}>基础配置</Text>
+            <Text strong style={{ display: 'block', marginBottom: 12 }}>
+              基础配置
+            </Text>
             <Row gutter={[12, 12]}>
               <Col span={8}>
                 <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
@@ -1801,8 +1939,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   precision={0}
                   style={{ width: '100%' }}
                   value={schemeForm.config.maxIterations}
-                  onChange={value =>
-                    updateSchemeConfig(config => ({
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => ({
                       ...config,
                       maxIterations: coerceInteger(value, config.maxIterations),
                     }))
@@ -1818,8 +1956,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   precision={0}
                   style={{ width: '100%' }}
                   value={schemeForm.config.maxToolCalls}
-                  onChange={value =>
-                    updateSchemeConfig(config => ({
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => ({
                       ...config,
                       maxToolCalls: coerceInteger(value, config.maxToolCalls),
                     }))
@@ -1835,8 +1973,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                   precision={0}
                   style={{ width: '100%' }}
                   value={schemeForm.config.timeoutSeconds}
-                  onChange={value =>
-                    updateSchemeConfig(config => ({
+                  onChange={(value) =>
+                    updateSchemeConfig((config) => ({
                       ...config,
                       timeoutSeconds: coerceInteger(value, config.timeoutSeconds),
                     }))
@@ -1853,7 +1991,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                 style={{ width: '100%' }}
                 value={schemeForm.config.finalizerPrompt ?? ''}
                 onChange={(value: string) =>
-                  updateSchemeConfig(config => ({
+                  updateSchemeConfig((config) => ({
                     ...config,
                     finalizerPrompt: value,
                   }))
@@ -1874,7 +2012,9 @@ export const AgentPlaygroundPage: React.FC = () => {
               checked={schemeForm.enableFinalizer}
               onChange={(checked) => setSchemeForm({ ...schemeForm, enableFinalizer: checked })}
             />
-            <Text type="tertiary" size="small">启用 Finalizer（输出前由模型做最终整理）</Text>
+            <Text type="tertiary" size="small">
+              启用 Finalizer（输出前由模型做最终整理）
+            </Text>
           </Space>
         </Space>
       </Modal>

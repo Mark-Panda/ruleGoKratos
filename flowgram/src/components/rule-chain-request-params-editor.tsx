@@ -69,7 +69,10 @@ function addChildAtPath(
   path: Path,
   factory: () => RuleChainParamNode
 ): RuleChainParamNode[] {
-  return updateAtPath(nodes, path, (node) => ({ ...node, children: [...node.children, factory()] }));
+  return updateAtPath(nodes, path, (node) => ({
+    ...node,
+    children: [...node.children, factory()],
+  }));
 }
 
 function defaultNode(type: RuleChainParamType = 'string'): RuleChainParamNode {
@@ -160,7 +163,9 @@ export const RuleChainRequestParamsEditor: React.FC<RuleChainRequestParamsEditor
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: node.key.trim() ? 'var(--semi-color-success)' : 'var(--semi-color-tertiary)',
+                background: node.key.trim()
+                  ? 'var(--semi-color-success)'
+                  : 'var(--semi-color-tertiary)',
               }}
             />
             <Input
@@ -195,14 +200,27 @@ export const RuleChainRequestParamsEditor: React.FC<RuleChainRequestParamsEditor
             />
             <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap' }}>
               {canNest ? (
-                <Button size="small" type="tertiary" onClick={() => pushChange(addChildAtPath(nodes, path, () => defaultNode()))}>
+                <Button
+                  size="small"
+                  type="tertiary"
+                  onClick={() => pushChange(addChildAtPath(nodes, path, () => defaultNode()))}
+                >
                   +子
                 </Button>
               ) : null}
-              <Button size="small" type="tertiary" onClick={() => pushChange(insertSiblingAfter(nodes, path, () => defaultNode()))}>
+              <Button
+                size="small"
+                type="tertiary"
+                onClick={() => pushChange(insertSiblingAfter(nodes, path, () => defaultNode()))}
+              >
                 +
               </Button>
-              <Button size="small" type="danger" theme="borderless" onClick={() => pushChange(removeAtPath(nodes, path))}>
+              <Button
+                size="small"
+                type="danger"
+                theme="borderless"
+                onClick={() => pushChange(removeAtPath(nodes, path))}
+              >
                 删
               </Button>
             </div>
@@ -214,13 +232,30 @@ export const RuleChainRequestParamsEditor: React.FC<RuleChainRequestParamsEditor
 
   return (
     <div style={{ marginTop: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 8,
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
+      >
         <Typography.Text strong>{title}</Typography.Text>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Button size="small" type={viewMode === 'table' ? 'primary' : 'tertiary'} onClick={() => setViewMode('table')}>
+          <Button
+            size="small"
+            type={viewMode === 'table' ? 'primary' : 'tertiary'}
+            onClick={() => setViewMode('table')}
+          >
             表格
           </Button>
-          <Button size="small" type={viewMode === 'jsonOut' ? 'primary' : 'tertiary'} onClick={() => setViewMode('jsonOut')}>
+          <Button
+            size="small"
+            type={viewMode === 'jsonOut' ? 'primary' : 'tertiary'}
+            onClick={() => setViewMode('jsonOut')}
+          >
             输出 JSON
           </Button>
           <Button size="small" type="tertiary" onClick={() => setImportOpen(true)}>
@@ -243,8 +278,18 @@ export const RuleChainRequestParamsEditor: React.FC<RuleChainRequestParamsEditor
 
       {viewMode === 'jsonOut' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <TextArea value={previewWithComments} rows={10} readOnly style={{ fontFamily: 'monospace', fontSize: 12 }} />
-          <TextArea value={previewObjText} rows={10} readOnly style={{ fontFamily: 'monospace', fontSize: 12 }} />
+          <TextArea
+            value={previewWithComments}
+            rows={10}
+            readOnly
+            style={{ fontFamily: 'monospace', fontSize: 12 }}
+          />
+          <TextArea
+            value={previewObjText}
+            rows={10}
+            readOnly
+            style={{ fontFamily: 'monospace', fontSize: 12 }}
+          />
         </div>
       ) : null}
 
@@ -269,7 +314,11 @@ export const RuleChainRequestParamsEditor: React.FC<RuleChainRequestParamsEditor
             <span>操作</span>
           </div>
           {nodes.length === 0 ? (
-            <Typography.Text type="tertiary" size="small" style={{ display: 'block', padding: '12px 0' }}>
+            <Typography.Text
+              type="tertiary"
+              size="small"
+              style={{ display: 'block', padding: '12px 0' }}
+            >
               暂无参数，点击下方「添加根参数」
             </Typography.Text>
           ) : (

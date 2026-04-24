@@ -15,6 +15,7 @@ import {
 } from '@douyinfe/semi-ui';
 import { IconCopy, IconPlus, IconUpload } from '@douyinfe/semi-icons';
 
+import { listManagedAgents } from '../../services/api-managed-agents';
 import {
   buildChatAttachmentsFromFiles,
   mergeMessageForChatDisplay,
@@ -23,7 +24,6 @@ import {
   type ChatStreamPayload,
 } from '../../services/api-chat';
 import { listLlmConfigs, type LlmConfigItem } from '../../services/api-agent';
-import { listManagedAgents } from '../../services/api-managed-agents';
 
 function escapeHtml(raw: string): string {
   return raw
@@ -191,7 +191,8 @@ function saveStoredModel(m: ModelPick) {
 
 function loadStoredManagedAgentId(): number {
   try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_MANAGED_AGENT_KEY) : null;
+    const raw =
+      typeof window !== 'undefined' ? localStorage.getItem(STORAGE_MANAGED_AGENT_KEY) : null;
     if (!raw) return 0;
     const n = Number(JSON.parse(raw));
     return Number.isFinite(n) && n > 0 ? n : 0;
@@ -211,7 +212,8 @@ function saveStoredManagedAgentId(id: number) {
 
 function loadLastRequestStore(): RetryPayloadStore {
   try {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_LAST_REQUEST_KEY) : null;
+    const raw =
+      typeof window !== 'undefined' ? localStorage.getItem(STORAGE_LAST_REQUEST_KEY) : null;
     if (!raw) return {};
     const parsed = JSON.parse(raw) as RetryPayloadStore;
     if (!parsed || typeof parsed !== 'object') return {};
@@ -311,13 +313,15 @@ export const OverviewChatSection: React.FC = () => {
   const abortRef = useRef<AbortController | null>(null);
   const stopByUserRef = useRef(false);
   const lastRequestBySessionRef = useRef<RetryPayloadStore>(initialRetryStore);
-  const [retrySourceBySession, setRetrySourceBySession] = useState<Record<string, RetrySource>>(() => {
-    const source: Record<string, RetrySource> = {};
-    for (const sid of Object.keys(initialRetryStore)) {
-      source[sid] = 'persisted';
+  const [retrySourceBySession, setRetrySourceBySession] = useState<Record<string, RetrySource>>(
+    () => {
+      const source: Record<string, RetrySource> = {};
+      for (const sid of Object.keys(initialRetryStore)) {
+        source[sid] = 'persisted';
+      }
+      return source;
     }
-    return source;
-  });
+  );
   const listEndRef = useRef<HTMLDivElement | null>(null);
   const listWrapRef = useRef<HTMLDivElement | null>(null);
   const autoFollowRef = useRef(true);
@@ -463,8 +467,7 @@ export const OverviewChatSection: React.FC = () => {
           next[next.length - 1] = {
             ...last,
             content:
-              last.content.trimEnd() +
-              '\n\n> 已暂停执行（已中断流式输出，上文已生成内容已保留）。',
+              last.content.trimEnd() + '\n\n> 已暂停执行（已中断流式输出，上文已生成内容已保留）。',
           };
         }
         return { ...s, messages: next };
@@ -554,8 +557,7 @@ export const OverviewChatSection: React.FC = () => {
     if ((!text && !hasFiles) || streaming) return;
     if (!managedAgentId && !modelPick) {
       Toast.warning({
-        content:
-          '请在顶部选择对话模型（模型管理），或选择「Agent 配置」托管配置其一',
+        content: '请在顶部选择对话模型（模型管理），或选择「Agent 配置」托管配置其一',
       });
       return;
     }
@@ -595,7 +597,10 @@ export const OverviewChatSection: React.FC = () => {
     if (store.activeId) {
       lastRequestBySessionRef.current[store.activeId] = requestPayload;
       const ok = upsertLastRequestStore(store.activeId, requestPayload);
-      setRetrySourceBySession((prev) => ({ ...prev, [store.activeId as string]: ok ? 'persisted' : 'memory' }));
+      setRetrySourceBySession((prev) => ({
+        ...prev,
+        [store.activeId as string]: ok ? 'persisted' : 'memory',
+      }));
       if (!ok && requestPayload.attachments?.length) {
         Toast.warning({ content: '附件较大：已仅在当前页面保留重试快照，刷新后可能无法重试' });
       }
@@ -656,9 +661,7 @@ export const OverviewChatSection: React.FC = () => {
               const merged = (assistantBuf || '').trim();
               next[next.length - 1] = {
                 role: 'assistant',
-                content: merged
-                  ? `${merged}\n\n> ⚠️ 生成中断：${msg}`
-                  : `> ⚠️ 生成失败：${msg}`,
+                content: merged ? `${merged}\n\n> ⚠️ 生成中断：${msg}` : `> ⚠️ 生成失败：${msg}`,
               };
             }
             return next;
@@ -685,8 +688,7 @@ export const OverviewChatSection: React.FC = () => {
     }
     if (!managedAgentId && !modelPick) {
       Toast.warning({
-        content:
-          '请在顶部选择对话模型（模型管理），或选择「Agent 配置」托管配置其一',
+        content: '请在顶部选择对话模型（模型管理），或选择「Agent 配置」托管配置其一',
       });
       return;
     }
@@ -929,8 +931,7 @@ export const OverviewChatSection: React.FC = () => {
     messages[messages.length - 1]?.role === 'assistant' &&
     !messages[messages.length - 1]?.content?.trim();
   const activeRetrySource = store.activeId ? retrySourceBySession[store.activeId] : undefined;
-  const canRetryLastRequest =
-    !!(store.activeId && lastRequestBySessionRef.current[store.activeId]);
+  const canRetryLastRequest = !!(store.activeId && lastRequestBySessionRef.current[store.activeId]);
 
   return (
     <div
@@ -960,7 +961,11 @@ export const OverviewChatSection: React.FC = () => {
         </Typography.Text>
         <Select
           placeholder={
-            loadingModels ? '加载中…' : managedProfiles.length ? '可选：托管 Agent 配置' : '暂无托管配置'
+            loadingModels
+              ? '加载中…'
+              : managedProfiles.length
+              ? '可选：托管 Agent 配置'
+              : '暂无托管配置'
           }
           style={{ minWidth: 200, maxWidth: 320 }}
           loading={loadingModels}
@@ -1285,19 +1290,23 @@ export const OverviewChatSection: React.FC = () => {
                           <div
                             className="overview-chat-md"
                             style={MD_SURFACE_STYLE}
-                              onClick={async (evt) => {
-                                const target = evt.target as HTMLElement | null;
-                                const btn = target?.closest?.('[data-copy-code]') as HTMLElement | null;
-                                if (!btn) return;
-                                const encoded = btn.getAttribute('data-copy-code') || '';
-                                const code = decodeURIComponent(encoded);
-                                const ok = await copyToClipboard(code);
-                                if (ok) Toast.success({ content: '代码已复制' });
-                                else Toast.error({ content: '代码复制失败' });
-                              }}
+                            onClick={async (evt) => {
+                              const target = evt.target as HTMLElement | null;
+                              const btn = target?.closest?.(
+                                '[data-copy-code]'
+                              ) as HTMLElement | null;
+                              if (!btn) return;
+                              const encoded = btn.getAttribute('data-copy-code') || '';
+                              const code = decodeURIComponent(encoded);
+                              const ok = await copyToClipboard(code);
+                              if (ok) Toast.success({ content: '代码已复制' });
+                              else Toast.error({ content: '代码复制失败' });
+                            }}
                             dangerouslySetInnerHTML={{ __html: html || '<p></p>' }}
                           />
-                          {isLastAssistantStreaming && <span className="overview-chat-stream-cursor">▍</span>}
+                          {isLastAssistantStreaming && (
+                            <span className="overview-chat-stream-cursor">▍</span>
+                          )}
                         </div>
                       </div>
                     );
@@ -1445,7 +1454,11 @@ export const OverviewChatSection: React.FC = () => {
                   </Button>
                 )}
                 {!streaming && (
-                  <Button type="tertiary" onClick={handleRetryLastRequest} disabled={!canRetryLastRequest}>
+                  <Button
+                    type="tertiary"
+                    onClick={handleRetryLastRequest}
+                    disabled={!canRetryLastRequest}
+                  >
                     {!canRetryLastRequest
                       ? '暂无可重试请求'
                       : activeRetrySource === 'persisted'

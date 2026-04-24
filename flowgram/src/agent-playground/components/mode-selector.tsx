@@ -3,21 +3,11 @@
  */
 
 import React from 'react';
-import {
-  Typography,
-  Radio,
-  Space,
-} from '@douyinfe/semi-ui';
-import {
-  IconBranch,
-  IconTick,
-} from '@douyinfe/semi-icons';
 
-import {
-  CollaborationMode,
-  MODE_NAME_MAP,
-  MODE_DESC_MAP,
-} from '../../services/api-playground';
+import { Typography, Radio, Space } from '@douyinfe/semi-ui';
+import { IconBranch, IconTick } from '@douyinfe/semi-icons';
+
+import { CollaborationMode, MODE_NAME_MAP, MODE_DESC_MAP } from '../../services/api-playground';
 
 const { Text } = Typography;
 
@@ -37,21 +27,21 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
   const modes: CollaborationMode[] = ['router_expert', 'plan_exec', 'supervision', 'peer_handoff'];
 
   return (
-    <Radio.Group
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      style={style}
-    >
+    <Radio.Group value={value} onChange={(e) => onChange(e.target.value)} style={style}>
       <Space vertical align="start" style={{ width: '100%' }}>
-        {modes.map(mode => (
+        {modes.map((mode) => (
           <div
             key={mode}
             style={{
               width: '100%',
               padding: '12px 16px',
               cursor: 'pointer',
-              border: value === mode ? '2px solid var(--semi-color-primary)' : '1px solid var(--semi-color-border)',
-              background: value === mode ? 'var(--semi-color-fill-actual)' : 'var(--semi-color-bg-1)',
+              border:
+                value === mode
+                  ? '2px solid var(--semi-color-primary)'
+                  : '1px solid var(--semi-color-border)',
+              background:
+                value === mode ? 'var(--semi-color-fill-actual)' : 'var(--semi-color-bg-1)',
               borderRadius: 8,
               marginBottom: 8,
             }}

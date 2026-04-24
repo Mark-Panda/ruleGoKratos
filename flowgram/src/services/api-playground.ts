@@ -117,7 +117,13 @@ export type RuntimeRunStatus =
 
 export type RuntimeStepKind = 'route' | 'agent' | 'parallel' | 'review' | 'handoff' | 'finalize';
 
-export type RuntimeStepStatus = 'pending' | 'ready' | 'running' | 'succeeded' | 'failed' | 'skipped';
+export type RuntimeStepStatus =
+  | 'pending'
+  | 'ready'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'skipped';
 
 export interface TraceRun {
   id: string;
@@ -247,7 +253,10 @@ export const createDefaultSchemeConfig = (mode: CollaborationMode): SchemeConfig
   modeConfig: createDefaultSchemeModeConfig(mode),
 });
 
-export const normalizeSchemeConfig = (mode: CollaborationMode, config?: Partial<SchemeConfig>): SchemeConfig => {
+export const normalizeSchemeConfig = (
+  mode: CollaborationMode,
+  config?: Partial<SchemeConfig>
+): SchemeConfig => {
   const defaults = createDefaultSchemeConfig(mode);
 
   switch (mode) {
@@ -259,8 +268,14 @@ export const normalizeSchemeConfig = (mode: CollaborationMode, config?: Partial<
         finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
         modeConfig: {
           routerConfig: {
-            fallbackAgent: config?.modeConfig?.routerConfig?.fallbackAgent ?? defaults.modeConfig?.routerConfig?.fallbackAgent ?? '',
-            routingPrompt: config?.modeConfig?.routerConfig?.routingPrompt ?? defaults.modeConfig?.routerConfig?.routingPrompt ?? '',
+            fallbackAgent:
+              config?.modeConfig?.routerConfig?.fallbackAgent ??
+              defaults.modeConfig?.routerConfig?.fallbackAgent ??
+              '',
+            routingPrompt:
+              config?.modeConfig?.routerConfig?.routingPrompt ??
+              defaults.modeConfig?.routerConfig?.routingPrompt ??
+              '',
           },
         },
       };
@@ -272,8 +287,14 @@ export const normalizeSchemeConfig = (mode: CollaborationMode, config?: Partial<
         finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
         modeConfig: {
           planExecConfig: {
-            plannerAgent: config?.modeConfig?.planExecConfig?.plannerAgent ?? defaults.modeConfig?.planExecConfig?.plannerAgent ?? '',
-            executionOrder: cloneStringArray(config?.modeConfig?.planExecConfig?.executionOrder ?? defaults.modeConfig?.planExecConfig?.executionOrder),
+            plannerAgent:
+              config?.modeConfig?.planExecConfig?.plannerAgent ??
+              defaults.modeConfig?.planExecConfig?.plannerAgent ??
+              '',
+            executionOrder: cloneStringArray(
+              config?.modeConfig?.planExecConfig?.executionOrder ??
+                defaults.modeConfig?.planExecConfig?.executionOrder
+            ),
           },
         },
       };
@@ -285,9 +306,18 @@ export const normalizeSchemeConfig = (mode: CollaborationMode, config?: Partial<
         finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
         modeConfig: {
           supervisionConfig: {
-            supervisorAgent: config?.modeConfig?.supervisionConfig?.supervisorAgent ?? defaults.modeConfig?.supervisionConfig?.supervisorAgent ?? '',
-            workerAgents: cloneStringArray(config?.modeConfig?.supervisionConfig?.workerAgents ?? defaults.modeConfig?.supervisionConfig?.workerAgents),
-            checkInterval: config?.modeConfig?.supervisionConfig?.checkInterval ?? defaults.modeConfig?.supervisionConfig?.checkInterval ?? 15,
+            supervisorAgent:
+              config?.modeConfig?.supervisionConfig?.supervisorAgent ??
+              defaults.modeConfig?.supervisionConfig?.supervisorAgent ??
+              '',
+            workerAgents: cloneStringArray(
+              config?.modeConfig?.supervisionConfig?.workerAgents ??
+                defaults.modeConfig?.supervisionConfig?.workerAgents
+            ),
+            checkInterval:
+              config?.modeConfig?.supervisionConfig?.checkInterval ??
+              defaults.modeConfig?.supervisionConfig?.checkInterval ??
+              15,
           },
         },
       };
@@ -299,18 +329,30 @@ export const normalizeSchemeConfig = (mode: CollaborationMode, config?: Partial<
         finalizerPrompt: config?.finalizerPrompt ?? defaults.finalizerPrompt,
         modeConfig: {
           peerHandoffConfig: {
-            entryAgent: config?.modeConfig?.peerHandoffConfig?.entryAgent ?? defaults.modeConfig?.peerHandoffConfig?.entryAgent ?? '',
-            meshAgents: cloneStringArray(config?.modeConfig?.peerHandoffConfig?.meshAgents ?? defaults.modeConfig?.peerHandoffConfig?.meshAgents),
-            handoffRules: config?.modeConfig?.peerHandoffConfig?.handoffRules ?? defaults.modeConfig?.peerHandoffConfig?.handoffRules ?? '',
+            entryAgent:
+              config?.modeConfig?.peerHandoffConfig?.entryAgent ??
+              defaults.modeConfig?.peerHandoffConfig?.entryAgent ??
+              '',
+            meshAgents: cloneStringArray(
+              config?.modeConfig?.peerHandoffConfig?.meshAgents ??
+                defaults.modeConfig?.peerHandoffConfig?.meshAgents
+            ),
+            handoffRules:
+              config?.modeConfig?.peerHandoffConfig?.handoffRules ??
+              defaults.modeConfig?.peerHandoffConfig?.handoffRules ??
+              '',
           },
         },
       };
   }
 };
 
-export const buildSchemeBindAgents = (mode: CollaborationMode, pool?: AgentPool): AgentBinding[] => {
+export const buildSchemeBindAgents = (
+  mode: CollaborationMode,
+  pool?: AgentPool
+): AgentBinding[] => {
   const defs = pool?.agents || [];
-  const byId = new Map(defs.map(agent => [agent.id, agent]));
+  const byId = new Map(defs.map((agent) => [agent.id, agent]));
 
   if (mode === 'plan_exec') {
     const list: AgentBinding[] = [];
@@ -325,19 +367,22 @@ export const buildSchemeBindAgents = (mode: CollaborationMode, pool?: AgentPool)
     }
   }
 
-  return defs.map(agent => ({ agentId: agent.id, role: agent.name }));
+  return defs.map((agent) => ({ agentId: agent.id, role: agent.name }));
 };
 
-const filterBindAgentsForMode = (mode: CollaborationMode, bindAgents?: AgentBinding[]): AgentBinding[] => {
+const filterBindAgentsForMode = (
+  mode: CollaborationMode,
+  bindAgents?: AgentBinding[]
+): AgentBinding[] => {
   const current = bindAgents ? bindAgents.map(cloneAgentBinding) : [];
   if (mode !== 'plan_exec') {
     return current;
   }
 
-  const byId = new Map(current.map(agent => [agent.agentId, agent]));
-  return PLAN_EXEC_BIND_TEMPLATE
-    .map(template => byId.get(template.agentId))
-    .filter((agent): agent is AgentBinding => agent !== undefined);
+  const byId = new Map(current.map((agent) => [agent.agentId, agent]));
+  return PLAN_EXEC_BIND_TEMPLATE.map((template) => byId.get(template.agentId)).filter(
+    (agent): agent is AgentBinding => agent !== undefined
+  );
 };
 
 export const resolveSchemeBindAgentsForSave = (input: {
@@ -363,31 +408,30 @@ export const resolveSchemeBindAgentsForSave = (input: {
 
 // ========== Agent Pool APIs ==========
 
-export const listAgentPools = async () => {
-  return requestJSON<{ pools: AgentPool[] }>('/playground/pools');
-};
+export const listAgentPools = async () => requestJSON<{ pools: AgentPool[] }>('/playground/pools');
 
-export const getAgentPool = async (id: string) => {
-  return requestJSON<{ pool: AgentPool }>(`/playground/pools/${encodeURIComponent(id)}`);
-};
+export const getAgentPool = async (id: string) =>
+  requestJSON<{ pool: AgentPool }>(`/playground/pools/${encodeURIComponent(id)}`);
 
-export const updateAgentPool = async (id: string, data: { name?: string; description?: string; agents?: AgentDefinition[] }) => {
-  return requestJSON<{ pool: AgentPool }>(`/playground/pools/${encodeURIComponent(id)}`, { method: 'PUT', body: data });
-};
+export const updateAgentPool = async (
+  id: string,
+  data: { name?: string; description?: string; agents?: AgentDefinition[] }
+) =>
+  requestJSON<{ pool: AgentPool }>(`/playground/pools/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: data,
+  });
 
-export const deleteAgentPool = async (id: string) => {
-  return requestJSON<{ ok: string }>(`/playground/pools/${encodeURIComponent(id)}`, { method: 'DELETE' });
-};
+export const deleteAgentPool = async (id: string) =>
+  requestJSON<{ ok: string }>(`/playground/pools/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 // ========== Scheme APIs ==========
 
-export const listSchemes = async () => {
-  return requestJSON<{ schemes: CollaborationScheme[] }>('/playground/schemes');
-};
+export const listSchemes = async () =>
+  requestJSON<{ schemes: CollaborationScheme[] }>('/playground/schemes');
 
-export const getScheme = async (id: string) => {
-  return requestJSON<{ scheme: CollaborationScheme }>(`/playground/schemes/${encodeURIComponent(id)}`);
-};
+export const getScheme = async (id: string) =>
+  requestJSON<{ scheme: CollaborationScheme }>(`/playground/schemes/${encodeURIComponent(id)}`);
 
 export const createScheme = async (data: {
   name: string;
@@ -396,43 +440,48 @@ export const createScheme = async (data: {
   bindAgents?: AgentBinding[];
   config?: SchemeConfig;
   enableFinalizer?: boolean;
-}) => {
-  return requestJSON<{ scheme: CollaborationScheme }>('/playground/schemes', { method: 'POST', body: data });
-};
+}) =>
+  requestJSON<{ scheme: CollaborationScheme }>('/playground/schemes', {
+    method: 'POST',
+    body: data,
+  });
 
-export const updateScheme = async (id: string, data: Partial<{
-  name: string;
-  description: string;
-  mode: CollaborationMode;
-  bindAgents: AgentBinding[];
-  config: SchemeConfig;
-  enableFinalizer: boolean;
-}>) => {
-  return requestJSON<{ scheme: CollaborationScheme }>(`/playground/schemes/${encodeURIComponent(id)}`, { method: 'PUT', body: data });
-};
+export const updateScheme = async (
+  id: string,
+  data: Partial<{
+    name: string;
+    description: string;
+    mode: CollaborationMode;
+    bindAgents: AgentBinding[];
+    config: SchemeConfig;
+    enableFinalizer: boolean;
+  }>
+) =>
+  requestJSON<{ scheme: CollaborationScheme }>(`/playground/schemes/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: data,
+  });
 
-export const deleteScheme = async (id: string) => {
-  return requestJSON<{}>(`/playground/schemes/${encodeURIComponent(id)}`, { method: 'DELETE' });
-};
+export const deleteScheme = async (id: string) =>
+  requestJSON<{}>(`/playground/schemes/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 // ========== Run APIs ==========
 
-export const runWorkflow = async (data: { schemeId: string; userInput: string }) => {
-  return requestJSON<{ runId: string }>('/playground/run', { method: 'POST', body: data });
-};
+export const runWorkflow = async (data: { schemeId: string; userInput: string }) =>
+  requestJSON<{ runId: string }>('/playground/run', { method: 'POST', body: data });
 
-export const getRun = async (runId: string) => {
-  return requestJSON<RuntimeRunDetail>(`/playground/run/${encodeURIComponent(runId)}`);
-};
+export const getRun = async (runId: string) =>
+  requestJSON<RuntimeRunDetail>(`/playground/run/${encodeURIComponent(runId)}`);
 
-export const getRunEvents = async (runId: string, params?: { limit?: number; offset?: number }) => {
-  return requestJSON<{ events: TraceEvent[] }>(`/playground/run/${encodeURIComponent(runId)}/events`, { params });
-};
+export const getRunEvents = async (runId: string, params?: { limit?: number; offset?: number }) =>
+  requestJSON<{ events: TraceEvent[] }>(`/playground/run/${encodeURIComponent(runId)}/events`, {
+    params,
+  });
 
 export const applyRecoveryAction = async (
   runId: string,
   actionId: string,
-  body?: { targetRef?: string },
+  body?: { targetRef?: string }
 ) => {
   const payload =
     body?.targetRef != null && body.targetRef.trim() !== ''
@@ -440,15 +489,14 @@ export const applyRecoveryAction = async (
       : undefined;
   return requestJSON<{ runId: string; actionId: string; status: string }>(
     `/playground/run/${encodeURIComponent(runId)}/recovery-actions/${encodeURIComponent(actionId)}`,
-    { method: 'POST', body: payload },
+    { method: 'POST', body: payload }
   );
 };
 
 // ========== Mode APIs ==========
 
-export const getCollaborationModes = async () => {
-  return requestJSON<{ modes: CollaborationModeInfo[] }>('/playground/modes');
-};
+export const getCollaborationModes = async () =>
+  requestJSON<{ modes: CollaborationModeInfo[] }>('/playground/modes');
 
 // ========== Mode 名称映射 ==========
 

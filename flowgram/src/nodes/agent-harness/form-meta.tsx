@@ -5,13 +5,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { Checkbox, Divider, Select, Spin, Typography } from '@douyinfe/semi-ui';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
+import { Checkbox, Divider, Select, Spin, Typography } from '@douyinfe/semi-ui';
 
-import { FlowNodeJSON } from '../../typings';
-import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
-import type { FormInputsProps } from '../../form-components';
 import { defaultFormMeta } from '../default-form-meta';
+import { groupSkillPackages } from '../../utils/skill-packages';
+import { FlowNodeJSON } from '../../typings';
+import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
 import {
   listLlmConfigs,
   listMCPConfigs,
@@ -20,8 +20,8 @@ import {
   type MCPConfigItem,
   type SkillItem,
 } from '../../services/api-agent';
-import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
-import { groupSkillPackages } from '../../utils/skill-packages';
+import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
+import type { FormInputsProps } from '../../form-components';
 
 function flowStr(v: unknown): string {
   if (v == null || typeof v !== 'object' || !('content' in (v as object))) return '';
@@ -60,9 +60,7 @@ function flowStringList(v: unknown): string[] {
 function buildWorkspacePromptPreview(workspace: WorkspaceItem): string {
   const workspaceId = String(workspace.id || '').trim();
   const workspaceName = String(workspace.name || '').trim() || workspaceId;
-  const rootDir =
-    String(workspace.rootDir || '').trim() ||
-    `/app/code_workspace/${workspaceId}`;
+  const rootDir = String(workspace.rootDir || '').trim() || `/app/code_workspace/${workspaceId}`;
   const repos = Array.isArray(workspace.repositories)
     ? workspace.repositories
         .map((r) => {
@@ -100,7 +98,15 @@ const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
 
 const agentFormInputsProps: FormInputsProps = {
   propertyFilter: (k) =>
-    !['model', 'skillAllowlist', 'mcpAllowlist', 'llmConfigId', 'llmModelEntryId', 'workspaceId', 'enableWorkspaceTools'].includes(k),
+    ![
+      'model',
+      'skillAllowlist',
+      'mcpAllowlist',
+      'llmConfigId',
+      'llmModelEntryId',
+      'workspaceId',
+      'enableWorkspaceTools',
+    ].includes(k),
   propertyKeyOrder: AGENT_FORM_KEYS_NO_ALLOWLIST,
 };
 
@@ -164,7 +170,8 @@ function AgentHarnessManagedModelPick() {
         模型管理（必选）
       </Typography.Text>
       <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 10 }}>
-        须选择后台维护的 LLM 配置及其下一条已启用的模型条目，运行时由此解析凭证与模型名（与主站 Chat 一致）。
+        须选择后台维护的 LLM 配置及其下一条已启用的模型条目，运行时由此解析凭证与模型名（与主站 Chat
+        一致）。
       </Typography.Paragraph>
       {loading ? (
         <Spin size="small" />
@@ -180,7 +187,11 @@ function AgentHarnessManagedModelPick() {
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div>
-                      <Typography.Text type="secondary" size="small" style={{ display: 'block', marginBottom: 4 }}>
+                      <Typography.Text
+                        type="secondary"
+                        size="small"
+                        style={{ display: 'block', marginBottom: 4 }}
+                      >
                         LLM 配置
                       </Typography.Text>
                       <Select
@@ -207,7 +218,11 @@ function AgentHarnessManagedModelPick() {
                       </Select>
                     </div>
                     <div>
-                      <Typography.Text type="secondary" size="small" style={{ display: 'block', marginBottom: 4 }}>
+                      <Typography.Text
+                        type="secondary"
+                        size="small"
+                        style={{ display: 'block', marginBottom: 4 }}
+                      >
                         模型条目
                       </Typography.Text>
                       <Select
@@ -313,7 +328,11 @@ function AgentHarnessWorkspacePick() {
                       background: 'var(--semi-color-fill-0)',
                     }}
                   >
-                    <Typography.Text strong size="small" style={{ display: 'block', marginBottom: 6 }}>
+                    <Typography.Text
+                      strong
+                      size="small"
+                      style={{ display: 'block', marginBottom: 6 }}
+                    >
                       自动注入提示词预览
                     </Typography.Text>
                     <Typography.Paragraph
@@ -373,7 +392,8 @@ function AgentHarnessToolAllowlists() {
         Skill / MCP 白名单（勾选生效）
       </Typography.Text>
       <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 10 }}>
-        Skill 按「套装」勾选（同一目录下多个技能文件会一并加入白名单）；不勾选任何项表示不限制。MCP 每项对应「该 server 下全部工具」（server:*）。
+        Skill 按「套装」勾选（同一目录下多个技能文件会一并加入白名单）；不勾选任何项表示不限制。MCP
+        每项对应「该 server 下全部工具」（server:*）。
       </Typography.Paragraph>
       {loading ? (
         <Spin size="small" />
@@ -384,7 +404,11 @@ function AgentHarnessToolAllowlists() {
               const skillOn = flowBool(en.value);
               return (
                 <div style={{ marginBottom: 12 }}>
-                  <Typography.Text type="secondary" size="small" style={{ display: 'block', marginBottom: 6 }}>
+                  <Typography.Text
+                    type="secondary"
+                    size="small"
+                    style={{ display: 'block', marginBottom: 6 }}
+                  >
                     Skill（需开启「启用 run_skill」）
                   </Typography.Text>
                   {!skillOn ? (
@@ -438,7 +462,11 @@ function AgentHarnessToolAllowlists() {
               const mcpOn = flowBool(en.value);
               return (
                 <div>
-                  <Typography.Text type="secondary" size="small" style={{ display: 'block', marginBottom: 6 }}>
+                  <Typography.Text
+                    type="secondary"
+                    size="small"
+                    style={{ display: 'block', marginBottom: 6 }}
+                  >
                     MCP（需开启「启用 call_mcp_tool」）
                   </Typography.Text>
                   {!mcpOn ? (
@@ -474,7 +502,11 @@ function AgentHarnessToolAllowlists() {
                                   }}
                                 >
                                   {label}
-                                  <Typography.Text type="tertiary" size="small" style={{ marginLeft: 6 }}>
+                                  <Typography.Text
+                                    type="tertiary"
+                                    size="small"
+                                    style={{ marginLeft: 6 }}
+                                  >
                                     允许 {srv}:*
                                   </Typography.Text>
                                 </Checkbox>
@@ -500,7 +532,10 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
     <FormHeader />
     <FormContent>
       <Typography.Paragraph type="tertiary" size="small" style={{ margin: '0 10px 10px' }}>
-        上方须选择模型管理中的 LLM 配置与模型条目（运行时解析密钥与模型名）；可选绑定工作区并自动注入约束提示。generate_uuid 与 workspace 工具由服务端固定启用；可开启 run_sub_agent 让 Agent 自动分派子任务（支持批量并发 sub_tasks_json，未指定并发时自动估算）。
+        上方须选择模型管理中的 LLM
+        配置与模型条目（运行时解析密钥与模型名）；可选绑定工作区并自动注入约束提示。generate_uuid 与
+        workspace 工具由服务端固定启用；可开启 run_sub_agent 让 Agent 自动分派子任务（支持批量并发
+        sub_tasks_json，未指定并发时自动估算）。
       </Typography.Paragraph>
       <AgentHarnessManagedModelPick />
       <AgentHarnessWorkspacePick />
@@ -517,8 +552,9 @@ const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
           多模态附件输入约定
         </Typography.Text>
         <Typography.Paragraph type="tertiary" size="small" style={{ margin: 0 }}>
-          `ai/agentHarness` 会从进入节点的 `msg.data.attachments` 或 `metadata.attachments` 中读取附件。统一字段为
-          `filename / mimeType / text / contentBase64`；图片、视频、音频优先走原生多模态，普通文件当前会按统一结构接入，并在模型适配层不支持时自动降级为文本附件块。
+          `ai/agentHarness` 会从进入节点的 `msg.data.attachments` 或 `metadata.attachments`
+          中读取附件。统一字段为 `filename / mimeType / text /
+          contentBase64`；图片、视频、音频优先走原生多模态，普通文件当前会按统一结构接入，并在模型适配层不支持时自动降级为文本附件块。
         </Typography.Paragraph>
         <Typography.Paragraph
           style={{

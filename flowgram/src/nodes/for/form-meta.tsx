@@ -8,7 +8,11 @@ import { useLayoutEffect } from 'react';
 import { FormRenderProps, FlowNodeJSON, Field, FormMeta } from '@flowgram.ai/free-layout-editor';
 import { useService, WorkflowDocument } from '@flowgram.ai/free-layout-editor';
 import { SubCanvasRender } from '@flowgram.ai/free-container-plugin';
-import { createBatchOutputsFormPlugin, IFlowValue, validateFlowValue } from '@flowgram.ai/form-materials';
+import {
+  createBatchOutputsFormPlugin,
+  IFlowValue,
+  validateFlowValue,
+} from '@flowgram.ai/form-materials';
 import { Input, Select } from '@douyinfe/semi-ui';
 
 import { defaultFormMeta } from '../default-form-meta';
@@ -16,7 +20,6 @@ import { WorkflowNodeType } from '../constants';
 import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
 import { VariablePicker } from '../../form-components/variable-picker';
 import { FormHeader, FormContent, FormItem, Feedback, OutputsPeek } from '../../form-components';
-
 import {
   FOR_SUBCANVAS_DEFAULT_HEIGHT_PX,
   FOR_SUBCANVAS_TOP_FORM_RESERVE_PX,

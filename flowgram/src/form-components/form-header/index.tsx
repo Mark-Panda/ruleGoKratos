@@ -46,7 +46,11 @@ export function FormHeader() {
   return (
     <Header>
       {getIcon(node)}
-      <TitleInput readonly={effectiveReadonly} updateTitleEdit={updateTitleEdit} titleEdit={titleEdit} />
+      <TitleInput
+        readonly={effectiveReadonly}
+        updateTitleEdit={updateTitleEdit}
+        titleEdit={titleEdit}
+      />
       {node.renderData.expandable && !isSidebar && (
         <Button
           type="primary"

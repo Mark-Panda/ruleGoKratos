@@ -24,8 +24,8 @@ import {
 import './index.less';
 import { Toast } from '@douyinfe/semi-ui';
 
-import { WorkflowNodeType } from '../../nodes/constants';
 import { panelBuildLine } from '../../utils/panel-build-line';
+import { WorkflowNodeType } from '../../nodes/constants';
 import { useVisible } from './use-visible';
 import { IconPlusCircle } from './button';
 

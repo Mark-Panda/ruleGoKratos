@@ -1,10 +1,21 @@
 import React, { useRef, useState } from 'react';
-import { IconClear, IconCopy, IconSend, IconUndo } from '@douyinfe/semi-icons';
-import { Button, Card, Checkbox, Space, Spin, Tag, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 
-import { CollaborationScheme, MODE_NAME_MAP, RecoveryAction } from '../../services/api-playground';
+import {
+  Button,
+  Card,
+  Checkbox,
+  Space,
+  Spin,
+  Tag,
+  TextArea,
+  Toast,
+  Typography,
+} from '@douyinfe/semi-ui';
+import { IconClear, IconCopy, IconSend, IconUndo } from '@douyinfe/semi-icons';
+
 import { RuntimeViewModel } from '../utils/runtime-view-model';
 import { canApplyRecoveryAction, recoveryActionButtonLabel } from '../utils/recovery-actions';
+import { CollaborationScheme, MODE_NAME_MAP, RecoveryAction } from '../../services/api-playground';
 
 const { Text } = Typography;
 
@@ -30,7 +41,10 @@ interface RunConsoleProps {
   previousRunSnapshot?: PreviousRunSnapshot | null;
 }
 
-const STATUS_COLOR_MAP: Record<RuntimeViewModel['run']['status'], 'blue' | 'green' | 'red' | 'orange' | 'grey'> = {
+const STATUS_COLOR_MAP: Record<
+  RuntimeViewModel['run']['status'],
+  'blue' | 'green' | 'red' | 'orange' | 'grey'
+> = {
   idle: 'grey',
   pending: 'blue',
   ready: 'blue',
@@ -83,7 +97,15 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
     <Card
       className="pg-run-console"
       title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            gap: 12,
+          }}
+        >
           <Space spacing="tight">
             <span style={{ fontSize: 18 }} role="img" aria-label="run">
               💬
@@ -93,7 +115,12 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                 Run / Recovery
               </Text>
               {scheme ? (
-                <Text type="tertiary" size="small" style={{ maxWidth: 260 }} ellipsis={{ showTooltip: true }}>
+                <Text
+                  type="tertiary"
+                  size="small"
+                  style={{ maxWidth: 260 }}
+                  ellipsis={{ showTooltip: true }}
+                >
                   {scheme.name} · {MODE_NAME_MAP[scheme.mode]}
                 </Text>
               ) : (
@@ -141,19 +168,19 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
               run.status === 'completed'
                 ? 'var(--semi-color-success)'
                 : run.status === 'waiting_recovery'
-                  ? 'var(--semi-color-warning)'
-                  : run.status === 'failed'
-                    ? 'var(--semi-color-danger)'
-                    : 'rgba(22, 100, 255, 0.35)'
+                ? 'var(--semi-color-warning)'
+                : run.status === 'failed'
+                ? 'var(--semi-color-danger)'
+                : 'rgba(22, 100, 255, 0.35)'
             }`,
             background:
               run.status === 'completed'
                 ? 'var(--semi-color-success-light-default)'
                 : run.status === 'waiting_recovery'
-                  ? 'var(--semi-color-warning-light-default)'
-                  : run.status === 'failed'
-                    ? 'var(--semi-color-danger-light-default)'
-                    : 'var(--semi-color-primary-light-default)',
+                ? 'var(--semi-color-warning-light-default)'
+                : run.status === 'failed'
+                ? 'var(--semi-color-danger-light-default)'
+                : 'var(--semi-color-primary-light-default)',
           }}
         >
           <Space vertical align="start" spacing="tight" style={{ width: '100%' }}>
@@ -180,7 +207,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                   onClick={() => {
                     void navigator.clipboard.writeText(run.finalOutput).then(
                       () => Toast.success({ content: '已复制最终输出', duration: 2 }),
-                      () => Toast.warning({ content: '复制失败，请手动复制', duration: 3 }),
+                      () => Toast.warning({ content: '复制失败，请手动复制', duration: 3 })
                     );
                   }}
                 >
@@ -222,7 +249,10 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
       >
         {showIdleHero ? (
           <div style={{ textAlign: 'center', maxWidth: 360, margin: 'auto' }}>
-            <div style={{ fontSize: 52, lineHeight: 1.2, marginBottom: 12, opacity: 0.88 }} aria-hidden>
+            <div
+              style={{ fontSize: 52, lineHeight: 1.2, marginBottom: 12, opacity: 0.88 }}
+              aria-hidden
+            >
               ✈️
             </div>
             <Text strong style={{ fontSize: 16, display: 'block', marginBottom: 8 }}>
@@ -280,13 +310,17 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
               </Text>
             ) : null}
             {run.failureSummary ? (
-              <Text type="danger" size="small" style={{ display: 'block', lineHeight: 1.6, marginTop: 6 }}>
+              <Text
+                type="danger"
+                size="small"
+                style={{ display: 'block', lineHeight: 1.6, marginTop: 6 }}
+              >
                 {run.failureSummary}
               </Text>
             ) : null}
             {recovery.actions.length > 0 ? (
               <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {recovery.actions.map(action => (
+                {recovery.actions.map((action) => (
                   <div
                     key={action.id}
                     style={{
@@ -300,7 +334,11 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                       <Tag color="orange">{action.type}</Tag>
                       <Text size="small">目标步骤: {action.stepId}</Text>
                     </Space>
-                    <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}>
+                    <Text
+                      type="tertiary"
+                      size="small"
+                      style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}
+                    >
                       {action.reason}
                     </Text>
                     <div style={{ marginTop: 10 }}>
@@ -309,7 +347,9 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                         type="primary"
                         theme="solid"
                         loading={applyingRecoveryActionId === action.id}
-                        disabled={!canApplyRecoveryAction(action, run.status, applyingRecoveryActionId)}
+                        disabled={
+                          !canApplyRecoveryAction(action, run.status, applyingRecoveryActionId)
+                        }
                         onClick={() => void onApplyRecovery?.(action)}
                       >
                         {recoveryActionButtonLabel(action)}
@@ -332,10 +372,13 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
           <div style={{ marginBottom: 8 }}>
             <Checkbox
               checked={attachPreviousRunContext}
-              onChange={e => onAttachPreviousRunContextChange(!!(e?.target as HTMLInputElement).checked)}
+              onChange={(e) =>
+                onAttachPreviousRunContextChange(!!(e?.target as HTMLInputElement).checked)
+              }
             >
               <Text size="small">
-                附带上一轮运行上下文（runId、原任务、产出摘录），便于反馈 Bug；关闭则仅发送下方正文（新区间可能无法理解上一轮）
+                附带上一轮运行上下文（runId、原任务、产出摘录），便于反馈
+                Bug；关闭则仅发送下方正文（新区间可能无法理解上一轮）
               </Text>
             </Checkbox>
           </div>
@@ -343,7 +386,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         <TextArea
           ref={inputRef as never}
           value={input}
-          onChange={value => setInput(value)}
+          onChange={(value) => setInput(value)}
           onKeyDown={handleKeyDown}
           placeholder={scheme ? '输入测试问题…' : '请先在左侧选择协作方案'}
           disabled={!scheme || running}
@@ -354,13 +397,25 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             borderRadius: 12,
           }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 10,
+          }}
+        >
           <Text type="tertiary" size="small">
             Ctrl / ⌘ + Enter 发送
           </Text>
           <Space>
             {scheme && input && !running ? (
-              <Button type="tertiary" size="small" icon={<IconClear />} onClick={() => setInput('')}>
+              <Button
+                type="tertiary"
+                size="small"
+                icon={<IconClear />}
+                onClick={() => setInput('')}
+              >
                 清除文本
               </Button>
             ) : null}

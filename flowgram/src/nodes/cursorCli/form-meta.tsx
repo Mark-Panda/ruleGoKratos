@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Divider } from '@douyinfe/semi-ui';
 import { FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
+import { Divider } from '@douyinfe/semi-ui';
 
+import { defaultFormMeta } from '../default-form-meta';
 import { FlowNodeJSON } from '../../typings';
 import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
-import { defaultFormMeta } from '../default-form-meta';
 
 const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
   <>

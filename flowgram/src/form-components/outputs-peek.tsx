@@ -5,9 +5,9 @@
 import { Field } from '@flowgram.ai/free-layout-editor';
 import { DisplayOutputs } from '@flowgram.ai/form-materials';
 
-import { useIsSidebar, useNodeRenderContext } from '../hooks';
-import { WorkflowNodeType } from '../nodes/constants';
 import { CANVAS_TWO_LINE_BOX_STYLE, canvasSchemaPreviewText } from '../utils/canvas-node-preview';
+import { WorkflowNodeType } from '../nodes/constants';
+import { useIsSidebar, useNodeRenderContext } from '../hooks';
 
 export function OutputsPeek() {
   const isSidebar = useIsSidebar();

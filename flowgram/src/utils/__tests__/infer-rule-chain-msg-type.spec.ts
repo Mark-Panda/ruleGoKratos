@@ -27,10 +27,7 @@ describe('inferMsgTypeFromRuleDetail', () => {
 
   it('uses flowgram entryMsgType when set', () => {
     expect(
-      inferMsgTypeFromRuleDetail(
-        { ruleChain: { configuration: {} }, metadata: {} },
-        'myEvent'
-      )
+      inferMsgTypeFromRuleDetail({ ruleChain: { configuration: {} }, metadata: {} }, 'myEvent')
     ).toBe('myEvent');
   });
 

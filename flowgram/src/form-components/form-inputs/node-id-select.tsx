@@ -9,8 +9,8 @@ import { useService, WorkflowDocument, WorkflowNodeEntity } from '@flowgram.ai/f
 import { IFlowValue } from '@flowgram.ai/form-materials';
 import { Select } from '@douyinfe/semi-ui';
 
-import { useNodeRenderContext } from '../../hooks';
 import { OutPutPortType } from '../../nodes/constants';
+import { useNodeRenderContext } from '../../hooks';
 
 export interface NodeIdSelectProps {
   value?: IFlowValue;
@@ -61,9 +61,7 @@ export const NodeIdSelect: React.FC<NodeIdSelectProps> = ({
       const toNode = line?.to as WorkflowNodeEntity | undefined;
       if (!toNode?.id) continue;
       const portId =
-        (line as any).fromPort?.portID ??
-        (line as any).sourcePortID ??
-        (line as any).sourcePortId;
+        (line as any).fromPort?.portID ?? (line as any).sourcePortID ?? (line as any).sourcePortId;
       if (portId === OutPutPortType.FailurePort) {
         continue;
       }
@@ -104,15 +102,7 @@ export const NodeIdSelect: React.FC<NodeIdSelectProps> = ({
         key: n.id,
       };
     });
-  }, [
-    nodes,
-    document,
-    excludeSelf,
-    excludeTypes,
-    excludeIds,
-    currentNode,
-    successDownstreamIdSet,
-  ]);
+  }, [nodes, document, excludeSelf, excludeTypes, excludeIds, currentNode, successDownstreamIdSet]);
 
   const selectedValue =
     (value?.type === 'constant' ? (value.content as string) : undefined) ?? undefined;

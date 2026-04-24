@@ -13,7 +13,7 @@ const APPLICABLE_RECOVERY_TYPES = new Set<RecoveryAction['type']>([
 export function canApplyRecoveryAction(
   action: RecoveryAction,
   runStatus: RuntimeRunStatus | 'idle',
-  applyingActionId?: string,
+  applyingActionId?: string
 ): boolean {
   if (applyingActionId === action.id) {
     return false;
@@ -27,7 +27,7 @@ export function canApplyRecoveryAction(
 /** 按钮文案：与后端 recovery action 类型对齐 */
 /** POST body：与需要显式目标引用的 recovery 类型配合（与 action 上的 targetRef 对齐） */
 export function recoveryActionRequestBody(
-  action: RecoveryAction,
+  action: RecoveryAction
 ): { targetRef?: string } | undefined {
   const ref = action.targetRef?.trim();
   if (!ref) {
@@ -46,9 +46,7 @@ export function recoveryActionButtonLabel(action: RecoveryAction): string {
     case 'skip_step':
       return '跳过该步骤';
     case 'reroute_step':
-      return action.targetRef?.trim()
-        ? `强制路由到 ${action.targetRef.trim()}`
-        : '强制路由并重试';
+      return action.targetRef?.trim() ? `强制路由到 ${action.targetRef.trim()}` : '强制路由并重试';
     case 'retry_from_checkpoint':
       return action.targetRef?.trim()
         ? `从检查点「${action.targetRef.trim()}」恢复`
@@ -91,7 +89,7 @@ export async function applyRecoveryActionAndRefresh(input: {
 }
 
 async function defaultWait(ms: number): Promise<void> {
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
 }

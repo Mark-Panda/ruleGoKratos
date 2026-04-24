@@ -234,9 +234,7 @@ export function transformCursorCliConfigIn(
   const next = { ...config };
   const ap = next.agentPath;
   const emptyAp =
-    ap === undefined ||
-    ap === null ||
-    (typeof ap === 'string' && String(ap).trim() === '');
+    ap === undefined || ap === null || (typeof ap === 'string' && String(ap).trim() === '');
   if (emptyAp && next.cursorPath != null && String(next.cursorPath).trim() !== '') {
     next.agentPath = next.cursorPath;
   }
@@ -244,7 +242,9 @@ export function transformCursorCliConfigIn(
 }
 
 /** fromDSL：agentHarness 白名单历史为逗号分隔字符串时转为 string[]，便于勾选组件与 JSON 数组 DSL。 */
-export function transformAgentHarnessConfigIn(config: Record<string, unknown>): Record<string, unknown> {
+export function transformAgentHarnessConfigIn(
+  config: Record<string, unknown>
+): Record<string, unknown> {
   const next = { ...config };
   // Workspace 工具在 Agent-LLM 节点中固定开启，不允许关闭。
   next.enableWorkspaceTools = true;
@@ -256,12 +256,24 @@ export function transformAgentHarnessConfigIn(config: Record<string, unknown>): 
   const skill = next.skillAllowlist;
   if (typeof skill === 'string') {
     const t = skill.trim();
-    next.skillAllowlist = t === '' ? [] : t.split(',').map((s) => s.trim()).filter(Boolean);
+    next.skillAllowlist =
+      t === ''
+        ? []
+        : t
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
   }
   const mcp = next.mcpAllowlist;
   if (typeof mcp === 'string') {
     const t = mcp.trim();
-    next.mcpAllowlist = t === '' ? [] : t.split(',').map((s) => s.trim()).filter(Boolean);
+    next.mcpAllowlist =
+      t === ''
+        ? []
+        : t
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
   }
   return next;
 }

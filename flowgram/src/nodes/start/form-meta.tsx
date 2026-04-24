@@ -10,7 +10,11 @@ import {
   FormMeta,
   ValidateTrigger,
 } from '@flowgram.ai/free-layout-editor';
-import { JsonSchemaEditor, provideJsonSchemaOutputs, syncVariableTitle } from '@flowgram.ai/form-materials';
+import {
+  JsonSchemaEditor,
+  provideJsonSchemaOutputs,
+  syncVariableTitle,
+} from '@flowgram.ai/form-materials';
 
 import { FlowNodeJSON, JsonSchema } from '../../typings';
 import { useIsSidebar } from '../../hooks';

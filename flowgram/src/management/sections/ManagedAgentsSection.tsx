@@ -3,6 +3,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+
 import {
   Button,
   Card,
@@ -22,14 +23,9 @@ import {
   Typography,
   Switch,
 } from '@douyinfe/semi-ui';
-import {
-  IconDelete,
-  IconPlus,
-  IconRefresh,
-  IconEdit,
-} from '@douyinfe/semi-icons';
+import { IconDelete, IconPlus, IconRefresh, IconEdit } from '@douyinfe/semi-icons';
 
-import { listMCPConfigs, listLlmConfigs, type MCPConfigItem, type LlmConfigItem } from '../../services/api-agent';
+import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
 import {
   listManagedAgents,
   createManagedAgent,
@@ -40,7 +36,12 @@ import {
   type ManagedAgentPayload,
   type SkillPackageItem,
 } from '../../services/api-managed-agents';
-import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
+import {
+  listMCPConfigs,
+  listLlmConfigs,
+  type MCPConfigItem,
+  type LlmConfigItem,
+} from '../../services/api-agent';
 
 const { Text, Title } = Typography;
 
@@ -110,17 +111,14 @@ export const ManagedAgentsSection: React.FC = () => {
   const filteredSkillPackages = useMemo(() => {
     const q = skillPackageFilter.trim().toLowerCase();
     if (!q) return skillPackages;
-    return skillPackages.filter(s => (s.id || '').toLowerCase().includes(q));
+    return skillPackages.filter((s) => (s.id || '').toLowerCase().includes(q));
   }, [skillPackages, skillPackageFilter]);
 
-  const enabledLlmConfigs = useMemo(
-    () => llmConfigs.filter(c => c.enabled),
-    [llmConfigs]
-  );
+  const enabledLlmConfigs = useMemo(() => llmConfigs.filter((c) => c.enabled), [llmConfigs]);
 
   const selectedConfigModels = useMemo(() => {
-    const c = enabledLlmConfigs.find(x => x.id === form.llmConfigId);
-    return (c?.models || []).filter(m => m.enabled);
+    const c = enabledLlmConfigs.find((x) => x.id === form.llmConfigId);
+    return (c?.models || []).filter((m) => m.enabled);
   }, [enabledLlmConfigs, form.llmConfigId]);
 
   /** 已启用的 MCP + 当前表单已勾选但已在 MCP 管理中停用的项（否则 Semi CheckboxGroup 找不到 option，勾选态丢失） */
@@ -138,7 +136,7 @@ export const ManagedAgentsSection: React.FC = () => {
   }, [mcps, form.mcpIds]);
 
   const configName = useCallback(
-    (id: number) => enabledLlmConfigs.find(c => c.id === id)?.name || `#${id}`,
+    (id: number) => enabledLlmConfigs.find((c) => c.id === id)?.name || `#${id}`,
     [enabledLlmConfigs]
   );
 
@@ -182,10 +180,12 @@ export const ManagedAgentsSection: React.FC = () => {
       ...form,
       name: form.name.trim(),
       description: (form.description || '').trim(),
-      modelEntryIds:
-        form.modelScope === 'explicit' ? form.modelEntryIds || [] : [],
+      modelEntryIds: form.modelScope === 'explicit' ? form.modelEntryIds || [] : [],
     };
-    if (payload.modelScope === 'explicit' && (!payload.modelEntryIds || payload.modelEntryIds.length === 0)) {
+    if (
+      payload.modelScope === 'explicit' &&
+      (!payload.modelEntryIds || payload.modelEntryIds.length === 0)
+    ) {
       Toast.warning('指定模型时请至少勾选一条启用中的模型');
       return;
     }
@@ -234,9 +234,7 @@ export const ManagedAgentsSection: React.FC = () => {
     {
       title: 'LLM 站点',
       key: 'llm',
-      render: (_: unknown, r: ManagedAgentItem) => (
-        <Text>{configName(r.llmConfigId)}</Text>
-      ),
+      render: (_: unknown, r: ManagedAgentItem) => <Text>{configName(r.llmConfigId)}</Text>,
     },
     {
       title: '模型范围',
@@ -307,8 +305,9 @@ export const ManagedAgentsSection: React.FC = () => {
             Agent 配置
           </Title>
           <Text type="tertiary">
-            为每个 Agent 配置系统提示词，按技能包勾选 SKILL（与目录首层一致）、勾选 MCP，模型来源与「模型管理」一致：可选择某
-            LLM 站点下的全部启用模型，或仅勾选部分模型条目。
+            为每个 Agent 配置系统提示词，按技能包勾选 SKILL（与目录首层一致）、勾选
+            MCP，模型来源与「模型管理」一致：可选择某 LLM
+            站点下的全部启用模型，或仅勾选部分模型条目。
           </Text>
           <Space style={{ marginTop: 8 }}>
             <Button type="primary" theme="solid" icon={<IconPlus />} onClick={openCreate}>
@@ -341,7 +340,7 @@ export const ManagedAgentsSection: React.FC = () => {
             <Input
               style={{ marginTop: 8 }}
               value={form.name}
-              onChange={v => setForm(f => ({ ...f, name: v }))}
+              onChange={(v) => setForm((f) => ({ ...f, name: v }))}
               placeholder="便于识别的名称"
             />
           </div>
@@ -350,7 +349,7 @@ export const ManagedAgentsSection: React.FC = () => {
             <Input
               style={{ marginTop: 8 }}
               value={form.description || ''}
-              onChange={v => setForm(f => ({ ...f, description: v }))}
+              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
             />
           </div>
           <div style={{ width: '100%' }}>
@@ -359,7 +358,7 @@ export const ManagedAgentsSection: React.FC = () => {
               style={{ marginTop: 8 }}
               rows={6}
               value={form.systemPrompt || ''}
-              onChange={v => setForm(f => ({ ...f, systemPrompt: v }))}
+              onChange={(v) => setForm((f) => ({ ...f, systemPrompt: v }))}
               placeholder="定义 Agent 的角色与行为约束"
             />
             <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
@@ -410,8 +409,8 @@ export const ManagedAgentsSection: React.FC = () => {
               <CheckboxGroup
                 direction="vertical"
                 value={form.skillPackageIds || []}
-                onChange={v => setForm(f => ({ ...f, skillPackageIds: v as string[] }))}
-                options={filteredSkillPackages.map(s => ({
+                onChange={(v) => setForm((f) => ({ ...f, skillPackageIds: v as string[] }))}
+                options={filteredSkillPackages.map((s) => ({
                   label: `${s.id}（${s.skillFileCount} 个文件）`,
                   value: s.id,
                 }))}
@@ -422,7 +421,8 @@ export const ManagedAgentsSection: React.FC = () => {
           <div style={{ width: '100%' }}>
             <Text strong>MCP</Text>
             <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-              勾选可用的 MCP 配置；默认仅列出「已启用」项；若某条已停用但仍被本 Agent 引用，会带 [已停用] 标出以便取消勾选
+              勾选可用的 MCP 配置；默认仅列出「已启用」项；若某条已停用但仍被本 Agent 引用，会带
+              [已停用] 标出以便取消勾选
             </Text>
             {mcpCheckboxOptions.length === 0 ? (
               <Text type="warning">暂无可选 MCP：请先在「MCP 配置」中新增并启用至少一条。</Text>
@@ -452,9 +452,9 @@ export const ManagedAgentsSection: React.FC = () => {
               placeholder="选择 LLM 配置"
               style={{ width: '100%', marginBottom: 12 }}
               value={form.llmConfigId || undefined}
-              onChange={v => {
+              onChange={(v) => {
                 const id = typeof v === 'number' ? v : Number(v);
-                setForm(f => ({
+                setForm((f) => ({
                   ...f,
                   llmConfigId: Number.isFinite(id) ? id : 0,
                   modelEntryIds: [],
@@ -462,7 +462,7 @@ export const ManagedAgentsSection: React.FC = () => {
               }}
               filter
             >
-              {enabledLlmConfigs.map(c => (
+              {enabledLlmConfigs.map((c) => (
                 <Select.Option key={c.id} value={c.id} text={c.name}>
                   {c.name}（{c.provider}）
                 </Select.Option>
@@ -471,9 +471,9 @@ export const ManagedAgentsSection: React.FC = () => {
 
             <RadioGroup
               value={form.modelScope}
-              onChange={e => {
+              onChange={(e) => {
                 const v = e.target.value as 'all' | 'explicit';
-                setForm(f => ({
+                setForm((f) => ({
                   ...f,
                   modelScope: v,
                   modelEntryIds: v === 'all' ? [] : f.modelEntryIds,
@@ -502,8 +502,8 @@ export const ManagedAgentsSection: React.FC = () => {
                   <CheckboxGroup
                     direction="vertical"
                     value={form.modelEntryIds || []}
-                    onChange={v => setForm(f => ({ ...f, modelEntryIds: v as number[] }))}
-                    options={selectedConfigModels.map(m => ({
+                    onChange={(v) => setForm((f) => ({ ...f, modelEntryIds: v as number[] }))}
+                    options={selectedConfigModels.map((m) => ({
                       label: `${m.modelName}${m.description ? ` — ${m.description}` : ''}`,
                       value: m.id,
                     }))}
@@ -517,7 +517,7 @@ export const ManagedAgentsSection: React.FC = () => {
             <Text type="tertiary">启用</Text>
             <Switch
               checked={form.enabled !== false}
-              onChange={checked => setForm(f => ({ ...f, enabled: checked }))}
+              onChange={(checked) => setForm((f) => ({ ...f, enabled: checked }))}
             />
           </Space>
         </Space>

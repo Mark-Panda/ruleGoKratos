@@ -17,9 +17,7 @@ export const FormRender = ({ form }: FormRenderProps<VariableNodeJSON>) => {
   return (
     <>
       <FormHeader />
-      <FormContent>
-        {isSidebar ? <AssignRows name="assign" /> : <OutputsPeek />}
-      </FormContent>
+      <FormContent>{isSidebar ? <AssignRows name="assign" /> : <OutputsPeek />}</FormContent>
     </>
   );
 };

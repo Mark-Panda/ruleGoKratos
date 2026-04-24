@@ -1,7 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, Input, Modal, Select, Spin, Table, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
+import {
+  Button,
+  Input,
+  Modal,
+  Select,
+  Spin,
+  Table,
+  TextArea,
+  Toast,
+  Typography,
+} from '@douyinfe/semi-ui';
 
+import { groupSkillPackages } from '../../utils/skill-packages';
 import {
   MCPConfigItem,
   MCPConfigPayload,
@@ -25,7 +36,6 @@ import {
   updateLlmModelEntry,
   uploadSkill,
 } from '../../services/api-agent';
-import { groupSkillPackages } from '../../utils/skill-packages';
 
 const defaultMCPForm: MCPConfigPayload = {
   name: '',
@@ -250,7 +260,10 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
         const argsRaw = mcpForm.stdio_args_json?.trim() || '[]';
         const args = JSON.parse(argsRaw);
         if (!Array.isArray(args) || !args.every((x) => typeof x === 'string')) {
-          Toast.error({ content: 'stdio_args_json 须为 JSON 字符串数组，例如 ["-y","@modelcontextprotocol/server-filesystem"]' });
+          Toast.error({
+            content:
+              'stdio_args_json 须为 JSON 字符串数组，例如 ["-y","@modelcontextprotocol/server-filesystem"]',
+          });
           return;
         }
       } catch {

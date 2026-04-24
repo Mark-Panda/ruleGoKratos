@@ -145,7 +145,9 @@ export const WorkspacesSection: React.FC = () => {
       description: form.description.trim(),
       repositoryUrls: repoURLs,
     };
-    setBusyText(modalMode === 'create' ? '正在创建工作区并拉取仓库...' : '正在保存工作区并同步仓库...');
+    setBusyText(
+      modalMode === 'create' ? '正在创建工作区并拉取仓库...' : '正在保存工作区并同步仓库...'
+    );
     setSubmitLoading(true);
     try {
       if (modalMode === 'create') {
@@ -277,197 +279,199 @@ export const WorkspacesSection: React.FC = () => {
   return (
     <div style={{ position: 'relative' }}>
       <div style={{ padding: 24 }}>
-      <Card>
-        <Space vertical align="start" style={{ width: '100%' }}>
-          <Title heading={5} style={{ margin: 0 }}>
-            工作区管理
-          </Title>
-          <Text type="tertiary">
-            每个工作区对应容器内独立目录 <Text code>/app/code_workspace/&lt;workspaceId&gt;</Text>
-            ，并持久化配置文件
-            <Text code>&lt;workspaceId&gt;.code-workspace</Text>。保存时会自动拉取/更新配置的所有
-            Git 仓库。
-          </Text>
-          <Space>
-            <Button type="primary" theme="solid" icon={<IconPlus />} onClick={openCreate}>
-              新建工作区
-            </Button>
-            <Button icon={<IconRefresh />} onClick={() => void loadAll()}>
-              刷新
-            </Button>
-          </Space>
-        </Space>
-      </Card>
-
-      <Card style={{ marginTop: 16 }}>
-        <Spin spinning={loading}>
-          <Table columns={columns} dataSource={rows} rowKey="id" pagination={{ pageSize: 10 }} />
-        </Spin>
-      </Card>
-
-      <Modal
-        visible={modalOpen}
-        title={modalMode === 'create' ? '新建工作区' : '编辑工作区'}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => void submit()}
-        okText={modalMode === 'create' ? '创建并拉取' : '保存并同步'}
-        confirmLoading={submitLoading}
-        okButtonProps={{ disabled: submitLoading }}
-        cancelButtonProps={{ disabled: submitLoading }}
-        width={760}
-        maskClosable={false}
-      >
-        <Space vertical align="start" style={{ width: '100%' }}>
-          <div style={{ width: '100%' }}>
-            <Text type="tertiary">工作区 ID *</Text>
-            <Input
-              style={{ marginTop: 8 }}
-              value={form.id}
-              disabled
-              placeholder="例如: ai-platform"
-            />
-            <Text type="tertiary" size="small">
-              系统自动生成 UUID，用于目录名和配置文件名。
+        <Card>
+          <Space vertical align="start" style={{ width: '100%' }}>
+            <Title heading={5} style={{ margin: 0 }}>
+              工作区管理
+            </Title>
+            <Text type="tertiary">
+              每个工作区对应容器内独立目录 <Text code>/app/code_workspace/&lt;workspaceId&gt;</Text>
+              ，并持久化配置文件
+              <Text code>&lt;workspaceId&gt;.code-workspace</Text>。保存时会自动拉取/更新配置的所有
+              Git 仓库。
             </Text>
-          </div>
-          <div style={{ width: '100%' }}>
-            <Text type="tertiary">工作区名称 *</Text>
-            <Input
-              style={{ marginTop: 8 }}
-              value={form.name}
-              placeholder="用于菜单和识别"
-              onChange={(v) => setForm((f) => ({ ...f, name: v }))}
-            />
-          </div>
-          <div style={{ width: '100%' }}>
-            <Text type="tertiary">描述</Text>
-            <Input
-              style={{ marginTop: 8 }}
-              value={form.description}
-              onChange={(v) => setForm((f) => ({ ...f, description: v }))}
-            />
-          </div>
-          <div style={{ width: '100%' }}>
-            <Text type="tertiary">Git 仓库地址 *</Text>
-            <Space vertical align="start" style={{ width: '100%', marginTop: 8 }}>
-              {form.repositoryUrls.map((value, idx) => (
-                <Space key={`repo-${idx}`} style={{ width: '100%' }}>
-                  <Input
-                    style={{ flex: 1 }}
-                    value={value}
-                    placeholder={
-                      idx === 0
-                        ? 'https://github.com/org/repo-a.git'
-                        : 'git@github.com:org/repo-b.git'
-                    }
-                    onChange={(v) =>
-                      setForm((f) => {
-                        const next = [...f.repositoryUrls];
-                        next[idx] = v;
-                        return { ...f, repositoryUrls: next };
-                      })
-                    }
-                  />
-                  <Button
-                    type="danger"
-                    disabled={form.repositoryUrls.length <= 1}
-                    onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        repositoryUrls:
-                          f.repositoryUrls.length <= 1
-                            ? f.repositoryUrls
-                            : f.repositoryUrls.filter((_, i) => i !== idx),
-                      }))
-                    }
-                  >
-                    删除
-                  </Button>
-                </Space>
-              ))}
-              <Button
-                icon={<IconPlus />}
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    repositoryUrls: [...f.repositoryUrls, ''],
-                  }))
-                }
-              >
-                新增仓库地址
+            <Space>
+              <Button type="primary" theme="solid" icon={<IconPlus />} onClick={openCreate}>
+                新建工作区
+              </Button>
+              <Button icon={<IconRefresh />} onClick={() => void loadAll()}>
+                刷新
               </Button>
             </Space>
-          </div>
-        </Space>
-      </Modal>
+          </Space>
+        </Card>
 
-      <Modal
-        visible={syncConfirmOpen}
-        title="同步工作区仓库"
-        onCancel={() => {
-          if (syncConfirmLoading) return;
-          setSyncConfirmOpen(false);
-          setSyncTarget(null);
-        }}
-        onOk={() => void confirmSyncRepos()}
-        confirmLoading={syncConfirmLoading}
-        okButtonProps={{ disabled: syncConfirmLoading }}
-        cancelButtonProps={{ disabled: syncConfirmLoading }}
-        maskClosable={false}
-      >
-        <Text>
-          {syncTarget ? `确认重新同步「${syncTarget.name}」下全部仓库吗？` : '确认同步该工作区下全部仓库吗？'}
-        </Text>
-      </Modal>
+        <Card style={{ marginTop: 16 }}>
+          <Spin spinning={loading}>
+            <Table columns={columns} dataSource={rows} rowKey="id" pagination={{ pageSize: 10 }} />
+          </Spin>
+        </Card>
 
-      <Modal
-        visible={detailOpen}
-        title={detail ? `工作区详情：${detail.name}` : '工作区详情'}
-        footer={null}
-        width={760}
-        onCancel={() => setDetailOpen(false)}
-      >
-        <Spin spinning={detailLoading}>
-          {detail ? (
-            <Space vertical align="start" style={{ width: '100%' }}>
-              <Text>
-                <Text strong>ID：</Text>
-                <Text code>{detail.id}</Text>
+        <Modal
+          visible={modalOpen}
+          title={modalMode === 'create' ? '新建工作区' : '编辑工作区'}
+          onCancel={() => setModalOpen(false)}
+          onOk={() => void submit()}
+          okText={modalMode === 'create' ? '创建并拉取' : '保存并同步'}
+          confirmLoading={submitLoading}
+          okButtonProps={{ disabled: submitLoading }}
+          cancelButtonProps={{ disabled: submitLoading }}
+          width={760}
+          maskClosable={false}
+        >
+          <Space vertical align="start" style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
+              <Text type="tertiary">工作区 ID *</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                value={form.id}
+                disabled
+                placeholder="例如: ai-platform"
+              />
+              <Text type="tertiary" size="small">
+                系统自动生成 UUID，用于目录名和配置文件名。
               </Text>
-              <Text>
-                <Text strong>工作目录：</Text>
-                <Text code>{detail.rootDir}</Text>
-              </Text>
-              <Text>
-                <Text strong>配置文件：</Text>
-                <Text code>{detail.configFile}</Text>
-              </Text>
-              <Text>
-                <Text strong>仓库列表：</Text>
-              </Text>
-              <div
-                style={{
-                  width: '100%',
-                  border: '1px solid var(--semi-color-border)',
-                  borderRadius: 8,
-                  padding: 12,
-                }}
-              >
-                {detail.repositories?.map((repo) => (
-                  <div key={`${repo.url}-${repo.dir}`} style={{ marginBottom: 8 }}>
-                    <Text code>{repo.url}</Text>
-                    <Text type="tertiary"> → {repo.dir}</Text>
-                  </div>
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text type="tertiary">工作区名称 *</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                value={form.name}
+                placeholder="用于菜单和识别"
+                onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+              />
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text type="tertiary">描述</Text>
+              <Input
+                style={{ marginTop: 8 }}
+                value={form.description}
+                onChange={(v) => setForm((f) => ({ ...f, description: v }))}
+              />
+            </div>
+            <div style={{ width: '100%' }}>
+              <Text type="tertiary">Git 仓库地址 *</Text>
+              <Space vertical align="start" style={{ width: '100%', marginTop: 8 }}>
+                {form.repositoryUrls.map((value, idx) => (
+                  <Space key={`repo-${idx}`} style={{ width: '100%' }}>
+                    <Input
+                      style={{ flex: 1 }}
+                      value={value}
+                      placeholder={
+                        idx === 0
+                          ? 'https://github.com/org/repo-a.git'
+                          : 'git@github.com:org/repo-b.git'
+                      }
+                      onChange={(v) =>
+                        setForm((f) => {
+                          const next = [...f.repositoryUrls];
+                          next[idx] = v;
+                          return { ...f, repositoryUrls: next };
+                        })
+                      }
+                    />
+                    <Button
+                      type="danger"
+                      disabled={form.repositoryUrls.length <= 1}
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          repositoryUrls:
+                            f.repositoryUrls.length <= 1
+                              ? f.repositoryUrls
+                              : f.repositoryUrls.filter((_, i) => i !== idx),
+                        }))
+                      }
+                    >
+                      删除
+                    </Button>
+                  </Space>
                 ))}
-              </div>
-              <Text type="tertiary">创建时间：{detail.createdAt || '-'}</Text>
-              <Text type="tertiary">更新时间：{detail.updatedAt || '-'}</Text>
-            </Space>
-          ) : (
-            <Text type="tertiary">暂无数据</Text>
-          )}
-        </Spin>
-      </Modal>
+                <Button
+                  icon={<IconPlus />}
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      repositoryUrls: [...f.repositoryUrls, ''],
+                    }))
+                  }
+                >
+                  新增仓库地址
+                </Button>
+              </Space>
+            </div>
+          </Space>
+        </Modal>
+
+        <Modal
+          visible={syncConfirmOpen}
+          title="同步工作区仓库"
+          onCancel={() => {
+            if (syncConfirmLoading) return;
+            setSyncConfirmOpen(false);
+            setSyncTarget(null);
+          }}
+          onOk={() => void confirmSyncRepos()}
+          confirmLoading={syncConfirmLoading}
+          okButtonProps={{ disabled: syncConfirmLoading }}
+          cancelButtonProps={{ disabled: syncConfirmLoading }}
+          maskClosable={false}
+        >
+          <Text>
+            {syncTarget
+              ? `确认重新同步「${syncTarget.name}」下全部仓库吗？`
+              : '确认同步该工作区下全部仓库吗？'}
+          </Text>
+        </Modal>
+
+        <Modal
+          visible={detailOpen}
+          title={detail ? `工作区详情：${detail.name}` : '工作区详情'}
+          footer={null}
+          width={760}
+          onCancel={() => setDetailOpen(false)}
+        >
+          <Spin spinning={detailLoading}>
+            {detail ? (
+              <Space vertical align="start" style={{ width: '100%' }}>
+                <Text>
+                  <Text strong>ID：</Text>
+                  <Text code>{detail.id}</Text>
+                </Text>
+                <Text>
+                  <Text strong>工作目录：</Text>
+                  <Text code>{detail.rootDir}</Text>
+                </Text>
+                <Text>
+                  <Text strong>配置文件：</Text>
+                  <Text code>{detail.configFile}</Text>
+                </Text>
+                <Text>
+                  <Text strong>仓库列表：</Text>
+                </Text>
+                <div
+                  style={{
+                    width: '100%',
+                    border: '1px solid var(--semi-color-border)',
+                    borderRadius: 8,
+                    padding: 12,
+                  }}
+                >
+                  {detail.repositories?.map((repo) => (
+                    <div key={`${repo.url}-${repo.dir}`} style={{ marginBottom: 8 }}>
+                      <Text code>{repo.url}</Text>
+                      <Text type="tertiary"> → {repo.dir}</Text>
+                    </div>
+                  ))}
+                </div>
+                <Text type="tertiary">创建时间：{detail.createdAt || '-'}</Text>
+                <Text type="tertiary">更新时间：{detail.updatedAt || '-'}</Text>
+              </Space>
+            ) : (
+              <Text type="tertiary">暂无数据</Text>
+            )}
+          </Spin>
+        </Modal>
       </div>
       {busyText ? (
         <div

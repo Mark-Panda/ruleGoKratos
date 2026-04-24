@@ -1,9 +1,14 @@
 import React from 'react';
-import { IconBranch } from '@douyinfe/semi-icons';
-import { Space, Tag, Typography } from '@douyinfe/semi-ui';
 
-import { CollaborationMode, CollaborationScheme, MODE_NAME_MAP } from '../../services/api-playground';
+import { Space, Tag, Typography } from '@douyinfe/semi-ui';
+import { IconBranch } from '@douyinfe/semi-icons';
+
 import { RuntimePlanNode, RuntimeViewModel } from '../utils/runtime-view-model';
+import {
+  CollaborationMode,
+  CollaborationScheme,
+  MODE_NAME_MAP,
+} from '../../services/api-playground';
 
 const { Text } = Typography;
 
@@ -70,7 +75,8 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({
   variant = 'default',
 }) => {
   const runtimeNodes = runtimeViewModel?.planNodes ?? [];
-  const nodes = runtimeNodes.length > 0 ? runtimeNodes : buildFallbackNodes(scheme.mode, scheme.bindAgents);
+  const nodes =
+    runtimeNodes.length > 0 ? runtimeNodes : buildFallbackNodes(scheme.mode, scheme.bindAgents);
 
   return (
     <div style={{ padding: '4px 0 0' }}>
@@ -101,8 +107,9 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({
         <Text type="tertiary" style={{ fontSize: 12, lineHeight: 1.6 }}>
           {runtimeNodes.length > 0 ? (
             <>
-              {MODE_NAME_MAP[scheme.mode]} · 共 {runtimeNodes.length} 个运行步骤，已产出 {runtimeViewModel?.artifacts.total ?? 0} 个
-              产物，恢复动作 {runtimeViewModel?.recovery.summary.count ?? 0} 个。
+              {MODE_NAME_MAP[scheme.mode]} · 共 {runtimeNodes.length} 个运行步骤，已产出{' '}
+              {runtimeViewModel?.artifacts.total ?? 0} 个 产物，恢复动作{' '}
+              {runtimeViewModel?.recovery.summary.count ?? 0} 个。
             </>
           ) : (
             <>
@@ -132,7 +139,14 @@ const PlanNodeCard: React.FC<{
         boxShadow: runtimeNode?.isCurrent ? '0 0 0 2px rgba(22, 100, 255, 0.12)' : 'none',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
         <Space align="start" spacing="tight">
           <span style={{ fontSize: 18, lineHeight: '22px' }}>{KIND_ICON_MAP[node.kind]}</span>
           <div>
@@ -144,21 +158,45 @@ const PlanNodeCard: React.FC<{
             </Text>
           </div>
         </Space>
-        <Tag color={runtimeNode?.status === 'failed' ? 'red' : runtimeNode?.status === 'completed' ? 'green' : 'grey'}>
+        <Tag
+          color={
+            runtimeNode?.status === 'failed'
+              ? 'red'
+              : runtimeNode?.status === 'completed'
+              ? 'green'
+              : 'grey'
+          }
+        >
           {runtimeEnabled ? meta.label : '模式骨架'}
         </Tag>
       </div>
 
       <Space wrap style={{ marginTop: 10 }}>
         <Tag size="small">{KIND_LABEL_MAP[node.kind]}</Tag>
-        {node.agentBinding ? <Tag size="small" color="blue">{node.agentBinding}</Tag> : null}
+        {node.agentBinding ? (
+          <Tag size="small" color="blue">
+            {node.agentBinding}
+          </Tag>
+        ) : null}
         {runtimeNode ? <Tag size="small">原始状态: {runtimeNode.runtimeStatus}</Tag> : null}
-        {runtimeNode?.artifacts.length ? <Tag size="small" color="green">产物 {runtimeNode.artifacts.length}</Tag> : null}
-        {runtimeNode?.recoveryActions.length ? <Tag size="small" color="orange">恢复 {runtimeNode.recoveryActions.length}</Tag> : null}
+        {runtimeNode?.artifacts.length ? (
+          <Tag size="small" color="green">
+            产物 {runtimeNode.artifacts.length}
+          </Tag>
+        ) : null}
+        {runtimeNode?.recoveryActions.length ? (
+          <Tag size="small" color="orange">
+            恢复 {runtimeNode.recoveryActions.length}
+          </Tag>
+        ) : null}
       </Space>
 
       {runtimeNode?.failureSummary ? (
-        <Text type="danger" size="small" style={{ display: 'block', marginTop: 10, lineHeight: 1.6 }}>
+        <Text
+          type="danger"
+          size="small"
+          style={{ display: 'block', marginTop: 10, lineHeight: 1.6 }}
+        >
           {runtimeNode.failureSummary}
         </Text>
       ) : null}
@@ -192,9 +230,9 @@ const ArrowDown: React.FC = () => (
 
 function buildFallbackNodes(
   mode: CollaborationMode,
-  bindAgents?: { agentId: string; role: string }[],
+  bindAgents?: { agentId: string; role: string }[]
 ): FallbackNode[] {
-  const roles = bindAgents?.map(agent => agent.role || agent.agentId) ?? [];
+  const roles = bindAgents?.map((agent) => agent.role || agent.agentId) ?? [];
   switch (mode) {
     case 'router_expert':
       return [
@@ -205,13 +243,23 @@ function buildFallbackNodes(
     case 'plan_exec':
       return [
         { stepId: 'planner', kind: 'agent', name: roles[0] || '规划师', agentBinding: roles[0] },
-        { stepId: 'execution', kind: 'agent', name: roles.slice(1).join(' / ') || '顺序执行', agentBinding: roles[1] },
+        {
+          stepId: 'execution',
+          kind: 'agent',
+          name: roles.slice(1).join(' / ') || '顺序执行',
+          agentBinding: roles[1],
+        },
         { stepId: 'finalize', kind: 'finalize', name: '结果整理' },
       ];
     case 'supervision':
       return [
         { stepId: 'assign', kind: 'review', name: roles[0] || '监督分工', agentBinding: roles[0] },
-        { stepId: 'parallel', kind: 'parallel', name: '并行执行', agentBinding: roles.slice(1).join(' / ') },
+        {
+          stepId: 'parallel',
+          kind: 'parallel',
+          name: '并行执行',
+          agentBinding: roles.slice(1).join(' / '),
+        },
         { stepId: 'review', kind: 'review', name: '监督复核', agentBinding: roles[0] },
         { stepId: 'finalize', kind: 'finalize', name: '结果整理' },
       ];

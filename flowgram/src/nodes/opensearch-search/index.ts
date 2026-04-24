@@ -47,7 +47,8 @@ export const OpenSearchSearchNodeRegistry: FlowNodeRegistry = {
           ignoreUnavailable: { type: 'constant', content: false },
           defaultSearchBody: {
             type: 'template',
-            content: '{"size":100,"sort":[{"@timestamp":{"order":"desc"}}],"query":{"match_all":{}}}',
+            content:
+              '{"size":100,"sort":[{"@timestamp":{"order":"desc"}}],"query":{"match_all":{}}}',
           },
         },
         inputs: {

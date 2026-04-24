@@ -1,0 +1,328 @@
+syntax = "proto3";
+
+package rulego.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+import "openapi/v3/annotations.proto";
+
+option go_package = "ruleGoKratos/api/rulego/v1;v1";
+
+// 任务状态枚举
+enum TaskStatus {
+    TASK_STATUS_UNSPECIFIED = 0;
+    TASK_STATUS_PENDING = 1;     // 待处理
+    TASK_STATUS_PROCESSING = 2;  // 处理中
+    TASK_STATUS_COMPLETED = 3;   // 已完成
+    TASK_STATUS_FAILED = 4;      // 处理失败
+}
+
+// 任务类型枚举
+enum TaskType {
+    TASK_TYPE_UNSPECIFIED = 0;
+    TASK_TYPE_BUG = 1;      // 缺陷
+    TASK_TYPE_REQUIRE = 2;  // 需求
+    TASK_TYPE_FEATURE = 3;  // 功能
+    TASK_TYPE_OTHER = 4;    // 其他
+}
+
+// 任务看板实体
+message TaskBoard {
+    int64 id = 1;                     // 任务ID
+    string name = 2;                  // 任务名称
+    int32 priority = 3;               // 任务优先级 0-99 默认99
+    TaskStatus status = 4;            // 任务状态
+    TaskType type = 5;                // 任务类型
+    google.protobuf.Timestamp created_at = 6;  // 任务创建时间
+    google.protobuf.Timestamp updated_at = 7;  // 任务更新时间
+    google.protobuf.Timestamp deleted_at = 8;  // 任务删除时间
+    string handler_user_id = 9;       // 处理用户ID
+    string description = 10;          // 任务描述
+}
+
+// 服务状态枚举
+enum ServiceStatus {
+    SERVICE_STATUS_UNSPECIFIED = 0;
+    SERVICE_STATUS_RUNNING = 1;  // 运行中
+    SERVICE_STATUS_STOPPED = 2;  // 停止
+}
+
+// 服务管理实体
+message ServiceManagement {
+    int64 id = 1;                     // 服务ID
+    string name = 2;                  // 服务名称
+    ServiceStatus status = 3;         // 服务状态
+    string volc_log_service_id = 4;   // 火山云日志服务ID
+    string git_repo_url = 5;          // git仓库地址
+    google.protobuf.Timestamp created_at = 6;  // 服务创建时间
+    google.protobuf.Timestamp updated_at = 7;  // 服务更新时间
+    google.protobuf.Timestamp deleted_at = 8;  // 服务删除时间
+    string description = 9;           // 服务描述
+}
+
+// 任务看板服务
+service TaskBoardService {
+    // 创建任务
+    rpc CreateTask(CreateTaskReq) returns (CreateTaskReply) {
+        option (google.api.http) = {
+            post: "/api/v1/tasks"
+            body: "*"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "CreateTask"
+            tags: "TaskBoard"
+            summary: "创建任务"
+            description: "创建新的任务看板记录"
+        };
+    }
+
+    // 获取任务详情
+    rpc GetTask(GetTaskReq) returns (GetTaskReply) {
+        option (google.api.http) = {
+            get: "/api/v1/tasks/{id}"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "GetTask"
+            tags: "TaskBoard"
+            summary: "获取任务详情"
+            description: "根据任务ID获取任务详细信息"
+        };
+    }
+
+    // 查询任务列表
+    rpc ListTasks(ListTasksReq) returns (ListTasksReply) {
+        option (google.api.http) = {
+            get: "/api/v1/tasks"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "ListTasks"
+            tags: "TaskBoard"
+            summary: "查询任务列表"
+            description: "支持根据任务状态、类型、处理用户等多条件查询"
+        };
+    }
+
+    // 更新任务
+    rpc UpdateTask(UpdateTaskReq) returns (UpdateTaskReply) {
+        option (google.api.http) = {
+            put: "/api/v1/tasks/{id}"
+            body: "*"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "UpdateTask"
+            tags: "TaskBoard"
+            summary: "更新任务"
+            description: "可以修改任务状态、优先级、描述等信息"
+        };
+    }
+
+    // 删除任务
+    rpc DeleteTask(DeleteTaskReq) returns (DeleteTaskReply) {
+        option (google.api.http) = {
+            delete: "/api/v1/tasks/{id}"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "DeleteTask"
+            tags: "TaskBoard"
+            summary: "删除任务"
+            description: "软删除指定任务"
+        };
+    }
+}
+
+// 服务管理服务
+service ServiceManagementService {
+    // 创建服务
+    rpc CreateService(CreateServiceReq) returns (CreateServiceReply) {
+        option (google.api.http) = {
+            post: "/api/v1/services"
+            body: "*"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "CreateService"
+            tags: "ServiceManagement"
+            summary: "创建服务"
+            description: "创建新的服务管理记录"
+        };
+    }
+
+    // 获取服务详情
+    rpc GetService(GetServiceReq) returns (GetServiceReply) {
+        option (google.api.http) = {
+            get: "/api/v1/services/{id}"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "GetService"
+            tags: "ServiceManagement"
+            summary: "获取服务详情"
+            description: "根据服务ID获取服务详细信息"
+        };
+    }
+
+    // 查询服务列表
+    rpc ListServices(ListServicesReq) returns (ListServicesReply) {
+        option (google.api.http) = {
+            get: "/api/v1/services"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "ListServices"
+            tags: "ServiceManagement"
+            summary: "查询服务列表"
+            description: "获取所有服务管理记录"
+        };
+    }
+
+    // 更新服务
+    rpc UpdateService(UpdateServiceReq) returns (UpdateServiceReply) {
+        option (google.api.http) = {
+            put: "/api/v1/services/{id}"
+            body: "*"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "UpdateService"
+            tags: "ServiceManagement"
+            summary: "更新服务"
+            description: "更新服务信息"
+        };
+    }
+
+    // 删除服务
+    rpc DeleteService(DeleteServiceReq) returns (DeleteServiceReply) {
+        option (google.api.http) = {
+            delete: "/api/v1/services/{id}"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "DeleteService"
+            tags: "ServiceManagement"
+            summary: "删除服务"
+            description: "软删除指定服务"
+        };
+    }
+}
+
+// 创建任务请求
+message CreateTaskReq {
+    string name = 1 [(validate.rules).string.min_len = 1];  // 任务名称，必填
+    int32 priority = 2 [(validate.rules).int32 = {gte: 0, lte: 99}]; // 优先级0-99
+    TaskType type = 3 [(validate.rules).enum.defined_only = true]; // 任务类型
+    string handler_user_id = 4; // 处理用户ID
+    string description = 5;     // 任务描述
+}
+
+// 创建任务响应
+message CreateTaskReply {
+    TaskBoard task = 1; // 新建的任务信息
+}
+
+// 获取任务请求
+message GetTaskReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 任务ID，必填
+}
+
+// 获取任务响应
+message GetTaskReply {
+    TaskBoard task = 1; // 任务详情
+}
+
+// 查询任务列表请求
+message ListTasksReq {
+    TaskStatus status = 1; // 按任务状态筛选
+    TaskType type = 2;     // 按任务类型筛选
+    string handler_user_id = 3; // 按处理用户ID筛选
+    int32 page = 4;        // 页码，默认1
+    int32 page_size = 5;   // 每页数量，默认10
+}
+
+// 查询任务列表响应
+message ListTasksReply {
+    repeated TaskBoard tasks = 1; // 任务列表
+    int64 total = 2;              // 总数量
+}
+
+// 更新任务请求
+message UpdateTaskReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 任务ID，必填
+    string name = 2;              // 任务名称
+    int32 priority = 3 [(validate.rules).int32 = {gte: 0, lte: 99}]; // 优先级
+    TaskStatus status = 4 [(validate.rules).enum.defined_only = true]; // 任务状态
+    string handler_user_id = 5;   // 处理用户ID
+    string description = 6;       // 任务描述
+}
+
+// 更新任务响应
+message UpdateTaskReply {
+    TaskBoard task = 1; // 更新后的任务信息
+}
+
+// 删除任务请求
+message DeleteTaskReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 任务ID，必填
+}
+
+// 删除任务响应
+message DeleteTaskReply {
+    bool success = 1; // 是否删除成功
+}
+
+// 创建服务请求
+message CreateServiceReq {
+    string name = 1 [(validate.rules).string.min_len = 1]; // 服务名称，必填
+    ServiceStatus status = 2 [(validate.rules).enum.defined_only = true]; // 服务状态
+    string volc_log_service_id = 3; // 火山云日志服务ID
+    string git_repo_url = 4;        // git仓库地址
+    string description = 5;         // 服务描述
+}
+
+// 创建服务响应
+message CreateServiceReply {
+    ServiceManagement service = 1; // 新建的服务信息
+}
+
+// 获取服务请求
+message GetServiceReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 服务ID，必填
+}
+
+// 获取服务响应
+message GetServiceReply {
+    ServiceManagement service = 1; // 服务详情
+}
+
+// 查询服务列表请求
+message ListServicesReq {
+    ServiceStatus status = 1; // 按服务状态筛选
+    int32 page = 2;           // 页码，默认1
+    int32 page_size = 3;      // 每页数量，默认10
+}
+
+// 查询服务列表响应
+message ListServicesReply {
+    repeated ServiceManagement services = 1; // 服务列表
+    int64 total = 2;                         // 总数量
+}
+
+// 更新服务请求
+message UpdateServiceReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 服务ID，必填
+    string name = 2;              // 服务名称
+    ServiceStatus status = 3 [(validate.rules).enum.defined_only = true]; // 服务状态
+    string volc_log_service_id = 4; // 火山云日志服务ID
+    string git_repo_url = 5;        // git仓库地址
+    string description = 6;         // 服务描述
+}
+
+// 更新服务响应
+message UpdateServiceReply {
+    ServiceManagement service = 1; // 更新后的服务信息
+}
+
+// 删除服务请求
+message DeleteServiceReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 服务ID，必填
+}
+
+// 删除服务响应
+message DeleteServiceReply {
+    bool success = 1; // 是否删除成功
+}

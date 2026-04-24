@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { WorkflowNodeType, OutPutPortType } from '../constants';
 import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconDB from '../../assets/icon_database-search.svg';
-import { WorkflowNodeType, OutPutPortType } from '../constants';
 
 let index = 0;
 export const FileListNodeRegistry: FlowNodeRegistry = {

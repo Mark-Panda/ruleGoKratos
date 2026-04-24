@@ -5,8 +5,6 @@
 
 import React, { FC, useMemo, useState } from 'react';
 
-import { Input } from '@douyinfe/semi-ui';
-import { IconSearch } from '@douyinfe/semi-icons';
 import styled from 'styled-components';
 import { NodePanelRenderProps } from '@flowgram.ai/free-node-panel-plugin';
 import {
@@ -14,6 +12,8 @@ import {
   WorkflowNodeEntity,
   WorkflowPortEntity,
 } from '@flowgram.ai/free-layout-editor';
+import { Input } from '@douyinfe/semi-ui';
+import { IconSearch } from '@douyinfe/semi-icons';
 
 import { canContainNode } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
@@ -100,9 +100,7 @@ function filterRegistries(
     .filter((register) => register.meta.nodePanelVisible !== false)
     .filter((register) => {
       if (register.meta.onlyInContainerTypes?.length) {
-        return register.meta.onlyInContainerTypes.includes(
-          containerNode?.flowNodeType as any
-        );
+        return register.meta.onlyInContainerTypes.includes(containerNode?.flowNodeType as any);
       }
       if (register.meta.onlyInContainer) {
         return register.meta.onlyInContainer === containerNode?.flowNodeType;

@@ -1,0 +1,8 @@
+# 配置文件含密钥，勿提交
+config.json
+
+# Playwright 产物
+sourcegraph-token-debug.png
+
+# Node 依赖
+node_modules/

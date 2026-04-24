@@ -108,7 +108,7 @@ describe('runtime page guards', () => {
       running: true,
     });
 
-    expect(displayed.events.map(event => event.id)).toEqual(['event-2']);
+    expect(displayed.events.map((event) => event.id)).toEqual(['event-2']);
   });
 
   it('启动新 run 前可立即让旧 guard 失效', () => {
@@ -119,7 +119,9 @@ describe('runtime page guards', () => {
     });
 
     expect(invalidated.activeRunId).toBeUndefined();
-    expect(isRequestGuardCurrent(oldRunSnapshot, invalidated.activeRunId, invalidated.runDetailVersion)).toBe(false);
+    expect(
+      isRequestGuardCurrent(oldRunSnapshot, invalidated.activeRunId, invalidated.runDetailVersion)
+    ).toBe(false);
     expect(invalidated.runDetailVersion).toBe(5);
     expect(invalidated.eventsVersion).toBe(10);
   });

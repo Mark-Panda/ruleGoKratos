@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Divider } from '@douyinfe/semi-ui';
 import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-editor';
+import { Divider } from '@douyinfe/semi-ui';
 
+import { defaultFormMeta } from '../default-form-meta';
 import { FlowNodeJSON } from '../../typings';
 import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 import type { FormInputsProps } from '../../form-components';
-import { defaultFormMeta } from '../default-form-meta';
 
 /** 与节点 inputs.properties 键一致，用于侧边栏展示顺序 */
 const FEISHU_INPUT_KEY_ORDER = [
@@ -32,7 +32,11 @@ const FEISHU_INPUT_KEY_ORDER = [
   'replaceData',
 ] as const;
 
-function feishuInputVisible(propertyKey: string, msgType: string, interactivePreset: string): boolean {
+function feishuInputVisible(
+  propertyKey: string,
+  msgType: string,
+  interactivePreset: string
+): boolean {
   const common = new Set(['msgType', 'webhookUrl', 'timeoutMs', 'replaceData']);
   if (common.has(propertyKey)) return true;
   switch (msgType) {

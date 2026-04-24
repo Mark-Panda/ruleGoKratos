@@ -3,9 +3,7 @@
  * 不支持 JSONC 注释（含 // 时需先移除后再格式化）。
  */
 
-export type FormatJsonPrettyResult =
-  | { ok: true; text: string }
-  | { ok: false; error: string };
+export type FormatJsonPrettyResult = { ok: true; text: string } | { ok: false; error: string };
 
 export function tryFormatJsonPretty(raw: string): FormatJsonPrettyResult {
   const t = raw?.trim() ?? '';

@@ -20,12 +20,13 @@ import {
   Modal,
 } from '@douyinfe/semi-ui';
 
+import { runLogChainDisplay, runLogTableRowKey } from '../utils/run-log-display';
 import { buildDocumentFromRuleChainJSON } from '../utils/rulechain-builder';
+import { emptyRuleChainParamsJson } from '../utils/rule-chain-request-params';
 import {
   buildRuleChainConfigurationWithFlowgram,
   parseRuleChainFlowgramFromConfiguration,
 } from '../utils/rule-chain-flowgram-dsl';
-import { emptyRuleChainParamsJson } from '../utils/rule-chain-request-params';
 import { FlowDocumentJSON, FlowNodeJSON } from '../typings';
 import { setRuleBaseInfo } from '../services/rule-base-info';
 import { requestJSON } from '../services/http';
@@ -33,7 +34,6 @@ import { createRuleBase, getRuleDetail } from '../services/api-rules';
 import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
 import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
-import { runLogChainDisplay, runLogTableRowKey } from '../utils/run-log-display';
 
 export interface RuleDetailData {
   ruleChain: {
@@ -72,13 +72,21 @@ export const RuleDetail: React.FC<{
   const [activeKey, setActiveKey] = useState<string>(initialTab ?? 'workflow');
   const [saving, setSaving] = useState<boolean>(false);
 
-  const [configurationSnapshot, setConfigurationSnapshot] = useState<Record<string, unknown>>(() => {
-    const cfg = (data?.ruleChain as { configuration?: Record<string, unknown> })?.configuration;
-    return cfg && typeof cfg === 'object' ? { ...cfg } : {};
-  });
-  const [requestMetadataParamsJson, setRequestMetadataParamsJson] = useState<string>(emptyRuleChainParamsJson());
-  const [requestMessageBodyParamsJson, setRequestMessageBodyParamsJson] = useState<string>(emptyRuleChainParamsJson());
-  const [responseMessageBodyParamsJson, setResponseMessageBodyParamsJson] = useState<string>(emptyRuleChainParamsJson());
+  const [configurationSnapshot, setConfigurationSnapshot] = useState<Record<string, unknown>>(
+    () => {
+      const cfg = (data?.ruleChain as { configuration?: Record<string, unknown> })?.configuration;
+      return cfg && typeof cfg === 'object' ? { ...cfg } : {};
+    }
+  );
+  const [requestMetadataParamsJson, setRequestMetadataParamsJson] = useState<string>(
+    emptyRuleChainParamsJson()
+  );
+  const [requestMessageBodyParamsJson, setRequestMessageBodyParamsJson] = useState<string>(
+    emptyRuleChainParamsJson()
+  );
+  const [responseMessageBodyParamsJson, setResponseMessageBodyParamsJson] = useState<string>(
+    emptyRuleChainParamsJson()
+  );
   const [flowgramEditorJson, setFlowgramEditorJson] = useState<string>('');
   const [flowgramSkillDirName, setFlowgramSkillDirName] = useState<string>('');
 
@@ -383,14 +391,17 @@ export const RuleDetail: React.FC<{
                           }
                           try {
                             setSaving(true);
-                            const mergedConfiguration = buildRuleChainConfigurationWithFlowgram(configurationSnapshot, {
-                              description: String(desc ?? '').trim(),
-                              requestMetadataParamsJson,
-                              requestMessageBodyParamsJson,
-                              responseMessageBodyParamsJson,
-                              editorScratchJson: flowgramEditorJson,
-                              skillDirName: flowgramSkillDirName,
-                            });
+                            const mergedConfiguration = buildRuleChainConfigurationWithFlowgram(
+                              configurationSnapshot,
+                              {
+                                description: String(desc ?? '').trim(),
+                                requestMetadataParamsJson,
+                                requestMessageBodyParamsJson,
+                                responseMessageBodyParamsJson,
+                                editorScratchJson: flowgramEditorJson,
+                                skillDirName: flowgramSkillDirName,
+                              }
+                            );
                             const body = {
                               id,
                               name,
@@ -405,7 +416,10 @@ export const RuleDetail: React.FC<{
                             const rc = json?.ruleChain || {};
                             setName(String(rc?.name ?? name));
                             setDesc(String(rc?.additionalInfo?.description ?? desc ?? ''));
-                            const cfg = ((rc as any)?.configuration || {}) as Record<string, unknown>;
+                            const cfg = ((rc as any)?.configuration || {}) as Record<
+                              string,
+                              unknown
+                            >;
                             setConfigurationSnapshot({ ...cfg });
                             const fg = parseRuleChainFlowgramFromConfiguration(cfg);
                             setRequestMetadataParamsJson(fg.requestMetadataParamsJson);

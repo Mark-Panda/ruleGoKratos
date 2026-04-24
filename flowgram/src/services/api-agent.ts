@@ -62,10 +62,22 @@ export function normalizeMcpConfigItem(raw: Record<string, unknown>): MCPConfigI
     description: String(r.description ?? ''),
     transport: r.transport != null && r.transport !== '' ? String(r.transport) : undefined,
     stdio_command: stdioCmd != null ? String(stdioCmd) : '',
-    stdio_args_json: stdioArgs != null && String(stdioArgs).trim() !== '' ? String(stdioArgs) : undefined,
-    stdio_env_json: stdioEnv != null && String(stdioEnv).trim() !== '' ? String(stdioEnv) : undefined,
-    createdAt: r.createdAt != null ? String(r.createdAt) : r.created_at != null ? String(r.created_at) : undefined,
-    updatedAt: r.updatedAt != null ? String(r.updatedAt) : r.updated_at != null ? String(r.updated_at) : undefined,
+    stdio_args_json:
+      stdioArgs != null && String(stdioArgs).trim() !== '' ? String(stdioArgs) : undefined,
+    stdio_env_json:
+      stdioEnv != null && String(stdioEnv).trim() !== '' ? String(stdioEnv) : undefined,
+    createdAt:
+      r.createdAt != null
+        ? String(r.createdAt)
+        : r.created_at != null
+        ? String(r.created_at)
+        : undefined,
+    updatedAt:
+      r.updatedAt != null
+        ? String(r.updatedAt)
+        : r.updated_at != null
+        ? String(r.updated_at)
+        : undefined,
   };
 }
 
@@ -227,9 +239,17 @@ export interface LlmModelEntryPayload {
  */
 function normalizeLlmModelEntryItem(raw: Record<string, unknown>): LlmModelEntryItem {
   const created =
-    raw.created_at != null ? String(raw.created_at) : raw.createdAt != null ? String(raw.createdAt) : undefined;
+    raw.created_at != null
+      ? String(raw.created_at)
+      : raw.createdAt != null
+      ? String(raw.createdAt)
+      : undefined;
   const updated =
-    raw.updated_at != null ? String(raw.updated_at) : raw.updatedAt != null ? String(raw.updatedAt) : undefined;
+    raw.updated_at != null
+      ? String(raw.updated_at)
+      : raw.updatedAt != null
+      ? String(raw.updatedAt)
+      : undefined;
   return {
     id: Number(raw.id ?? 0),
     configId: Number(raw.config_id ?? raw.configId ?? 0),
@@ -247,9 +267,17 @@ function normalizeLlmConfigItem(raw: Record<string, unknown>): LlmConfigItem {
     ? modelsRaw.map((m) => normalizeLlmModelEntryItem(m as Record<string, unknown>))
     : [];
   const created =
-    raw.created_at != null ? String(raw.created_at) : raw.createdAt != null ? String(raw.createdAt) : undefined;
+    raw.created_at != null
+      ? String(raw.created_at)
+      : raw.createdAt != null
+      ? String(raw.createdAt)
+      : undefined;
   const updated =
-    raw.updated_at != null ? String(raw.updated_at) : raw.updatedAt != null ? String(raw.updatedAt) : undefined;
+    raw.updated_at != null
+      ? String(raw.updated_at)
+      : raw.updatedAt != null
+      ? String(raw.updatedAt)
+      : undefined;
   return {
     id: Number(raw.id ?? 0),
     name: String(raw.name ?? ''),
@@ -266,7 +294,9 @@ function normalizeLlmConfigItem(raw: Record<string, unknown>): LlmConfigItem {
 
 export const listLlmConfigs = () =>
   requestJSON<{ items: unknown[] }>('/admin/llm-configs').then((r) =>
-    (Array.isArray(r.items) ? r.items : []).map((row) => normalizeLlmConfigItem(row as Record<string, unknown>))
+    (Array.isArray(r.items) ? r.items : []).map((row) =>
+      normalizeLlmConfigItem(row as Record<string, unknown>)
+    )
   );
 
 export const createLlmConfig = (payload: LlmConfigPayload) =>

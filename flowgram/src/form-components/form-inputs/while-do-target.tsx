@@ -81,8 +81,7 @@ export const WhileDoTargetSelect: React.FC<WhileDoTargetSelectProps> = ({
         <NodeIdSelect
           value={{ type: 'constant', content: parsed.nodeId }}
           onChange={(next) => {
-            const c =
-              next.type === 'constant' && next.content != null ? String(next.content) : '';
+            const c = next.type === 'constant' && next.content != null ? String(next.content) : '';
             onChange({ type: 'constant', content: c });
           }}
           readonly={readonly}
@@ -97,9 +96,7 @@ export const WhileDoTargetSelect: React.FC<WhileDoTargetSelectProps> = ({
           value={{ type: 'constant', content: parsed.chainId }}
           onChange={(next) => {
             const id =
-              next.type === 'constant' && next.content != null
-                ? String(next.content).trim()
-                : '';
+              next.type === 'constant' && next.content != null ? String(next.content).trim() : '';
             onChange({ type: 'constant', content: id ? `chain:${id}` : '' });
           }}
           readonly={readonly}

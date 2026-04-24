@@ -98,7 +98,8 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '工作区（--workspace）',
                 formComponent: 'prompt-editor',
-                description: '代码仓库根目录，供 CLI 加载上下文；简易模式下同时作为 session/new 的 cwd。',
+                description:
+                  '代码仓库根目录，供 CLI 加载上下文；简易模式下同时作为 session/new 的 cwd。',
               },
             },
             workDir: {

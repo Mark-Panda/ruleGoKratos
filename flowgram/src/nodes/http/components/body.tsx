@@ -11,10 +11,10 @@ import {
 } from '@flowgram.ai/form-materials';
 import { Button, Select, TextArea, Toast } from '@douyinfe/semi-ui';
 
+import { tryFormatJsonPretty } from '../../../utils/format-json-pretty';
 import { useEffectiveReadonly, useIsSidebar } from '../../../hooks';
 import { VariablePicker } from '../../../form-components/variable-picker';
 import { FormItem } from '../../../form-components';
-import { tryFormatJsonPretty } from '../../../utils/format-json-pretty';
 
 const BODY_TYPE_OPTIONS = [
   {
@@ -54,48 +54,50 @@ export function Body() {
                 Toast.success({ content: 'JSON 已格式化' });
               };
               return (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {!readonly && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-                      <Button size="small" type="tertiary" onClick={handleFormatJson}>
-                        格式化 JSON
-                      </Button>
-                    </div>
-                  )}
-                  {isSidebar ? (
-                    <JsonEditorWithVariables
-                      value={field.value?.content}
-                      readonly={readonly}
-                      activeLinePlaceholder="use var by '@'"
-                      onChange={(value) => {
-                        field.onChange({ type: 'template', content: value });
-                      }}
-                    />
-                  ) : (
-                    <TextArea
-                      value={rawJson}
-                      onChange={(value) => {
-                        field.onChange({ type: 'template', content: String(value ?? '') });
-                      }}
-                      disabled={readonly}
-                      autosize={{ minRows: 2, maxRows: 2 }}
-                      placeholder="输入 JSON（支持变量）"
-                      style={{ fontFamily: 'monospace' }}
-                    />
-                  )}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {!readonly && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+                        <Button size="small" type="tertiary" onClick={handleFormatJson}>
+                          格式化 JSON
+                        </Button>
+                      </div>
+                    )}
+                    {isSidebar ? (
+                      <JsonEditorWithVariables
+                        value={field.value?.content}
+                        readonly={readonly}
+                        activeLinePlaceholder="use var by '@'"
+                        onChange={(value) => {
+                          field.onChange({ type: 'template', content: value });
+                        }}
+                      />
+                    ) : (
+                      <TextArea
+                        value={rawJson}
+                        onChange={(value) => {
+                          field.onChange({ type: 'template', content: String(value ?? '') });
+                        }}
+                        disabled={readonly}
+                        autosize={{ minRows: 2, maxRows: 2 }}
+                        placeholder="输入 JSON（支持变量）"
+                        style={{ fontFamily: 'monospace' }}
+                      />
+                    )}
+                  </div>
+                  <VariablePicker
+                    size="small"
+                    disabled={readonly}
+                    onInsert={(text) => {
+                      const oldText =
+                        typeof field.value?.content === 'string'
+                          ? String(field.value?.content)
+                          : '';
+                      const nextText = oldText ? `${oldText}${text}` : text;
+                      field.onChange({ type: 'template', content: nextText } as any);
+                    }}
+                  />
                 </div>
-                <VariablePicker
-                  size="small"
-                  disabled={readonly}
-                  onInsert={(text) => {
-                    const oldText =
-                      typeof field.value?.content === 'string' ? String(field.value?.content) : '';
-                    const nextText = oldText ? `${oldText}${text}` : text;
-                    field.onChange({ type: 'template', content: nextText } as any);
-                  }}
-                />
-              </div>
               );
             }}
           </Field>

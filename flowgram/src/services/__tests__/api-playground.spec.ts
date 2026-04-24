@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createDefaultSchemeConfig, normalizeSchemeConfig, resolveSchemeBindAgentsForSave } from '../api-playground';
+import {
+  createDefaultSchemeConfig,
+  normalizeSchemeConfig,
+  resolveSchemeBindAgentsForSave,
+} from '../api-playground';
 
 describe('scheme config helpers', () => {
   it('creates mode-specific defaults for supervision', () => {
@@ -57,13 +61,40 @@ describe('scheme config helpers', () => {
         createdAt: '',
         updatedAt: '',
         agents: [
-          { id: 'planner', name: '规划师', role: '', desc: '', model: '', tools: [], enabled: true, priority: 1 },
-          { id: 'designer', name: '设计师', role: '', desc: '', model: '', tools: [], enabled: true, priority: 1 },
-          { id: 'engineer', name: '工程师', role: '', desc: '', model: '', tools: [], enabled: true, priority: 1 },
+          {
+            id: 'planner',
+            name: '规划师',
+            role: '',
+            desc: '',
+            model: '',
+            tools: [],
+            enabled: true,
+            priority: 1,
+          },
+          {
+            id: 'designer',
+            name: '设计师',
+            role: '',
+            desc: '',
+            model: '',
+            tools: [],
+            enabled: true,
+            priority: 1,
+          },
+          {
+            id: 'engineer',
+            name: '工程师',
+            role: '',
+            desc: '',
+            model: '',
+            tools: [],
+            enabled: true,
+            priority: 1,
+          },
         ],
       },
     });
 
-    expect(bindAgents.map(item => item.agentId)).toEqual(['planner', 'designer', 'engineer']);
+    expect(bindAgents.map((item) => item.agentId)).toEqual(['planner', 'designer', 'engineer']);
   });
 });

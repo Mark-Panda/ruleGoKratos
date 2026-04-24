@@ -53,7 +53,7 @@ describe('recovery-actions', () => {
         id: 'r2',
         type: 'reroute_step',
         targetRef: 'agent-x',
-      }),
+      })
     ).toBe('强制路由到 agent-x');
     expect(
       recoveryActionButtonLabel({
@@ -61,7 +61,7 @@ describe('recovery-actions', () => {
         id: 'r3',
         type: 'retry_from_checkpoint',
         targetRef: 'chk-1',
-      }),
+      })
     ).toBe('从检查点「chk-1」恢复');
   });
 
@@ -72,14 +72,14 @@ describe('recovery-actions', () => {
         ...retryAction,
         type: 'reroute_step',
         targetRef: ' a ',
-      }),
+      })
     ).toEqual({ targetRef: 'a' });
     expect(
       recoveryActionRequestBody({
         ...retryAction,
         type: 'retry_from_checkpoint',
         targetRef: 'step-x',
-      }),
+      })
     ).toEqual({ targetRef: 'step-x' });
   });
 

@@ -66,8 +66,6 @@ export const deleteManagedAgent = async (id: number) =>
 
 /** 技能包列表（按 skill 根目录下路径首段聚合，与 run_skill 命名一致） */
 export const listSkillPackages = async () => {
-  const r = await requestJSON<{ root: string; items: SkillPackageItem[] }>(
-    '/admin/skill-packages'
-  );
+  const r = await requestJSON<{ root: string; items: SkillPackageItem[] }>('/admin/skill-packages');
   return r;
 };

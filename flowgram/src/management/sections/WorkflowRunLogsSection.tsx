@@ -16,11 +16,11 @@ import {
   Modal,
 } from '@douyinfe/semi-ui';
 
+import { runLogChainDisplay, runLogTableRowKey } from '../../utils/run-log-display';
+import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
 import { FlowDocumentJSON } from '../../typings';
 import { requestJSON } from '../../services/http';
-import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
 import { Editor } from '../../editor';
-import { runLogChainDisplay, runLogTableRowKey } from '../../utils/run-log-display';
 
 export const WorkflowRunLogsSection: React.FC = () => {
   const [timeRange, setTimeRange] = useState<[Date | null, Date | null]>([null, null]);
@@ -58,11 +58,7 @@ export const WorkflowRunLogsSection: React.FC = () => {
     return x;
   };
 
-  const fetchRuns = async (
-    p?: number,
-    s?: number,
-    range?: [Date | null, Date | null] | null
-  ) => {
+  const fetchRuns = async (p?: number, s?: number, range?: [Date | null, Date | null] | null) => {
     const current = typeof p === 'number' ? p : page;
     const pageSize = typeof s === 'number' ? s : size;
     const tr = range !== undefined ? range : timeRange;

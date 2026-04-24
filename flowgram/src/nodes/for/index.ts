@@ -9,15 +9,15 @@ import {
   FlowNodeTransformData,
 } from '@flowgram.ai/free-layout-editor';
 
+import { OutPutPortType, WorkflowNodeType } from '../constants';
 import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconLoop from '../../assets/icon-loop.jpg';
-import { formMeta } from './form-meta';
 import {
   FOR_SUBCANVAS_DEFAULT_HEIGHT_PX,
   FOR_SUBCANVAS_TOP_FORM_RESERVE_PX,
 } from './subcanvas-layout';
-import { OutPutPortType, WorkflowNodeType } from '../constants';
+import { formMeta } from './form-meta';
 
 let index = 0;
 export const ForNodeRegistry: FlowNodeRegistry = {

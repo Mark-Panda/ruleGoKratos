@@ -22,8 +22,8 @@ import {
 } from '@flowgram.ai/free-layout-editor';
 import { Toast } from '@douyinfe/semi-ui';
 
-import { getRuleBaseInfo } from '../services/rule-base-info';
 import { panelBuildLine } from '../utils/panel-build-line';
+import { getRuleBaseInfo } from '../services/rule-base-info';
 import { WorkflowNodeType } from '../nodes';
 
 /**

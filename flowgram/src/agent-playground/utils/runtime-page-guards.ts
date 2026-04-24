@@ -18,11 +18,7 @@ export interface InvalidatedRequestGuards {
   eventsVersion: number;
 }
 
-const AUTO_REFRESH_RUN_STATUSES = new Set<RuntimeRunStatus>([
-  'pending',
-  'ready',
-  'running',
-]);
+const AUTO_REFRESH_RUN_STATUSES = new Set<RuntimeRunStatus>(['pending', 'ready', 'running']);
 
 export function createRequestGuardSnapshot(runId: string, version: number): RequestGuardSnapshot {
   return { runId, version };
@@ -31,12 +27,15 @@ export function createRequestGuardSnapshot(runId: string, version: number): Requ
 export function isRequestGuardCurrent(
   snapshot: RequestGuardSnapshot,
   activeRunId?: string,
-  activeVersion?: number,
+  activeVersion?: number
 ): boolean {
   return snapshot.runId === activeRunId && snapshot.version === activeVersion;
 }
 
-export function shouldDisplayRuntimeForScheme(selectedSchemeId?: string, runSchemeId?: string): boolean {
+export function shouldDisplayRuntimeForScheme(
+  selectedSchemeId?: string,
+  runSchemeId?: string
+): boolean {
   if (!selectedSchemeId || !runSchemeId) {
     return false;
   }
@@ -52,7 +51,7 @@ export function getDisplayedRuntimeState(input: {
 }): DisplayedRuntimeState {
   const isBoundToSelectedScheme = shouldDisplayRuntimeForScheme(
     input.selectedSchemeId,
-    input.currentRunDetail?.run.schemeId ?? input.currentRunSchemeId,
+    input.currentRunDetail?.run.schemeId ?? input.currentRunSchemeId
   );
 
   if (!isBoundToSelectedScheme) {
@@ -76,7 +75,7 @@ export function getDisplayedRuntimeState(input: {
 
   return {
     currentRunDetail: input.currentRunDetail,
-    events: input.events.filter(event => event.runId === displayedRunId),
+    events: input.events.filter((event) => event.runId === displayedRunId),
     running: input.running,
     isBoundToSelectedScheme,
   };

@@ -118,7 +118,7 @@ describe('buildRuntimeViewModel', () => {
       events: [],
     });
 
-    expect(vm.planNodes.map(node => node.status)).toEqual(['completed', 'active', 'pending']);
+    expect(vm.planNodes.map((node) => node.status)).toEqual(['completed', 'active', 'pending']);
     expect(vm.planNodes[0]?.artifacts).toHaveLength(1);
     expect(vm.planNodes[1]?.isCurrent).toBe(true);
     expect(vm.planNodes[2]?.artifacts).toHaveLength(0);

@@ -3,10 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import {
-  EditorRenderer,
-  FreeLayoutEditorProvider,
-} from '@flowgram.ai/free-layout-editor';
+import { EditorRenderer, FreeLayoutEditorProvider } from '@flowgram.ai/free-layout-editor';
 
 import '@flowgram.ai/free-layout-editor/index.css';
 import './styles/index.css';
@@ -14,7 +11,6 @@ import { FlowDocumentJSON } from './typings';
 import { nodeRegistries } from './nodes';
 import { initialData } from './initial-data';
 import { useEditorProps } from './hooks';
-
 import { TopToolbar } from './components/tools/top-toolbar';
 import { DemoTools } from './components/tools';
 

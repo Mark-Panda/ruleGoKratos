@@ -85,7 +85,10 @@ const RUN_STATUS_LABELS: Record<RuntimeRunStatus | 'idle', string> = {
   cancelled: '已取消',
 };
 
-function mapPlanNodeStatus(step: RuntimeStep, currentStepIds: Set<string>): RuntimeNodeDisplayStatus {
+function mapPlanNodeStatus(
+  step: RuntimeStep,
+  currentStepIds: Set<string>
+): RuntimeNodeDisplayStatus {
   if (step.status === 'failed') {
     return 'failed';
   }
@@ -123,7 +126,7 @@ export function buildRuntimeViewModel(input: BuildRuntimeViewModelInput): Runtim
     artifactsByStepId.set(artifact.producerStepId, existing);
   }
 
-  const planNodes: RuntimePlanNode[] = steps.map(step => ({
+  const planNodes: RuntimePlanNode[] = steps.map((step) => ({
     stepId: step.stepId,
     kind: step.kind,
     name: step.name,
@@ -140,12 +143,12 @@ export function buildRuntimeViewModel(input: BuildRuntimeViewModelInput): Runtim
   }));
 
   const failedStep =
-    planNodes.find(node => node.isFailed) ??
+    planNodes.find((node) => node.isFailed) ??
     (recoveryActions.length > 0
-      ? planNodes.find(node => node.stepId === recoveryActions[0]?.stepId)
+      ? planNodes.find((node) => node.stepId === recoveryActions[0]?.stepId)
       : undefined);
 
-  const activeStep = planNodes.find(node => node.isCurrent);
+  const activeStep = planNodes.find((node) => node.isCurrent);
   const runStatus = run?.status ?? 'idle';
 
   return {
@@ -182,7 +185,7 @@ export function buildRuntimeViewModel(input: BuildRuntimeViewModelInput): Runtim
     trace: {
       events,
       total: events.length,
-      errorCount: events.filter(event => event.type === 'ERROR').length,
+      errorCount: events.filter((event) => event.type === 'ERROR').length,
     },
   };
 }

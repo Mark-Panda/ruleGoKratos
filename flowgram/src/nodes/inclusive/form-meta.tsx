@@ -6,9 +6,9 @@
 import { FormRenderProps, FormMeta, ValidateTrigger } from '@flowgram.ai/free-layout-editor';
 import { autoRenameRefEffect } from '@flowgram.ai/form-materials';
 
+import { CaseInputs } from '../case-condition/inputs';
 import { FlowNodeJSON } from '../../typings';
 import { FormHeader, FormContent } from '../../form-components';
-import { CaseInputs } from '../case-condition/inputs';
 
 export const renderForm = ({ form }: FormRenderProps<FlowNodeJSON>) => (
   <>

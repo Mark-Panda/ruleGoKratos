@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { IconRefresh } from '@douyinfe/semi-icons';
-import { Button, ButtonGroup, Card, Empty, Space, Tag, Typography } from '@douyinfe/semi-ui';
 
-import { RecoveryAction, TraceEvent } from '../../services/api-playground';
+import { Button, ButtonGroup, Card, Empty, Space, Tag, Typography } from '@douyinfe/semi-ui';
+import { IconRefresh } from '@douyinfe/semi-icons';
+
 import { RuntimeViewModel } from '../utils/runtime-view-model';
 import { canApplyRecoveryAction, recoveryActionButtonLabel } from '../utils/recovery-actions';
+import { RecoveryAction, TraceEvent } from '../../services/api-playground';
 
 const { Text } = Typography;
 
@@ -49,7 +50,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({
     if (filter === 'all') {
       return events;
     }
-    return events.filter(event => KEY_TRACE_TYPES.has(event.type));
+    return events.filter((event) => KEY_TRACE_TYPES.has(event.type));
   }, [events, filter]);
 
   useEffect(() => {
@@ -72,7 +73,17 @@ export const TracePanel: React.FC<TracePanelProps> = ({
           >
             {'>_ Runtime Context'}
           </span>
-          <Tag color={run.status === 'completed' ? 'green' : run.isWaitingRecovery ? 'orange' : run.status === 'failed' ? 'red' : 'grey'}>
+          <Tag
+            color={
+              run.status === 'completed'
+                ? 'green'
+                : run.isWaitingRecovery
+                ? 'orange'
+                : run.status === 'failed'
+                ? 'red'
+                : 'grey'
+            }
+          >
             {run.label}
           </Tag>
         </Space>
@@ -103,7 +114,12 @@ export const TracePanel: React.FC<TracePanelProps> = ({
             </Button>
           </ButtonGroup>
           {onRefresh && run.runId ? (
-            <Button size="small" type="tertiary" icon={<IconRefresh />} onClick={() => void onRefresh()}>
+            <Button
+              size="small"
+              type="tertiary"
+              icon={<IconRefresh />}
+              onClick={() => void onRefresh()}
+            >
               刷新
             </Button>
           ) : null}
@@ -117,7 +133,13 @@ export const TracePanel: React.FC<TracePanelProps> = ({
         borderRadius: 14,
         boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
       }}
-      bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
+      bodyStyle={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        overflow: 'hidden',
+      }}
     >
       {run.runId ? (
         <div
@@ -190,12 +212,16 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     <span style={{ fontSize: 12, flexShrink: 0 }}>{getEventIcon(event.type)}</span>
                     {event.agentId ? <Tag size="small">{event.agentId}</Tag> : null}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ wordBreak: 'break-all', display: 'block' }}>{event.message}</Text>
+                      <Text style={{ wordBreak: 'break-all', display: 'block' }}>
+                        {event.message}
+                      </Text>
                       {renderSubAgentConcurrency(event)}
                     </div>
                     {event.metadata && Object.keys(event.metadata).length > 0 ? (
                       <details style={{ fontSize: 10, flexShrink: 0 }}>
-                        <summary style={{ cursor: 'pointer', color: 'var(--semi-color-tertiary)' }}>...</summary>
+                        <summary style={{ cursor: 'pointer', color: 'var(--semi-color-tertiary)' }}>
+                          ...
+                        </summary>
                         <pre
                           style={{
                             fontSize: 10,
@@ -221,11 +247,11 @@ export const TracePanel: React.FC<TracePanelProps> = ({
 
       {view === 'artifacts' ? (
         <div style={{ flex: 1, overflow: 'auto', minHeight: 120 }}>
-          {planNodes.every(node => node.artifacts.length === 0) ? (
+          {planNodes.every((node) => node.artifacts.length === 0) ? (
             <Empty description="当前运行还没有结构化产物。" />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {planNodes.map(node => (
+              {planNodes.map((node) => (
                 <div
                   key={node.stepId}
                   style={{
@@ -244,7 +270,7 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                   </Space>
                   {node.artifacts.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {node.artifacts.map(artifact => (
+                      {node.artifacts.map((artifact) => (
                         <div
                           key={artifact.artifactId}
                           style={{
@@ -254,10 +280,16 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                           }}
                         >
                           <Space wrap>
-                            <Tag size="small" color="green">{artifact.type}</Tag>
+                            <Tag size="small" color="green">
+                              {artifact.type}
+                            </Tag>
                             <Text size="small">{artifact.artifactId}</Text>
                           </Space>
-                          <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}>
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}
+                          >
                             {artifact.summary}
                           </Text>
                         </div>
@@ -297,14 +329,18 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     {runtimeViewModel.failedStep.name} ({runtimeViewModel.failedStep.stepId})
                   </Text>
                   {run.failureSummary ? (
-                    <Text type="danger" size="small" style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}>
+                    <Text
+                      type="danger"
+                      size="small"
+                      style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}
+                    >
                       {run.failureSummary}
                     </Text>
                   ) : null}
                 </div>
               ) : null}
 
-              {recovery.actions.map(action => (
+              {recovery.actions.map((action) => (
                 <div
                   key={action.id}
                   style={{
@@ -318,7 +354,11 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     <Tag color="orange">{action.type}</Tag>
                     <Text size="small">步骤: {action.stepId}</Text>
                   </Space>
-                  <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}>
+                  <Text
+                    type="tertiary"
+                    size="small"
+                    style={{ display: 'block', marginTop: 6, lineHeight: 1.6 }}
+                  >
                     {action.reason}
                   </Text>
                   {onApplyRecovery ? (
@@ -328,11 +368,9 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                         type="primary"
                         theme="solid"
                         loading={applyingRecoveryActionId === action.id}
-                        disabled={!canApplyRecoveryAction(
-                          action,
-                          run.status,
-                          applyingRecoveryActionId,
-                        )}
+                        disabled={
+                          !canApplyRecoveryAction(action, run.status, applyingRecoveryActionId)
+                        }
                         onClick={() => void onApplyRecovery(action)}
                       >
                         {recoveryActionButtonLabel(action)}
@@ -409,9 +447,15 @@ function renderSubAgentConcurrency(event: TraceEvent): React.ReactNode {
   if (!taskCount || !conc || !reason) return null;
   return (
     <Space spacing={4} wrap>
-      <Tag size="small" color="cyan">tasks {taskCount}</Tag>
-      <Tag size="small" color="blue">conc {conc}</Tag>
-      <Tag size="small" color="grey">{reason}</Tag>
+      <Tag size="small" color="cyan">
+        tasks {taskCount}
+      </Tag>
+      <Tag size="small" color="blue">
+        conc {conc}
+      </Tag>
+      <Tag size="small" color="grey">
+        {reason}
+      </Tag>
     </Space>
   );
 }

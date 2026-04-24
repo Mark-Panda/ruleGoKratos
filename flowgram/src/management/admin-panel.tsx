@@ -17,17 +17,19 @@ import {
   IconSetting,
 } from '@douyinfe/semi-icons';
 
+import { WorkspacesSection } from './sections/WorkspacesSection';
 import { WorkflowSection } from './sections/WorkflowSection';
 import { WorkflowRunLogsSection } from './sections/WorkflowRunLogsSection';
 import { WorkflowExecuteSection } from './sections/WorkflowExecuteSection';
-import { ComponentsSection } from './sections/ComponentsSection';
-import { AgentSection } from './sections/AgentSection';
+import { TerminalSection } from './sections/TerminalSection';
+import { TaskBoardSection } from './sections/TaskBoardSection';
+import { ServiceManagementSection } from './sections/ServiceManagementSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
 import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
-import { AgentPlaygroundPage } from '../agent-playground';
-import { TerminalSection } from './sections/TerminalSection';
 import { LarkCliSection } from './sections/LarkCliSection';
-import { WorkspacesSection } from './sections/WorkspacesSection';
+import { ComponentsSection } from './sections/ComponentsSection';
+import { AgentSection } from './sections/AgentSection';
+import { AgentPlaygroundPage } from '../agent-playground';
 
 type MenuKey =
   | 'intro'
@@ -46,7 +48,9 @@ type MenuKey =
   | 'admin-lark-cli'
   | 'engine'
   | 'component'
-  | 'agent';
+  | 'agent'
+  | 'task-board'
+  | 'service-management';
 
 /** 与路由对应的菜单页 itemKey（不含 Nav 分组占位 key） */
 const MENU_KEYS: MenuKey[] = [
@@ -64,6 +68,8 @@ const MENU_KEYS: MenuKey[] = [
   'workspace-manager',
   'admin-terminal',
   'admin-lark-cli',
+  'task-board',
+  'service-management',
 ];
 
 function getMenuFromHash(h: string): MenuKey {
@@ -80,6 +86,8 @@ function getMenuFromHash(h: string): MenuKey {
   if (h.startsWith('#/components')) return 'component-installed';
   if (h.startsWith('#/workflow/run')) return 'workflow-run';
   if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
+  if (h.startsWith('#/task-board')) return 'task-board';
+  if (h.startsWith('#/service-management')) return 'service-management';
   return 'workflow';
 }
 
@@ -98,6 +106,8 @@ function setHashForMenu(key: MenuKey) {
   else if (key === 'workspace-manager') window.location.hash = '#/workspaces';
   else if (key === 'admin-terminal') window.location.hash = '#/terminal';
   else if (key === 'admin-lark-cli') window.location.hash = '#/lark-cli';
+  else if (key === 'task-board') window.location.hash = '#/task-board';
+  else if (key === 'service-management') window.location.hash = '#/service-management';
 }
 
 export const AdminPanel: React.FC = () => {
@@ -147,6 +157,8 @@ export const AdminPanel: React.FC = () => {
     if (key === 'admin-terminal') return <TerminalSection />;
     if (key === 'admin-lark-cli') return <LarkCliSection />;
     if (key === 'component-rules') return <ComponentsSection view="rules" />;
+    if (key === 'task-board') return <TaskBoardSection />;
+    if (key === 'service-management') return <ServiceManagementSection />;
     return <ComponentsSection view="installed" />;
   };
 
@@ -180,6 +192,10 @@ export const AdminPanel: React.FC = () => {
         return '终端';
       case 'admin-lark-cli':
         return '飞书 CLI 配置';
+      case 'task-board':
+        return '任务看板';
+      case 'service-management':
+        return '服务管理';
       default:
         return 'Code 助手';
     }
@@ -200,8 +216,19 @@ export const AdminPanel: React.FC = () => {
       return '模型与工具';
     if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
     if (activeMenu === 'intro') return '工作台';
-    if (activeMenu === 'agent-playground' || activeMenu === 'agent-profiles' || activeMenu === 'workspace-manager') return '智能体';
-    if (activeMenu === 'admin-terminal' || activeMenu === 'admin-lark-cli') return '运维';
+    if (
+      activeMenu === 'agent-playground' ||
+      activeMenu === 'agent-profiles' ||
+      activeMenu === 'workspace-manager'
+    )
+      return '智能体';
+    if (
+      activeMenu === 'admin-terminal' ||
+      activeMenu === 'admin-lark-cli' ||
+      activeMenu === 'task-board' ||
+      activeMenu === 'service-management'
+    )
+      return '运维';
     return '系统';
   };
 
@@ -277,6 +304,8 @@ export const AdminPanel: React.FC = () => {
               { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <IconUser /> },
               { itemKey: 'agent-playground', text: 'Agent Playground', icon: <IconBranch /> },
               { itemKey: 'workspace-manager', text: '工作区管理', icon: <IconList /> },
+              { itemKey: 'task-board', text: '任务看板', icon: <IconList /> },
+              { itemKey: 'service-management', text: '服务管理', icon: <IconSetting /> },
               { itemKey: 'admin-terminal', text: '终端', icon: <IconDesktop /> },
               { itemKey: 'admin-lark-cli', text: '飞书 CLI 配置', icon: <IconSetting /> },
               {

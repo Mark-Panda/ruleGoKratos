@@ -15,7 +15,10 @@ function extOf(rel: string): string {
 
 /** 与 biz loadSkills 一致：相对路径去掉扩展名，正斜杠，无首尾斜杠 */
 export function skillContentKey(item: SkillItem): string {
-  let rel = String(item.path ?? '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+  let rel = String(item.path ?? '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
   if (!rel) return '';
   const ext = extOf(rel);
   if (SKILL_FILE_EXTS.has(ext)) {

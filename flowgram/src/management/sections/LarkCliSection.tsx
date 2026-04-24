@@ -4,18 +4,10 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  Banner,
-  Button,
-  Card,
-  Spin,
-  Tag,
-  Toast,
-  Typography,
-} from '@douyinfe/semi-ui';
+import { Banner, Button, Card, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 
-import { runTerminal } from '../../services/api-agent';
 import { getApiOrigin, getAuthToken } from '../../services/http';
+import { runTerminal } from '../../services/api-agent';
 
 interface AuthStatusParsed {
   tokenStatus?: string;
@@ -59,16 +51,13 @@ function formatToCnTime(raw?: string): string {
 
 /** 从命令输出中提取飞书开放平台 / 账号相关的 https 链接（供浏览器打开） */
 function extractLarkHttpsUrls(raw: string): string[] {
-  const re =
-    /https:\/\/[^\s\)\]'"]+/g;
+  const re = /https:\/\/[^\s\)\]'"]+/g;
   const candidates = raw.match(re) ?? [];
   const filtered = candidates.filter((u) => {
     try {
       const host = new URL(u).hostname;
       return (
-        host.endsWith('feishu.cn') ||
-        host.endsWith('larksuite.com') ||
-        host.endsWith('feishu.net')
+        host.endsWith('feishu.cn') || host.endsWith('larksuite.com') || host.endsWith('feishu.net')
       );
     } catch {
       return false;
@@ -129,7 +118,12 @@ function UrlActions({ urls }: { urls: string[] }) {
                 border: '1px solid rgba(28,31,35,0.06)',
               }}
             >
-              <a href={href} target="_blank" rel="noopener noreferrer" style={{ wordBreak: 'break-all', flex: '1 1 220px' }}>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ wordBreak: 'break-all', flex: '1 1 220px' }}
+              >
                 {href}
               </a>
               {code && (
@@ -168,7 +162,10 @@ export const LarkCliSection: React.FC = () => {
   const sentExitRef = useRef(false);
   const doneRef = useRef(false);
 
-  const extractedUrls = useMemo(() => extractLarkHttpsUrls([lastStdout, lastStderr].join('\n')), [lastStdout, lastStderr]);
+  const extractedUrls = useMemo(
+    () => extractLarkHttpsUrls([lastStdout, lastStderr].join('\n')),
+    [lastStdout, lastStderr]
+  );
 
   const refreshStatus = useCallback(async () => {
     setLoadingStatus(true);
@@ -275,8 +272,8 @@ export const LarkCliSection: React.FC = () => {
           ev.data instanceof ArrayBuffer
             ? new TextDecoder().decode(new Uint8Array(ev.data))
             : typeof ev.data === 'string'
-              ? ev.data
-              : '';
+            ? ev.data
+            : '';
         if (!chunk) return;
         appendConsole(chunk);
         if (
@@ -340,9 +337,12 @@ export const LarkCliSection: React.FC = () => {
           description={
             <div style={{ lineHeight: 1.6 }}>
               <div>
-                用户：<strong>{statusParsed.userName ?? '—'}</strong>（{statusParsed.identity ?? '—'}）
+                用户：<strong>{statusParsed.userName ?? '—'}</strong>（
+                {statusParsed.identity ?? '—'}）
               </div>
-              <div>应用 ID：{statusParsed.appId ?? '—'} · 品牌：{statusParsed.brand ?? '—'}</div>
+              <div>
+                应用 ID：{statusParsed.appId ?? '—'} · 品牌：{statusParsed.brand ?? '—'}
+              </div>
               <div>令牌创建时间（东八区）：{formatToCnTime(statusParsed.grantedAt)}</div>
             </div>
           }
@@ -366,11 +366,25 @@ export const LarkCliSection: React.FC = () => {
           检测到「OK: 应用配置成功」后，再自动执行{' '}
           <Typography.Text code>lark-cli auth login --recommend</Typography.Text> 并等待授权完成。
         </Typography.Paragraph>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 10,
+            flexWrap: 'wrap',
+          }}
+        >
           <Tag color={busyAutoSetup ? 'blue' : configured ? 'green' : 'orange'}>
-            {busyAutoSetup ? `运行中：${autoSetupStage || '处理中'}` : configured ? '已登录' : '未登录'}
+            {busyAutoSetup
+              ? `运行中：${autoSetupStage || '处理中'}`
+              : configured
+              ? '已登录'
+              : '未登录'}
           </Tag>
-          {lastExit !== null && <Tag color={lastExit === 0 ? 'green' : 'red'}>最近退出码：{lastExit}</Tag>}
+          {lastExit !== null && (
+            <Tag color={lastExit === 0 ? 'green' : 'red'}>最近退出码：{lastExit}</Tag>
+          )}
         </div>
         {busyAutoSetup && (
           <Banner
@@ -393,7 +407,11 @@ export const LarkCliSection: React.FC = () => {
           开始自动交互式配置
         </Button>
         <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <Button loading={loadingStatus} disabled={anyLongRunning} onClick={() => void refreshStatus()}>
+          <Button
+            loading={loadingStatus}
+            disabled={anyLongRunning}
+            onClick={() => void refreshStatus()}
+          >
             刷新状态（lark-cli auth status）
           </Button>
           <Button
@@ -418,14 +436,17 @@ export const LarkCliSection: React.FC = () => {
             <div>
               <strong>步骤 1</strong> 会实时打印终端字符二维码与配置链接；可直接在下方日志区复制链接
               （二维码在网页字体下可能不够清晰时，优先使用链接）：
-              <Typography.Text code>open.feishu.cn/page/cli</Typography.Text> 链接在浏览器完成应用创建。
+              <Typography.Text code>open.feishu.cn/page/cli</Typography.Text>{' '}
+              链接在浏览器完成应用创建。
             </div>
             <div style={{ marginTop: 8 }}>
-              <strong>步骤 2</strong> 会输出「在浏览器中打开以下链接进行认证」并进入「等待用户授权…」；
+              <strong>步骤 2</strong>{' '}
+              会输出「在浏览器中打开以下链接进行认证」并进入「等待用户授权…」；
               与你在容器里手动执行的体验保持一致。
             </div>
             <div style={{ marginTop: 8 }}>
-              服务端单次命令超时由 <Typography.Text code>agent.terminal_exec_timeout</Typography.Text>{' '}
+              服务端单次命令超时由{' '}
+              <Typography.Text code>agent.terminal_exec_timeout</Typography.Text>{' '}
               控制；如授权耗时较长可适当调大。
             </div>
           </div>
@@ -456,12 +477,16 @@ export const LarkCliSection: React.FC = () => {
       </Card>
 
       <Card title="实时终端日志" style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-          <Button
-            size="small"
-            disabled={!fullLog}
-            onClick={() => void copyToClipboard(fullLog)}
-          >
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            marginBottom: 8,
+          }}
+        >
+          <Button size="small" disabled={!fullLog} onClick={() => void copyToClipboard(fullLog)}>
             复制全部日志
           </Button>
           <Button size="small" disabled={anyLongRunning} onClick={clearConsole}>

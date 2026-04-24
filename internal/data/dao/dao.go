@@ -28,6 +28,10 @@ func Init(client *gorm.DB) {
 			if err := migratePlaygroundCollaborationSchemeTable(db); err != nil {
 				log.Printf("dao: migrate playground_collaboration_scheme: %v", err)
 			}
+			// 自动迁移任务看板和服务管理表
+			if err := db.AutoMigrate(&TaskBoard{}, &ServiceManagement{}); err != nil {
+				log.Printf("dao: migrate task_board/service_management: %v", err)
+			}
 		}
 	})
 	_ = db
