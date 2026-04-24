@@ -618,6 +618,102 @@ describe('restApiCall spec URL / query', () => {
     expect(cfg.params).toEqual({ foo: 'bar' });
     expect(String(cfg.restEndpointUrlPattern)).toContain('foo=' + encodeURIComponent('bar'));
   });
+
+  it('rulechain-builder：Failure 连线回放时恢复到上部输入端口', () => {
+    const rc = {
+      ruleChain: {
+        id: 'chain-failure-top-input',
+        name: 'FailureTopInput',
+        debugMode: false,
+        root: true,
+        disabled: false,
+      },
+      metadata: {
+        firstNodeIndex: 0,
+        nodes: [
+          { id: 'st', type: 'start', name: 'Start', debugMode: false, configuration: {} },
+          {
+            id: 'cc',
+            type: 'x/cursorCli',
+            name: 'CursorCli',
+            debugMode: false,
+            configuration: {},
+          },
+          { id: 'lg', type: 'log', name: 'Log', debugMode: false, configuration: {} },
+        ],
+        connections: [
+          { fromId: 'st', toId: 'cc', type: 'Success' },
+          { fromId: 'cc', toId: 'lg', type: 'Failure' },
+        ],
+      },
+    };
+
+    const flow = buildDocumentFromRuleChainJSON(rc as any) as any;
+    const failureEdge = (flow.edges ?? []).find(
+      (e: any) => e.sourceNodeID === 'cc' && e.targetNodeID === 'lg'
+    );
+    expect(failureEdge).toBeTruthy();
+    expect(failureEdge.targetPortID).toBe('input_top');
+  });
+
+  it('rulechain-builder：Else / False 分支回放时恢复到上部输入端口', () => {
+    const rc = {
+      ruleChain: {
+        id: 'chain-else-false-top-input',
+        name: 'ElseFalseTopInput',
+        debugMode: false,
+        root: true,
+        disabled: false,
+      },
+      metadata: {
+        firstNodeIndex: 0,
+        nodes: [
+          { id: 'st', type: 'start', name: 'Start', debugMode: false, configuration: {} },
+          {
+            id: 'cond',
+            type: 'condition',
+            name: 'Condition',
+            debugMode: false,
+            configuration: {},
+          },
+          {
+            id: 'filter',
+            type: 'jsFilter',
+            name: 'Filter',
+            debugMode: false,
+            configuration: {},
+          },
+          { id: 'log_else', type: 'log', name: 'LogElse', debugMode: false, configuration: {} },
+          {
+            id: 'log_false',
+            type: 'log',
+            name: 'LogFalse',
+            debugMode: false,
+            configuration: {},
+          },
+        ],
+        connections: [
+          { fromId: 'st', toId: 'cond', type: 'Success' },
+          { fromId: 'cond', toId: 'log_else', type: 'else' },
+          { fromId: 'st', toId: 'filter', type: 'Success' },
+          { fromId: 'filter', toId: 'log_false', type: 'False' },
+        ],
+      },
+    };
+
+    const flow = buildDocumentFromRuleChainJSON(rc as any) as any;
+    const elseEdge = (flow.edges ?? []).find(
+      (e: any) => e.sourceNodeID === 'cond' && e.targetNodeID === 'log_else'
+    );
+    const falseEdge = (flow.edges ?? []).find(
+      (e: any) => e.sourceNodeID === 'filter' && e.targetNodeID === 'log_false'
+    );
+
+    expect(elseEdge).toBeTruthy();
+    expect(elseEdge.targetPortID).toBe('input_top');
+    expect(falseEdge).toBeTruthy();
+    expect(falseEdge.targetPortID).toBe('input_top');
+  });
 });
 
 describe('remaining node specs round-trip', () => {

@@ -16,6 +16,7 @@ const CURSOR_ACP_FIELD_ORDER: readonly string[] = [
   'agentPath',
   'workspacePath',
   'worktree',
+  'force',
   'workDir',
   'replaceData',
   'timeoutMs',

@@ -51,6 +51,8 @@ type CursorAcpConfiguration struct {
 	WorkspacePath string `json:"workspacePath"`
 	// Worktree 为 true 时注入 --worktree（无参数值），让 Agent 在新的 Git worktree 中运行而非直接编辑当前 checkout。
 	Worktree bool `json:"worktree"`
+	// Force 为 true 时注入 -f/--force（除非用户已在 Args 显式传入 force/yolo 相关参数）。
+	Force bool `json:"force"`
 	Log      bool `json:"log"`
 	ReplaceData   bool   `json:"replaceData"`
 	// WorkDir 子进程 cwd；留空则用 metadata.workDir。
@@ -77,6 +79,7 @@ func (c *CursorAcpDsl) New() types.Node {
 		AgentPath:    "agent",
 		Args:         []string{"acp"},
 		StdinLines:   nil,
+		Force:        true,
 		Log:          false,
 		ReplaceData:  true,
 		WorkDir:      "",
@@ -98,6 +101,9 @@ func (c *CursorAcpDsl) Def() types.ComponentForm {
 func (c *CursorAcpDsl) Init(_ types.Config, configuration types.Configuration) error {
 	if err := maps.Map2Struct(configuration, &c.Config); err != nil {
 		return err
+	}
+	if _, ok := configuration["force"]; !ok {
+		c.Config.Force = true
 	}
 	if len(c.Config.Args) == 0 {
 		c.Config.Args = []string{"acp"}
@@ -165,7 +171,7 @@ func (c *CursorAcpDsl) Init(_ types.Config, configuration types.Configuration) e
 
 // cursorAcpPreflightAgentLoggedIn 执行 agent status；未登录或 CLI 异常时 TellFailure 并返回 false。
 func (c *CursorAcpDsl) cursorAcpPreflightAgentLoggedIn(ctx types.RuleContext, msg types.RuleMsg, bin string, evn map[string]interface{}, workDir string) bool {
-	statusArgv := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, []string{"status"})
+	statusArgv := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, c.Config.Force, []string{"status"})
 	sOut, sErr, stErr := runAgentStatusCheck(context.Background(), bin, statusArgv, workDir)
 	combined := strings.TrimSpace(strings.TrimSpace(sOut) + "\n" + strings.TrimSpace(sErr))
 	if stErr != nil {
@@ -206,7 +212,11 @@ func (c *CursorAcpDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		ctx.TellFailure(msg, errors.New("cursorAcp: args 首项须为 acp"))
 		return
 	}
-	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, userArgs)
+	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, c.Config.Force, userArgs)
+	if ws := resolveWorkspacePath(c.workspaceTpl.ExecuteAsString(evn)); ws == "" {
+		ctx.TellFailure(msg, errors.New("cursorAcp: workspacePath 未配置且无法解析 home 目录，请填写代码仓库根目录（--workspace）"))
+		return
+	}
 	stdinLines := make([]string, 0, len(c.stdinLinesTpl))
 	for _, t := range c.stdinLinesTpl {
 		stdinLines = append(stdinLines, t.ExecuteAsString(evn))
@@ -381,7 +391,11 @@ func (c *CursorAcpDsl) onMsgSimpleMode(ctx types.RuleContext, msg types.RuleMsg,
 		ctx.TellFailure(msg, errors.New("cursorAcp: args 首项须为 acp"))
 		return
 	}
-	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, userArgs)
+	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, c.Config.Force, userArgs)
+	if ws := resolveWorkspacePath(c.workspaceTpl.ExecuteAsString(evn)); ws == "" {
+		ctx.TellFailure(msg, errors.New("cursorAcp: workspacePath 未配置且无法解析 home 目录，请填写代码仓库根目录（--workspace）"))
+		return
+	}
 	task := strings.TrimSpace(c.taskTpl.ExecuteAsString(evn))
 	if task == "" {
 		ctx.TellFailure(msg, errors.New("cursorAcp: 简易模式下请填写「任务说明」（或关闭简易模式自行配置 JSON-RPC 行）"))

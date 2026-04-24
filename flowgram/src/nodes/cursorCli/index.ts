@@ -47,8 +47,9 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
             type: 'template',
             content: 'find and fix performance issues',
           },
-          workspacePath: { type: 'template', content: '' },
+          workspacePath: { type: 'template', content: '$HOME' },
           worktree: { type: 'constant', content: false },
+          force: { type: 'constant', content: true },
           workDir: { type: 'template', content: '' },
           outputFormat: { type: 'constant', content: 'text' },
           printMode: { type: 'constant', content: true },
@@ -59,7 +60,7 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
         },
         inputs: {
           type: 'object',
-          required: ['agentPath', 'args', 'log', 'replaceData', 'timeoutMs'],
+          required: ['agentPath', 'workspacePath', 'force', 'args', 'log', 'replaceData', 'timeoutMs'],
           properties: {
             agentPath: {
               type: 'string',
@@ -99,11 +100,12 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
             },
             workspacePath: {
               type: 'string',
+              minLength: 1,
               extra: {
                 label: '工作区路径（--workspace）',
                 formComponent: 'prompt-editor',
                 description:
-                  '指定代码仓库根目录，Agent 以此作为代码上下文（官方全局参数 --workspace）。示例：/path/to/repo 或 ${metadata.repoRoot}。与「进程工作目录」不同：后者是子进程 cwd（workDir/metadata.workDir）。',
+                  '必填，默认 $HOME（home 目录）。指定代码仓库根目录，Agent 以此作为代码上下文（官方全局参数 --workspace）。示例：/path/to/repo 或 ${metadata.repoRoot}。与「进程工作目录」不同：后者是子进程 cwd（workDir/metadata.workDir）。',
               },
             },
             worktree: {
@@ -112,6 +114,14 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
                 label: 'Git Worktree（--worktree）',
                 description:
                   '开启后注入 --worktree，让 Agent 在新建的 Git worktree 中运行，而非直接编辑当前 checkout。Cursor 会在 ~/.cursor/worktrees 下自动创建并按规则清理。可与「工作区路径」配合使用显式指定仓库根。',
+              },
+            },
+            force: {
+              type: 'boolean',
+              extra: {
+                label: '强制允许命令（--force）',
+                description:
+                  '默认开启。开启时自动追加 --force（等价 -f），除非在「额外命令行参数」中已显式传入 --force/--yolo。',
               },
             },
             workDir: {

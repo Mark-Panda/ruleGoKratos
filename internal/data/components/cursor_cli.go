@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -57,6 +58,8 @@ type CursorCliConfiguration struct {
 	// Worktree 为 true 时注入 --worktree（无参数值），让 Agent 在新的 Git worktree 中运行而非直接编辑当前 checkout；
 	// 配合 --workspace 使用可显式指定仓库根（见官方文档）。
 	Worktree bool `json:"worktree"`
+	// Force 为 true 时注入 -f/--force（除非用户已在 Args 显式传入 force/yolo 相关参数）。
+	Force bool `json:"force"`
 	Log      bool `json:"log"`
 	ReplaceData   bool   `json:"replaceData"`
 	// WorkDir 子进程操作系统工作目录（cmd.Dir）；留空则用 metadata.workDir。
@@ -78,6 +81,7 @@ func (c *CursorCliDsl) New() types.Node {
 	return &CursorCliDsl{Config: CursorCliConfiguration{
 		AgentPath:   "agent",
 		Args:        nil,
+		Force:       true,
 		Log:         false,
 		ReplaceData: true,
 		WorkDir:     "",
@@ -99,6 +103,9 @@ func (c *CursorCliDsl) Def() types.ComponentForm {
 func (c *CursorCliDsl) Init(_ types.Config, configuration types.Configuration) error {
 	if err := maps.Map2Struct(configuration, &c.Config); err != nil {
 		return err
+	}
+	if _, ok := configuration["force"]; !ok {
+		c.Config.Force = true
 	}
 	pathStr := pickCliExecutablePath(&c.Config)
 	pathTpl, err := el.NewTemplate(pathStr)
@@ -162,17 +169,77 @@ func (c *CursorCliDsl) Init(_ types.Config, configuration types.Configuration) e
 	return nil
 }
 
-// buildAgentArgv 在业务 Args 之前插入官方全局选项：--workspace、--worktree（见 Cursor CLI 参数文档）。
-func buildAgentArgv(evn map[string]interface{}, workspaceTpl el.Template, worktree bool, userArgs []string) []string {
-	out := make([]string, 0, len(userArgs)+4)
-	if ws := strings.TrimSpace(workspaceTpl.ExecuteAsString(evn)); ws != "" {
+// buildAgentArgv 在业务 Args 之前插入官方全局选项：--workspace、--worktree、--trust、--force（见 Cursor CLI 参数文档）。
+func buildAgentArgv(evn map[string]interface{}, workspaceTpl el.Template, worktree bool, force bool, userArgs []string) []string {
+	out := make([]string, 0, len(userArgs)+6)
+	if ws := resolveWorkspacePath(workspaceTpl.ExecuteAsString(evn)); ws != "" {
 		out = append(out, "--workspace", ws)
 	}
 	if worktree {
 		out = append(out, "--worktree")
 	}
+	// 无头场景下若未显式声明 trust 参数，默认启用 --trust（官方参数），避免卡在交互式 Workspace Trust 确认。
+	if !hasExplicitTrustArg(userArgs) {
+		out = append(out, "--trust")
+	}
+	if force && !hasExplicitForceArg(userArgs) {
+		out = append(out, "--force")
+	}
 	out = append(out, userArgs...)
 	return out
+}
+
+func hasExplicitTrustArg(args []string) bool {
+	for _, a := range args {
+		s := strings.TrimSpace(strings.ToLower(a))
+		if s == "" {
+			continue
+		}
+		if strings.HasPrefix(s, "--trust-") || s == "--trust" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasExplicitForceArg(args []string) bool {
+	for _, a := range args {
+		s := strings.TrimSpace(strings.ToLower(a))
+		if s == "" {
+			continue
+		}
+		if s == "-f" || s == "--force" || s == "--yolo" {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveWorkspacePath 解析 workspacePath：
+// 1) 空值时默认回退到当前系统用户 home；
+// 2) 支持 $HOME 等环境变量；
+// 3) 支持 ~ / ~/subdir 语法。
+func resolveWorkspacePath(raw string) string {
+	ws := strings.TrimSpace(raw)
+	if ws == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(home)
+	}
+	ws = os.ExpandEnv(ws)
+	if ws == "~" || strings.HasPrefix(ws, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return strings.TrimSpace(ws)
+		}
+		if ws == "~" {
+			return strings.TrimSpace(home)
+		}
+		return filepath.Join(home, strings.TrimPrefix(ws, "~/"))
+	}
+	return strings.TrimSpace(ws)
 }
 
 // buildCliMidArgs 组装 -p、Prompt、--output-format、--model 及用户 Args（与官方无头参数顺序一致）。
@@ -228,7 +295,11 @@ func (c *CursorCliDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		return
 	}
 	midArgs := c.buildCliMidArgs(evn)
-	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, midArgs)
+	args := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, c.Config.Force, midArgs)
+	if ws := resolveWorkspacePath(c.workspaceTpl.ExecuteAsString(evn)); ws == "" {
+		ctx.TellFailure(msg, errors.New("cursorCli: workspacePath 未配置且无法解析 home 目录，请填写代码仓库根目录（--workspace）"))
+		return
+	}
 	workDir := strings.TrimSpace(c.workTpl.ExecuteAsString(evn))
 	if workDir == "" {
 		workDir = msg.Metadata.GetValue(action.KeyWorkDir)
@@ -236,7 +307,7 @@ func (c *CursorCliDsl) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 
 	runCtx := context.Background()
 	if c.Config.PrintMode {
-		statusArgv := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, []string{"status"})
+		statusArgv := buildAgentArgv(evn, c.workspaceTpl, c.Config.Worktree, c.Config.Force, []string{"status"})
 		sOut, sErr, stErr := runAgentStatusCheck(runCtx, bin, statusArgv, workDir)
 		combined := strings.TrimSpace(strings.TrimSpace(sOut) + "\n" + strings.TrimSpace(sErr))
 		if stErr != nil {

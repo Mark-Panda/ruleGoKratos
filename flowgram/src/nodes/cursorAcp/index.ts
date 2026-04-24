@@ -47,8 +47,9 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
             content: '请根据当前消息说明要完成的工作。',
           },
           agentPath: { type: 'constant', content: 'agent' },
-          workspacePath: { type: 'template', content: '' },
+          workspacePath: { type: 'template', content: '$HOME' },
           worktree: { type: 'constant', content: false },
+          force: { type: 'constant', content: true },
           workDir: { type: 'template', content: '' },
           replaceData: { type: 'constant', content: true },
           timeoutMs: { type: 'constant', content: 120000 },
@@ -58,7 +59,7 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
         },
         inputs: {
           type: 'object',
-          required: ['agentPath', 'args', 'acpSimpleMode', 'timeoutMs'],
+          required: ['agentPath', 'workspacePath', 'force', 'args', 'acpSimpleMode', 'timeoutMs'],
           properties: {
             acpSimpleMode: {
               type: 'boolean',
@@ -86,11 +87,12 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
             },
             workspacePath: {
               type: 'string',
+              minLength: 1,
               extra: {
                 label: '工作区（--workspace）',
                 formComponent: 'prompt-editor',
                 description:
-                  '代码仓库根目录，供 CLI 加载上下文；简易模式下同时作为 session/new 的 cwd。',
+                  '必填，默认 $HOME（home 目录）。代码仓库根目录，供 CLI 加载上下文；简易模式下同时作为 session/new 的 cwd。',
               },
             },
             worktree: {
@@ -99,6 +101,14 @@ export const CursorAcpNodeRegistry: FlowNodeRegistry = {
                 label: 'Git Worktree（--worktree）',
                 description:
                   '开启后注入 --worktree，让 Agent 在新建的 Git worktree 中运行，而非直接编辑当前 checkout。可与「工作区」配合显式指定仓库根。',
+              },
+            },
+            force: {
+              type: 'boolean',
+              extra: {
+                label: '强制允许命令（--force）',
+                description:
+                  '默认开启。开启时自动追加 --force（等价 -f），除非在「命令行 argv」里已显式传入 --force/--yolo。',
               },
             },
             workDir: {

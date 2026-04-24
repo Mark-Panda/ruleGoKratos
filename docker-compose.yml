@@ -10,7 +10,7 @@ services:
       - "9001:9000"
     volumes:
       - ./configs:/data/conf
-      - ./mcp:/app/mcp
+      # - ./mcp:/app/mcp
       - ./skills:/app/skills
       # 与 AGENT_SKILL_DIR 一致；部分模型会用「/agent/skills」臆测路径，额外挂载避免 node MODULE_NOT_FOUND
       - ./skills:/agent/skills

@@ -74,6 +74,12 @@ interface RouterDsl {
   additionalInfo?: Record<string, any>;
 }
 
+function pickTargetPortIDForConnectionType(connType: unknown): string | undefined {
+  const t = String(connType ?? '').trim().toLowerCase();
+  if (t === 'failure' || t === 'false' || t === 'else') return 'input_top';
+  return undefined;
+}
+
 type EndpointDsl = RuleNodeRC & {
   processors?: string[];
   routers?: RouterDsl[];
@@ -2260,11 +2266,19 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
     })
     .filter(Boolean) as FlowNodeJSON[];
 
-  const edges = topLevelConns.map((e: any) => ({
-    sourceNodeID: String(e.fromId ?? e.from?.id ?? ''),
-    targetNodeID: String(e.toId ?? e.to?.id ?? ''),
-    sourcePortID: e.type ?? e.label ?? undefined,
-  }));
+  const edges = topLevelConns.map((e: any) => {
+    const sourcePortID = e.type ?? e.label ?? undefined;
+    const edge: Record<string, any> = {
+      sourceNodeID: String(e.fromId ?? e.from?.id ?? ''),
+      targetNodeID: String(e.toId ?? e.to?.id ?? ''),
+      sourcePortID,
+    };
+    const targetPortID = pickTargetPortIDForConnectionType(sourcePortID);
+    if (targetPortID) {
+      edge.targetPortID = targetPortID;
+    }
+    return edge;
+  });
 
   const typeById = new Map<string, string>();
   nodes.forEach((n: any) => typeById.set(String(n.id), String(n.type)));
