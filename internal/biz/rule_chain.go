@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/entity"
 	"ruleGoKratos/internal/conf"
@@ -48,6 +49,8 @@ type RuleChainUsecase struct {
 	skillAgent    RuleChainSkillAgentRunner
 	skillRoot     string
 }
+
+const ruleChainSkillCreatorName = "skill-creator-0.1.0"
 
 func NewRuleChainUsecase(ruleChainRepo RuleChainRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config, skillAgent RuleChainSkillAgentRunner, config *conf.Bootstrap) *RuleChainUsecase {
 	return &RuleChainUsecase{
@@ -272,8 +275,13 @@ func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.Ge
 		GeneratedByManagedAgentID: in.GetManagedAgentId(),
 	}
 
-	_, err = s.skillAgent.ExecuteHarnessSync(ctx, HarnessRequest{
-		Input:          prompt,
+	harnessOutput, err := s.skillAgent.ExecuteHarnessSync(ctx, HarnessRequest{
+		Input: prompt,
+		ToolOptions: &HarnessToolOptions{
+			EnableSkillTool: true,
+			// 规则链技能生成固定依赖 skill-creator，避免被托管 Agent 白名单误拦截。
+			SkillAllowlist: []string{ruleChainSkillCreatorName},
+		},
 		ManagedAgentID: in.GetManagedAgentId(),
 	})
 	if err != nil {
@@ -283,8 +291,24 @@ func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.Ge
 
 	content, err := ReadRuleChainSkillFile(s.effectiveRuleChainSkillRoot(), dirName, entryFile)
 	if err != nil {
+		// 兼容 skill-creator 仅返回内容未实际落盘的场景：从最终输出提取 markdown 并回写目标文件。
+		fallbackContent := ExtractRuleChainSkillMarkdownFromHarnessOutput(harnessOutput)
+		if strings.TrimSpace(fallbackContent) != "" {
+			fallbackContent = NormalizeGeneratedRuleChainSkillContent(fallbackContent, promptInput)
+			if writeErr := WriteRuleChainSkillFile(s.effectiveRuleChainSkillRoot(), dirName, entryFile, fallbackContent); writeErr == nil {
+				content, err = ReadRuleChainSkillFile(s.effectiveRuleChainSkillRoot(), dirName, entryFile)
+			}
+		}
+	}
+	if err != nil {
 		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, fmt.Sprintf("生成后未找到有效的 %s: %v", entryFile, err))
 		return nil, status.Errorf(codes.FailedPrecondition, "生成后未找到有效的 %s: %v", entryFile, err)
+	}
+	normalizedContent := NormalizeGeneratedRuleChainSkillContent(content, promptInput)
+	if normalizedContent != strings.TrimSpace(content) {
+		if writeErr := WriteRuleChainSkillFile(s.effectiveRuleChainSkillRoot(), dirName, entryFile, normalizedContent); writeErr == nil {
+			content = normalizedContent
+		}
 	}
 	if err := ValidateGeneratedRuleChainSkillContent(content, promptInput); err != nil {
 		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, err.Error())
@@ -314,6 +338,9 @@ func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.Ge
 }
 
 func resolveRuleChainSkillRoot(config *conf.Bootstrap) string {
+	if envRoot := strings.TrimSpace(os.Getenv("RULE_CHAIN_SKILL_DIR")); envRoot != "" {
+		return envRoot
+	}
 	if config != nil && config.Agent != nil && config.Agent.Skill != nil {
 		if dir := strings.TrimSpace(config.Agent.Skill.GetDir()); dir != "" {
 			return dir
@@ -322,7 +349,7 @@ func resolveRuleChainSkillRoot(config *conf.Bootstrap) string {
 			return dirs[0]
 		}
 	}
-	return "/app/skills"
+	return "/workflow/skills"
 }
 
 func (s *RuleChainUsecase) effectiveRuleChainSkillRoot() string {
@@ -361,7 +388,7 @@ func (s *RuleChainUsecase) chooseRuleChainSkillDirName(ctx context.Context, rule
 	explicitDir := normalizeRuleChainSkillDirName(meta.DirName)
 	candidateDir := explicitDir
 	if candidateDir == "" {
-		candidateDir = baseDir
+		candidateDir = BuildRuleChainSkillUniqueDirName(ruleChain)
 	}
 	all, err := s.ruleChainRepo.FindAllRuleChain(ctx, map[string]interface{}{})
 	if err != nil {
@@ -380,14 +407,12 @@ func (s *RuleChainUsecase) chooseRuleChainSkillDirName(ctx context.Context, rule
 			return BuildRuleChainSkillConflictDirName(baseDir, ruleChain.RuleChain.ID), nil
 		}
 	}
-	if explicitDir == "" {
-		exists, err := RuleChainSkillDirExists(s.effectiveRuleChainSkillRoot(), candidateDir)
-		if err != nil {
-			return "", err
-		}
-		if exists {
-			return BuildRuleChainSkillConflictDirName(baseDir, ruleChain.RuleChain.ID), nil
-		}
+	exists, err := RuleChainSkillDirExists(s.effectiveRuleChainSkillRoot(), candidateDir)
+	if err != nil {
+		return "", err
+	}
+	if exists && explicitDir == "" {
+		return BuildRuleChainSkillConflictDirName(baseDir, ruleChain.RuleChain.ID), nil
 	}
 	return candidateDir, nil
 }

@@ -47,16 +47,33 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 // registerAdminExtraRoutes 注册不走 proto 生成的管理后台补充接口。
 func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 	r := s.Route("/api/v1/admin")
+	// GET /api/v1/admin/skills/list?scope=system|workflow
+	r.GET("/skills/list", func(ctx http.Context) error {
+		scope := ctx.Request().URL.Query().Get("scope")
+		reply, err := admin.ListSkillsByScope(ctx, scope)
+		if err != nil {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			b, _ := json.Marshal(map[string]string{"error": err.Error()})
+			_, _ = ctx.Response().Write(b)
+			return nil
+		}
+		ctx.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
+		b, _ := json.Marshal(reply)
+		_, _ = ctx.Response().Write(b)
+		return nil
+	})
+
 	// GET /api/v1/admin/skills/file?path=<relative> 读取技能文件内容
 	r.GET("/skills/file", func(ctx http.Context) error {
 		req := ctx.Request()
 		path := req.URL.Query().Get("path")
+		scope := req.URL.Query().Get("scope")
 		if path == "" {
 			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
 			_, _ = ctx.Response().Write([]byte(`{"error":"path is required"}`))
 			return nil
 		}
-		content, err := admin.ReadSkillFileContent(path)
+		content, err := admin.ReadSkillFileContentByScope(scope, path)
 		if err != nil {
 			ctx.Response().WriteHeader(nethttp.StatusNotFound)
 			b, _ := json.Marshal(map[string]string{"error": err.Error()})
@@ -71,6 +88,7 @@ func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 	// PUT /api/v1/admin/skills/file 写入技能文件内容
 	r.PUT("/skills/file", func(ctx http.Context) error {
 		var payload struct {
+			Scope   string `json:"scope"`
 			Path    string `json:"path"`
 			Content string `json:"content"`
 		}
@@ -84,7 +102,7 @@ func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 			_, _ = ctx.Response().Write([]byte(`{"error":"path is required"}`))
 			return nil
 		}
-		if err := admin.WriteSkillFileContent(payload.Path, payload.Content); err != nil {
+		if err := admin.WriteSkillFileContentByScope(payload.Scope, payload.Path, payload.Content); err != nil {
 			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
 			b, _ := json.Marshal(map[string]string{"error": err.Error()})
 			_, _ = ctx.Response().Write(b)
@@ -92,6 +110,27 @@ func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 		}
 		ctx.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
 		b, _ := json.Marshal(map[string]string{"path": payload.Path})
+		_, _ = ctx.Response().Write(b)
+		return nil
+	})
+	// POST /api/v1/admin/skills/upload/file?scope=system|workflow 上传技能 zip（自定义 scope）
+	r.POST("/skills/upload/file", func(ctx http.Context) error {
+		scope := ctx.Request().URL.Query().Get("scope")
+		var req v1.UploadSkillRequest
+		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			_, _ = ctx.Response().Write([]byte(`{"error":"invalid request body"}`))
+			return nil
+		}
+		reply, err := admin.UploadSkillByScope(ctx, &req, scope)
+		if err != nil {
+			ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+			b, _ := json.Marshal(map[string]string{"error": err.Error()})
+			_, _ = ctx.Response().Write(b)
+			return nil
+		}
+		ctx.Response().Header().Set("Content-Type", "application/json; charset=utf-8")
+		b, _ := json.Marshal(reply)
 		_, _ = ctx.Response().Write(b)
 		return nil
 	})

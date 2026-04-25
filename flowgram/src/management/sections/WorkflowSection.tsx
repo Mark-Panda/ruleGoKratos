@@ -185,12 +185,26 @@ export const WorkflowSection: React.FC = () => {
       width: 220,
       render: (_: any, record: any) => {
         const chain = record?.ruleChain;
+        const skillDirName = String(
+          chain?.configuration?.flowgram?.skill?.dir_name ??
+            chain?.configuration?.flowgram?.skill?.dirName ??
+            ''
+        ).trim();
         return (
-          <RuleChainSkillAction
-            ruleChainId={String(chain?.id ?? '')}
-            isRoot={Boolean(chain?.root)}
-            size="small"
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Typography.Text
+              type={skillDirName ? 'secondary' : 'tertiary'}
+              size="small"
+              ellipsis={{ showTooltip: true }}
+            >
+              目录：{skillDirName || '-'}
+            </Typography.Text>
+            <RuleChainSkillAction
+              ruleChainId={String(chain?.id ?? '')}
+              isRoot={Boolean(chain?.root)}
+              size="small"
+            />
+          </div>
         );
       },
     },

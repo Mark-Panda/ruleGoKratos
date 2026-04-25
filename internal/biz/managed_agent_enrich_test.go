@@ -49,7 +49,7 @@ func newManagedEnrichTestUsecase(t *testing.T) *AgentUsecase {
 	}
 }
 
-func TestEnrichHarnessWithManagedAgentShouldKeepParentToolOptions(t *testing.T) {
+func TestEnrichHarnessWithManagedAgentShouldMergeManagedToolOptions(t *testing.T) {
 	uc := newManagedEnrichTestUsecase(t)
 	uc.SetManagedAgentLoader(&fakeManagedAgentLoader{
 		profile: &ManagedAgentProfile{
@@ -81,8 +81,19 @@ func TestEnrichHarnessWithManagedAgentShouldKeepParentToolOptions(t *testing.T) 
 	if err != nil {
 		t.Fatalf("enrichHarnessWithManagedAgent failed: %v", err)
 	}
-	if !reflect.DeepEqual(out.ToolOptions, req.ToolOptions) {
-		t.Fatalf("expected tool options inherited from parent, got %#v", out.ToolOptions)
+	if out.ToolOptions == nil {
+		t.Fatal("expected merged tool options")
+	}
+	if !out.ToolOptions.EnableSkillTool || !out.ToolOptions.EnableMcpTool {
+		t.Fatalf("expected managed tool switches enabled after merge, got %#v", out.ToolOptions)
+	}
+	expectedSkillAllow := []string{"custom/skill", "pkg-a/SKILL"}
+	if !reflect.DeepEqual(out.ToolOptions.SkillAllowlist, expectedSkillAllow) {
+		t.Fatalf("expected merged skill allowlist %v, got %v", expectedSkillAllow, out.ToolOptions.SkillAllowlist)
+	}
+	expectedMcpAllow := []string{"server\x00tool", "prod:query"}
+	if !reflect.DeepEqual(out.ToolOptions.McpAllowlist, expectedMcpAllow) {
+		t.Fatalf("expected merged mcp allowlist %v, got %v", expectedMcpAllow, out.ToolOptions.McpAllowlist)
 	}
 	if out.SkillCatalogFilter == nil || !reflect.DeepEqual(*out.SkillCatalogFilter, filter) {
 		t.Fatalf("expected skill catalog filter inherited from parent, got %#v", out.SkillCatalogFilter)
@@ -116,6 +127,57 @@ func TestEnrichHarnessWithManagedAgentShouldInjectToolsWhenMissing(t *testing.T)
 	}
 	if out.SkillCatalogFilter == nil || len(*out.SkillCatalogFilter) == 0 {
 		t.Fatalf("expected managed skill catalog filter injected, got %#v", out.SkillCatalogFilter)
+	}
+}
+
+func TestEnrichHarnessWithManagedAgentShouldMergeSkillCreatorAllowlist(t *testing.T) {
+	helper := log.NewHelper(log.NewStdLogger(io.Discard))
+	skillDir := t.TempDir()
+	// 模拟 run_skill 直接使用的 skill_name: skill-creator-0.1.0
+	if err := os.WriteFile(filepath.Join(skillDir, "skill-creator-0.1.0.md"), []byte("# skill creator"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fe, err := NewFileSkillExecutor([]string{skillDir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
+	if err != nil {
+		t.Fatalf("NewFileSkillExecutor failed: %v", err)
+	}
+	uc := &AgentUsecase{
+		log:           helper,
+		harnessLogger: NewHarnessLogger(helper),
+		skillExecutor: fe,
+	}
+	uc.SetManagedAgentLoader(&fakeManagedAgentLoader{
+		profile: &ManagedAgentProfile{
+			Enabled:         true,
+			SystemPrompt:    "managed prompt",
+			SkillPackageIDs: []string{"skill-creator-0.1.0"},
+		},
+	})
+
+	req := HarnessRequest{
+		ManagedAgentID: 200,
+		ToolOptions: &HarnessToolOptions{
+			EnableUUIDTool:       true,
+			EnableSkillTool:      false,
+			EnableMcpTool:        false,
+			EnableWorkspaceTools: true,
+			EnableSubAgentTool:   true,
+			SkillAllowlist:       []string{"custom/skill"},
+		},
+	}
+	out, err := uc.enrichHarnessWithManagedAgent(context.Background(), req)
+	if err != nil {
+		t.Fatalf("enrichHarnessWithManagedAgent failed: %v", err)
+	}
+	if out.ToolOptions == nil {
+		t.Fatal("expected merged tool options")
+	}
+	if !out.ToolOptions.EnableSkillTool {
+		t.Fatalf("expected EnableSkillTool to be true after managed merge, got %#v", out.ToolOptions)
+	}
+	expected := []string{"custom/skill", "skill-creator-0.1.0"}
+	if !reflect.DeepEqual(out.ToolOptions.SkillAllowlist, expected) {
+		t.Fatalf("expected merged allowlist %v, got %v", expected, out.ToolOptions.SkillAllowlist)
 	}
 }
 

@@ -99,6 +99,14 @@ func normalizeByNamespace(namespace, skillName string) string {
 func loadSkills(dirs []string, namespace string) (map[string]string, string, error) {
 	skills := make(map[string]string)
 	fingerprintParts := make([]string, 0, 64)
+	registerSkill := func(name string, info os.FileInfo, content string) {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return
+		}
+		fingerprintParts = append(fingerprintParts, fmt.Sprintf("%s:%d:%d", name, info.ModTime().UnixNano(), info.Size()))
+		skills[name] = content
+	}
 	for _, dir := range dirs {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {
@@ -135,8 +143,19 @@ func loadSkills(dirs []string, namespace string) (map[string]string, string, err
 			if err != nil {
 				return err
 			}
-			fingerprintParts = append(fingerprintParts, fmt.Sprintf("%s:%d:%d", name, info.ModTime().UnixNano(), info.Size()))
-			skills[name] = string(data)
+			content := string(data)
+			registerSkill(name, info, content)
+			// 对包目录下的 SKILL.md 额外提供一个包级别别名：
+			// - 文件键: skill-creator-0.1.0/SKILL
+			// - 别名键: skill-creator-0.1.0
+			if strings.HasSuffix(name, "/SKILL") {
+				alias := strings.TrimSuffix(name, "/SKILL")
+				if strings.TrimSpace(alias) != "" && strings.HasPrefix(filepath.Base(alias), "skill-creator-") {
+					if _, exists := skills[alias]; !exists {
+						registerSkill(alias, info, content)
+					}
+				}
+			}
 			return nil
 		})
 		if walkErr != nil {

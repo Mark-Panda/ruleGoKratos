@@ -39,6 +39,7 @@ func TestBuildRuleChainSkillGenerationPromptIncludesExecuteContract(t *testing.T
 		`"data": {"city": "Beijing"}`,
 		`返回体中的 data`,
 		"skill-creator-0.1.0",
+		"YAML frontmatter",
 	} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("expected prompt to contain %q, got %q", required, prompt)
@@ -200,6 +201,11 @@ func TestResolveRuleChainSkillStatusRequiresCurrentSignatureAnchor(t *testing.T)
 		`[{"name":"summary"}]`,
 	)
 	content := strings.Join([]string{
+		"---",
+		"name: weather-agent",
+		"description: test skill",
+		"---",
+		"",
 		"# weather-agent",
 		BuildRuleChainSkillSignatureAnchor(oldSignature),
 		"rule_chain_id: root-chain",
@@ -237,6 +243,11 @@ func TestGetRuleChainSkillStatusReportsReady(t *testing.T) {
 		t.Fatalf("MkdirAll failed: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(root, dirName, "SKILL.md"), []byte(strings.Join([]string{
+		"---",
+		"name: weather-agent",
+		"description: generated skill",
+		"---",
+		"",
 		"# generated",
 		BuildRuleChainSkillSignatureAnchor(signature),
 	}, "\n")), 0o644); err != nil {
@@ -295,6 +306,7 @@ func TestGetRuleChainSkillStatusReportsReady(t *testing.T) {
 
 func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
 	repo := newFakeRuleChainRepo(withRuleChainWithAdditionalInfo(
 		"root-chain",
 		true,
@@ -322,10 +334,16 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 			if req.ManagedAgentID != 101 {
 				t.Fatalf("expected managed agent id 101, got %d", req.ManagedAgentID)
 			}
+			if req.ToolOptions == nil || !req.ToolOptions.EnableSkillTool {
+				t.Fatalf("expected skill tool to be force-enabled for generation, got %#v", req.ToolOptions)
+			}
+			if len(req.ToolOptions.SkillAllowlist) != 1 || req.ToolOptions.SkillAllowlist[0] != "skill-creator-0.1.0" {
+				t.Fatalf("expected skill allowlist [skill-creator-0.1.0], got %#v", req.ToolOptions.SkillAllowlist)
+			}
 			for _, required := range []string{
 				"run_skill",
 				"skill-creator-0.1.0",
-				filepath.Join(root, "weather-agent", "SKILL.md"),
+				filepath.Join(root, expectedDir, "SKILL.md"),
 				"/api/v1/rules/{id}/execute/{msgType}",
 				"/api/v1/rules/root-chain/execute/QUERY",
 				`"metadata": {"tenant": "cn"}`,
@@ -336,7 +354,7 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 					t.Fatalf("expected prompt to contain %q, got %q", required, req.Input)
 				}
 			}
-			targetDir := filepath.Join(root, "weather-agent")
+			targetDir := filepath.Join(root, expectedDir)
 			if err := os.MkdirAll(targetDir, 0o755); err != nil {
 				return "", err
 			}
@@ -344,6 +362,11 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 				return "", err
 			}
 			content := strings.Join([]string{
+				"---",
+				"name: weather-agent",
+				"description: weather skill",
+				"---",
+				"",
 				"# weather-agent",
 				BuildRuleChainSkillSignatureAnchor(BuildRuleChainSkillSignature(
 					"根据城市查询天气（additional info）",
@@ -376,8 +399,8 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 	if reply.GetStatus() != string(RuleChainSkillStatusReady) {
 		t.Fatalf("expected ready, got %q", reply.GetStatus())
 	}
-	if reply.GetDirName() != "weather-agent" {
-		t.Fatalf("expected dir name weather-agent, got %q", reply.GetDirName())
+	if reply.GetDirName() != expectedDir {
+		t.Fatalf("expected dir name %s, got %q", expectedDir, reply.GetDirName())
 	}
 
 	stored := repo.mustRuleChain(t, "root-chain")
@@ -385,8 +408,8 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 	flowgram := mustJSONMap(t, cfg["flowgram"])
 	skill := mustJSONMap(t, flowgram["skill"])
 
-	if skill["dir_name"] != "weather-agent" {
-		t.Fatalf("expected persisted dir_name weather-agent, got %#v", skill["dir_name"])
+	if skill["dir_name"] != expectedDir {
+		t.Fatalf("expected persisted dir_name %s, got %#v", expectedDir, skill["dir_name"])
 	}
 	if skill["status"] != string(RuleChainSkillStatusReady) {
 		t.Fatalf("expected persisted status ready, got %#v", skill["status"])
@@ -410,22 +433,28 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 
 func TestGenerateRuleChainSkillUsesCustomSkillRootForPromptAndValidation(t *testing.T) {
 	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
 	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
 	uc := newTestRuleChainUsecase(repo, root, fakeSkillAgentRunner{
 		run: func(ctx context.Context, req HarnessRequest) (string, error) {
-			if !strings.Contains(req.Input, filepath.Join(root, "weather-agent", "SKILL.md")) {
+			if !strings.Contains(req.Input, filepath.Join(root, expectedDir, "SKILL.md")) {
 				t.Fatalf("expected prompt to use custom skillRoot, got %q", req.Input)
 			}
-			targetDir := filepath.Join(root, "weather-agent")
+			targetDir := filepath.Join(root, expectedDir)
 			if err := os.MkdirAll(targetDir, 0o755); err != nil {
 				return "", err
 			}
 			content := strings.Join([]string{
+				"---",
+				"name: weather-agent",
+				"description: weather skill",
+				"---",
+				"",
 				"# weather-agent",
 				BuildRuleChainSkillSignatureAnchor(BuildRuleChainSkillSignature("", "[]", "[]", "[]")),
 				"rule_chain_id: root-chain",
 				"execute_path: /api/v1/rules/root-chain/execute/CHAIN",
-				`request_body: {"metadata": {"tenant": "example"}, "data": {"input": "example"}}`,
+				`request_body: {"metadata": {}, "data": {}}`,
 				"result_explanation: successful calls return a structured object",
 				"response_read: response.data.result",
 				"metadata 和 data 必须分开整理",
@@ -441,8 +470,8 @@ func TestGenerateRuleChainSkillUsesCustomSkillRootForPromptAndValidation(t *test
 	if err != nil {
 		t.Fatalf("GenerateRuleChainSkill failed: %v", err)
 	}
-	if reply.GetDirName() != "weather-agent" {
-		t.Fatalf("expected weather-agent, got %q", reply.GetDirName())
+	if reply.GetDirName() != expectedDir {
+		t.Fatalf("expected %s, got %q", expectedDir, reply.GetDirName())
 	}
 }
 
@@ -509,19 +538,25 @@ func TestExecuteRuleChainSyncCarriesMetadataIntoRuleMsg(t *testing.T) {
 
 func TestGenerateRuleChainSkillRejectsMissingResultExplanationAnchor(t *testing.T) {
 	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
 	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
 	uc := newTestRuleChainUsecase(repo, root, fakeSkillAgentRunner{
 		run: func(ctx context.Context, req HarnessRequest) (string, error) {
-			targetDir := filepath.Join(root, "weather-agent")
+			targetDir := filepath.Join(root, expectedDir)
 			if err := os.MkdirAll(targetDir, 0o755); err != nil {
 				return "", err
 			}
 			content := strings.Join([]string{
+				"---",
+				"name: weather-agent",
+				"description: weather skill",
+				"---",
+				"",
 				"# weather-agent",
 				BuildRuleChainSkillSignatureAnchor(BuildRuleChainSkillSignature("", "[]", "[]", "[]")),
 				"rule_chain_id: root-chain",
 				"execute_path: /api/v1/rules/root-chain/execute/CHAIN",
-				`request_body: {"metadata": {"tenant": "example"}, "data": {"input": "example"}}`,
+				`request_body: {"metadata": {}, "data": {}}`,
 				"response_read: response.data.result",
 				"metadata 和 data 必须分开整理",
 			}, "\n")
@@ -543,19 +578,25 @@ func TestGenerateRuleChainSkillRejectsMissingResultExplanationAnchor(t *testing.
 
 func TestGenerateRuleChainSkillRejectsMissingResponseReadAnchor(t *testing.T) {
 	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
 	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
 	uc := newTestRuleChainUsecase(repo, root, fakeSkillAgentRunner{
 		run: func(ctx context.Context, req HarnessRequest) (string, error) {
-			targetDir := filepath.Join(root, "weather-agent")
+			targetDir := filepath.Join(root, expectedDir)
 			if err := os.MkdirAll(targetDir, 0o755); err != nil {
 				return "", err
 			}
 			content := strings.Join([]string{
+				"---",
+				"name: weather-agent",
+				"description: weather skill",
+				"---",
+				"",
 				"# weather-agent",
 				BuildRuleChainSkillSignatureAnchor(BuildRuleChainSkillSignature("", "[]", "[]", "[]")),
 				"rule_chain_id: root-chain",
 				"execute_path: /api/v1/rules/root-chain/execute/CHAIN",
-				`request_body: {"metadata": {"tenant": "example"}, "data": {"input": "example"}}`,
+				`request_body: {"metadata": {}, "data": {}}`,
 				"result_explanation: successful calls return a structured object",
 				"metadata 和 data 必须分开整理",
 			}, "\n")
@@ -575,6 +616,42 @@ func TestGenerateRuleChainSkillRejectsMissingResponseReadAnchor(t *testing.T) {
 	}
 }
 
+func TestGenerateRuleChainSkillRejectsMissingFrontmatter(t *testing.T) {
+	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
+	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
+	uc := newTestRuleChainUsecase(repo, root, fakeSkillAgentRunner{
+		run: func(ctx context.Context, req HarnessRequest) (string, error) {
+			targetDir := filepath.Join(root, expectedDir)
+			if err := os.MkdirAll(targetDir, 0o755); err != nil {
+				return "", err
+			}
+			content := strings.Join([]string{
+				"# weather-agent",
+				BuildRuleChainSkillSignatureAnchor(BuildRuleChainSkillSignature("", "[]", "[]", "[]")),
+				"rule_chain_id: root-chain",
+				"execute_path: /api/v1/rules/root-chain/execute/CHAIN",
+				`request_body: {"metadata": {}, "data": {}}`,
+				"result_explanation: successful calls return a structured object",
+				"response_read: response.data.result",
+				"metadata 和 data 必须分开整理",
+			}, "\n")
+			return `{"ok":true}`, os.WriteFile(filepath.Join(targetDir, "SKILL.md"), []byte(content), 0o644)
+		},
+	})
+
+	_, err := uc.GenerateRuleChainSkill(context.Background(), &v1.GenerateRuleChainSkillReq{
+		Id:             "root-chain",
+		ManagedAgentId: 101,
+	})
+	if err == nil {
+		t.Fatal("expected frontmatter validation error")
+	}
+	if !strings.Contains(err.Error(), "frontmatter") {
+		t.Fatalf("expected frontmatter error, got %v", err)
+	}
+}
+
 func TestGenerateRuleChainSkillFailureKeepsOldGeneratedSignature(t *testing.T) {
 	root := t.TempDir()
 	oldDescription := "旧描述"
@@ -588,6 +665,11 @@ func TestGenerateRuleChainSkillFailureKeepsOldGeneratedSignature(t *testing.T) {
 		t.Fatalf("MkdirAll failed: %v", err)
 	}
 	oldContent := strings.Join([]string{
+		"---",
+		"name: weather-agent",
+		"description: weather skill",
+		"---",
+		"",
 		"# weather-agent",
 		BuildRuleChainSkillSignatureAnchor(oldSignature),
 		"rule_chain_id: root-chain",
@@ -679,6 +761,50 @@ func TestGenerateRuleChainSkillRejectsChildRuleChain(t *testing.T) {
 	}
 }
 
+func TestGenerateRuleChainSkillFallsBackToHarnessOutputMarkdown(t *testing.T) {
+	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
+	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
+	uc := newTestRuleChainUsecase(repo, root, fakeSkillAgentRunner{
+		run: func(ctx context.Context, req HarnessRequest) (string, error) {
+			content := strings.Join([]string{
+				"---",
+				"name: weather-agent",
+				"description: weather skill",
+				"---",
+				"",
+				"# weather-agent",
+				BuildRuleChainSkillSignatureAnchor(BuildRuleChainSkillSignature("", "[]", "[]", "[]")),
+				"rule_chain_id: root-chain",
+				"execute_path: /api/v1/rules/root-chain/execute/CHAIN",
+				`request_body: {"metadata": {}, "data": {}}`,
+				"result_explanation: successful calls return a structured object",
+				"response_read: response.data.result",
+				"metadata 和 data 必须分开整理",
+			}, "\n")
+			return "<generated_skill_markdown>\n" + content + "\n</generated_skill_markdown>", nil
+		},
+	})
+
+	reply, err := uc.GenerateRuleChainSkill(context.Background(), &v1.GenerateRuleChainSkillReq{
+		Id:             "root-chain",
+		ManagedAgentId: 101,
+	})
+	if err != nil {
+		t.Fatalf("expected fallback write from harness output, got %v", err)
+	}
+	if reply.GetStatus() != string(RuleChainSkillStatusReady) {
+		t.Fatalf("expected ready, got %q", reply.GetStatus())
+	}
+	saved, err := os.ReadFile(filepath.Join(root, expectedDir, "SKILL.md"))
+	if err != nil {
+		t.Fatalf("expected fallback SKILL.md written, got %v", err)
+	}
+	if !strings.Contains(string(saved), "rule_chain_id: root-chain") {
+		t.Fatalf("expected saved fallback content to include anchors, got %q", string(saved))
+	}
+}
+
 func TestGenerateRuleChainSkillFailsWhenSkillFileMissing(t *testing.T) {
 	root := t.TempDir()
 	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
@@ -702,14 +828,24 @@ func TestGenerateRuleChainSkillFailsWhenSkillFileMissing(t *testing.T) {
 
 func TestGenerateRuleChainSkillFailsWhenGeneratedContentMissesAnchors(t *testing.T) {
 	root := t.TempDir()
+	expectedDir := BuildRuleChainSkillConflictDirName("weather-agent", "root-chain")
 	repo := newFakeRuleChainRepo(withRuleChain("root-chain", true, "weather-agent", map[string]interface{}{}))
 	uc := newTestRuleChainUsecase(repo, root, fakeSkillAgentRunner{
 		run: func(ctx context.Context, req HarnessRequest) (string, error) {
-			targetDir := filepath.Join(root, "weather-agent")
+			targetDir := filepath.Join(root, expectedDir)
 			if err := os.MkdirAll(targetDir, 0o755); err != nil {
 				return "", err
 			}
-			if err := os.WriteFile(filepath.Join(targetDir, "SKILL.md"), []byte("# generic skill\njust do something"), 0o644); err != nil {
+			content := strings.Join([]string{
+				"---",
+				"name: weather-agent",
+				"description: generic skill",
+				"---",
+				"",
+				"# generic skill",
+				"just do something",
+			}, "\n")
+			if err := os.WriteFile(filepath.Join(targetDir, "SKILL.md"), []byte(content), 0o644); err != nil {
 				return "", err
 			}
 			return `{"ok":true}`, nil
@@ -1016,9 +1152,9 @@ func TestDeleteRuleChainSucceedsWhenRecycleCleanupFailsAfterDBDelete(t *testing.
 			},
 		},
 	))
-	recycleRoot := filepath.Join(filepath.Dir(root), ".deleted-rulechain-skills")
-	if strings.HasPrefix(recycleRoot, root+string(filepath.Separator)) || recycleRoot == root {
-		t.Fatalf("expected recycle root outside skillRoot, recycleRoot=%q skillRoot=%q", recycleRoot, root)
+	recycleRoot := filepath.Join(root, ".deleted-rulechain-skills")
+	if !strings.HasPrefix(recycleRoot, root+string(filepath.Separator)) {
+		t.Fatalf("expected recycle root inside skillRoot, recycleRoot=%q skillRoot=%q", recycleRoot, root)
 	}
 	repo.deleteHook = func() error {
 		if err := os.Chmod(recycleRoot, 0o500); err != nil {

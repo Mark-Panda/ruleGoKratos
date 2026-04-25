@@ -48,3 +48,4 @@ deploy/docker-cursor-overlay/.cursor/*
 .superpowers/**/state/
 code_workspace/
 mcp
+flowData/

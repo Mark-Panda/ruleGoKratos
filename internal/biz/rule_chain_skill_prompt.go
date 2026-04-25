@@ -21,7 +21,9 @@ func BuildRuleChainSkillGenerationPrompt(in RuleChainSkillPromptInput) string {
 	b.WriteString("2. `run_skill` 的 `skill_name` 固定为 `skill-creator-0.1.0`。\n")
 	b.WriteString(fmt.Sprintf("3. 输出文件固定为 `%s`，不得写入其他路径，也不得改文件名。\n", outputFile))
 	b.WriteString("4. 生成的 Skill 面向 Agent，不要写面向终端用户、浏览器用户或人工操作员的使用说明。\n")
-	b.WriteString("5. 生成内容必须是可执行的 SKILL.md，重点说明：任务目标、输入契约、输出契约、约束、失败处理、判定结果。\n\n")
+	b.WriteString("5. 生成内容必须是可执行的 SKILL.md，重点说明：任务目标、输入契约、输出契约、约束、失败处理、判定结果。\n")
+	b.WriteString("6. SKILL.md 必须采用现有技能格式：文件开头使用 YAML frontmatter（以 `---` 包裹），且至少包含非空 `name:` 与 `description:` 字段。\n\n")
+	b.WriteString("7. 最终回复必须包含 `<generated_skill_markdown>` 与 `</generated_skill_markdown>` 包裹的完整 SKILL.md 正文（仅一段）。\n\n")
 
 	b.WriteString("规则链上下文：\n")
 	b.WriteString(fmt.Sprintf("- rule_chain_id: %s\n", strings.TrimSpace(in.RuleChainID)))
@@ -38,7 +40,9 @@ func BuildRuleChainSkillGenerationPrompt(in RuleChainSkillPromptInput) string {
 	b.WriteString(fmt.Sprintf("- 返回读取方式：%s\n\n", responseReadHint))
 
 	b.WriteString("你写入的 Skill 必须明确包含以下内容：\n")
+	b.WriteString("- 文件格式：遵循标准 Skill 结构，先写 YAML frontmatter（含 name/description），再写 Markdown 正文。\n")
 	b.WriteString("- metadata/data 整理规则：请求的 metadata 与 data 要分开描述；metadata 表示上下文与控制信息，data 表示主业务输入；若字段缺失，Skill 要说明如何保守降级。\n")
+	b.WriteString("- 入参真实性约束：仅允许使用 request_metadata_params / request_message_body_params 中明确声明的字段；未声明字段或类型时，必须使用空对象或显式标注未知，禁止臆造参数名、参数格式或示例值。\n")
 	b.WriteString("- 同步执行接口：说明调用方会通过同步 Harness 执行该 Skill，期望一次完成，不依赖异步轮询，也不要假设后续人工补救步骤。\n")
 	b.WriteString("- 结果解释：成功时应该产出什么结构、如何判断结果可用；失败时如何返回可读错误，避免伪造成功。\n")
 	b.WriteString("- 失败兜底：当 metadata/data 缺字段、规则链描述不足、输出结构不稳定时，要优先给出安全、明确、可恢复的失败结果，而不是编造答案。\n\n")
@@ -52,7 +56,8 @@ func BuildRuleChainSkillGenerationPrompt(in RuleChainSkillPromptInput) string {
 	b.WriteString("1. 先根据上述规则链信息构造 Skill 内容。\n")
 	b.WriteString("2. 调用 `run_skill`，让 `skill-creator-0.1.0` 把最终内容写入指定文件。\n")
 	b.WriteString("3. 如果工具返回失败、或你无法保证写入内容满足约束，请直接返回失败原因，不要声称成功。\n")
-	b.WriteString("4. 如果工具成功，请简短说明已生成 Skill，并指出目标文件路径。\n")
+	b.WriteString("4. 不论工具是否已落盘，最终回复都要输出 `<generated_skill_markdown>...</generated_skill_markdown>`，内容必须与目标文件内容一致。\n")
+	b.WriteString("5. 如果工具成功，请简短说明已生成 Skill，并指出目标文件路径。\n")
 
 	return b.String()
 }

@@ -145,3 +145,34 @@ func TestFileSkillExecutorNamespaceAndAllowList(t *testing.T) {
 		t.Fatalf("expected allowlist denial, got: %v", err)
 	}
 }
+
+func TestFileSkillExecutorProvidesPackageAliasForSkillMarkdown(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "skill-creator-0.1.0"), 0o755); err != nil {
+		t.Fatalf("mkdir skill package failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "skill-creator-0.1.0", "SKILL.md"), []byte("creator: {{payload}}"), 0o644); err != nil {
+		t.Fatalf("write SKILL.md failed: %v", err)
+	}
+
+	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
+	if err != nil {
+		t.Fatalf("NewFileSkillExecutor failed: %v", err)
+	}
+
+	byAlias, err := exec.Execute(context.Background(), "skill-creator-0.1.0", "demo")
+	if err != nil {
+		t.Fatalf("expected package alias executable, got err=%v", err)
+	}
+	if byAlias != "creator: demo" {
+		t.Fatalf("unexpected alias output: %q", byAlias)
+	}
+
+	byFileName, err := exec.Execute(context.Background(), "skill-creator-0.1.0/SKILL", "demo")
+	if err != nil {
+		t.Fatalf("expected file key executable, got err=%v", err)
+	}
+	if byFileName != "creator: demo" {
+		t.Fatalf("unexpected file key output: %q", byFileName)
+	}
+}

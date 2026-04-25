@@ -7,6 +7,32 @@ import (
 	"strings"
 )
 
+func mergeAllowlist(base, extra []string) []string {
+	seen := make(map[string]struct{}, len(base)+len(extra))
+	out := make([]string, 0, len(base)+len(extra))
+	appendIfNeeded := func(v string) {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			return
+		}
+		if _, ok := seen[v]; ok {
+			return
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	for _, v := range base {
+		appendIfNeeded(v)
+	}
+	for _, v := range extra {
+		appendIfNeeded(v)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func (uc *AgentUsecase) SetManagedAgentLoader(l ManagedAgentLoader) {
 	if l != nil {
 		uc.managedAgentLoader = l
@@ -72,26 +98,40 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 	if err != nil {
 		return req, err
 	}
-	// 子 Agent 默认继承父 Agent 的工具配置（Skill/MCP 白名单与开关）。
-	// 仅在请求侧未提供 ToolOptions 时，才由托管 Agent 配置注入默认工具集。
+	var managedSkillAllow []string
+	if len(p.SkillPackageIDs) > 0 {
+		managedSkillAllow = filtered
+	} else {
+		// 未勾选技能包时：run_skill 不做额外白名单限制。
+		managedSkillAllow = nil
+	}
+	managedEnableSkill := len(all) > 0 && (len(p.SkillPackageIDs) == 0 || len(filtered) > 0)
+	managedEnableMcp := len(mcpAllow) > 0
+
+	// ManagedAgentID>0 时，优先保障托管 Agent 的工具能力生效，同时兼容请求侧已有配置：
+	// - 开关按“或”合并，避免请求侧误关导致托管能力失效；
+	// - 白名单按并集合并，保留请求侧附加项并补齐托管侧必需项。
 	if out.ToolOptions == nil {
-		var skillAllow []string
-		if len(p.SkillPackageIDs) > 0 {
-			skillAllow = filtered
-		} else {
-			// 未勾选技能包时：run_skill 不做额外白名单限制。
-			skillAllow = nil
-		}
-		enableSkill := len(all) > 0 && (len(p.SkillPackageIDs) == 0 || len(filtered) > 0)
 		out.ToolOptions = &HarnessToolOptions{
 			EnableUUIDTool:       true,
-			EnableSkillTool:      enableSkill,
-			EnableMcpTool:        len(mcpAllow) > 0,
+			EnableSkillTool:      managedEnableSkill,
+			EnableMcpTool:        managedEnableMcp,
 			EnableWorkspaceTools: true,
 			EnableSubAgentTool:   true,
-			SkillAllowlist:       skillAllow,
+			SkillAllowlist:       managedSkillAllow,
 			McpAllowlist:         mcpAllow,
 		}
+	} else {
+		merged := cloneHarnessToolOptions(out.ToolOptions)
+		if managedEnableSkill {
+			merged.EnableSkillTool = true
+		}
+		if managedEnableMcp {
+			merged.EnableMcpTool = true
+		}
+		merged.SkillAllowlist = mergeAllowlist(merged.SkillAllowlist, managedSkillAllow)
+		merged.McpAllowlist = mergeAllowlist(merged.McpAllowlist, mcpAllow)
+		out.ToolOptions = merged
 	}
 	return out, nil
 }

@@ -281,3 +281,52 @@ func TestBuildRuleChainSyncExecutePayloadIncludesMetadata(t *testing.T) {
 		t.Fatalf("unexpected payload: %#v", payload)
 	}
 }
+
+func TestBuildRuleChainSkillRequestBodyExampleNoParamsUsesEmptyObjects(t *testing.T) {
+	got := BuildRuleChainSkillRequestBodyExample(RuleChainSkillPromptInput{
+		RequestMetadataParams: "[]",
+		RequestBodyParams:     "[]",
+	})
+	if got != `{"metadata": {}, "data": {}}` {
+		t.Fatalf("expected empty request body example, got %q", got)
+	}
+}
+
+func TestBuildRuleChainSkillRequestBodyExampleUsesDeclaredParamsOnly(t *testing.T) {
+	got := BuildRuleChainSkillRequestBodyExample(RuleChainSkillPromptInput{
+		RequestMetadataParams: `[{"name":"tenant"}]`,
+		RequestBodyParams:     `[{"name":"city"}]`,
+	})
+	want := `{"metadata": {"tenant": "cn"}, "data": {"city": "Beijing"}}`
+	if got != want {
+		t.Fatalf("expected request body example %q, got %q", want, got)
+	}
+}
+
+func TestExtractRuleChainSkillMarkdownFromHarnessOutput(t *testing.T) {
+	raw := "ok\n<generated_skill_markdown>\n---\nname: demo\ndescription: demo\n---\n# body\n</generated_skill_markdown>\nend"
+	got := ExtractRuleChainSkillMarkdownFromHarnessOutput(raw)
+	if !strings.Contains(got, "name: demo") {
+		t.Fatalf("expected markdown block extracted, got %q", got)
+	}
+}
+
+func TestNormalizeGeneratedRuleChainSkillContentBackfillsColonAnchors(t *testing.T) {
+	content := strings.Join([]string{
+		"---",
+		"name: demo",
+		"description: demo",
+		"---",
+		"### result_explanation",
+		"ok",
+		"### response_read",
+		"read response.data.result",
+	}, "\n")
+	normalized := NormalizeGeneratedRuleChainSkillContent(content, RuleChainSkillPromptInput{})
+	if !strings.Contains(normalized, "result_explanation:") {
+		t.Fatalf("expected result_explanation colon anchor, got %q", normalized)
+	}
+	if !strings.Contains(normalized, "response_read:") {
+		t.Fatalf("expected response_read colon anchor, got %q", normalized)
+	}
+}

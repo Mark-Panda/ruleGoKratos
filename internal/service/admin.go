@@ -28,9 +28,10 @@ import (
 
 type AdminService struct {
 	v1.UnimplementedAdminServer
-	log       *log.Helper
-	config    *conf.Bootstrap
-	skillRoot string
+	log               *log.Helper
+	config            *conf.Bootstrap
+	skillRoot         string
+	workflowSkillRoot string
 	// playground Agent 池服务：删除「Agent 配置」前校验是否被池内 Agent 引用
 	poolSvc *agentpool.AgentPoolService
 }
@@ -53,21 +54,31 @@ func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpo
 	if config != nil && config.Agent != nil && config.Agent.Skill != nil && strings.TrimSpace(config.Agent.Skill.Dir) != "" {
 		root = strings.TrimSpace(config.Agent.Skill.Dir)
 	}
+	workflowRoot := strings.TrimSpace(os.Getenv("WORKFLOW_SKILL_DIR"))
+	if workflowRoot == "" {
+		workflowRoot = "/workflow/skills"
+	}
 	return &AdminService{
-		log:       helper,
-		config:    config,
-		skillRoot: root,
-		poolSvc:   poolSvc,
+		log:               helper,
+		config:            config,
+		skillRoot:         root,
+		workflowSkillRoot: workflowRoot,
+		poolSvc:           poolSvc,
 	}
 }
 
 // ReadSkillFileContent 读取技能文件内容（供 HTTP 额外路由调用，非 proto 接口）。
 func (s *AdminService) ReadSkillFileContent(path string) (content string, err error) {
+	return s.ReadSkillFileContentByScope("system", path)
+}
+
+// ReadSkillFileContentByScope 按 scope 读取技能文件内容（scope: system|workflow）。
+func (s *AdminService) ReadSkillFileContentByScope(scope string, path string) (content string, err error) {
 	safe, err := sanitizeSkillFileName(path)
 	if err != nil {
 		return "", err
 	}
-	abs := filepath.Join(s.skillRoot, safe)
+	abs := filepath.Join(s.resolveSkillRootByScope(scope), safe)
 	b, readErr := os.ReadFile(abs)
 	if readErr != nil {
 		return "", readErr
@@ -77,11 +88,16 @@ func (s *AdminService) ReadSkillFileContent(path string) (content string, err er
 
 // WriteSkillFileContent 写入技能文件内容（供 HTTP 额外路由调用，非 proto 接口）。
 func (s *AdminService) WriteSkillFileContent(path string, content string) error {
+	return s.WriteSkillFileContentByScope("system", path, content)
+}
+
+// WriteSkillFileContentByScope 按 scope 写入技能文件内容（scope: system|workflow）。
+func (s *AdminService) WriteSkillFileContentByScope(scope string, path string, content string) error {
 	safe, err := sanitizeSkillFileName(path)
 	if err != nil {
 		return err
 	}
-	abs := filepath.Join(s.skillRoot, safe)
+	abs := filepath.Join(s.resolveSkillRootByScope(scope), safe)
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return err
 	}
@@ -94,7 +110,16 @@ func (s *AdminService) SkillRoot() string {
 }
 
 func (s *AdminService) ListSkills(ctx context.Context, _ *v1.ListSkillsRequest) (*v1.ListSkillsReply, error) {
-	root := s.skillRoot
+	return s.listSkillsFromRoot(s.skillRoot), nil
+}
+
+// ListSkillsByScope 按 scope 列出技能（scope: system|workflow）。
+func (s *AdminService) ListSkillsByScope(_ context.Context, scope string) (*v1.ListSkillsReply, error) {
+	root := s.resolveSkillRootByScope(scope)
+	return s.listSkillsFromRoot(root), nil
+}
+
+func (s *AdminService) listSkillsFromRoot(root string) *v1.ListSkillsReply {
 	items := make([]*v1.SkillItem, 0, 64)
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -124,11 +149,17 @@ func (s *AdminService) ListSkills(ctx context.Context, _ *v1.ListSkillsRequest) 
 		return nil
 	})
 	sort.Slice(items, func(i, j int) bool { return items[i].GetPath() < items[j].GetPath() })
-	return &v1.ListSkillsReply{Root: root, Items: items}, nil
+	return &v1.ListSkillsReply{Root: root, Items: items}
 }
 
 func (s *AdminService) UploadSkill(ctx context.Context, req *v1.UploadSkillRequest) (*v1.UploadSkillReply, error) {
-	if err := os.MkdirAll(s.skillRoot, 0o755); err != nil {
+	return s.UploadSkillByScope(ctx, req, "system")
+}
+
+// UploadSkillByScope 按 scope 上传技能 zip 并解压（scope: system|workflow）。
+func (s *AdminService) UploadSkillByScope(_ context.Context, req *v1.UploadSkillRequest, scope string) (*v1.UploadSkillReply, error) {
+	root := s.resolveSkillRootByScope(scope)
+	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err
 	}
 	name := strings.TrimSpace(req.GetPath())
@@ -150,11 +181,23 @@ func (s *AdminService) UploadSkill(ctx context.Context, req *v1.UploadSkillReque
 	if err != nil {
 		return nil, errors.New("contentBase64格式错误")
 	}
-	packagePath, err := unzipSkillArchive(s.skillRoot, safeName, content)
+	packagePath, err := unzipSkillArchive(root, safeName, content)
 	if err != nil {
 		return nil, err
 	}
 	return &v1.UploadSkillReply{Path: filepath.ToSlash(packagePath)}, nil
+}
+
+func (s *AdminService) resolveSkillRootByScope(scope string) string {
+	if strings.EqualFold(strings.TrimSpace(scope), "workflow") {
+		if root := strings.TrimSpace(s.workflowSkillRoot); root != "" {
+			return root
+		}
+	}
+	if root := strings.TrimSpace(s.skillRoot); root != "" {
+		return root
+	}
+	return "skills"
 }
 
 func (s *AdminService) ListMcpConfigs(ctx context.Context, _ *v1.ListMcpConfigsRequest) (*v1.ListMcpConfigsReply, error) {

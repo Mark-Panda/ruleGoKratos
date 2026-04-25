@@ -97,6 +97,62 @@ func absPathUnderWorkspace(rootAbs, userPath string) (string, error) {
 	return p, nil
 }
 
+func absPathUnderAnyRoot(roots []string, userPath string) (string, error) {
+	p := filepath.Clean(strings.TrimSpace(userPath))
+	for _, root := range roots {
+		root = filepath.Clean(strings.TrimSpace(root))
+		if root == "" {
+			continue
+		}
+		rel, err := filepath.Rel(root, p)
+		if err != nil {
+			continue
+		}
+		if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			continue
+		}
+		return p, nil
+	}
+	return "", errors.New("路径必须在允许写入的根目录内")
+}
+
+func (uc *AgentUsecase) writableAbsoluteRoots(ctx context.Context) []string {
+	roots := make([]string, 0, 8)
+	appendIfNeeded := func(raw string) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return
+		}
+		if !filepath.IsAbs(raw) {
+			return
+		}
+		clean := filepath.Clean(raw)
+		for _, exist := range roots {
+			if exist == clean {
+				return
+			}
+		}
+		roots = append(roots, clean)
+	}
+
+	if root, err := uc.effectiveWorkspaceRoot(ctx); err == nil {
+		appendIfNeeded(root)
+	}
+	if uc.config != nil && uc.config.Agent != nil {
+		appendIfNeeded(uc.config.Agent.GetWorkspaceRoot())
+		if uc.config.Agent.Skill != nil {
+			appendIfNeeded(uc.config.Agent.Skill.GetDir())
+			for _, dir := range ParseCommaSeparated(uc.config.Agent.Skill.GetDirs()) {
+				appendIfNeeded(dir)
+			}
+		}
+	}
+	appendIfNeeded(os.Getenv("AGENT_SKILL_DIR"))
+	appendIfNeeded(os.Getenv("WORKFLOW_SKILL_DIR"))
+	appendIfNeeded(os.Getenv("RULE_CHAIN_SKILL_DIR"))
+	return roots
+}
+
 // resolveReadablePath 解析文件/目录路径：
 //   - 相对路径 → 必须在 workspace 根目录内（禁止 ..）
 //   - 绝对路径 → 文件/目录本身存在即可（skill 目录、WORK_DIR、任意已存在路径）
@@ -194,11 +250,11 @@ func isMostlyText(b []byte) bool {
 func (uc *AgentUsecase) BuildWriteWorkspaceFileTool() (*HarnessTool, error) {
 	toolInfo := &schema.ToolInfo{
 		Name: "write_workspace_file",
-		Desc: "在 Agent workspace 内创建或覆盖文件。path 相对根目录；content 为完整文件文本。",
+		Desc: "创建或覆盖文本文件。path 可为：相对 workspace 根目录的路径；或允许写入根目录下的绝对路径（如 /app/skills/...、/workflow/skills/...）。",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"path": {
 				Type:     schema.String,
-				Desc:     "相对 workspace 的文件路径",
+				Desc:     "相对 workspace 的文件路径，或允许写入根目录下的绝对路径",
 				Required: true,
 			},
 			"content": {
@@ -226,9 +282,17 @@ func (uc *AgentUsecase) BuildWriteWorkspaceFileTool() (*HarnessTool, error) {
 			if err != nil {
 				return "", err
 			}
-			full, err := absPathUnderWorkspace(root, a.Path)
-			if err != nil {
-				return "", err
+			var full string
+			if filepath.IsAbs(strings.TrimSpace(a.Path)) {
+				full, err = absPathUnderAnyRoot(uc.writableAbsoluteRoots(ctx), a.Path)
+				if err != nil {
+					return "", err
+				}
+			} else {
+				full, err = absPathUnderWorkspace(root, a.Path)
+				if err != nil {
+					return "", err
+				}
 			}
 			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 				return "", err

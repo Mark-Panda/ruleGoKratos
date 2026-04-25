@@ -113,6 +113,47 @@ func TestWorkspaceToolsUseSessionRootFromContext(t *testing.T) {
 	}
 }
 
+func TestWorkspaceWriteAllowsWorkflowAbsolutePath(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	workflowRoot := t.TempDir()
+	t.Setenv("WORKFLOW_SKILL_DIR", workflowRoot)
+
+	uc := newTestAgentUsecase()
+	uc.config = &conf.Bootstrap{Agent: &conf.Agent{WorkspaceRoot: workspaceRoot}}
+
+	wt, err := uc.BuildWriteWorkspaceFileTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(workflowRoot, "bug", "SKILL.md")
+	if _, err := wt.Invoke(context.Background(), fmt.Sprintf(`{"path":%q,"content":"ok"}`, target)); err != nil {
+		t.Fatalf("expected absolute write under workflow root to pass, got %v", err)
+	}
+	b, err := os.ReadFile(target)
+	if err != nil || string(b) != "ok" {
+		t.Fatalf("read written workflow skill: err=%v data=%q", err, string(b))
+	}
+}
+
+func TestWorkspaceWriteRejectsAbsolutePathOutsideAllowedRoots(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	workflowRoot := t.TempDir()
+	outsideRoot := t.TempDir()
+	t.Setenv("WORKFLOW_SKILL_DIR", workflowRoot)
+
+	uc := newTestAgentUsecase()
+	uc.config = &conf.Bootstrap{Agent: &conf.Agent{WorkspaceRoot: workspaceRoot}}
+
+	wt, err := uc.BuildWriteWorkspaceFileTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(outsideRoot, "escape.txt")
+	if _, err := wt.Invoke(context.Background(), fmt.Sprintf(`{"path":%q,"content":"nope"}`, target)); err == nil {
+		t.Fatal("expected absolute write outside allowed roots to fail")
+	}
+}
+
 func TestRunSkillToolValidateArgs(t *testing.T) {
 	uc := newTestAgentUsecase()
 	tool, err := uc.BuildSkillTool()

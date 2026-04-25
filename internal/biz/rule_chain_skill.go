@@ -21,6 +21,7 @@ const maxRuleChainSkillDirNameLength = 64
 const defaultRuleChainSkillMsgType = "CHAIN"
 
 var ruleChainSkillDirNameSanitizer = regexp.MustCompile(`[^a-z0-9]+`)
+var ruleChainSkillMarkdownBlockPattern = regexp.MustCompile(`(?s)<generated_skill_markdown>\s*(.*?)\s*</generated_skill_markdown>`)
 
 var errRuleChainSkillPathEscape = errors.New("skill 文件路径越界")
 
@@ -188,6 +189,52 @@ func ReadRuleChainSkillFile(skillRoot string, dirName string, entryFile string) 
 	return trimmed, nil
 }
 
+// WriteRuleChainSkillFile 将生成内容写入规则链 Skill 文件，并确保目标目录存在。
+func WriteRuleChainSkillFile(skillRoot string, dirName string, entryFile string, content string) error {
+	dirName = normalizeRuleChainSkillDirName(dirName)
+	if dirName == "" {
+		return fmt.Errorf("skill 目录名无效")
+	}
+	entryFile = normalizeRuleChainSkillEntryFile(entryFile)
+	targetPath := filepath.Join(skillRoot, dirName, entryFile)
+	if !isWithinSkillRoot(skillRoot, targetPath) {
+		return errRuleChainSkillPathEscape
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return err
+	}
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return fmt.Errorf("%s 为空", entryFile)
+	}
+	return os.WriteFile(targetPath, []byte(trimmed+"\n"), 0o644)
+}
+
+// ExtractRuleChainSkillMarkdownFromHarnessOutput 从 harness 最终输出中提取 SKILL.md 正文。
+func ExtractRuleChainSkillMarkdownFromHarnessOutput(output string) string {
+	matches := ruleChainSkillMarkdownBlockPattern.FindStringSubmatch(output)
+	if len(matches) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(matches[1])
+}
+
+// NormalizeGeneratedRuleChainSkillContent 在不改动主体语义的前提下补齐最小验收锚点。
+func NormalizeGeneratedRuleChainSkillContent(content string, in RuleChainSkillPromptInput) string {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return ""
+	}
+	normalized := trimmed
+	if !strings.Contains(normalized, "result_explanation:") && strings.Contains(normalized, "result_explanation") {
+		normalized += "\n\nresult_explanation:\n- 参考上文 result_explanation 段落。"
+	}
+	if !strings.Contains(normalized, "response_read:") && strings.Contains(normalized, "response_read") {
+		normalized += "\n\nresponse_read: " + BuildRuleChainSkillResponseReadHint(in)
+	}
+	return normalized
+}
+
 type ruleChainSkillPendingDeletion struct {
 	originalPath string
 	stagedPath   string
@@ -269,8 +316,43 @@ func (p *ruleChainSkillPendingDeletion) Restore() error {
 	return os.Rename(p.stagedPath, p.originalPath)
 }
 
+func validateRuleChainSkillFrontmatter(content string) error {
+	lines := strings.Split(content, "\n")
+	if len(lines) < 3 || strings.TrimSpace(lines[0]) != "---" {
+		return fmt.Errorf("生成的 SKILL.md 缺少 YAML frontmatter 起始分隔符 ---")
+	}
+	end := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "---" {
+			end = i
+			break
+		}
+	}
+	if end <= 1 {
+		return fmt.Errorf("生成的 SKILL.md 缺少 YAML frontmatter 结束分隔符 ---")
+	}
+	hasName := false
+	hasDescription := false
+	for i := 1; i < end; i++ {
+		line := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(line, "name:") && strings.TrimSpace(strings.TrimPrefix(line, "name:")) != "" {
+			hasName = true
+		}
+		if strings.HasPrefix(line, "description:") && strings.TrimSpace(strings.TrimPrefix(line, "description:")) != "" {
+			hasDescription = true
+		}
+	}
+	if !hasName || !hasDescription {
+		return fmt.Errorf("生成的 SKILL.md frontmatter 必须包含非空的 name/description 字段")
+	}
+	return nil
+}
+
 // ValidateGeneratedRuleChainSkillContent 校验生成的 Skill 至少包含最小关键锚点。
 func ValidateGeneratedRuleChainSkillContent(content string, in RuleChainSkillPromptInput) error {
+	if err := validateRuleChainSkillFrontmatter(content); err != nil {
+		return err
+	}
 	missing := make([]string, 0, 4)
 	for _, anchor := range BuildRuleChainSkillAcceptanceAnchors(in) {
 		if !strings.Contains(content, anchor) {
@@ -386,9 +468,10 @@ func buildRuleChainSkillDeletionStagingName(dirName string) string {
 func buildRuleChainSkillDeletionRecycleRoot(skillRoot string) string {
 	absSkillRoot, err := filepath.Abs(skillRoot)
 	if err != nil {
-		return filepath.Join(filepath.Dir(filepath.Clean(skillRoot)), ".deleted-rulechain-skills")
+		return filepath.Join(filepath.Clean(skillRoot), ".deleted-rulechain-skills")
 	}
-	return filepath.Join(filepath.Dir(absSkillRoot), ".deleted-rulechain-skills")
+	// Keep recycle dir under skillRoot so os.Rename stays on same mount/device.
+	return filepath.Join(absSkillRoot, ".deleted-rulechain-skills")
 }
 
 func canonicalizeRuleChainSkillJSON(raw string) string {
@@ -422,11 +505,22 @@ func BuildRuleChainSkillSyncExecutePathTemplate() string {
 }
 
 func BuildRuleChainSkillRequestBodyExample(in RuleChainSkillPromptInput) string {
-	metadataKey := firstRuleChainSkillParamName(in.RequestMetadataParams, "tenant")
-	metadataValue := firstRuleChainSkillExampleValue(in.RequestMetadataParams, "metadata")
-	dataKey := firstRuleChainSkillParamName(in.RequestBodyParams, "input")
-	dataValue := firstRuleChainSkillExampleValue(in.RequestBodyParams, "data")
-	return fmt.Sprintf(`{"metadata": {"%s": "%s"}, "data": {"%s": "%s"}}`, metadataKey, metadataValue, dataKey, dataValue)
+	metadataKey := firstRuleChainSkillParamName(in.RequestMetadataParams, "")
+	dataKey := firstRuleChainSkillParamName(in.RequestBodyParams, "")
+
+	metadataPayload := "{}"
+	if metadataKey != "" {
+		metadataValue := firstRuleChainSkillExampleValue(in.RequestMetadataParams, "metadata")
+		metadataPayload = fmt.Sprintf(`{"%s": "%s"}`, metadataKey, metadataValue)
+	}
+
+	dataPayload := "{}"
+	if dataKey != "" {
+		dataValue := firstRuleChainSkillExampleValue(in.RequestBodyParams, "data")
+		dataPayload = fmt.Sprintf(`{"%s": "%s"}`, dataKey, dataValue)
+	}
+
+	return fmt.Sprintf(`{"metadata": %s, "data": %s}`, metadataPayload, dataPayload)
 }
 
 func BuildRuleChainSkillResponseReadHint(in RuleChainSkillPromptInput) string {
@@ -466,6 +560,13 @@ func BuildRuleChainSkillBaseDirName(ruleChain *types.RuleChain) string {
 		return dirName
 	}
 	return "rulechain-skill"
+}
+
+// BuildRuleChainSkillUniqueDirName 为规则链构建稳定且唯一的技能目录名。
+// 目录名始终带基于 ruleChainID 的短哈希后缀，避免不同规则链重名。
+func BuildRuleChainSkillUniqueDirName(ruleChain *types.RuleChain) string {
+	base := BuildRuleChainSkillBaseDirName(ruleChain)
+	return BuildRuleChainSkillConflictDirName(base, ruleChain.RuleChain.ID)
 }
 
 func InferRuleChainSkillMsgType(ruleChain *types.RuleChain) string {
@@ -623,7 +724,7 @@ func BuildRuleChainSkillConflictDirName(baseDir string, ruleChainID string) stri
 func effectiveRuleChainSkillRootPath(root string) string {
 	trimmed := strings.TrimSpace(root)
 	if trimmed == "" {
-		return "/app/skills"
+		return "/workflow/skills"
 	}
 	return trimmed
 }

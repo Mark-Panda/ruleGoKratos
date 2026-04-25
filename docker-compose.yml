@@ -13,11 +13,11 @@ services:
       # - ./mcp:/app/mcp
       - ./skills:/app/skills
       # 与 AGENT_SKILL_DIR 一致；部分模型会用「/agent/skills」臆测路径，额外挂载避免 node MODULE_NOT_FOUND
-      - ./skills:/agent/skills
-      # 部分模型会写成 /agents/tavily-search/...（无 skills、且 agents 复数），与上条同源目录
-      - ./skills:/agents
-      - ./agent_workspace:/app/agent_workspace
-      - ./code_workspace:/app/code_workspace
+      - ./flowData/agent/skills:/agent/skills
+      # 工作流规则链自动生成的技能目录
+      - ./flowData/workflow/skills:/workflow/skills
+      - ./flowData/agent_workspace:/app/agent_workspace
+      - ./flowData/code_workspace:/app/code_workspace
       # 自动使用宿主机 SSH（免手动同步 overlay）；只读挂载更安全
       - ${HOME}/.ssh:/root/.ssh:ro
     environment:
@@ -36,6 +36,10 @@ services:
       - DATA_POSTGRES_TIMEZONE=Asia/Shanghai
       # Agent 技能文件：主目录（对应挂载 ./skills -> /app/skills）
       - AGENT_SKILL_DIR=/app/skills
+      # 规则链创建的 SKILL 写入目录（与上面的 /workflow/skills 挂载保持一致）
+      - RULE_CHAIN_SKILL_DIR=/workflow/skills
+      # 管理后台「工作流技能」tab 读取目录
+      - WORKFLOW_SKILL_DIR=/workflow/skills
       # 额外技能目录，逗号分隔多个路径；空则仅用主目录 + 内置兜底 + $HOME/.claude|cursor/skills（容器内需自行挂载）
       - AGENT_SKILL_DIRS=
       # 技能命名空间前缀：非空时扫描到的 skill id 会带上「namespace/」前缀，避免与其它来源同名冲突

@@ -7,6 +7,7 @@ import {
   Select,
   Spin,
   Table,
+  Tabs,
   Tag,
   TextArea,
   Toast,
@@ -44,6 +45,7 @@ import {
   listSkills,
   readSkillFile,
   saveSkillFile,
+  type SkillScope,
   type SkillItem,
   testMCPConfig,
   updateMCPConfig,
@@ -110,6 +112,7 @@ const defaultEntryForm: LlmModelEntryPayload = {
 export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = ({
   view = 'skills',
 }) => {
+  const [skillScope, setSkillScope] = useState<SkillScope>('system');
   const [skillRoot, setSkillRoot] = useState('skills');
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [skillLoading, setSkillLoading] = useState(false);
@@ -147,10 +150,10 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
   const [entryConfigId, setEntryConfigId] = useState<number | null>(null);
   const [entryForm, setEntryForm] = useState<LlmModelEntryPayload>(defaultEntryForm);
 
-  const fetchSkills = async () => {
+  const fetchSkills = async (scope: SkillScope = skillScope) => {
     setSkillLoading(true);
     try {
-      const data = await listSkills();
+      const data = await listSkills(scope);
       setSkillRoot(data.root || 'skills');
       setSkills(Array.isArray(data.items) ? data.items : []);
     } catch (e) {
@@ -170,7 +173,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
     setEditContent('');
     setFileLoading(true);
     try {
-      const res = await readSkillFile(file.path);
+      const res = await readSkillFile(file.path, skillScope);
       setEditContent(res.content);
     } catch (e) {
       Toast.error({ content: `读取失败: ${String((e as Error)?.message ?? e)}` });
@@ -178,22 +181,22 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
     } finally {
       setFileLoading(false);
     }
-  }, [isDirty]);
+  }, [isDirty, skillScope]);
 
   const saveCurrentFile = useCallback(async () => {
     if (!selectedFile) return;
     setFileSaving(true);
     try {
-      await saveSkillFile(selectedFile.path, editContent);
+      await saveSkillFile(selectedFile.path, editContent, skillScope);
       Toast.success({ content: '保存成功' });
       setIsDirty(false);
-      await fetchSkills();
+      await fetchSkills(skillScope);
     } catch (e) {
       Toast.error({ content: `保存失败: ${String((e as Error)?.message ?? e)}` });
     } finally {
       setFileSaving(false);
     }
-  }, [selectedFile, editContent]);
+  }, [selectedFile, editContent, skillScope]);
 
   const togglePackage = useCallback((pkgId: string) => {
     setExpandedPkgs((prev) => {
@@ -244,10 +247,10 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
   };
 
   useEffect(() => {
-    if (view === 'skills') fetchSkills();
+    if (view === 'skills') fetchSkills(skillScope);
     if (view === 'mcps') fetchMCPs();
     if (view === 'models') fetchLlmConfigs();
-  }, [view]);
+  }, [view, skillScope]);
 
   const skillPackages = useMemo(() => groupSkillPackages(skills), [skills]);
 
@@ -263,6 +266,16 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
       });
     });
   }, [skillPackages, skillKeyword]);
+
+  const handleSkillScopeChange = useCallback((next: string) => {
+    const scope: SkillScope = next === 'workflow' ? 'workflow' : 'system';
+    setSkillScope(scope);
+    setSelectedFile(null);
+    setEditContent('');
+    setIsDirty(false);
+    setExpandedPkgs(new Set());
+    setExpandedDirs(new Set());
+  }, []);
 
   const openCreateMCP = () => {
     setMcpEditing(null);
@@ -566,20 +579,27 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {view === 'skills' && (
-        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', padding: '12px 16px', gap: 12 }}>
-          {/* 左侧文件树 */}
-          <div
-            style={{
-              width: 260,
-              flexShrink: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              border: '1px solid rgba(28,31,35,0.08)',
-              borderRadius: 8,
-              overflow: 'hidden',
-              background: '#fff',
-            }}
-          >
+        <>
+          <div style={{ padding: '12px 16px 0' }}>
+            <Tabs type="line" activeKey={skillScope} onChange={(k) => handleSkillScopeChange(String(k))}>
+              <Tabs.TabPane itemKey="system" tab="系统技能" />
+              <Tabs.TabPane itemKey="workflow" tab="工作流技能" />
+            </Tabs>
+          </div>
+          <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', padding: '8px 16px 12px', gap: 12 }}>
+            {/* 左侧文件树 */}
+            <div
+              style={{
+                width: 260,
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                border: '1px solid rgba(28,31,35,0.08)',
+                borderRadius: 8,
+                overflow: 'hidden',
+                background: '#fff',
+              }}
+            >
             {/* 文件树顶部操作栏 */}
             <div
               style={{
@@ -605,7 +625,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                   theme="borderless"
                   icon={<IconRefresh />}
                   loading={skillLoading}
-                  onClick={() => fetchSkills()}
+                  onClick={() => fetchSkills(skillScope)}
                 />
               </Tooltip>
               <input
@@ -617,9 +637,9 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                    await uploadSkill(file, file.name);
+                    await uploadSkill(file, file.name, skillScope);
                     Toast.success({ content: '上传成功' });
-                    await fetchSkills();
+                    await fetchSkills(skillScope);
                   } catch (err) {
                     Toast.error({ content: String((err as Error)?.message ?? err) });
                   } finally {
@@ -952,7 +972,8 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
               )}
             </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {view === 'mcps' && (

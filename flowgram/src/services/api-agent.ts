@@ -21,7 +21,9 @@ export interface GenerateRuleChainSkillReply {
   dirName?: string;
 }
 
-function normalizeRuleChainSkillStatusReply(raw: Record<string, unknown>): RuleChainSkillStatusReply {
+function normalizeRuleChainSkillStatusReply(
+  raw: Record<string, unknown>
+): RuleChainSkillStatusReply {
   return {
     status: String(raw.status ?? 'missing'),
     dirName:
@@ -67,6 +69,8 @@ export interface SkillItem {
   size: number;
   updatedAt: string;
 }
+
+export type SkillScope = 'system' | 'workflow';
 
 /**
  * 列表/详情接口经 normalize 后统一为 snake_case（表单用）。
@@ -167,21 +171,29 @@ export interface TestMcpConfigReply {
   protocolVersion?: string;
 }
 
-export const listSkills = () => requestJSON<{ root: string; items: SkillItem[] }>('/admin/skills');
+export const listSkills = (scope: SkillScope = 'system') =>
+  requestJSON<{ root: string; items: SkillItem[] }>(
+    `/admin/skills/list?scope=${encodeURIComponent(scope)}`
+  );
 
 /** 读取 skill 文件内容（path 为相对于 skillRoot 的路径） */
-export const readSkillFile = (path: string) =>
-  requestJSON<{ content: string; path: string }>(`/admin/skills/file?path=${encodeURIComponent(path)}`);
+export const readSkillFile = (path: string, scope: SkillScope = 'system') =>
+  requestJSON<{ content: string; path: string }>(
+    `/admin/skills/file?scope=${encodeURIComponent(scope)}&path=${encodeURIComponent(path)}`
+  );
 
 /** 保存 skill 文件内容（文本保存走独立接口，不复用 zip 上传） */
-export const saveSkillFile = (path: string, content: string): Promise<{ path: string }> => {
-  return requestJSON<{ path: string }>('/admin/skills/file', {
+export const saveSkillFile = (
+  path: string,
+  content: string,
+  scope: SkillScope = 'system'
+): Promise<{ path: string }> =>
+  requestJSON<{ path: string }>('/admin/skills/file', {
     method: 'PUT',
-    body: { path, content },
+    body: { scope, path, content },
   });
-};
 
-export const uploadSkill = async (file: File, path?: string) => {
+export const uploadSkill = async (file: File, path?: string, scope: SkillScope = 'system') => {
   const uploadPath = path || file.name;
   if (!/\.zip$/i.test(uploadPath)) {
     throw new Error('仅支持上传 .zip 技能包');
@@ -194,13 +206,16 @@ export const uploadSkill = async (file: File, path?: string) => {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
   const contentBase64 = btoa(binary);
-  return requestJSON<{ path: string }>('/admin/skills/upload', {
-    method: 'POST',
-    body: {
-      path: uploadPath,
-      contentBase64,
-    },
-  });
+  return requestJSON<{ path: string }>(
+    `/admin/skills/upload/file?scope=${encodeURIComponent(scope)}`,
+    {
+      method: 'POST',
+      body: {
+        path: uploadPath,
+        contentBase64,
+      },
+    }
+  );
 };
 
 export const listMCPConfigs = () =>
