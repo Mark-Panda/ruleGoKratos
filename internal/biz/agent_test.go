@@ -196,6 +196,36 @@ func TestCallMcpToolValidateArgs(t *testing.T) {
 	}
 }
 
+func TestCallMcpToolShouldRejectSkillIDServer(t *testing.T) {
+	helper := log.NewHelper(log.NewStdLogger(io.Discard))
+	skillDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(skillDir, "agent-browser-clawdbot-0.1.0"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "agent-browser-clawdbot-0.1.0", "SKILL.md"), []byte("# browser skill"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fe, err := NewFileSkillExecutor([]string{skillDir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
+	if err != nil {
+		t.Fatalf("NewFileSkillExecutor failed: %v", err)
+	}
+	uc := &AgentUsecase{
+		log:           helper,
+		harnessLogger: NewHarnessLogger(helper),
+		skillExecutor: fe,
+		mcpExecutor:   &fakeMcpExecutor{},
+	}
+	tool, err := uc.BuildMCPTool()
+	if err != nil {
+		t.Fatalf("BuildMCPTool failed: %v", err)
+	}
+
+	_, err = tool.Invoke(context.Background(), `{"server":"agent-browser-clawdbot-0.1.0","tool":"search"}`)
+	if err == nil || !strings.Contains(err.Error(), "run_skill") {
+		t.Fatalf("expected skill/mcp misuse error, got: %v", err)
+	}
+}
+
 type fakeSkillExecutor struct {
 	called bool
 	name   string
@@ -257,6 +287,30 @@ func TestCallMcpToolShouldInvokeExecutor(t *testing.T) {
 		t.Fatalf("tool invoke failed: %v", err)
 	}
 	if !fake.called || fake.server != "cursor" || fake.tool != "browser_tabs" {
+		t.Fatalf("mcp executor was not called correctly")
+	}
+	if output == "" {
+		t.Fatalf("unexpected empty output")
+	}
+}
+
+func TestMcpAllowlistWildcardShouldAllowServerTools(t *testing.T) {
+	uc := newTestAgentUsecase()
+	fake := &fakeMcpExecutor{}
+	uc.SetMcpExecutor(fake)
+	registry, _, err := uc.BuildToolRegistryWithOptions(&HarnessToolOptions{
+		EnableMcpTool: true,
+		McpAllowlist:  []string{"prod:*"},
+	})
+	if err != nil {
+		t.Fatalf("BuildToolRegistryWithOptions failed: %v", err)
+	}
+
+	output, err := registry["call_mcp_tool"].Invoke(context.Background(), `{"server":"prod","tool":"weather","arguments":"{}"}`)
+	if err != nil {
+		t.Fatalf("expected wildcard allowlist to pass, got: %v", err)
+	}
+	if !fake.called || fake.server != "prod" || fake.tool != "weather" {
 		t.Fatalf("mcp executor was not called correctly")
 	}
 	if output == "" {

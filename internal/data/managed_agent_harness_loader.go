@@ -160,7 +160,7 @@ func (managedAgentHarnessLoader) EnabledMcpAllowlistStrings(ctx context.Context)
 		if srv == "" {
 			continue
 		}
-		out = append(out, srv+":*")
+		out = append(out, biz.ParseMcpAllowlist(srv+":*")...)
 	}
 	return out, nil
 }

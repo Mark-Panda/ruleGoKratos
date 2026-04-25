@@ -108,11 +108,9 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 		if managedEnableSkill {
 			merged.EnableSkillTool = true
 		}
-		if managedEnableMcp {
-			merged.EnableMcpTool = true
-		}
+		merged.EnableMcpTool = managedEnableMcp
 		merged.SkillAllowlist = nil
-		merged.McpAllowlist = mergeAllowlist(merged.McpAllowlist, mcpAllow)
+		merged.McpAllowlist = append([]string(nil), mcpAllow...)
 		out.ToolOptions = merged
 	}
 	return out, nil

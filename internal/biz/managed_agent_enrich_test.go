@@ -89,7 +89,7 @@ func TestEnrichHarnessWithManagedAgentShouldMergeManagedToolOptions(t *testing.T
 	if len(out.ToolOptions.SkillAllowlist) != 0 {
 		t.Fatalf("expected managed agent to clear skill allowlist restrictions, got %v", out.ToolOptions.SkillAllowlist)
 	}
-	expectedMcpAllow := []string{"server\x00tool", "prod:*", "search:*"}
+	expectedMcpAllow := []string{"prod:*", "search:*"}
 	if !reflect.DeepEqual(out.ToolOptions.McpAllowlist, expectedMcpAllow) {
 		t.Fatalf("expected merged mcp allowlist %v, got %v", expectedMcpAllow, out.ToolOptions.McpAllowlist)
 	}
@@ -124,6 +124,38 @@ func TestEnrichHarnessWithManagedAgentShouldInjectToolsWhenMissing(t *testing.T)
 	}
 	if out.SkillCatalogFilter != nil {
 		t.Fatalf("expected managed agent to use full skill catalog, got %#v", out.SkillCatalogFilter)
+	}
+}
+
+func TestEnrichHarnessWithManagedAgentShouldDisableMcpWhenNoEnabledConfigs(t *testing.T) {
+	uc := newManagedEnrichTestUsecase(t)
+	uc.SetManagedAgentLoader(&fakeManagedAgentLoader{
+		profile: &ManagedAgentProfile{
+			Enabled:         true,
+			SystemPrompt:    "managed prompt",
+			SkillPackageIDs: []string{"pkg-a"},
+		},
+	})
+
+	out, err := uc.enrichHarnessWithManagedAgent(context.Background(), HarnessRequest{
+		ManagedAgentID: 101,
+		ToolOptions: &HarnessToolOptions{
+			EnableSkillTool: true,
+			EnableMcpTool:   true,
+			McpAllowlist:    []string{"stale:*"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("enrichHarnessWithManagedAgent failed: %v", err)
+	}
+	if out.ToolOptions == nil {
+		t.Fatal("expected tool options injected for managed agent")
+	}
+	if out.ToolOptions.EnableMcpTool {
+		t.Fatalf("expected mcp disabled when no enabled configs exist, got %#v", out.ToolOptions)
+	}
+	if len(out.ToolOptions.McpAllowlist) != 0 {
+		t.Fatalf("expected stale mcp allowlist cleared, got %v", out.ToolOptions.McpAllowlist)
 	}
 }
 

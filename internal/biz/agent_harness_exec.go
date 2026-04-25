@@ -93,12 +93,33 @@ func skillAllowSet(list []string) map[string]struct{} {
 func mcpAllowSet(keys []string) map[string]struct{} {
 	m := make(map[string]struct{})
 	for _, k := range keys {
-		k = strings.TrimSpace(k)
-		if k != "" {
-			m[k] = struct{}{}
+		normalized, ok := normalizeMcpAllowKey(k)
+		if ok {
+			m[normalized] = struct{}{}
 		}
 	}
 	return m
+}
+
+func normalizeMcpAllowKey(raw string) (string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", false
+	}
+	if strings.Contains(raw, "\x00") {
+		parts := strings.SplitN(raw, "\x00", 2)
+		server := strings.TrimSpace(parts[0])
+		tool := strings.TrimSpace(parts[1])
+		if server == "" || tool == "" {
+			return "", false
+		}
+		return mcpPairKey(server, tool), true
+	}
+	parsed := ParseMcpAllowlist(raw)
+	if len(parsed) != 1 {
+		return "", false
+	}
+	return parsed[0], true
 }
 
 // NormalizeSkillAllowlistInput 解析 DSL / 配置中的 Skill 白名单：逗号分隔字符串或字符串数组。
@@ -195,12 +216,14 @@ func (uc *AgentUsecase) wrapMcpWithAllowlist(base *HarnessTool, allow map[string
 			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 				return "", err
 			}
-			k := mcpPairKey(args.Server, args.Tool)
+			server := strings.TrimSpace(args.Server)
+			tool := strings.TrimSpace(args.Tool)
+			k := mcpPairKey(server, tool)
 			if _, ok := allow[k]; ok {
 				return base.Invoke(ctx, rawArgs)
 			}
 			// 白名单含 server:* 时放行该 server 下任意 tool
-			if _, ok := allow[mcpPairKey(strings.TrimSpace(args.Server), "*")]; ok {
+			if _, ok := allow[mcpPairKey(server, "*")]; ok {
 				return base.Invoke(ctx, rawArgs)
 			}
 			return "", fmt.Errorf("MCP server:tool 不在白名单: %s:%s", args.Server, args.Tool)

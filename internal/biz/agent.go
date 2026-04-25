@@ -914,12 +914,34 @@ func (uc *AgentUsecase) BuildMCPTool() (*HarnessTool, error) {
 			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 				return "", err
 			}
-			if strings.TrimSpace(args.Server) == "" || strings.TrimSpace(args.Tool) == "" {
+			server := strings.TrimSpace(args.Server)
+			tool := strings.TrimSpace(args.Tool)
+			if server == "" || tool == "" {
 				return "", errors.New("server 和 tool 不能为空")
 			}
-			return uc.mcpExecutor.Call(ctx, args.Server, args.Tool, args.Arguments)
+			if uc.hasAvailableSkill(server) {
+				return "", fmt.Errorf("server=%q 是 Skill id，请使用 run_skill 调用该技能；call_mcp_tool 只能调用 MCP 配置中的 server", server)
+			}
+			return uc.mcpExecutor.Call(ctx, server, tool, args.Arguments)
 		},
 	}, nil
+}
+
+func (uc *AgentUsecase) hasAvailableSkill(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return false
+	}
+	fe, ok := uc.skillExecutor.(*FileSkillExecutor)
+	if !ok {
+		return false
+	}
+	for _, skillName := range fe.ListAvailableSkillNames() {
+		if skillName == name || skillName == name+"/SKILL" {
+			return true
+		}
+	}
+	return false
 }
 
 func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
