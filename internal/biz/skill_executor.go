@@ -36,30 +36,44 @@ type FileSkillExecutorOptions struct {
 	ScanIntervalMSSet bool
 }
 
-// defaultSkillDirs 组装技能目录来源：配置优先，内置目录兜底；末尾追加用户主目录下全局技能路径（skills CLI 实体多在 ~/.agents/skills）。
+// defaultSkillDirs 组装服务内允许的技能目录，顺序即同名技能优先级：系统 > Agent > 工作流。
 func defaultSkillDirs(dir string, dirsCSV string) []string {
-	dirs := make([]string, 0, 8)
-	if v := strings.TrimSpace(dir); v != "" {
-		dirs = append(dirs, v)
-	}
-	if vs := strings.TrimSpace(dirsCSV); vs != "" {
-		parts := strings.Split(vs, ",")
-		for _, p := range parts {
-			if item := strings.TrimSpace(p); item != "" {
-				dirs = append(dirs, item)
+	dirs := make([]string, 0, 3)
+	appendIfNeeded := func(raw string) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return
+		}
+		for _, existing := range dirs {
+			if existing == raw {
+				return
 			}
 		}
+		dirs = append(dirs, raw)
 	}
-	// 兜底目录：本地默认读取仓库 skills/，容器默认读取 /app/skills。
-	dirs = append(dirs, "skills", "/app/skills", "internal/biz/skills")
-	if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
-		// skills add -g 默认写入 ~/.agents/skills；~/.claude 等常为指向该处的 symlink，WalkDir 不进入目录级 symlink
-		dirs = append(dirs,
-			filepath.Join(home, ".agents", "skills"),
-			filepath.Join(home, ".claude", "skills"),
-			filepath.Join(home, ".cursor", "skills"),
-		)
+
+	appDir := strings.TrimSpace(os.Getenv("APP_SKILL_DIR"))
+	if appDir == "" {
+		appDir = "/app/skills"
 	}
+	agentDir := strings.TrimSpace(dir)
+	if agentDir == "" {
+		agentDir = strings.TrimSpace(os.Getenv("AGENT_SKILL_DIR"))
+	}
+	if agentDir == "" {
+		agentDir = "/agent/skills"
+	}
+	workflowDir := strings.TrimSpace(os.Getenv("WORKFLOW_SKILL_DIR"))
+	if workflowDir == "" {
+		workflowDir = strings.TrimSpace(os.Getenv("RULE_CHAIN_SKILL_DIR"))
+	}
+	if workflowDir == "" {
+		workflowDir = "/workflow/skills"
+	}
+	_ = dirsCSV // 历史额外目录不再参与服务 SKILL 扫描，避免越过三类固定目录边界。
+	appendIfNeeded(appDir)
+	appendIfNeeded(agentDir)
+	appendIfNeeded(workflowDir)
 	return dirs
 }
 
@@ -105,6 +119,9 @@ func loadSkills(dirs []string, namespace string) (map[string]string, string, err
 			return
 		}
 		fingerprintParts = append(fingerprintParts, fmt.Sprintf("%s:%d:%d", name, info.ModTime().UnixNano(), info.Size()))
+		if _, exists := skills[name]; exists {
+			return
+		}
 		skills[name] = content
 	}
 	for _, dir := range dirs {

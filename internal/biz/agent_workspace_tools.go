@@ -140,16 +140,12 @@ func (uc *AgentUsecase) writableAbsoluteRoots(ctx context.Context) []string {
 	}
 	if uc.config != nil && uc.config.Agent != nil {
 		appendIfNeeded(uc.config.Agent.GetWorkspaceRoot())
-		if uc.config.Agent.Skill != nil {
-			appendIfNeeded(uc.config.Agent.Skill.GetDir())
-			for _, dir := range ParseCommaSeparated(uc.config.Agent.Skill.GetDirs()) {
-				appendIfNeeded(dir)
-			}
-		}
 	}
-	appendIfNeeded(os.Getenv("AGENT_SKILL_DIR"))
-	appendIfNeeded(os.Getenv("WORKFLOW_SKILL_DIR"))
-	appendIfNeeded(os.Getenv("RULE_CHAIN_SKILL_DIR"))
+	agentSkillRoot := strings.TrimSpace(os.Getenv("AGENT_SKILL_DIR"))
+	if agentSkillRoot == "" {
+		agentSkillRoot = "/agent/skills"
+	}
+	appendIfNeeded(agentSkillRoot)
 	return roots
 }
 
@@ -250,7 +246,7 @@ func isMostlyText(b []byte) bool {
 func (uc *AgentUsecase) BuildWriteWorkspaceFileTool() (*HarnessTool, error) {
 	toolInfo := &schema.ToolInfo{
 		Name: "write_workspace_file",
-		Desc: "创建或覆盖文本文件。path 可为：相对 workspace 根目录的路径；或允许写入根目录下的绝对路径（如 /app/skills/...、/workflow/skills/...）。",
+		Desc: "创建或覆盖文本文件。path 可为：相对 workspace 根目录的路径；或允许写入根目录下的绝对路径（如 /agent/skills/...）。",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"path": {
 				Type:     schema.String,

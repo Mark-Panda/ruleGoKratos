@@ -29,6 +29,52 @@ func TestFileSkillExecutorLoadAndExecute(t *testing.T) {
 	}
 }
 
+func TestFileSkillExecutorKeepsFirstDuplicateSkillName(t *testing.T) {
+	appDir := t.TempDir()
+	agentDir := t.TempDir()
+	workflowDir := t.TempDir()
+	for _, item := range []struct {
+		dir     string
+		content string
+	}{
+		{workflowDir, "workflow"},
+		{agentDir, "agent"},
+		{appDir, "app"},
+	} {
+		if err := os.WriteFile(filepath.Join(item.dir, "shared.md"), []byte(item.content), 0o644); err != nil {
+			t.Fatalf("write duplicate skill: %v", err)
+		}
+	}
+
+	exec, err := NewFileSkillExecutor([]string{appDir, agentDir, workflowDir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
+	if err != nil {
+		t.Fatalf("NewFileSkillExecutor failed: %v", err)
+	}
+	output, err := exec.Execute(context.Background(), "shared", "")
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+	if output != "app" {
+		t.Fatalf("expected first directory duplicate to win, got %q", output)
+	}
+}
+
+func TestDefaultSkillDirsUsesServiceRootsInPriorityOrder(t *testing.T) {
+	t.Setenv("APP_SKILL_DIR", "/custom/app")
+	t.Setenv("WORKFLOW_SKILL_DIR", "/custom/workflow")
+
+	got := defaultSkillDirs("/custom/agent", "/ignored/extra")
+	want := []string{"/custom/app", "/custom/agent", "/custom/workflow"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("expected %v, got %v", want, got)
+		}
+	}
+}
+
 func TestFileSkillExecutorNotFound(t *testing.T) {
 	dir := t.TempDir()
 	err := os.WriteFile(filepath.Join(dir, "a.md"), []byte("content"), 0o644)

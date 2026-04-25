@@ -33,12 +33,11 @@ func init() {
 type AgentHarnessLLM struct {
 	Config AgentHarnessLLMConfig
 
-	modelTpl   str.Template
-	systemTpl  str.Template
-	userTpl    str.Template
-	hasVar     bool
-	skillAllow []string // 从 configuration 解析（支持 string 或 JSON 数组）
-	mcpAllow   []string // 同上；元素为 ParseMcpAllowlist 可识别的 server:tool 或 server:*
+	modelTpl  str.Template
+	systemTpl str.Template
+	userTpl   str.Template
+	hasVar    bool
+	mcpAllow  []string // 从 configuration 解析；元素为 ParseMcpAllowlist 可识别的 server:tool 或 server:*
 }
 
 // AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）；白名单见 skillAllow / mcpAllow。
@@ -89,7 +88,6 @@ func (x *AgentHarnessLLM) Init(_ types.Config, configuration types.Configuration
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	x.skillAllow = biz.NormalizeSkillAllowlistInput(raw["skillAllowlist"])
 	x.mcpAllow = biz.NormalizeMcpAllowlistInput(raw["mcpAllowlist"])
 	delete(raw, "skillAllowlist")
 	delete(raw, "mcpAllowlist")
@@ -148,7 +146,6 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		EnableMcpTool:        x.Config.EnableMcpTool,
 		EnableWorkspaceTools: true, // Agent-LLM 节点固定开启，不允许关闭
 		EnableSubAgentTool:   x.Config.EnableSubAgentTool,
-		SkillAllowlist:       x.skillAllow,
 		McpAllowlist:         x.mcpAllow,
 	}
 

@@ -9,16 +9,13 @@ import { Field, FormMeta, FormRenderProps } from '@flowgram.ai/free-layout-edito
 import { Checkbox, Divider, Select, Spin, Typography } from '@douyinfe/semi-ui';
 
 import { defaultFormMeta } from '../default-form-meta';
-import { groupSkillPackages } from '../../utils/skill-packages';
 import { FlowNodeJSON } from '../../typings';
 import { listWorkspaces, type WorkspaceItem } from '../../services/api-workspaces';
 import {
   listLlmConfigs,
   listMCPConfigs,
-  listSkills,
   type LlmConfigItem,
   type MCPConfigItem,
-  type SkillItem,
 } from '../../services/api-agent';
 import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 import type { FormInputsProps } from '../../form-components';
@@ -118,26 +115,6 @@ function toggleString(list: string[], token: string, on: boolean): string[] {
     set.delete(token);
   }
   return Array.from(set);
-}
-
-function packageAllowlistState(selected: string[], keys: string[]): 'all' | 'none' | 'some' {
-  let hit = 0;
-  for (const k of keys) {
-    if (selected.includes(k)) hit += 1;
-  }
-  if (hit === 0) return 'none';
-  if (hit === keys.length) return 'all';
-  return 'some';
-}
-
-function setAllowlistForPackageKeys(selected: string[], keys: string[], on: boolean): string[] {
-  const set = new Set(selected);
-  if (on) {
-    for (const k of keys) set.add(k);
-  } else {
-    for (const k of keys) set.delete(k);
-  }
-  return Array.from(set).sort();
 }
 
 function AgentHarnessManagedModelPick() {
@@ -358,23 +335,18 @@ function AgentHarnessWorkspacePick() {
 }
 
 function AgentHarnessToolAllowlists() {
-  const [skills, setSkills] = useState<SkillItem[]>([]);
   const [mcps, setMcps] = useState<MCPConfigItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const skillPackages = useMemo(() => groupSkillPackages(skills), [skills]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [sk, mcpRows] = await Promise.all([listSkills(), listMCPConfigs()]);
+        const mcpRows = await listMCPConfigs();
         if (cancelled) return;
-        setSkills(Array.isArray(sk.items) ? sk.items : []);
         setMcps(Array.isArray(mcpRows) ? mcpRows : []);
       } catch {
         if (!cancelled) {
-          setSkills([]);
           setMcps([]);
         }
       } finally {
@@ -389,74 +361,16 @@ function AgentHarnessToolAllowlists() {
   return (
     <div style={{ marginTop: 8, marginBottom: 8 }}>
       <Typography.Text strong style={{ display: 'block', marginBottom: 6 }}>
-        Skill / MCP 白名单（勾选生效）
+        MCP 白名单（勾选生效）
       </Typography.Text>
       <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 10 }}>
-        Skill 按「套装」勾选（同一目录下多个技能文件会一并加入白名单）；不勾选任何项表示不限制。MCP
+        Skill 默认可使用系统、Agent、工作流三个目录下的全部技能，无需在节点里勾选。MCP
         每项对应「该 server 下全部工具」（server:*）。
       </Typography.Paragraph>
       {loading ? (
         <Spin size="small" />
       ) : (
         <>
-          <Field name="inputsValues.enableSkillTool">
-            {({ field: en }) => {
-              const skillOn = flowBool(en.value);
-              return (
-                <div style={{ marginBottom: 12 }}>
-                  <Typography.Text
-                    type="secondary"
-                    size="small"
-                    style={{ display: 'block', marginBottom: 6 }}
-                  >
-                    Skill（需开启「启用 run_skill」）
-                  </Typography.Text>
-                  {!skillOn ? (
-                    <Typography.Text type="warning" size="small">
-                      当前已关闭 Skill 工具，勾选不会生效。
-                    </Typography.Text>
-                  ) : skillPackages.length === 0 ? (
-                    <Typography.Text type="tertiary" size="small">
-                      暂无已注册 Skill，请在后端管理页上传。
-                    </Typography.Text>
-                  ) : (
-                    <Field name="inputsValues.skillAllowlist">
-                      {({ field }) => {
-                        const selected = flowStringList(field.value);
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {skillPackages.map((pkg) => {
-                              const st = packageAllowlistState(selected, pkg.keys);
-                              const checked = st === 'all';
-                              const indeterminate = st === 'some';
-                              return (
-                                <Checkbox
-                                  key={pkg.id}
-                                  checked={checked}
-                                  indeterminate={indeterminate}
-                                  disabled={!skillOn}
-                                  onChange={(e) => {
-                                    const on = !!(e.target.checked ?? false);
-                                    field.onChange({
-                                      type: 'constant',
-                                      content: setAllowlistForPackageKeys(selected, pkg.keys, on),
-                                    } as any);
-                                  }}
-                                >
-                                  {pkg.id}
-                                </Checkbox>
-                              );
-                            })}
-                          </div>
-                        );
-                      }}
-                    </Field>
-                  )}
-                </div>
-              );
-            }}
-          </Field>
-
           <Field name="inputsValues.enableMcpTool">
             {({ field: en }) => {
               const mcpOn = flowBool(en.value);

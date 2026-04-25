@@ -34,13 +34,15 @@ services:
       - DATA_POSTGRES_DBNAME=rulego
       - DATA_POSTGRES_SSLMODE=disable
       - DATA_POSTGRES_TIMEZONE=Asia/Shanghai
-      # Agent 技能文件：主目录（对应挂载 ./skills -> /app/skills）
-      - AGENT_SKILL_DIR=/app/skills
+      # 系统技能文件：管理后台「系统技能」tab（对应挂载 ./skills -> /app/skills）
+      - APP_SKILL_DIR=/app/skills
+      # Agent 创建的技能文件：管理后台「Agent技能」tab
+      - AGENT_SKILL_DIR=/agent/skills
       # 规则链创建的 SKILL 写入目录（与上面的 /workflow/skills 挂载保持一致）
       - RULE_CHAIN_SKILL_DIR=/workflow/skills
       # 管理后台「工作流技能」tab 读取目录
       - WORKFLOW_SKILL_DIR=/workflow/skills
-      # 额外技能目录，逗号分隔多个路径；空则仅用主目录 + 内置兜底 + $HOME/.claude|cursor/skills（容器内需自行挂载）
+      # 历史兼容字段：服务 SKILL 扫描已固定为 /app/skills、/agent/skills、/workflow/skills
       - AGENT_SKILL_DIRS=
       # 技能命名空间前缀：非空时扫描到的 skill id 会带上「namespace/」前缀，避免与其它来源同名冲突
       - AGENT_SKILL_NAMESPACE=

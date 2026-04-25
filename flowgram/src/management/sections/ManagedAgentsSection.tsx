@@ -31,10 +31,8 @@ import {
   createManagedAgent,
   updateManagedAgent,
   deleteManagedAgent,
-  listSkillPackages,
   type ManagedAgentItem,
   type ManagedAgentPayload,
-  type SkillPackageItem,
 } from '../../services/api-managed-agents';
 import {
   listMCPConfigs,
@@ -71,11 +69,9 @@ function emptyPayload(): ManagedAgentPayload {
 export const ManagedAgentsSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ManagedAgentItem[]>([]);
-  const [skillPackages, setSkillPackages] = useState<SkillPackageItem[]>([]);
   const [mcps, setMcps] = useState<MCPConfigItem[]>([]);
   const [llmConfigs, setLlmConfigs] = useState<LlmConfigItem[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
-  const [skillPackageFilter, setSkillPackageFilter] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -85,15 +81,13 @@ export const ManagedAgentsSection: React.FC = () => {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [agents, pkgRes, mcpList, llm, ws] = await Promise.all([
+      const [agents, mcpList, llm, ws] = await Promise.all([
         listManagedAgents(),
-        listSkillPackages(),
         listMCPConfigs(),
         listLlmConfigs(),
         listWorkspaces(),
       ]);
       setRows(agents);
-      setSkillPackages(pkgRes.items || []);
       setMcps(Array.isArray(mcpList) ? mcpList : []);
       setLlmConfigs(Array.isArray(llm) ? llm : []);
       setWorkspaces(Array.isArray(ws) ? ws : []);
@@ -107,12 +101,6 @@ export const ManagedAgentsSection: React.FC = () => {
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
-
-  const filteredSkillPackages = useMemo(() => {
-    const q = skillPackageFilter.trim().toLowerCase();
-    if (!q) return skillPackages;
-    return skillPackages.filter((s) => (s.id || '').toLowerCase().includes(q));
-  }, [skillPackages, skillPackageFilter]);
 
   const enabledLlmConfigs = useMemo(() => llmConfigs.filter((c) => c.enabled), [llmConfigs]);
 
@@ -144,7 +132,6 @@ export const ManagedAgentsSection: React.FC = () => {
     setModalMode('create');
     setEditingId(null);
     setForm(emptyPayload());
-    setSkillPackageFilter('');
     setModalOpen(true);
   };
 
@@ -156,14 +143,13 @@ export const ManagedAgentsSection: React.FC = () => {
       description: r.description || '',
       systemPrompt: r.systemPrompt || '',
       workspaceId: r.workspaceId || '',
-      skillPackageIds: [...(r.skillPackageIds || [])],
+      skillPackageIds: [],
       mcpIds: normalizeMcpIdList(r.mcpIds),
       llmConfigId: r.llmConfigId,
       modelScope: r.modelScope === 'explicit' ? 'explicit' : 'all',
       modelEntryIds: [...(r.modelEntryIds || [])],
       enabled: r.enabled !== false,
     });
-    setSkillPackageFilter('');
     setModalOpen(true);
   };
 
@@ -180,6 +166,7 @@ export const ManagedAgentsSection: React.FC = () => {
       ...form,
       name: form.name.trim(),
       description: (form.description || '').trim(),
+      skillPackageIds: [],
       modelEntryIds: form.modelScope === 'explicit' ? form.modelEntryIds || [] : [],
     };
     if (
@@ -257,12 +244,6 @@ export const ManagedAgentsSection: React.FC = () => {
         const matched = workspaces.find((w) => (w.id || '').trim() === wid);
         return matched ? `${matched.name}（${matched.id}）` : wid;
       },
-    },
-    {
-      title: '技能包',
-      key: 'sk',
-      width: 88,
-      render: (_: unknown, r: ManagedAgentItem) => r.skillPackageIds?.length ?? 0,
     },
     {
       title: 'MCP',
@@ -380,38 +361,6 @@ export const ManagedAgentsSection: React.FC = () => {
           </div>
 
           <Divider margin="12px" />
-
-          <div style={{ width: '100%' }}>
-            <Text strong>技能包（SKILL）</Text>
-            <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-              按目录首层聚合；勾选某包即允许该包下全部技能文件（与 run_skill 技能名前缀一致）
-            </Text>
-            <Input
-              placeholder="筛选技能包名称..."
-              value={skillPackageFilter}
-              onChange={setSkillPackageFilter}
-              style={{ marginBottom: 8 }}
-            />
-            <div
-              style={{
-                maxHeight: 180,
-                overflow: 'auto',
-                border: '1px solid var(--semi-color-border)',
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <CheckboxGroup
-                direction="vertical"
-                value={form.skillPackageIds || []}
-                onChange={(v) => setForm((f) => ({ ...f, skillPackageIds: v as string[] }))}
-                options={filteredSkillPackages.map((s) => ({
-                  label: `${s.id}（${s.skillFileCount} 个文件）`,
-                  value: s.id,
-                }))}
-              />
-            </div>
-          </div>
 
           <div style={{ width: '100%' }}>
             <Text strong>MCP</Text>

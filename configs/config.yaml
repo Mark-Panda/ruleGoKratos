@@ -36,8 +36,8 @@ agent:
   # Agent 内置读/写文件、bash 的根目录（字符串可用环境变量覆盖）
   workspace_root: ${AGENT_WORKSPACE_ROOT:agent_workspace}
   skill:
-    # 运行时还会在末尾扫描 $HOME/.claude/skills 与 $HOME/.cursor/skills（目录不存在则跳过）
-    dir: ${AGENT_SKILL_DIR:skills}
+    # Agent 创建技能目录；运行时固定按 /app/skills、该目录、/workflow/skills 的顺序扫描服务技能
+    dir: ${AGENT_SKILL_DIR:/agent/skills}
     dirs: ${AGENT_SKILL_DIRS:}
     namespace: ${AGENT_SKILL_NAMESPACE:}
     allowlist: ${AGENT_SKILL_ALLOWLIST:}

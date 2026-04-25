@@ -268,7 +268,8 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
   }, [skillPackages, skillKeyword]);
 
   const handleSkillScopeChange = useCallback((next: string) => {
-    const scope: SkillScope = next === 'workflow' ? 'workflow' : 'system';
+    const scope: SkillScope =
+      next === 'agent' ? 'agent' : next === 'workflow' ? 'workflow' : 'system';
     setSkillScope(scope);
     setSelectedFile(null);
     setEditContent('');
@@ -583,6 +584,7 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
           <div style={{ padding: '12px 16px 0' }}>
             <Tabs type="line" activeKey={skillScope} onChange={(k) => handleSkillScopeChange(String(k))}>
               <Tabs.TabPane itemKey="system" tab="系统技能" />
+              <Tabs.TabPane itemKey="agent" tab="Agent技能" />
               <Tabs.TabPane itemKey="workflow" tab="工作流技能" />
             </Tabs>
           </div>
@@ -636,6 +638,11 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  if (skillScope !== 'system') {
+                    Toast.warning({ content: '仅系统技能允许上传技能包' });
+                    e.target.value = '';
+                    return;
+                  }
                   try {
                     await uploadSkill(file, file.name, skillScope);
                     Toast.success({ content: '上传成功' });
@@ -647,14 +654,16 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                   }
                 }}
               />
-              <Tooltip content="上传技能包(zip)">
-                <Button
-                  size="small"
-                  theme="borderless"
-                  icon={<IconUpload />}
-                  onClick={() => fileInputRef.current?.click()}
-                />
-              </Tooltip>
+              {skillScope === 'system' && (
+                <Tooltip content="上传技能包(zip)">
+                  <Button
+                    size="small"
+                    theme="borderless"
+                    icon={<IconUpload />}
+                    onClick={() => fileInputRef.current?.click()}
+                  />
+                </Tooltip>
+              )}
             </div>
 
             {/* 目录提示 */}

@@ -72,8 +72,8 @@ func TestEnrichHarnessWithManagedAgentShouldMergeManagedToolOptions(t *testing.T
 	}
 	filter := []string{"custom/skill"}
 	req := HarnessRequest{
-		ManagedAgentID:    99,
-		ToolOptions:       cloneHarnessToolOptions(parentOptions),
+		ManagedAgentID:     99,
+		ToolOptions:        cloneHarnessToolOptions(parentOptions),
 		SkillCatalogFilter: &filter,
 	}
 
@@ -87,16 +87,15 @@ func TestEnrichHarnessWithManagedAgentShouldMergeManagedToolOptions(t *testing.T
 	if !out.ToolOptions.EnableSkillTool || !out.ToolOptions.EnableMcpTool {
 		t.Fatalf("expected managed tool switches enabled after merge, got %#v", out.ToolOptions)
 	}
-	expectedSkillAllow := []string{"custom/skill", "pkg-a/SKILL"}
-	if !reflect.DeepEqual(out.ToolOptions.SkillAllowlist, expectedSkillAllow) {
-		t.Fatalf("expected merged skill allowlist %v, got %v", expectedSkillAllow, out.ToolOptions.SkillAllowlist)
+	if len(out.ToolOptions.SkillAllowlist) != 0 {
+		t.Fatalf("expected managed agent to clear skill allowlist restrictions, got %v", out.ToolOptions.SkillAllowlist)
 	}
 	expectedMcpAllow := []string{"server\x00tool", "prod:query"}
 	if !reflect.DeepEqual(out.ToolOptions.McpAllowlist, expectedMcpAllow) {
 		t.Fatalf("expected merged mcp allowlist %v, got %v", expectedMcpAllow, out.ToolOptions.McpAllowlist)
 	}
-	if out.SkillCatalogFilter == nil || !reflect.DeepEqual(*out.SkillCatalogFilter, filter) {
-		t.Fatalf("expected skill catalog filter inherited from parent, got %#v", out.SkillCatalogFilter)
+	if out.SkillCatalogFilter != nil {
+		t.Fatalf("expected managed agent to expose full skill catalog, got %#v", out.SkillCatalogFilter)
 	}
 	if out.LlmConfigID != 11 || out.LlmModelEntryID != 22 {
 		t.Fatalf("expected managed llm injected, got config=%d entry=%d", out.LlmConfigID, out.LlmModelEntryID)
@@ -125,8 +124,8 @@ func TestEnrichHarnessWithManagedAgentShouldInjectToolsWhenMissing(t *testing.T)
 	if !out.ToolOptions.EnableSkillTool || !out.ToolOptions.EnableMcpTool {
 		t.Fatalf("expected skill/mcp tool enabled, got %#v", out.ToolOptions)
 	}
-	if out.SkillCatalogFilter == nil || len(*out.SkillCatalogFilter) == 0 {
-		t.Fatalf("expected managed skill catalog filter injected, got %#v", out.SkillCatalogFilter)
+	if out.SkillCatalogFilter != nil {
+		t.Fatalf("expected managed agent to use full skill catalog, got %#v", out.SkillCatalogFilter)
 	}
 }
 
@@ -175,9 +174,7 @@ func TestEnrichHarnessWithManagedAgentShouldMergeSkillCreatorAllowlist(t *testin
 	if !out.ToolOptions.EnableSkillTool {
 		t.Fatalf("expected EnableSkillTool to be true after managed merge, got %#v", out.ToolOptions)
 	}
-	expected := []string{"custom/skill", "skill-creator-0.1.0"}
-	if !reflect.DeepEqual(out.ToolOptions.SkillAllowlist, expected) {
-		t.Fatalf("expected merged allowlist %v, got %v", expected, out.ToolOptions.SkillAllowlist)
+	if len(out.ToolOptions.SkillAllowlist) != 0 {
+		t.Fatalf("expected managed agent to clear skill allowlist restrictions, got %v", out.ToolOptions.SkillAllowlist)
 	}
 }
-

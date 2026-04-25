@@ -47,7 +47,7 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 // registerAdminExtraRoutes 注册不走 proto 生成的管理后台补充接口。
 func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 	r := s.Route("/api/v1/admin")
-	// GET /api/v1/admin/skills/list?scope=system|workflow
+	// GET /api/v1/admin/skills/list?scope=system|agent|workflow
 	r.GET("/skills/list", func(ctx http.Context) error {
 		scope := ctx.Request().URL.Query().Get("scope")
 		reply, err := admin.ListSkillsByScope(ctx, scope)
@@ -113,7 +113,7 @@ func registerAdminExtraRoutes(s *http.Server, admin *service.AdminService) {
 		_, _ = ctx.Response().Write(b)
 		return nil
 	})
-	// POST /api/v1/admin/skills/upload/file?scope=system|workflow 上传技能 zip（自定义 scope）
+	// POST /api/v1/admin/skills/upload/file?scope=system 上传系统技能 zip
 	r.POST("/skills/upload/file", func(ctx http.Context) error {
 		scope := ctx.Request().URL.Query().Get("scope")
 		var req v1.UploadSkillRequest

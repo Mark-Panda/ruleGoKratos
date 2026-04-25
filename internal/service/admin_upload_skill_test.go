@@ -101,14 +101,21 @@ func TestAdminServiceWriteSkillFileContent(t *testing.T) {
 
 func TestAdminServiceListSkillsByScope(t *testing.T) {
 	systemRoot := t.TempDir()
+	agentRoot := t.TempDir()
 	workflowRoot := t.TempDir()
-	svc := &AdminService{skillRoot: systemRoot, workflowSkillRoot: workflowRoot}
+	svc := &AdminService{skillRoot: systemRoot, agentSkillRoot: agentRoot, workflowSkillRoot: workflowRoot}
 
 	if err := os.MkdirAll(filepath.Join(systemRoot, "sys"), 0o755); err != nil {
 		t.Fatalf("mkdir system dir: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(systemRoot, "sys", "SKILL.md"), []byte("# system"), 0o644); err != nil {
 		t.Fatalf("write system skill: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(agentRoot, "agent"), 0o755); err != nil {
+		t.Fatalf("mkdir agent dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(agentRoot, "agent", "SKILL.md"), []byte("# agent"), 0o644); err != nil {
+		t.Fatalf("write agent skill: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(workflowRoot, "wf"), 0o755); err != nil {
 		t.Fatalf("mkdir workflow dir: %v", err)
@@ -128,6 +135,17 @@ func TestAdminServiceListSkillsByScope(t *testing.T) {
 		t.Fatalf("unexpected system items: %#v", sys.GetItems())
 	}
 
+	agent, err := svc.ListSkillsByScope(context.Background(), "agent")
+	if err != nil {
+		t.Fatalf("ListSkillsByScope(agent) failed: %v", err)
+	}
+	if agent.GetRoot() != agentRoot {
+		t.Fatalf("expected agent root %q, got %q", agentRoot, agent.GetRoot())
+	}
+	if len(agent.GetItems()) != 1 || agent.GetItems()[0].GetPath() != "agent/SKILL.md" {
+		t.Fatalf("unexpected agent items: %#v", agent.GetItems())
+	}
+
 	wf, err := svc.ListSkillsByScope(context.Background(), "workflow")
 	if err != nil {
 		t.Fatalf("ListSkillsByScope(workflow) failed: %v", err)
@@ -140,15 +158,42 @@ func TestAdminServiceListSkillsByScope(t *testing.T) {
 	}
 }
 
+func TestAdminServiceUploadSkillByScopeRejectsNonSystemScope(t *testing.T) {
+	svc := &AdminService{
+		skillRoot:         t.TempDir(),
+		agentSkillRoot:    t.TempDir(),
+		workflowSkillRoot: t.TempDir(),
+	}
+	contentBase64 := base64.StdEncoding.EncodeToString(buildZipArchive(t, map[string]string{
+		"SKILL.md": "name: demo",
+	}))
+
+	for _, scope := range []string{"agent", "workflow"} {
+		_, err := svc.UploadSkillByScope(context.Background(), &v1.UploadSkillRequest{
+			Path:          "demo.zip",
+			ContentBase64: contentBase64,
+		}, scope)
+		if err == nil || !strings.Contains(err.Error(), "仅系统技能允许上传") {
+			t.Fatalf("expected upload rejection for scope %q, got %v", scope, err)
+		}
+	}
+}
+
 func TestAdminServiceReadWriteSkillFileContentByScope(t *testing.T) {
 	systemRoot := t.TempDir()
+	agentRoot := t.TempDir()
 	workflowRoot := t.TempDir()
-	svc := &AdminService{skillRoot: systemRoot, workflowSkillRoot: workflowRoot}
+	svc := &AdminService{skillRoot: systemRoot, agentSkillRoot: agentRoot, workflowSkillRoot: workflowRoot}
 
 	if err := svc.WriteSkillFileContentByScope("workflow", "pkg/SKILL.md", "workflow skill"); err != nil {
 		t.Fatalf("WriteSkillFileContentByScope(workflow) failed: %v", err)
 	}
 	assertFileContent(t, filepath.Join(workflowRoot, "pkg", "SKILL.md"), "workflow skill")
+
+	if err := svc.WriteSkillFileContentByScope("agent", "pkg/SKILL.md", "agent skill"); err != nil {
+		t.Fatalf("WriteSkillFileContentByScope(agent) failed: %v", err)
+	}
+	assertFileContent(t, filepath.Join(agentRoot, "pkg", "SKILL.md"), "agent skill")
 
 	if _, err := os.Stat(filepath.Join(systemRoot, "pkg", "SKILL.md")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected no write in system root, stat err=%v", err)

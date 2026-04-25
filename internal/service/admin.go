@@ -31,6 +31,7 @@ type AdminService struct {
 	log               *log.Helper
 	config            *conf.Bootstrap
 	skillRoot         string
+	agentSkillRoot    string
 	workflowSkillRoot string
 	// playground Agent 池服务：删除「Agent 配置」前校验是否被池内 Agent 引用
 	poolSvc *agentpool.AgentPoolService
@@ -50,9 +51,13 @@ type mcpConfigPayload struct {
 
 func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpool.AgentPoolService) *AdminService {
 	helper := log.NewHelper(logger)
-	root := "skills"
-	if config != nil && config.Agent != nil && config.Agent.Skill != nil && strings.TrimSpace(config.Agent.Skill.Dir) != "" {
-		root = strings.TrimSpace(config.Agent.Skill.Dir)
+	root := strings.TrimSpace(os.Getenv("APP_SKILL_DIR"))
+	if root == "" {
+		root = "/app/skills"
+	}
+	agentRoot := strings.TrimSpace(os.Getenv("AGENT_SKILL_DIR"))
+	if agentRoot == "" {
+		agentRoot = "/agent/skills"
 	}
 	workflowRoot := strings.TrimSpace(os.Getenv("WORKFLOW_SKILL_DIR"))
 	if workflowRoot == "" {
@@ -62,6 +67,7 @@ func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpo
 		log:               helper,
 		config:            config,
 		skillRoot:         root,
+		agentSkillRoot:    agentRoot,
 		workflowSkillRoot: workflowRoot,
 		poolSvc:           poolSvc,
 	}
@@ -72,7 +78,7 @@ func (s *AdminService) ReadSkillFileContent(path string) (content string, err er
 	return s.ReadSkillFileContentByScope("system", path)
 }
 
-// ReadSkillFileContentByScope 按 scope 读取技能文件内容（scope: system|workflow）。
+// ReadSkillFileContentByScope 按 scope 读取技能文件内容（scope: system|agent|workflow）。
 func (s *AdminService) ReadSkillFileContentByScope(scope string, path string) (content string, err error) {
 	safe, err := sanitizeSkillFileName(path)
 	if err != nil {
@@ -91,7 +97,7 @@ func (s *AdminService) WriteSkillFileContent(path string, content string) error 
 	return s.WriteSkillFileContentByScope("system", path, content)
 }
 
-// WriteSkillFileContentByScope 按 scope 写入技能文件内容（scope: system|workflow）。
+// WriteSkillFileContentByScope 按 scope 写入技能文件内容（scope: system|agent|workflow）。
 func (s *AdminService) WriteSkillFileContentByScope(scope string, path string, content string) error {
 	safe, err := sanitizeSkillFileName(path)
 	if err != nil {
@@ -113,7 +119,7 @@ func (s *AdminService) ListSkills(ctx context.Context, _ *v1.ListSkillsRequest) 
 	return s.listSkillsFromRoot(s.skillRoot), nil
 }
 
-// ListSkillsByScope 按 scope 列出技能（scope: system|workflow）。
+// ListSkillsByScope 按 scope 列出技能（scope: system|agent|workflow）。
 func (s *AdminService) ListSkillsByScope(_ context.Context, scope string) (*v1.ListSkillsReply, error) {
 	root := s.resolveSkillRootByScope(scope)
 	return s.listSkillsFromRoot(root), nil
@@ -156,8 +162,11 @@ func (s *AdminService) UploadSkill(ctx context.Context, req *v1.UploadSkillReque
 	return s.UploadSkillByScope(ctx, req, "system")
 }
 
-// UploadSkillByScope 按 scope 上传技能 zip 并解压（scope: system|workflow）。
+// UploadSkillByScope 按 scope 上传技能 zip 并解压（仅 system 允许上传）。
 func (s *AdminService) UploadSkillByScope(_ context.Context, req *v1.UploadSkillRequest, scope string) (*v1.UploadSkillReply, error) {
+	if !isSystemSkillScope(scope) {
+		return nil, errors.New("仅系统技能允许上传技能包")
+	}
 	root := s.resolveSkillRootByScope(scope)
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err
@@ -189,15 +198,25 @@ func (s *AdminService) UploadSkillByScope(_ context.Context, req *v1.UploadSkill
 }
 
 func (s *AdminService) resolveSkillRootByScope(scope string) string {
-	if strings.EqualFold(strings.TrimSpace(scope), "workflow") {
+	switch strings.ToLower(strings.TrimSpace(scope)) {
+	case "workflow":
 		if root := strings.TrimSpace(s.workflowSkillRoot); root != "" {
+			return root
+		}
+	case "agent":
+		if root := strings.TrimSpace(s.agentSkillRoot); root != "" {
 			return root
 		}
 	}
 	if root := strings.TrimSpace(s.skillRoot); root != "" {
 		return root
 	}
-	return "skills"
+	return "/app/skills"
+}
+
+func isSystemSkillScope(scope string) bool {
+	scope = strings.ToLower(strings.TrimSpace(scope))
+	return scope == "" || scope == "system"
 }
 
 func (s *AdminService) ListMcpConfigs(ctx context.Context, _ *v1.ListMcpConfigsRequest) (*v1.ListMcpConfigsReply, error) {

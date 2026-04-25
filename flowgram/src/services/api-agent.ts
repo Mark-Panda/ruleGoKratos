@@ -70,7 +70,7 @@ export interface SkillItem {
   updatedAt: string;
 }
 
-export type SkillScope = 'system' | 'workflow';
+export type SkillScope = 'system' | 'agent' | 'workflow';
 
 /**
  * 列表/详情接口经 normalize 后统一为 snake_case（表单用）。

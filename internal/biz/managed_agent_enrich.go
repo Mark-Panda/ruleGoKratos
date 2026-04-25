@@ -82,35 +82,18 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 		return req, errors.New("技能执行器未就绪")
 	}
 	all := fe.ListAvailableSkillNames()
-	filtered := FilterSkillNamesByPackages(all, p.SkillPackageIDs)
-	// 子 Agent 默认继承父 Agent 的技能目录过滤；仅在未显式携带过滤条件时按托管 Agent 配置注入。
-	if out.SkillCatalogFilter == nil {
-		if len(p.SkillPackageIDs) > 0 {
-			cp := filtered
-			out.SkillCatalogFilter = &cp
-		} else {
-			// 未勾选技能包时：系统提示附全量 SKILL 目录（SkillCatalogFilter=nil）。
-			out.SkillCatalogFilter = nil
-		}
-	}
+	out.SkillCatalogFilter = nil
 
 	mcpAllow, err := uc.managedAgentLoader.McpAllowlistStrings(ctx, p.McpIDs)
 	if err != nil {
 		return req, err
 	}
-	var managedSkillAllow []string
-	if len(p.SkillPackageIDs) > 0 {
-		managedSkillAllow = filtered
-	} else {
-		// 未勾选技能包时：run_skill 不做额外白名单限制。
-		managedSkillAllow = nil
-	}
-	managedEnableSkill := len(all) > 0 && (len(p.SkillPackageIDs) == 0 || len(filtered) > 0)
+	managedEnableSkill := len(all) > 0
 	managedEnableMcp := len(mcpAllow) > 0
 
 	// ManagedAgentID>0 时，优先保障托管 Agent 的工具能力生效，同时兼容请求侧已有配置：
 	// - 开关按“或”合并，避免请求侧误关导致托管能力失效；
-	// - 白名单按并集合并，保留请求侧附加项并补齐托管侧必需项。
+	// - Skill 不再使用 Agent 级白名单，MCP 白名单仍按并集合并。
 	if out.ToolOptions == nil {
 		out.ToolOptions = &HarnessToolOptions{
 			EnableUUIDTool:       true,
@@ -118,7 +101,6 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 			EnableMcpTool:        managedEnableMcp,
 			EnableWorkspaceTools: true,
 			EnableSubAgentTool:   true,
-			SkillAllowlist:       managedSkillAllow,
 			McpAllowlist:         mcpAllow,
 		}
 	} else {
@@ -129,7 +111,7 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 		if managedEnableMcp {
 			merged.EnableMcpTool = true
 		}
-		merged.SkillAllowlist = mergeAllowlist(merged.SkillAllowlist, managedSkillAllow)
+		merged.SkillAllowlist = nil
 		merged.McpAllowlist = mergeAllowlist(merged.McpAllowlist, mcpAllow)
 		out.ToolOptions = merged
 	}
