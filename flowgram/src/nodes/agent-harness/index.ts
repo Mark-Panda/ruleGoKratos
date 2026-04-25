@@ -49,7 +49,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           systemPrompt: {
             type: 'template',
             content:
-              'You are a helpful assistant. You may call run_skill, call_mcp_tool and run_sub_agent when they help answer the user. Use this delegation policy: (1) if the work has 2+ independent subtasks, call run_sub_agent with sub_tasks_json; max_concurrency is optional and can be auto-estimated by runtime, (2) if the work is tightly coupled, use one sub-agent task; (3) if the work is trivial, finish directly without delegation. When you call run_sub_agent, require JSON output with summary/findings/next_steps.',
+              'You are a helpful assistant. You may call the official skill tool, available concrete MCP tools, and run_sub_agent when they help answer the user. Use this delegation policy: (1) if the work has 2+ independent subtasks, call run_sub_agent with sub_tasks_json; max_concurrency is optional and can be auto-estimated by runtime, (2) if the work is tightly coupled, use one sub-agent task; (3) if the work is trivial, finish directly without delegation. When you call run_sub_agent, require JSON output with summary/findings/next_steps.',
           },
           enableSkillTool: { type: 'constant', content: true },
           enableWorkspaceTools: { type: 'constant', content: true },
@@ -121,7 +121,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             },
             enableSkillTool: {
               type: 'boolean',
-              extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
+              extra: { label: '启用 Skill', description: '允许模型调用 Eino 官方 Skill 工具' },
             },
             enableWorkspaceTools: {
               type: 'boolean',

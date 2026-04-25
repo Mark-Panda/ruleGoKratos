@@ -9,14 +9,11 @@ import (
 	"ruleGoKratos/internal/data/dao"
 	"time"
 
-	_ "github.com/rulego/rulego-components-ai/ai/action"
-	_ "github.com/rulego/rulego-components-ai/ai/endpoint"
-
-	_ "github.com/rulego/rulego/components/action"
-	_ "github.com/rulego/rulego/components/common"
 	_ "github.com/rulego/rulego-components-ci/ci/action"
 	_ "github.com/rulego/rulego-components/endpoint/redis"
 	_ "github.com/rulego/rulego-components/external/redis"
+	_ "github.com/rulego/rulego/components/action"
+	_ "github.com/rulego/rulego/components/common"
 	// v0.35.2：lua 组件迁至 filter/lua、transform/lua 子包（根路径不再含包）
 	_ "github.com/rulego/rulego-components/filter/lua"
 	_ "github.com/rulego/rulego-components/transform/lua"
@@ -123,7 +120,7 @@ func NewRuleEngine(c *conf.Data, ruleConfig *types.Config, agentUc *biz.AgentUse
 	agentUc.SetManagedLLMResolver(NewManagedLLMResolver())
 	agentUc.SetManagedAgentLoader(NewManagedAgentHarnessLoader())
 	agentUc.SetMcpConfigAdmin(NewMcpConfigAdmin())
-	agentUc.SetMcpExecutor(NewDatabaseMcpExecutor())
+	agentUc.SetMcpToolProvider(NewDatabaseMcpToolProvider())
 	WireRuleGoAgent(agentUc)
 	// 获取所有的规则链信息
 	var ruleChainList []RuleChain

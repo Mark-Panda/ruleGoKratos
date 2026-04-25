@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -77,17 +76,6 @@ func ParseMcpAllowlist(raw string) []string {
 
 func mcpPairKey(server, tool string) string {
 	return server + "\x00" + tool
-}
-
-func skillAllowSet(list []string) map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, s := range list {
-		s = strings.TrimSpace(s)
-		if s != "" {
-			m[s] = struct{}{}
-		}
-	}
-	return m
 }
 
 func mcpAllowSet(keys []string) map[string]struct{} {
@@ -180,61 +168,14 @@ func NormalizeMcpAllowlistInput(v interface{}) []string {
 	return nil
 }
 
-func (uc *AgentUsecase) wrapSkillWithAllowlist(base *HarnessTool, allow map[string]struct{}) *HarnessTool {
-	if len(allow) == 0 {
-		return base
-	}
-	return &HarnessTool{
-		Info: base.Info,
-		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
-			var args struct {
-				SkillName string `json:"skill_name"`
-			}
-			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-				return "", err
-			}
-			name := strings.TrimSpace(args.SkillName)
-			if _, ok := allow[name]; !ok {
-				return "", fmt.Errorf("skill 不在白名单: %s", name)
-			}
-			return base.Invoke(ctx, rawArgs)
-		},
-	}
-}
-
-func (uc *AgentUsecase) wrapMcpWithAllowlist(base *HarnessTool, allow map[string]struct{}) *HarnessTool {
-	if len(allow) == 0 {
-		return base
-	}
-	return &HarnessTool{
-		Info: base.Info,
-		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
-			var args struct {
-				Server string `json:"server"`
-				Tool   string `json:"tool"`
-			}
-			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-				return "", err
-			}
-			server := strings.TrimSpace(args.Server)
-			tool := strings.TrimSpace(args.Tool)
-			k := mcpPairKey(server, tool)
-			if _, ok := allow[k]; ok {
-				return base.Invoke(ctx, rawArgs)
-			}
-			// 白名单含 server:* 时放行该 server 下任意 tool
-			if _, ok := allow[mcpPairKey(server, "*")]; ok {
-				return base.Invoke(ctx, rawArgs)
-			}
-			return "", fmt.Errorf("MCP server:tool 不在白名单: %s:%s", args.Server, args.Tool)
-		},
-	}
-}
-
 // BuildToolRegistryWithOptions 按选项装配工具；至少启用一项，否则返回错误。
 func (uc *AgentUsecase) BuildToolRegistryWithOptions(opts *HarnessToolOptions) (map[string]*HarnessTool, []*schema.ToolInfo, error) {
+	return uc.BuildToolRegistryWithOptionsForContext(context.Background(), opts)
+}
+
+func (uc *AgentUsecase) BuildToolRegistryWithOptionsForContext(ctx context.Context, opts *HarnessToolOptions) (map[string]*HarnessTool, []*schema.ToolInfo, error) {
 	if opts == nil {
-		return uc.BuildToolRegistry()
+		return uc.BuildToolRegistryForContext(ctx)
 	}
 	registry := map[string]*HarnessTool{}
 	var infos []*schema.ToolInfo
@@ -248,24 +189,33 @@ func (uc *AgentUsecase) BuildToolRegistryWithOptions(opts *HarnessToolOptions) (
 		infos = append(infos, t.Info)
 	}
 	if opts.EnableSkillTool {
-		t, err := uc.BuildSkillTool()
+		tools, _, err := uc.buildOfficialSkillTools(ctx, opts.SkillAllowlist)
 		if err != nil {
 			return nil, nil, err
 		}
-		allow := skillAllowSet(opts.SkillAllowlist)
-		t = uc.wrapSkillWithAllowlist(t, allow)
-		registry[t.Info.Name] = t
-		infos = append(infos, t.Info)
+		for _, t := range tools {
+			if t == nil || t.Info == nil || strings.TrimSpace(t.Info.Name) == "" {
+				continue
+			}
+			registry[t.Info.Name] = t
+			infos = append(infos, t.Info)
+		}
 	}
 	if opts.EnableMcpTool {
-		t, err := uc.BuildMCPTool()
+		mcpTools, err := uc.buildMcpTools(ctx, opts.McpAllowlist)
 		if err != nil {
 			return nil, nil, err
 		}
-		allow := mcpAllowSet(opts.McpAllowlist)
-		t = uc.wrapMcpWithAllowlist(t, allow)
-		registry[t.Info.Name] = t
-		infos = append(infos, t.Info)
+		for _, t := range mcpTools {
+			if t == nil || t.Info == nil || strings.TrimSpace(t.Info.Name) == "" {
+				continue
+			}
+			if _, exists := registry[t.Info.Name]; exists {
+				continue
+			}
+			registry[t.Info.Name] = t
+			infos = append(infos, t.Info)
+		}
 	}
 	if opts.EnableWorkspaceTools {
 		readFileTool, err := uc.BuildReadWorkspaceFileTool()
@@ -297,11 +247,18 @@ func (uc *AgentUsecase) BuildToolRegistryWithOptions(opts *HarnessToolOptions) (
 	return registry, infos, nil
 }
 
-func (uc *AgentUsecase) resolveToolRegistry(opts *HarnessToolOptions) (map[string]*HarnessTool, []*schema.ToolInfo, error) {
-	if opts == nil {
-		return uc.BuildToolRegistry()
+func (uc *AgentUsecase) buildMcpTools(ctx context.Context, allowlist []string) ([]*HarnessTool, error) {
+	if uc.mcpToolProvider == nil {
+		return nil, nil
 	}
-	return uc.BuildToolRegistryWithOptions(opts)
+	return uc.mcpToolProvider.BuildMcpTools(ctx, allowlist)
+}
+
+func (uc *AgentUsecase) resolveToolRegistry(ctx context.Context, opts *HarnessToolOptions) (map[string]*HarnessTool, []*schema.ToolInfo, error) {
+	if opts == nil {
+		return uc.BuildToolRegistryForContext(ctx)
+	}
+	return uc.BuildToolRegistryWithOptionsForContext(ctx, opts)
 }
 
 func (uc *AgentUsecase) effectiveHarnessConfig(override *HarnessConfig) HarnessConfig {

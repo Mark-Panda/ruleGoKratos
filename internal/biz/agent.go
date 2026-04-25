@@ -34,7 +34,7 @@ const (
 	// 与 Harness / 管理端聊天共用；工具是否可用以运行时为准。
 	defaultSystemPrompt = `You are the Code Assistant for this RuleGo / Flowgram deployment. Deliver accurate, actionable engineering help: runnable code when appropriate, concrete shell or API steps, real file paths, and ordered reasoning—avoid vague platitudes.
 
-Tools: When the runtime exposes tools (SKILL invocation, MCP, workspace file read/write/shell), call them only through real execution; never invent tool outputs, logs, or claim success when a tool did not run. If a tool errors or is unavailable, report it briefly.
+Tools: When the runtime exposes tools (official skill tool, MCP, workspace file read/write/shell), call them only through real execution; never invent tool outputs, logs, or claim success when a tool did not run. If a tool errors or is unavailable, report it briefly.
 
 Language: Match the user's language (reply in Chinese when they write Chinese).
 
@@ -46,7 +46,7 @@ Image URLs: If the user pastes HTTPS links to images in the message, the server 
 
 Style: Stay concise; use Markdown with fenced code blocks for code and log excerpts.
 
-MCP registration (this deployment): MCP entries live in the admin «MCP 配置» table. transport=http: endpoint (SSE-capable MCP URL) plus optional headers JSON. transport=stdio: stdio_command, stdio_args_json (JSON array of strings), stdio_env_json (JSON object), endpoint omitted. The tool save_mcp_server_config writes or updates that table; call_mcp_tool(server, …) matches the row’s server name and runs either HTTP(SSE) or stdio on the RuleGo host. After saving, remind the user to enable the entry, attach it in «Agent 配置» if needed, and use «测试» to verify connectivity.`
+MCP registration (this deployment): MCP entries live in the admin «MCP 配置» table. transport=http: endpoint (SSE-capable MCP URL) plus optional headers JSON. transport=stdio: stdio_command, stdio_args_json (JSON array of strings), stdio_env_json (JSON object), endpoint omitted. The tool save_mcp_server_config writes or updates that table. Enabled MCP server tools are exposed directly as concrete tools named mcp_<server>_<tool>; use those concrete MCP tools when available. After saving, remind the user to enable the entry and use «测试» to verify connectivity.`
 )
 
 type StreamMessage struct {
@@ -93,9 +93,9 @@ type HarnessRequest struct {
 	// LlmConfigID / LlmModelEntryID 非零时从模型管理加载凭证与模型名，不再读取环境变量或 YAML ai.* 配置。
 	LlmConfigID     int64
 	LlmModelEntryID int64
-	// ManagedAgentID 非零时由 enrichHarnessWithManagedAgent 注入 Agent 配置（覆盖 ToolOptions / 模型对与系统提示中的 SKILL 目录）。
+	// ManagedAgentID 非零时由 enrichHarnessWithManagedAgent 注入 Agent 配置（覆盖 ToolOptions / 模型对与 Skill 可见范围）。
 	ManagedAgentID int64
-	// SkillCatalogFilter 为 nil 时 SKILL 目录列出全部可用技能；非 nil 且 len=0 不附目录；非 nil 且 len>0 仅列出这些 skill id。
+	// SkillCatalogFilter 为 nil 时官方 skill tool 可见全部可用技能；非 nil 且 len=0 不暴露技能；非 nil 且 len>0 仅暴露这些 skill name。
 	SkillCatalogFilter *[]string
 
 	// WorkspaceSessionDir 相对于配置的 workspace 根的子路径；非空时本轮 Harness 内 read/write/shell 工具仅在该目录下操作（运行前会 MkdirAll）。
@@ -145,8 +145,8 @@ type SkillExecutor interface {
 	Execute(ctx context.Context, skillName string, payload string) (string, error)
 }
 
-type McpExecutor interface {
-	Call(ctx context.Context, server string, tool string, arguments string) (string, error)
+type McpToolProvider interface {
+	BuildMcpTools(ctx context.Context, allowlist []string) ([]*HarnessTool, error)
 }
 
 type NoopSkillExecutor struct{}
@@ -155,10 +155,10 @@ func (n *NoopSkillExecutor) Execute(ctx context.Context, skillName string, paylo
 	return "", fmt.Errorf("skill executor 未配置: %s", skillName)
 }
 
-type NoopMcpExecutor struct{}
+type NoopMcpToolProvider struct{}
 
-func (n *NoopMcpExecutor) Call(ctx context.Context, server string, tool string, arguments string) (string, error) {
-	return "", fmt.Errorf("mcp executor 未配置: server=%s tool=%s", server, tool)
+func (n *NoopMcpToolProvider) BuildMcpTools(ctx context.Context, allowlist []string) ([]*HarnessTool, error) {
+	return nil, nil
 }
 
 type AgentUsecase struct {
@@ -167,7 +167,7 @@ type AgentUsecase struct {
 	harnessLogger      *HarnessLogger
 	harnessConfig      HarnessConfig
 	skillExecutor      SkillExecutor
-	mcpExecutor        McpExecutor
+	mcpToolProvider    McpToolProvider
 	managedLLM         ManagedLLMResolver
 	managedAgentLoader ManagedAgentLoader
 	mcpConfigAdmin     McpConfigAdmin
@@ -204,8 +204,8 @@ func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
 			ToolTimeoutSecs: defaultToolTimeoutSecs,
 			ChunkSize:       defaultChunkSize,
 		},
-		skillExecutor: fileExecutor,
-		mcpExecutor:   &NoopMcpExecutor{},
+		skillExecutor:   fileExecutor,
+		mcpToolProvider: &NoopMcpToolProvider{},
 	}
 }
 
@@ -215,9 +215,9 @@ func (uc *AgentUsecase) SetSkillExecutor(executor SkillExecutor) {
 	}
 }
 
-func (uc *AgentUsecase) SetMcpExecutor(executor McpExecutor) {
-	if executor != nil {
-		uc.mcpExecutor = executor
+func (uc *AgentUsecase) SetMcpToolProvider(provider McpToolProvider) {
+	if provider != nil {
+		uc.mcpToolProvider = provider
 	}
 }
 
@@ -270,14 +270,31 @@ func (uc *AgentUsecase) newChatModel(ctx context.Context, req HarnessRequest) (m
 
 func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) []*schema.Message {
 	req := &HarnessRequest{History: history}
-	return uc.composeMessages(req, uc.getSystemPrompt(), history, userMessage, nil)
+	return uc.composeMessages(context.Background(), req, uc.getSystemPrompt(), history, userMessage, nil)
 }
 
-func (uc *AgentUsecase) composeMessages(req *HarnessRequest, systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) []*schema.Message {
+func (uc *AgentUsecase) composeMessages(ctx context.Context, req *HarnessRequest, systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) []*schema.Message {
 	if strings.TrimSpace(systemPrompt) == "" {
 		systemPrompt = uc.getSystemPrompt()
 	}
-	systemPrompt = uc.appendSkillCatalogToSystemWithFilter(systemPrompt, req.SkillCatalogFilter)
+	if req == nil || req.ToolOptions == nil || req.ToolOptions.EnableSkillTool {
+		includeSkillInstruction := true
+		allowlist := []string(nil)
+		if req != nil && req.ToolOptions != nil {
+			allowlist = req.ToolOptions.SkillAllowlist
+		}
+		if req != nil && req.SkillCatalogFilter != nil {
+			if len(*req.SkillCatalogFilter) == 0 {
+				includeSkillInstruction = false
+			}
+			allowlist = *req.SkillCatalogFilter
+		}
+		if includeSkillInstruction {
+			if instruction := uc.officialSkillInstruction(ctx, allowlist); strings.TrimSpace(instruction) != "" {
+				systemPrompt = strings.TrimSpace(systemPrompt) + "\n\n" + instruction
+			}
+		}
+	}
 	msgs := make([]*schema.Message, 0, len(history)+2)
 	msgs = append(msgs, schema.SystemMessage(systemPrompt))
 	for _, item := range history {
@@ -305,42 +322,6 @@ func (uc *AgentUsecase) getSystemPrompt() string {
 		return uc.config.Agent.SystemPrompt
 	}
 	return defaultSystemPrompt
-}
-
-// 将技能 id 目录附在系统提示后，使模型知悉可调用 run_skill 的精确名称（与 FileSkillExecutor 扫描结果一致）。
-const skillCatalogMaxBytes = 32000
-
-func (uc *AgentUsecase) appendSkillCatalogToSystemWithFilter(systemPrompt string, filter *[]string) string {
-	if filter != nil && len(*filter) == 0 {
-		return systemPrompt
-	}
-	var names []string
-	if filter == nil {
-		fe, ok := uc.skillExecutor.(*FileSkillExecutor)
-		if !ok {
-			return systemPrompt
-		}
-		names = fe.ListAvailableSkillNames()
-	} else {
-		names = *filter
-	}
-	if len(names) == 0 {
-		return systemPrompt
-	}
-	var b strings.Builder
-	b.Grow(len(systemPrompt) + 256 + min(len(names)*32, skillCatalogMaxBytes))
-	b.WriteString(systemPrompt)
-	b.WriteString("\n\n---\n## SKILL 目录（工具 run_skill 的 skill_name 须与下列 id 完全一致，共 ")
-	b.WriteString(strconv.Itoa(len(names)))
-	b.WriteString(" 项；按逗号分隔）\n")
-	joined := strings.Join(names, ", ")
-	if len(joined) > skillCatalogMaxBytes {
-		b.WriteString(joined[:skillCatalogMaxBytes])
-		b.WriteString("\n…（目录过长已截断；完整 id 仍可通过「技能文件路径」推断，或调用 run_skill 使用完整 skill_name。）")
-	} else {
-		b.WriteString(joined)
-	}
-	return b.String()
 }
 
 // UserFacingError 表示错误文案已审阅为不含密钥/路径等敏感信息，可直接展示给调用方。
@@ -536,7 +517,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			return
 		}
 
-		toolRegistry, toolInfos, err := uc.resolveToolRegistry(req.ToolOptions)
+		toolRegistry, toolInfos, err := uc.resolveToolRegistry(workCtx, req.ToolOptions)
 		if err != nil {
 			uc.harnessLogger.LogError(requestID, "build_tools", err)
 			yield(nil, sanitizeExternalError("build_tools", err))
@@ -566,7 +547,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				systemPrompt = uc.getSystemPrompt()
 			}
 		}
-		msgs := uc.composeMessages(&req, systemPrompt, req.History, req.Input, req.Attachments)
+		msgs := uc.composeMessages(workCtx, &req, systemPrompt, req.History, req.Input, req.Attachments)
 		toolCallCount := 0
 		for i := 0; i < cfg.MaxIterations; i++ {
 			if err := workCtx.Err(); err != nil {
@@ -754,16 +735,12 @@ func (uc *AgentUsecase) Run(ctx context.Context, userMessage string) StreamGener
 }
 
 func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.ToolInfo, error) {
+	return uc.BuildToolRegistryForContext(context.Background())
+}
+
+func (uc *AgentUsecase) BuildToolRegistryForContext(ctx context.Context) (map[string]*HarnessTool, []*schema.ToolInfo, error) {
 	// Registry 是当前 Harness 运行期可调用工具的唯一来源。
 	uuidTool, err := uc.BuildUUIDTool()
-	if err != nil {
-		return nil, nil, err
-	}
-	skillTool, err := uc.BuildSkillTool()
-	if err != nil {
-		return nil, nil, err
-	}
-	mcpTool, err := uc.BuildMCPTool()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -785,16 +762,42 @@ func (uc *AgentUsecase) BuildToolRegistry() (map[string]*HarnessTool, []*schema.
 	}
 	registry := map[string]*HarnessTool{
 		uuidTool.Info.Name:      uuidTool,
-		skillTool.Info.Name:     skillTool,
-		mcpTool.Info.Name:       mcpTool,
 		readFileTool.Info.Name:  readFileTool,
 		writeFileTool.Info.Name: writeFileTool,
 		shellTool.Info.Name:     shellTool,
 		subAgentTool.Info.Name:  subAgentTool,
 	}
 	infos := []*schema.ToolInfo{
-		uuidTool.Info, skillTool.Info, mcpTool.Info,
+		uuidTool.Info,
 		readFileTool.Info, writeFileTool.Info, shellTool.Info, subAgentTool.Info,
+	}
+	skillTools, _, err := uc.buildOfficialSkillTools(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, t := range skillTools {
+		if t == nil || t.Info == nil || strings.TrimSpace(t.Info.Name) == "" {
+			continue
+		}
+		if _, exists := registry[t.Info.Name]; exists {
+			continue
+		}
+		registry[t.Info.Name] = t
+		infos = append(infos, t.Info)
+	}
+	mcpTools, err := uc.buildMcpTools(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, t := range mcpTools {
+		if t == nil || t.Info == nil || strings.TrimSpace(t.Info.Name) == "" {
+			continue
+		}
+		if _, exists := registry[t.Info.Name]; exists {
+			continue
+		}
+		registry[t.Info.Name] = t
+		infos = append(infos, t.Info)
 	}
 	if uc.mcpConfigAdmin != nil {
 		saveTool, err := uc.BuildSaveMcpConfigTool()
@@ -825,123 +828,6 @@ func (uc *AgentUsecase) BuildUUIDTool() (*HarnessTool, error) {
 			return uuid.NewString(), nil
 		},
 	}, nil
-}
-
-func (uc *AgentUsecase) BuildSkillTool() (*HarnessTool, error) {
-	desc := "执行 Skill 技能：读取并返回磁盘上技能文件的内容（Markdown 指令等），供模型阅读后按 Skill 指令行动。skill_name 须与系统提示「SKILL 目录」里的 id 完全一致。注意：Skill 和 MCP 是两套独立工具，call_mcp_tool 无法调用 Skill，请勿混用。"
-	if fe, ok := uc.skillExecutor.(*FileSkillExecutor); ok {
-		names := fe.ListAvailableSkillNames()
-		if n := len(names); n > 0 {
-			desc += fmt.Sprintf(" 当前可用 %d 个。", n)
-			head := 48
-			if len(names) < head {
-				head = len(names)
-			}
-			desc += " 示例：" + strings.Join(names[:head], ", ")
-			if len(names) > head {
-				desc += fmt.Sprintf(" …（另有 %d 项见系统提示 SKILL 目录）", len(names)-head)
-			}
-		}
-	}
-	toolInfo := &schema.ToolInfo{
-		Name: "run_skill",
-		Desc: desc,
-		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"skill_name": {
-				Type:     schema.String,
-				Desc:     "技能 id，与 SKILL 目录中某项完全一致",
-				Required: true,
-			},
-			"payload": {
-				Type:     schema.String,
-				Desc:     "技能输入",
-				Required: false,
-			},
-		}),
-	}
-	type runSkillArgs struct {
-		SkillName string `json:"skill_name"`
-		Payload   string `json:"payload"`
-	}
-	return &HarnessTool{
-		Info: toolInfo,
-		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
-			// 保持严格入参契约，确保下游 skill 执行器拿到确定性 payload。
-			var args runSkillArgs
-			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-				return "", err
-			}
-			if strings.TrimSpace(args.SkillName) == "" {
-				return "", errors.New("skill_name 不能为空")
-			}
-			return uc.skillExecutor.Execute(ctx, args.SkillName, args.Payload)
-		},
-	}, nil
-}
-
-func (uc *AgentUsecase) BuildMCPTool() (*HarnessTool, error) {
-	toolInfo := &schema.ToolInfo{
-		Name: "call_mcp_tool",
-		Desc: "调用已在服务端注册并启用的 MCP server 工具。server 须是已配置的 MCP 服务名（非 Skill 名）；若要执行 Skill，请用 run_skill，两者互不兼容，不可混用。",
-		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
-			"server": {
-				Type:     schema.String,
-				Desc:     "MCP服务名",
-				Required: true,
-			},
-			"tool": {
-				Type:     schema.String,
-				Desc:     "MCP工具名",
-				Required: true,
-			},
-			"arguments": {
-				Type:     schema.String,
-				Desc:     "JSON字符串参数",
-				Required: false,
-			},
-		}),
-	}
-	type callMcpArgs struct {
-		Server    string `json:"server"`
-		Tool      string `json:"tool"`
-		Arguments string `json:"arguments"`
-	}
-	return &HarnessTool{
-		Info: toolInfo,
-		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
-			// MCP 路由由 mcpExecutor 实现；Harness 只做最小参数契约校验。
-			var args callMcpArgs
-			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
-				return "", err
-			}
-			server := strings.TrimSpace(args.Server)
-			tool := strings.TrimSpace(args.Tool)
-			if server == "" || tool == "" {
-				return "", errors.New("server 和 tool 不能为空")
-			}
-			if uc.hasAvailableSkill(server) {
-				return "", fmt.Errorf("server=%q 是 Skill id，请使用 run_skill 调用该技能；call_mcp_tool 只能调用 MCP 配置中的 server", server)
-			}
-			return uc.mcpExecutor.Call(ctx, server, tool, args.Arguments)
-		},
-	}, nil
-}
-
-func (uc *AgentUsecase) hasAvailableSkill(name string) bool {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return false
-	}
-	fe, ok := uc.skillExecutor.(*FileSkillExecutor)
-	if !ok {
-		return false
-	}
-	for _, skillName := range fe.ListAvailableSkillNames() {
-		if skillName == name || skillName == name+"/SKILL" {
-			return true
-		}
-	}
-	return false
 }
 
 func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
@@ -1260,7 +1146,7 @@ func (uc *AgentUsecase) BuildSaveMcpConfigTool() (*HarnessTool, error) {
 	}
 	toolInfo := &schema.ToolInfo{
 		Name: "save_mcp_server_config",
-		Desc: "将一条 MCP 服务写入本系统的「MCP 配置」数据库（与管理后台相同）。transport=http 时填写 endpoint（SSE URL）与可选 headers_json；transport=stdio 时填写 stdio_command、stdio_args_json（JSON 字符串数组）、stdio_env_json（JSON 对象），endpoint 可省略。server 为 call_mcp_tool 使用的逻辑名。",
+		Desc: "将一条 MCP 服务写入本系统的「MCP 配置」数据库（与管理后台相同）。transport=http 时填写 endpoint（SSE URL）与可选 headers_json；transport=stdio 时填写 stdio_command、stdio_args_json（JSON 字符串数组）、stdio_env_json（JSON 对象），endpoint 可省略。启用后该 server 下的 MCP tools 会以 mcp_<server>_<tool> 形式直接暴露。",
 		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
 			"id": {
 				Type:     schema.String,
@@ -1274,7 +1160,7 @@ func (uc *AgentUsecase) BuildSaveMcpConfigTool() (*HarnessTool, error) {
 			},
 			"server": {
 				Type:     schema.String,
-				Desc:     "逻辑服务名，与 call_mcp_tool.server 一致",
+				Desc:     "逻辑服务名，用作 MCP tool 名称前缀",
 				Required: true,
 			},
 			"transport": {

@@ -162,8 +162,11 @@ func TestEnrichHarnessWithManagedAgentShouldDisableMcpWhenNoEnabledConfigs(t *te
 func TestEnrichHarnessWithManagedAgentShouldMergeSkillCreatorAllowlist(t *testing.T) {
 	helper := log.NewHelper(log.NewStdLogger(io.Discard))
 	skillDir := t.TempDir()
-	// 模拟 run_skill 直接使用的 skill_name: skill-creator-0.1.0
-	if err := os.WriteFile(filepath.Join(skillDir, "skill-creator-0.1.0.md"), []byte("# skill creator"), 0o644); err != nil {
+	// 模拟官方 skill tool 直接使用的 package name: skill-creator-0.1.0
+	if err := os.MkdirAll(filepath.Join(skillDir, "skill-creator-0.1.0"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "skill-creator-0.1.0", "SKILL.md"), []byte("# skill creator"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	fe, err := NewFileSkillExecutor([]string{skillDir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})

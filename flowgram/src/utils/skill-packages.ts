@@ -36,7 +36,7 @@ export function skillPackageId(skillKey: string): string {
 export type SkillPackageGroup = {
   /** 套装目录名（或根下单文件的 stem） */
   id: string;
-  /** 该套下全部技能 id（写入白名单的精确 skill_name） */
+  /** 该套下全部官方 Skill name（写入白名单的精确值） */
   keys: string[];
   files: SkillItem[];
 };

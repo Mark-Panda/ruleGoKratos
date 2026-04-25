@@ -12,7 +12,7 @@ function demoAgentHarnessNodeData(opts: {
   systemPrompt?: string;
 }) {
   const defaultSys =
-    'You are a helpful assistant. You may call run_skill and call_mcp_tool when they help answer the user.';
+    'You are a helpful assistant. You may call the official skill tool and available concrete MCP tools when they help answer the user.';
   return {
     title: opts.title,
     positionType: 'middle',
@@ -83,7 +83,7 @@ function demoAgentHarnessNodeData(opts: {
         },
         enableSkillTool: {
           type: 'boolean',
-          extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
+          extra: { label: '启用 Skill', description: '允许模型调用 Eino 官方 Skill 工具' },
         },
         enableWorkspaceTools: {
           type: 'boolean',

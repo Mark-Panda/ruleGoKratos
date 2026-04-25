@@ -3,7 +3,6 @@ package biz
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -109,7 +108,42 @@ func normalizeByNamespace(namespace, skillName string) string {
 	return namespace + "/" + skillName
 }
 
-// loadSkills 扫描目录并加载技能内容，同时生成目录指纹用于热更新判定。
+func stripSkillYAMLScalarQuotes(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) < 2 {
+		return v
+	}
+	if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {
+		return strings.TrimSpace(v[1 : len(v)-1])
+	}
+	return v
+}
+
+// SkillNameFromFrontMatter 从 SKILL.md 的 YAML frontmatter 中解析 name。
+func SkillNameFromFrontMatter(content string) string {
+	content = strings.TrimPrefix(content, "\ufeff")
+	lines := strings.Split(content, "\n")
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
+		return ""
+	}
+	for _, line := range lines[1:] {
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		if line == "---" || line == "..." {
+			return ""
+		}
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(key) != "name" {
+			continue
+		}
+		return normalizeSkillName(stripSkillYAMLScalarQuotes(val))
+	}
+	return ""
+}
+
+// loadSkills 按 Eino 官方 Skill 包约定扫描：每个一级子目录中的 SKILL.md 是唯一入口。
 func loadSkills(dirs []string, namespace string) (map[string]string, string, error) {
 	skills := make(map[string]string)
 	fingerprintParts := make([]string, 0, 64)
@@ -133,50 +167,37 @@ func loadSkills(dirs []string, namespace string) (map[string]string, string, err
 		if err != nil || !stat.IsDir() {
 			continue
 		}
-		walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return nil, "", fmt.Errorf("扫描skill目录失败: %w", err)
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+			packageName := normalizeSkillName(entry.Name())
+			if packageName == "" {
+				continue
+			}
+			skillPath := filepath.Join(dir, entry.Name(), "SKILL.md")
+			data, err := os.ReadFile(skillPath)
 			if err != nil {
-				return err
+				if os.IsNotExist(err) {
+					continue
+				}
+				return nil, "", fmt.Errorf("读取skill文件失败: %w", err)
 			}
-			if d.IsDir() {
-				return nil
-			}
-			if !isSkillFile(path) {
-				return nil
-			}
-			rel, err := filepath.Rel(dir, path)
+			info, err := os.Stat(skillPath)
 			if err != nil {
-				return err
-			}
-			name := strings.TrimSuffix(filepath.ToSlash(rel), filepath.Ext(rel))
-			name = normalizeByNamespace(namespace, name)
-			if name == "" {
-				return nil
-			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			info, err := os.Stat(path)
-			if err != nil {
-				return err
+				return nil, "", fmt.Errorf("读取skill文件信息失败: %w", err)
 			}
 			content := string(data)
-			registerSkill(name, info, content)
-			// 对包目录下的 SKILL.md 额外提供一个包级别别名：
-			// - 文件键: skill-creator-0.1.0/SKILL
-			// - 别名键: skill-creator-0.1.0
-			if strings.HasSuffix(name, "/SKILL") {
-				alias := strings.TrimSuffix(name, "/SKILL")
-				if strings.TrimSpace(alias) != "" && strings.HasPrefix(filepath.Base(alias), "skill-creator-") {
-					if _, exists := skills[alias]; !exists {
-						registerSkill(alias, info, content)
-					}
-				}
+			name := SkillNameFromFrontMatter(content)
+			if name == "" {
+				name = packageName
 			}
-			return nil
-		})
-		if walkErr != nil {
-			return nil, "", fmt.Errorf("扫描skill目录失败: %w", walkErr)
+			name = normalizeByNamespace(namespace, name)
+			registerSkill(name, info, content)
 		}
 	}
 	sort.Strings(fingerprintParts)
@@ -294,7 +315,7 @@ func (e *FileSkillExecutor) tryReload() {
 	e.fingerprint = fingerprint
 }
 
-// ListAvailableSkillNames 返回当前目录中已加载且通过白名单的技能 id（与 run_skill 的 skill_name 一致），已排序。
+// ListAvailableSkillNames 返回当前目录中已加载且通过白名单的官方 Skill name，已排序。
 func (e *FileSkillExecutor) ListAvailableSkillNames() []string {
 	e.tryReload()
 	e.mu.RLock()

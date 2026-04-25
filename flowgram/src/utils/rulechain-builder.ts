@@ -1424,8 +1424,8 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               enableSkillTool: {
                 type: 'boolean',
                 extra: {
-                  label: '启用 run_skill',
-                  description: '允许模型调用 Skill 执行器',
+                  label: '启用 Skill',
+                  description: '允许模型调用 Eino 官方 Skill 工具',
                 },
               },
               enableWorkspaceTools: {

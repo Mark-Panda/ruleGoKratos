@@ -7,6 +7,7 @@ toolchain go1.24.10
 require (
 	github.com/cloudwego/eino v0.8.9
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.12
+	github.com/cloudwego/eino-ext/components/tool/mcp v0.0.8
 	github.com/creack/pty v1.1.24
 	github.com/envoyproxy/protoc-gen-validate v1.2.1
 	github.com/go-kratos/kratos/v2 v2.8.0
@@ -16,11 +17,11 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jinzhu/copier v0.4.0
-	github.com/mark3labs/mcp-go v0.18.0
+	github.com/mark3labs/mcp-go v0.43.0
 	github.com/rulego/rulego v0.35.2
 	github.com/rulego/rulego-components v0.35.2
-	github.com/rulego/rulego-components-ai v0.31.1
 	github.com/rulego/rulego-components-ci v0.32.0
+	github.com/volcengine/volc-sdk-golang v1.0.242
 	go.uber.org/automaxprocs v1.5.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5
 	google.golang.org/grpc v1.75.1
@@ -40,6 +41,7 @@ require (
 	github.com/aws/aws-sdk-go v1.40.45 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
@@ -84,6 +86,7 @@ require (
 	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
+	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect
@@ -122,18 +125,17 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/redis/go-redis/v9 v9.18.0-beta.2 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/sashabaranov/go-openai v1.37.0 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5-0.20250517063057-34ac457e154c // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/slongfield/pyfmt v0.0.0-20220222012616-ea85ff4c361f // indirect
+	github.com/spf13/cast v1.7.1 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/vadv/gopher-lua-libs v0.8.0 // indirect
-	github.com/volcengine/volc-sdk-golang v1.0.242 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yargevad/filepathx v1.0.0 // indirect

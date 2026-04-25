@@ -25,7 +25,7 @@ type ManagedAgentLoader interface {
 	EnabledMcpAllowlistStrings(ctx context.Context) ([]string, error)
 }
 
-// PackageIDFromSkillName 与技能包 id 规则一致：技能名（与 run_skill 一致）的首段路径。
+// PackageIDFromSkillName 与官方 Skill package name 规则一致：取技能名首段路径。
 func PackageIDFromSkillName(skillName string) string {
 	skillName = strings.Trim(strings.ReplaceAll(skillName, "\\", "/"), "/")
 	if i := strings.Index(skillName, "/"); i >= 0 {

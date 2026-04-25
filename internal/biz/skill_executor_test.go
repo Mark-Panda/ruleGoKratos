@@ -8,12 +8,22 @@ import (
 	"testing"
 )
 
+func writeSkillPackage(t *testing.T, root, pkg, content string) string {
+	t.Helper()
+	dir := filepath.Join(root, pkg)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir skill package failed: %v", err)
+	}
+	path := filepath.Join(dir, "SKILL.md")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md failed: %v", err)
+	}
+	return path
+}
+
 func TestFileSkillExecutorLoadAndExecute(t *testing.T) {
 	dir := t.TempDir()
-	err := os.WriteFile(filepath.Join(dir, "planner.md"), []byte("plan: {{payload}}"), 0o644)
-	if err != nil {
-		t.Fatalf("write skill file failed: %v", err)
-	}
+	writeSkillPackage(t, dir, "planner", "plan: {{payload}}")
 
 	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
 	if err != nil {
@@ -41,9 +51,7 @@ func TestFileSkillExecutorKeepsFirstDuplicateSkillName(t *testing.T) {
 		{agentDir, "agent"},
 		{appDir, "app"},
 	} {
-		if err := os.WriteFile(filepath.Join(item.dir, "shared.md"), []byte(item.content), 0o644); err != nil {
-			t.Fatalf("write duplicate skill: %v", err)
-		}
+		writeSkillPackage(t, item.dir, "shared", item.content)
 	}
 
 	exec, err := NewFileSkillExecutor([]string{appDir, agentDir, workflowDir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
@@ -77,10 +85,7 @@ func TestDefaultSkillDirsUsesServiceRootsInPriorityOrder(t *testing.T) {
 
 func TestFileSkillExecutorNotFound(t *testing.T) {
 	dir := t.TempDir()
-	err := os.WriteFile(filepath.Join(dir, "a.md"), []byte("content"), 0o644)
-	if err != nil {
-		t.Fatalf("write skill file failed: %v", err)
-	}
+	writeSkillPackage(t, dir, "a", "content")
 
 	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
 	if err != nil {
@@ -106,11 +111,7 @@ func TestFileSkillExecutorAllowEmptyDirectories(t *testing.T) {
 
 func TestFileSkillExecutorHotReload(t *testing.T) {
 	dir := t.TempDir()
-	skillPath := filepath.Join(dir, "planner.md")
-	err := os.WriteFile(skillPath, []byte("version1"), 0o644)
-	if err != nil {
-		t.Fatalf("write skill file failed: %v", err)
-	}
+	skillPath := writeSkillPackage(t, dir, "planner", "version1")
 	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{
 		HotReload:         true,
 		HotReloadSet:      true,
@@ -136,11 +137,7 @@ func TestFileSkillExecutorHotReload(t *testing.T) {
 
 func TestFileSkillExecutorHotReloadToEmpty(t *testing.T) {
 	dir := t.TempDir()
-	skillPath := filepath.Join(dir, "planner.md")
-	err := os.WriteFile(skillPath, []byte("version1"), 0o644)
-	if err != nil {
-		t.Fatalf("write skill file failed: %v", err)
-	}
+	skillPath := writeSkillPackage(t, dir, "planner", "version1")
 	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{
 		HotReload:         true,
 		HotReloadSet:      true,
@@ -165,14 +162,8 @@ func TestFileSkillExecutorHotReloadToEmpty(t *testing.T) {
 
 func TestFileSkillExecutorNamespaceAndAllowList(t *testing.T) {
 	dir := t.TempDir()
-	err := os.WriteFile(filepath.Join(dir, "planner.md"), []byte("planner-content"), 0o644)
-	if err != nil {
-		t.Fatalf("write planner file failed: %v", err)
-	}
-	err = os.WriteFile(filepath.Join(dir, "other.md"), []byte("other-content"), 0o644)
-	if err != nil {
-		t.Fatalf("write other file failed: %v", err)
-	}
+	writeSkillPackage(t, dir, "planner", "planner-content")
+	writeSkillPackage(t, dir, "other", "other-content")
 	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{
 		Namespace:    "teamA",
 		AllowList:    "planner",
@@ -192,33 +183,54 @@ func TestFileSkillExecutorNamespaceAndAllowList(t *testing.T) {
 	}
 }
 
-func TestFileSkillExecutorProvidesPackageAliasForSkillMarkdown(t *testing.T) {
+func TestFileSkillExecutorUsesFrontMatterName(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "skill-creator-0.1.0"), 0o755); err != nil {
-		t.Fatalf("mkdir skill package failed: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "skill-creator-0.1.0", "SKILL.md"), []byte("creator: {{payload}}"), 0o644); err != nil {
-		t.Fatalf("write SKILL.md failed: %v", err)
-	}
+	writeSkillPackage(t, dir, "package-dir", "---\nname: canonical-skill\n---\ncreator: {{payload}}")
 
 	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
 	if err != nil {
 		t.Fatalf("NewFileSkillExecutor failed: %v", err)
 	}
 
-	byAlias, err := exec.Execute(context.Background(), "skill-creator-0.1.0", "demo")
+	output, err := exec.Execute(context.Background(), "canonical-skill", "demo")
 	if err != nil {
-		t.Fatalf("expected package alias executable, got err=%v", err)
+		t.Fatalf("expected frontmatter skill name executable, got err=%v", err)
 	}
-	if byAlias != "creator: demo" {
-		t.Fatalf("unexpected alias output: %q", byAlias)
+	if output != "---\nname: canonical-skill\n---\ncreator: demo" {
+		t.Fatalf("unexpected output: %q", output)
 	}
 
-	byFileName, err := exec.Execute(context.Background(), "skill-creator-0.1.0/SKILL", "demo")
-	if err != nil {
-		t.Fatalf("expected file key executable, got err=%v", err)
+	_, err = exec.Execute(context.Background(), "package-dir", "demo")
+	if err == nil || !strings.Contains(err.Error(), "skill不存在") {
+		t.Fatalf("expected package dir not to be exposed when frontmatter name exists, got: %v", err)
 	}
-	if byFileName != "creator: demo" {
-		t.Fatalf("unexpected file key output: %q", byFileName)
+}
+
+func TestFileSkillExecutorIgnoresLooseFilesAndReferenceFiles(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "loose.md"), []byte("loose"), 0o644); err != nil {
+		t.Fatalf("write loose file failed: %v", err)
+	}
+	writeSkillPackage(t, dir, "pkg", "package")
+	refDir := filepath.Join(dir, "pkg", "reference")
+	if err := os.MkdirAll(refDir, 0o755); err != nil {
+		t.Fatalf("mkdir reference dir failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(refDir, "guide.md"), []byte("guide"), 0o644); err != nil {
+		t.Fatalf("write reference file failed: %v", err)
+	}
+
+	exec, err := NewFileSkillExecutor([]string{dir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
+	if err != nil {
+		t.Fatalf("NewFileSkillExecutor failed: %v", err)
+	}
+	names := exec.ListAvailableSkillNames()
+	if len(names) != 1 || names[0] != "pkg" {
+		t.Fatalf("expected only package skill, got %v", names)
+	}
+	for _, name := range []string{"loose", "pkg/SKILL", "pkg/reference/guide"} {
+		if _, err := exec.Execute(context.Background(), name, ""); err == nil {
+			t.Fatalf("expected %s not to be exposed", name)
+		}
 	}
 }

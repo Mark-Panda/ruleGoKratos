@@ -341,7 +341,7 @@ func TestGenerateRuleChainSkillWritesSkillAndUpdatesConfig(t *testing.T) {
 				t.Fatalf("expected skill allowlist [skill-creator-0.1.0], got %#v", req.ToolOptions.SkillAllowlist)
 			}
 			for _, required := range []string{
-				"run_skill",
+				"官方 `skill` 工具",
 				"skill-creator-0.1.0",
 				filepath.Join(root, expectedDir, "SKILL.md"),
 				"/api/v1/rules/{id}/execute/{msgType}",

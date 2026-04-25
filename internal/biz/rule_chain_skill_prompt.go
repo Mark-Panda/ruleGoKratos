@@ -17,8 +17,8 @@ func BuildRuleChainSkillGenerationPrompt(in RuleChainSkillPromptInput) string {
 	var b strings.Builder
 	b.WriteString("你正在一个同步执行的托管 Agent Harness 中，为规则链生成 Agent-oriented Skill。\n\n")
 	b.WriteString("必须遵守以下强约束：\n")
-	b.WriteString("1. 你必须调用 `run_skill`，不得只输出说明文字。\n")
-	b.WriteString("2. `run_skill` 的 `skill_name` 固定为 `skill-creator-0.1.0`。\n")
+	b.WriteString("1. 你必须调用官方 `skill` 工具加载 Skill，不得只输出说明文字。\n")
+	b.WriteString("2. `skill` 工具的 `skill` 参数固定为 `skill-creator-0.1.0`。\n")
 	b.WriteString(fmt.Sprintf("3. 输出文件固定为 `%s`，不得写入其他路径，也不得改文件名。\n", outputFile))
 	b.WriteString("4. 生成的 Skill 面向 Agent，不要写面向终端用户、浏览器用户或人工操作员的使用说明。\n")
 	b.WriteString("5. 生成内容必须是可执行的 SKILL.md，重点说明：任务目标、输入契约、输出契约、约束、失败处理、判定结果。\n")
@@ -54,7 +54,7 @@ func BuildRuleChainSkillGenerationPrompt(in RuleChainSkillPromptInput) string {
 
 	b.WriteString("执行步骤要求：\n")
 	b.WriteString("1. 先根据上述规则链信息构造 Skill 内容。\n")
-	b.WriteString("2. 调用 `run_skill`，让 `skill-creator-0.1.0` 把最终内容写入指定文件。\n")
+	b.WriteString("2. 调用 `skill` 加载 `skill-creator-0.1.0`，再按该 Skill 指令把最终内容写入指定文件。\n")
 	b.WriteString("3. 如果工具返回失败、或你无法保证写入内容满足约束，请直接返回失败原因，不要声称成功。\n")
 	b.WriteString("4. 不论工具是否已落盘，最终回复都要输出 `<generated_skill_markdown>...</generated_skill_markdown>`，内容必须与目标文件内容一致。\n")
 	b.WriteString("5. 如果工具成功，请简短说明已生成 Skill，并指出目标文件路径。\n")

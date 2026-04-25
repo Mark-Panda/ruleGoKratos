@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"ruleGoKratos/internal/biz"
 )
 
 // SkillPackageInfo 技能包：相对 skill 根路径的首段目录名（或根目录下单文件的「包 id」）。
@@ -33,34 +35,32 @@ func isSkillFileExt(ext string) bool {
 	}
 }
 
-// discoverSkillPackageCounts 与 ListSkills 相同的扫描规则，按技能 id 的首路径段聚合为「技能包」。
+// discoverSkillPackageCounts 按 Eino 官方 Skill 包约定扫描一级子目录下的 SKILL.md。
 func discoverSkillPackageCounts(root string) (map[string]int, error) {
 	counts := make(map[string]int)
-	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			return nil
-		}
-		ext := strings.ToLower(filepath.Ext(path))
-		if !isSkillFileExt(ext) {
-			return nil
-		}
-		rel, relErr := filepath.Rel(root, path)
-		if relErr != nil {
-			rel = filepath.Base(path)
-		}
-		relSlash := filepath.ToSlash(rel)
-		noExt := strings.TrimSuffix(relSlash, filepath.Ext(relSlash))
-		pkg := packageIDFromRelNoExt(noExt)
-		if pkg != "" {
-			counts[pkg]++
-		}
-		return nil
-	})
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		skillPath := filepath.Join(root, entry.Name(), "SKILL.md")
+		data, err := os.ReadFile(skillPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, err
+		}
+		id := biz.SkillNameFromFrontMatter(string(data))
+		if id == "" {
+			id = packageIDFromRelNoExt(entry.Name())
+		}
+		if id != "" {
+			counts[id] = 1
+		}
 	}
 	return counts, nil
 }

@@ -30,12 +30,29 @@ func newTestAgentUsecase() *AgentUsecase {
 			ChunkSize:       defaultChunkSize,
 		},
 		skillExecutor: &NoopSkillExecutor{},
-		mcpExecutor:   &NoopMcpExecutor{},
 	}
 }
 
 func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
 	uc := newTestAgentUsecase()
+	skillRoot := t.TempDir()
+	writeTestSkillPackage(t, skillRoot, "planner", "---\nname: planner\n---\nplan content")
+	exec, err := NewFileSkillExecutor([]string{skillRoot}, FileSkillExecutorOptions{AllowList: "*"})
+	if err != nil {
+		t.Fatalf("NewFileSkillExecutor failed: %v", err)
+	}
+	uc.SetSkillExecutor(exec)
+	uc.SetMcpToolProvider(fakeMcpToolProvider{
+		tools: []*HarnessTool{{
+			Info: &schema.ToolInfo{
+				Name: "mcp_prod_weather",
+				Desc: "weather",
+			},
+			Invoke: func(ctx context.Context, rawArgs string) (string, error) {
+				return "sunny", nil
+			},
+		}},
+	})
 	registry, infos, err := uc.BuildToolRegistry()
 	if err != nil {
 		t.Fatalf("BuildToolRegistry failed: %v", err)
@@ -46,11 +63,17 @@ func TestBuildToolRegistryIncludesSkillAndMcp(t *testing.T) {
 	if len(infos) != 7 {
 		t.Fatalf("unexpected tool infos size: %d", len(infos))
 	}
-	if _, ok := registry["run_skill"]; !ok {
-		t.Fatalf("run_skill tool missing")
+	if _, ok := registry["skill"]; !ok {
+		t.Fatalf("official skill tool missing")
 	}
-	if _, ok := registry["call_mcp_tool"]; !ok {
-		t.Fatalf("call_mcp_tool tool missing")
+	if _, ok := registry["run_skill"]; ok {
+		t.Fatalf("run_skill must not be exposed in official skill mode")
+	}
+	if _, ok := registry["call_mcp_tool"]; ok {
+		t.Fatalf("call_mcp_tool must not be exposed in official MCP mode")
+	}
+	if _, ok := registry["mcp_prod_weather"]; !ok {
+		t.Fatalf("concrete MCP tool missing")
 	}
 	for _, name := range []string{"read_workspace_file", "write_workspace_file", "run_workspace_shell"} {
 		if _, ok := registry[name]; !ok {
@@ -172,132 +195,60 @@ func TestWorkspaceWriteRejectsAbsolutePathOutsideAllowedRoots(t *testing.T) {
 	}
 }
 
-func TestRunSkillToolValidateArgs(t *testing.T) {
-	uc := newTestAgentUsecase()
-	tool, err := uc.BuildSkillTool()
-	if err != nil {
-		t.Fatalf("BuildSkillTool failed: %v", err)
+type fakeMcpToolProvider struct {
+	tools []*HarnessTool
+	err   error
+}
+
+func (f fakeMcpToolProvider) BuildMcpTools(ctx context.Context, allowlist []string) ([]*HarnessTool, error) {
+	return f.tools, f.err
+}
+
+func writeTestSkillPackage(t *testing.T, root, pkg, content string) {
+	t.Helper()
+	dir := filepath.Join(root, pkg)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir skill package failed: %v", err)
 	}
-	_, err = tool.Invoke(context.Background(), `{"payload":"abc"}`)
-	if err == nil || !strings.Contains(err.Error(), "skill_name") {
-		t.Fatalf("expected skill_name validation error, got: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write SKILL.md failed: %v", err)
 	}
 }
 
-func TestCallMcpToolValidateArgs(t *testing.T) {
+func TestOfficialSkillToolShouldLoadSkillContent(t *testing.T) {
 	uc := newTestAgentUsecase()
-	tool, err := uc.BuildMCPTool()
-	if err != nil {
-		t.Fatalf("BuildMCPTool failed: %v", err)
-	}
-	_, err = tool.Invoke(context.Background(), `{"server":"","tool":"x"}`)
-	if err == nil || !strings.Contains(err.Error(), "server") {
-		t.Fatalf("expected server/tool validation error, got: %v", err)
-	}
-}
-
-func TestCallMcpToolShouldRejectSkillIDServer(t *testing.T) {
-	helper := log.NewHelper(log.NewStdLogger(io.Discard))
-	skillDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(skillDir, "agent-browser-clawdbot-0.1.0"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(skillDir, "agent-browser-clawdbot-0.1.0", "SKILL.md"), []byte("# browser skill"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	fe, err := NewFileSkillExecutor([]string{skillDir}, FileSkillExecutorOptions{HotReload: false, HotReloadSet: true})
+	skillRoot := t.TempDir()
+	writeTestSkillPackage(t, skillRoot, "planner", "---\nname: planner\n---\n## Planner\nUse a plan.")
+	exec, err := NewFileSkillExecutor([]string{skillRoot}, FileSkillExecutorOptions{AllowList: "*"})
 	if err != nil {
 		t.Fatalf("NewFileSkillExecutor failed: %v", err)
 	}
-	uc := &AgentUsecase{
-		log:           helper,
-		harnessLogger: NewHarnessLogger(helper),
-		skillExecutor: fe,
-		mcpExecutor:   &fakeMcpExecutor{},
-	}
-	tool, err := uc.BuildMCPTool()
+	uc.SetSkillExecutor(exec)
+
+	registry, _, err := uc.BuildToolRegistryWithOptions(&HarnessToolOptions{EnableSkillTool: true})
 	if err != nil {
-		t.Fatalf("BuildMCPTool failed: %v", err)
+		t.Fatalf("BuildToolRegistryWithOptions failed: %v", err)
 	}
-
-	_, err = tool.Invoke(context.Background(), `{"server":"agent-browser-clawdbot-0.1.0","tool":"search"}`)
-	if err == nil || !strings.Contains(err.Error(), "run_skill") {
-		t.Fatalf("expected skill/mcp misuse error, got: %v", err)
+	tool := registry["skill"]
+	if tool == nil {
+		t.Fatalf("official skill tool missing")
+	}
+	output, err := tool.Invoke(context.Background(), `{"skill":"planner"}`)
+	if err != nil {
+		t.Fatalf("official skill tool invoke failed: %v", err)
+	}
+	if !strings.Contains(output, "Use a plan.") {
+		t.Fatalf("unexpected skill output: %s", output)
 	}
 }
 
-type fakeSkillExecutor struct {
-	called bool
-	name   string
-	data   string
-}
-
-func (f *fakeSkillExecutor) Execute(ctx context.Context, skillName string, payload string) (string, error) {
-	f.called = true
-	f.name = skillName
-	f.data = payload
-	return fmt.Sprintf("skill:%s:%s", skillName, payload), nil
-}
-
-type fakeMcpExecutor struct {
-	called    bool
-	server    string
-	tool      string
-	arguments string
-}
-
-func (f *fakeMcpExecutor) Call(ctx context.Context, server string, tool string, arguments string) (string, error) {
-	f.called = true
-	f.server = server
-	f.tool = tool
-	f.arguments = arguments
-	return fmt.Sprintf("mcp:%s:%s:%s", server, tool, arguments), nil
-}
-
-func TestRunSkillToolShouldInvokeExecutor(t *testing.T) {
+func TestMcpAllowlistShouldFilterConcreteServerTools(t *testing.T) {
 	uc := newTestAgentUsecase()
-	fake := &fakeSkillExecutor{}
-	uc.SetSkillExecutor(fake)
-	tool, err := uc.BuildSkillTool()
-	if err != nil {
-		t.Fatalf("BuildSkillTool failed: %v", err)
-	}
-	output, err := tool.Invoke(context.Background(), `{"skill_name":"planner","payload":"demo"}`)
-	if err != nil {
-		t.Fatalf("tool invoke failed: %v", err)
-	}
-	if !fake.called || fake.name != "planner" || fake.data != "demo" {
-		t.Fatalf("skill executor was not called correctly")
-	}
-	if output != "skill:planner:demo" {
-		t.Fatalf("unexpected output: %s", output)
-	}
-}
-
-func TestCallMcpToolShouldInvokeExecutor(t *testing.T) {
-	uc := newTestAgentUsecase()
-	fake := &fakeMcpExecutor{}
-	uc.SetMcpExecutor(fake)
-	tool, err := uc.BuildMCPTool()
-	if err != nil {
-		t.Fatalf("BuildMCPTool failed: %v", err)
-	}
-	output, err := tool.Invoke(context.Background(), `{"server":"cursor","tool":"browser_tabs","arguments":"{\"action\":\"list\"}"}`)
-	if err != nil {
-		t.Fatalf("tool invoke failed: %v", err)
-	}
-	if !fake.called || fake.server != "cursor" || fake.tool != "browser_tabs" {
-		t.Fatalf("mcp executor was not called correctly")
-	}
-	if output == "" {
-		t.Fatalf("unexpected empty output")
-	}
-}
-
-func TestMcpAllowlistWildcardShouldAllowServerTools(t *testing.T) {
-	uc := newTestAgentUsecase()
-	fake := &fakeMcpExecutor{}
-	uc.SetMcpExecutor(fake)
+	uc.SetMcpToolProvider(fakeMcpToolProvider{
+		tools: []*HarnessTool{
+			{Info: &schema.ToolInfo{Name: "mcp_prod_weather", Desc: "prod weather"}},
+		},
+	})
 	registry, _, err := uc.BuildToolRegistryWithOptions(&HarnessToolOptions{
 		EnableMcpTool: true,
 		McpAllowlist:  []string{"prod:*"},
@@ -306,15 +257,11 @@ func TestMcpAllowlistWildcardShouldAllowServerTools(t *testing.T) {
 		t.Fatalf("BuildToolRegistryWithOptions failed: %v", err)
 	}
 
-	output, err := registry["call_mcp_tool"].Invoke(context.Background(), `{"server":"prod","tool":"weather","arguments":"{}"}`)
-	if err != nil {
-		t.Fatalf("expected wildcard allowlist to pass, got: %v", err)
+	if _, ok := registry["mcp_prod_weather"]; !ok {
+		t.Fatalf("expected concrete MCP tool to be registered, got %v", registry)
 	}
-	if !fake.called || fake.server != "prod" || fake.tool != "weather" {
-		t.Fatalf("mcp executor was not called correctly")
-	}
-	if output == "" {
-		t.Fatalf("unexpected empty output")
+	if _, ok := registry["call_mcp_tool"]; ok {
+		t.Fatalf("call_mcp_tool must not be registered")
 	}
 }
 
@@ -483,7 +430,7 @@ func TestBuildMessagesShouldUseConfiguredSystemPrompt(t *testing.T) {
 
 func TestComposeMessagesShouldEmbedAttachmentsIntoLastUserMessage(t *testing.T) {
 	uc := newTestAgentUsecase()
-	msgs := uc.composeMessages(&HarnessRequest{}, "", nil, "看这个文件", []HarnessAttachment{{
+	msgs := uc.composeMessages(context.Background(), &HarnessRequest{}, "", nil, "看这个文件", []HarnessAttachment{{
 		Filename:      "spec.pdf",
 		MimeType:      "application/pdf",
 		ContentBase64: base64.StdEncoding.EncodeToString([]byte("pdf")),
