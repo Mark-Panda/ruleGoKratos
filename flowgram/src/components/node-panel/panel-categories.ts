@@ -9,14 +9,14 @@ export const PANEL_CATEGORY_ORDER: string[] = [
   'data-transform',
   'http-external',
   'ai-agent',
+  'subflow',
+  'debug',
   'integration-x',
   'storage',
   'files',
   'exec-shell',
   'ci-cd',
   'schedule',
-  'subflow',
-  'debug',
   'other',
 ];
 

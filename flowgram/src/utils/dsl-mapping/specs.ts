@@ -69,12 +69,6 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       defaultValue: true,
     },
     {
-      inputKey: 'enableMcpTool',
-      dslKey: 'enableMcpTool',
-      valueType: 'boolean',
-      defaultValue: true,
-    },
-    {
       inputKey: 'enableUUIDTool',
       dslKey: 'enableUUIDTool',
       valueType: 'boolean',
@@ -95,12 +89,6 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
     {
       inputKey: 'skillAllowlist',
       dslKey: 'skillAllowlist',
-      valueType: 'json',
-      defaultValue: [],
-    },
-    {
-      inputKey: 'mcpAllowlist',
-      dslKey: 'mcpAllowlist',
       valueType: 'json',
       defaultValue: [],
     },

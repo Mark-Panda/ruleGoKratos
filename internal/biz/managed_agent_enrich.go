@@ -84,7 +84,7 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 	all := fe.ListAvailableSkillNames()
 	out.SkillCatalogFilter = nil
 
-	mcpAllow, err := uc.managedAgentLoader.McpAllowlistStrings(ctx, p.McpIDs)
+	mcpAllow, err := uc.managedAgentLoader.EnabledMcpAllowlistStrings(ctx)
 	if err != nil {
 		return req, err
 	}

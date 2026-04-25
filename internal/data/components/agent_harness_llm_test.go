@@ -42,3 +42,14 @@ func TestExtractHarnessAttachmentsShouldFallbackToMetadata(t *testing.T) {
 		t.Fatalf("got %#v want %#v", got, want)
 	}
 }
+
+func TestAgentHarnessShouldNotExposeMcpNodeConfigFields(t *testing.T) {
+	cfgType := reflect.TypeOf(AgentHarnessLLMConfig{})
+	if _, ok := cfgType.FieldByName("EnableMcpTool"); ok {
+		t.Fatal("AgentHarnessLLMConfig must not expose EnableMcpTool")
+	}
+	nodeType := reflect.TypeOf(AgentHarnessLLM{})
+	if _, ok := nodeType.FieldByName("mcpAllow"); ok {
+		t.Fatal("AgentHarnessLLM must not keep node-level MCP allowlist state")
+	}
+}

@@ -1398,10 +1398,8 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               'userPrompt',
               'systemPrompt',
               'enableSkillTool',
-              'enableMcpTool',
               'enableWorkspaceTools',
               'skillAllowlist',
-              'mcpAllowlist',
               'maxIterations',
               'maxToolCalls',
               'toolTimeoutSecs',
@@ -1430,13 +1428,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   description: '允许模型调用 Skill 执行器',
                 },
               },
-              enableMcpTool: {
-                type: 'boolean',
-                extra: {
-                  label: '启用 call_mcp_tool',
-                  description: '允许模型调用 MCP',
-                },
-              },
               enableWorkspaceTools: {
                 type: 'boolean',
                 extra: {
@@ -1450,14 +1441,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 extra: {
                   label: 'Skill 白名单',
                   description: 'string[]；空=不限制',
-                },
-              },
-              mcpAllowlist: {
-                type: 'array',
-                items: { type: 'string' },
-                extra: {
-                  label: 'MCP 白名单',
-                  description: '元素如 server:tool 或 server:*；空=不限制',
                 },
               },
               maxIterations: {

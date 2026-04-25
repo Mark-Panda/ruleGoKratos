@@ -29,7 +29,7 @@ func init() {
 	_ = rulego.Registry.Register(&AgentHarnessLLM{})
 }
 
-// AgentHarnessLLM 自定义 LLM 节点：走 Eino tool-calling，可按节点配置启用 Skill / MCP 等工具。
+// AgentHarnessLLM 自定义 LLM 节点：走 Eino tool-calling，可按节点配置启用 Skill 等工具。
 type AgentHarnessLLM struct {
 	Config AgentHarnessLLMConfig
 
@@ -37,10 +37,9 @@ type AgentHarnessLLM struct {
 	systemTpl str.Template
 	userTpl   str.Template
 	hasVar    bool
-	mcpAllow  []string // 从 configuration 解析；元素为 ParseMcpAllowlist 可识别的 server:tool 或 server:*
 }
 
-// AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）；白名单见 skillAllow / mcpAllow。
+// AgentHarnessLLMConfig 与 flowgram DSL 导出字段对齐（camelCase）。
 type AgentHarnessLLMConfig struct {
 	LlmConfigID        int64  `json:"llmConfigId"`
 	LlmModelEntryID    int64  `json:"llmModelEntryId"`
@@ -50,7 +49,6 @@ type AgentHarnessLLMConfig struct {
 	SystemPrompt       string `json:"systemPrompt"`
 	UserPrompt         string `json:"userPrompt"`
 	EnableSkillTool    bool   `json:"enableSkillTool"`
-	EnableMcpTool      bool   `json:"enableMcpTool"`
 	EnableSubAgentTool bool   `json:"enableSubAgentTool"`
 	// EnableUUIDTool 已废弃：运行时固定启用 UUID 工具，DSL 若仍含该字段会被忽略。
 	EnableUUIDTool       bool `json:"enableUUIDTool"`
@@ -67,7 +65,6 @@ func (x *AgentHarnessLLM) Type() string {
 func (x *AgentHarnessLLM) New() types.Node {
 	return &AgentHarnessLLM{Config: AgentHarnessLLMConfig{
 		EnableSkillTool:    true,
-		EnableMcpTool:      true,
 		EnableSubAgentTool: true,
 	}}
 }
@@ -75,7 +72,7 @@ func (x *AgentHarnessLLM) New() types.Node {
 func (x *AgentHarnessLLM) Def() types.ComponentForm {
 	return types.ComponentForm{
 		Label: "agentHarness",
-		Desc:  "Agent LLM（可配置 Skill / MCP 工具，与 Chat Harness 一致；支持从 msg.data.attachments / metadata.attachments 读取多模态附件）",
+		Desc:  "Agent LLM（可配置 Skill 工具；MCP 默认加载所有已启用配置；支持从 msg.data.attachments / metadata.attachments 读取多模态附件）",
 	}
 }
 
@@ -88,9 +85,7 @@ func (x *AgentHarnessLLM) Init(_ types.Config, configuration types.Configuration
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	x.mcpAllow = biz.NormalizeMcpAllowlistInput(raw["mcpAllowlist"])
 	delete(raw, "skillAllowlist")
-	delete(raw, "mcpAllowlist")
 	if _, ok := raw["enableSubAgentTool"]; !ok {
 		raw["enableSubAgentTool"] = true
 	}
@@ -143,10 +138,9 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	toolOpts := &biz.HarnessToolOptions{
 		EnableUUIDTool:       true, // 不在节点上暴露开关，固定启用 generate_uuid
 		EnableSkillTool:      x.Config.EnableSkillTool,
-		EnableMcpTool:        x.Config.EnableMcpTool,
+		EnableMcpTool:        true,
 		EnableWorkspaceTools: true, // Agent-LLM 节点固定开启，不允许关闭
 		EnableSubAgentTool:   x.Config.EnableSubAgentTool,
-		McpAllowlist:         x.mcpAllow,
 	}
 
 	var cfgOverride *biz.HarnessConfig

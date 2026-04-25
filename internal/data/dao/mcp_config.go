@@ -44,6 +44,12 @@ func (m *MCPConfig) FindAll(ctx context.Context) ([]MCPConfig, error) {
 	return list, err
 }
 
+func (m *MCPConfig) FindEnabled(ctx context.Context) ([]MCPConfig, error) {
+	var list []MCPConfig
+	err := db.WithContext(ctx).Model(m).Where("enabled = ?", true).Order("id desc").Find(&list).Error
+	return list, err
+}
+
 func (m *MCPConfig) FindByIDs(ctx context.Context, ids []int64) ([]MCPConfig, error) {
 	if len(ids) == 0 {
 		return nil, nil

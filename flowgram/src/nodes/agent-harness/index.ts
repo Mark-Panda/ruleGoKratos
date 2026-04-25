@@ -16,7 +16,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
   info: {
     icon: iconLLM,
     description:
-      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；Skill / MCP / Workspace 与白名单可按节点配置。支持从 `msg.data.attachments` 或 `metadata.attachments` 读取多模态附件，图片/视频/音频优先走原生多模态。',
+      'Agent LLM：须在下方选择模型管理中的 LLM 配置与模型条目（凭证与模型名来自后台）；Skill 与 MCP 默认加载可用配置，可选绑定 Workspace。支持从 `msg.data.attachments` 或 `metadata.attachments` 读取多模态附件，图片/视频/音频优先走原生多模态。',
   },
   meta: {
     defaultPorts: [
@@ -52,11 +52,9 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               'You are a helpful assistant. You may call run_skill, call_mcp_tool and run_sub_agent when they help answer the user. Use this delegation policy: (1) if the work has 2+ independent subtasks, call run_sub_agent with sub_tasks_json; max_concurrency is optional and can be auto-estimated by runtime, (2) if the work is tightly coupled, use one sub-agent task; (3) if the work is trivial, finish directly without delegation. When you call run_sub_agent, require JSON output with summary/findings/next_steps.',
           },
           enableSkillTool: { type: 'constant', content: true },
-          enableMcpTool: { type: 'constant', content: true },
           enableWorkspaceTools: { type: 'constant', content: true },
           enableSubAgentTool: { type: 'constant', content: true },
           skillAllowlist: { type: 'constant', content: [] as string[] },
-          mcpAllowlist: { type: 'constant', content: [] as string[] },
           maxIterations: { type: 'constant', content: 0 },
           maxToolCalls: { type: 'constant', content: 0 },
           toolTimeoutSecs: { type: 'constant', content: 0 },
@@ -71,11 +69,9 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             'workspaceId',
             'systemPrompt',
             'enableSkillTool',
-            'enableMcpTool',
             'enableWorkspaceTools',
             'enableSubAgentTool',
             'skillAllowlist',
-            'mcpAllowlist',
             'maxIterations',
             'maxToolCalls',
             'toolTimeoutSecs',
@@ -127,10 +123,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               type: 'boolean',
               extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
             },
-            enableMcpTool: {
-              type: 'boolean',
-              extra: { label: '启用 call_mcp_tool', description: '允许模型调用 MCP' },
-            },
             enableWorkspaceTools: {
               type: 'boolean',
               extra: {
@@ -151,14 +143,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: 'Skill 白名单',
                 description: '由侧边栏勾选维护（string[]）；空=不限制',
-              },
-            },
-            mcpAllowlist: {
-              type: 'array',
-              items: { type: 'string' },
-              extra: {
-                label: 'MCP 白名单',
-                description: '勾选 MCP 后写入 server:*；空=不限制',
               },
             },
             maxIterations: {

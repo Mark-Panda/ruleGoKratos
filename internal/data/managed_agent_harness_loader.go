@@ -46,10 +46,6 @@ func (managedAgentHarnessLoader) Load(ctx context.Context, id int64) (*biz.Manag
 		_ = json.Unmarshal([]byte(row.SkillPathsJSON), &rawPkgs)
 	}
 	pkgs := biz.NormalizeStoredSkillPackageIDs(rawPkgs)
-	var mcpIDs []int64
-	if row.McpIDsJSON != "" {
-		_ = json.Unmarshal([]byte(row.McpIDsJSON), &mcpIDs)
-	}
 	var entryIDs []int64
 	if row.ModelEntryIDsJSON != "" {
 		_ = json.Unmarshal([]byte(row.ModelEntryIDsJSON), &entryIDs)
@@ -60,7 +56,6 @@ func (managedAgentHarnessLoader) Load(ctx context.Context, id int64) (*biz.Manag
 		WorkspaceID:     strings.TrimSpace(row.WorkspaceID),
 		WorkspacePrompt: buildWorkspacePrompt(strings.TrimSpace(row.WorkspaceID)),
 		SkillPackageIDs: pkgs,
-		McpIDs:          mcpIDs,
 		LLMConfigID:     row.LLMConfigID,
 		ModelScope:      strings.TrimSpace(row.ModelScope),
 		ModelEntryIDs:   entryIDs,
@@ -154,18 +149,15 @@ func (managedAgentHarnessLoader) ResolveModelEntryForHarness(ctx context.Context
 	}
 }
 
-func (managedAgentHarnessLoader) McpAllowlistStrings(ctx context.Context, ids []int64) ([]string, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	rows, err := dao.NewMCPConfig().FindByIDs(ctx, ids)
+func (managedAgentHarnessLoader) EnabledMcpAllowlistStrings(ctx context.Context) ([]string, error) {
+	rows, err := dao.NewMCPConfig().FindEnabled(ctx)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]string, 0, len(rows))
 	for _, r := range rows {
 		srv := strings.TrimSpace(r.Server)
-		if srv == "" || !r.Enabled {
+		if srv == "" {
 			continue
 		}
 		out = append(out, srv+":*")

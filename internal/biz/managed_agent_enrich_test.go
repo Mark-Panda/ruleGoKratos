@@ -12,8 +12,8 @@ import (
 )
 
 type fakeManagedAgentLoader struct {
-	profile *ManagedAgentProfile
-	mcpList []string
+	profile    *ManagedAgentProfile
+	allMcpList []string
 }
 
 func (f *fakeManagedAgentLoader) Load(ctx context.Context, id int64) (*ManagedAgentProfile, error) {
@@ -24,8 +24,8 @@ func (f *fakeManagedAgentLoader) ResolveModelEntryForHarness(ctx context.Context
 	return 11, 22, nil
 }
 
-func (f *fakeManagedAgentLoader) McpAllowlistStrings(ctx context.Context, mcpIDs []int64) ([]string, error) {
-	return append([]string(nil), f.mcpList...), nil
+func (f *fakeManagedAgentLoader) EnabledMcpAllowlistStrings(ctx context.Context) ([]string, error) {
+	return append([]string(nil), f.allMcpList...), nil
 }
 
 func newManagedEnrichTestUsecase(t *testing.T) *AgentUsecase {
@@ -56,9 +56,8 @@ func TestEnrichHarnessWithManagedAgentShouldMergeManagedToolOptions(t *testing.T
 			Enabled:         true,
 			SystemPrompt:    "managed prompt",
 			SkillPackageIDs: []string{"pkg-a"},
-			McpIDs:          []int64{1},
 		},
-		mcpList: []string{"prod:query"},
+		allMcpList: []string{"prod:*", "search:*"},
 	})
 
 	parentOptions := &HarnessToolOptions{
@@ -90,7 +89,7 @@ func TestEnrichHarnessWithManagedAgentShouldMergeManagedToolOptions(t *testing.T
 	if len(out.ToolOptions.SkillAllowlist) != 0 {
 		t.Fatalf("expected managed agent to clear skill allowlist restrictions, got %v", out.ToolOptions.SkillAllowlist)
 	}
-	expectedMcpAllow := []string{"server\x00tool", "prod:query"}
+	expectedMcpAllow := []string{"server\x00tool", "prod:*", "search:*"}
 	if !reflect.DeepEqual(out.ToolOptions.McpAllowlist, expectedMcpAllow) {
 		t.Fatalf("expected merged mcp allowlist %v, got %v", expectedMcpAllow, out.ToolOptions.McpAllowlist)
 	}
@@ -109,9 +108,8 @@ func TestEnrichHarnessWithManagedAgentShouldInjectToolsWhenMissing(t *testing.T)
 			Enabled:         true,
 			SystemPrompt:    "managed prompt",
 			SkillPackageIDs: []string{"pkg-a"},
-			McpIDs:          []int64{1},
 		},
-		mcpList: []string{"prod:query"},
+		allMcpList: []string{"prod:*"},
 	})
 
 	out, err := uc.enrichHarnessWithManagedAgent(context.Background(), HarnessRequest{ManagedAgentID: 100})

@@ -322,7 +322,7 @@ describe('mapDslToNodeInputsValues', () => {
 });
 
 describe('ai/agentHarness spec round-trip', () => {
-  it('preserves model/prompts, toggles, allowlists, and limits', () => {
+  it('preserves model/prompts, configurable toggles, skill allowlist, and limits', () => {
     const node = {
       data: {
         inputsValues: {
@@ -330,11 +330,9 @@ describe('ai/agentHarness spec round-trip', () => {
           systemPrompt: { content: 'S' },
           userPrompt: { content: 'U' },
           enableSkillTool: { content: false },
-          enableMcpTool: { content: true },
           enableUUIDTool: { content: false },
           enableWorkspaceTools: { content: true },
           skillAllowlist: { content: ['a', 'b'] },
-          mcpAllowlist: { content: ['srv:t1'] },
           maxIterations: { content: 3 },
           maxToolCalls: { content: 10 },
           toolTimeoutSecs: { content: 30 },
@@ -344,8 +342,10 @@ describe('ai/agentHarness spec round-trip', () => {
     const cfg = mapNodeToDslConfig(node, aiAgentHarnessMappingSpec);
     expect(cfg.model).toBe('${model}');
     expect(cfg.enableSkillTool).toBe(false);
+    expect(cfg.enableMcpTool).toBeUndefined();
     expect(cfg.enableWorkspaceTools).toBe(true);
     expect(cfg.skillAllowlist).toEqual(['a', 'b']);
+    expect(cfg.mcpAllowlist).toBeUndefined();
     expect(cfg.maxIterations).toBe(3);
     expect(cfg.llmConfigId).toBe(0);
     expect(cfg.llmModelEntryId).toBe(0);
@@ -355,11 +355,11 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(iv.systemPrompt?.content).toBe('S');
     expect(iv.userPrompt?.content).toBe('U');
     expect(iv.enableSkillTool?.content).toBe(false);
-    expect(iv.enableMcpTool?.content).toBe(true);
+    expect(iv.enableMcpTool).toBeUndefined();
     expect(iv.enableUUIDTool?.content).toBe(false);
     expect(iv.enableWorkspaceTools?.content).toBe(true);
     expect(iv.skillAllowlist?.content).toEqual(['a', 'b']);
-    expect(iv.mcpAllowlist?.content).toEqual(['srv:t1']);
+    expect(iv.mcpAllowlist).toBeUndefined();
     expect(iv.maxIterations?.content).toBe(3);
     expect(iv.maxToolCalls?.content).toBe(10);
     expect(iv.toolTimeoutSecs?.content).toBe(30);
@@ -380,12 +380,12 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.systemPrompt).toBe('');
     expect(cfg.userPrompt).toBe('hi');
     expect(cfg.enableSkillTool).toBe(true);
-    expect(cfg.enableMcpTool).toBe(true);
+    expect(cfg.enableMcpTool).toBeUndefined();
     expect(cfg.enableUUIDTool).toBe(true);
     expect(cfg.enableWorkspaceTools).toBe(true);
     expect(cfg.enableSubAgentTool).toBe(true);
     expect(cfg.skillAllowlist).toEqual([]);
-    expect(cfg.mcpAllowlist).toEqual([]);
+    expect(cfg.mcpAllowlist).toBeUndefined();
     expect(cfg.maxIterations).toBe(0);
     expect(cfg.maxToolCalls).toBe(0);
     expect(cfg.toolTimeoutSecs).toBe(0);
@@ -393,13 +393,13 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(cfg.llmModelEntryId).toBe(0);
   });
 
-  it('fromDSL：字符串白名单转为数组（兼容旧链）', () => {
+  it('fromDSL：字符串 Skill 白名单转为数组（兼容旧链）', () => {
     const iv = mapDslToNodeInputsValues(
       { skillAllowlist: 'a, b', mcpAllowlist: 's1:t1,s2:*' } as Record<string, unknown>,
       aiAgentHarnessMappingSpec
     );
     expect(iv.skillAllowlist?.content).toEqual(['a', 'b']);
-    expect(iv.mcpAllowlist?.content).toEqual(['s1:t1', 's2:*']);
+    expect(iv.mcpAllowlist).toBeUndefined();
   });
 });
 

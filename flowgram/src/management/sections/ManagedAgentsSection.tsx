@@ -35,21 +35,11 @@ import {
   type ManagedAgentPayload,
 } from '../../services/api-managed-agents';
 import {
-  listMCPConfigs,
   listLlmConfigs,
-  type MCPConfigItem,
   type LlmConfigItem,
 } from '../../services/api-agent';
 
 const { Text, Title } = Typography;
-
-/** 与后端/JSON 对齐，避免 CheckboxGroup 因 number/string 混用导致已选项不显示 */
-function normalizeMcpIdList(ids: unknown): number[] {
-  if (!Array.isArray(ids)) return [];
-  return ids
-    .map((x) => (typeof x === 'number' ? x : Number(x)))
-    .filter((n) => Number.isFinite(n) && n > 0);
-}
 
 function emptyPayload(): ManagedAgentPayload {
   return {
@@ -69,7 +59,6 @@ function emptyPayload(): ManagedAgentPayload {
 export const ManagedAgentsSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ManagedAgentItem[]>([]);
-  const [mcps, setMcps] = useState<MCPConfigItem[]>([]);
   const [llmConfigs, setLlmConfigs] = useState<LlmConfigItem[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
 
@@ -81,14 +70,12 @@ export const ManagedAgentsSection: React.FC = () => {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [agents, mcpList, llm, ws] = await Promise.all([
+      const [agents, llm, ws] = await Promise.all([
         listManagedAgents(),
-        listMCPConfigs(),
         listLlmConfigs(),
         listWorkspaces(),
       ]);
       setRows(agents);
-      setMcps(Array.isArray(mcpList) ? mcpList : []);
       setLlmConfigs(Array.isArray(llm) ? llm : []);
       setWorkspaces(Array.isArray(ws) ? ws : []);
     } catch (e) {
@@ -108,20 +95,6 @@ export const ManagedAgentsSection: React.FC = () => {
     const c = enabledLlmConfigs.find((x) => x.id === form.llmConfigId);
     return (c?.models || []).filter((m) => m.enabled);
   }, [enabledLlmConfigs, form.llmConfigId]);
-
-  /** 已启用的 MCP + 当前表单已勾选但已在 MCP 管理中停用的项（否则 Semi CheckboxGroup 找不到 option，勾选态丢失） */
-  const mcpCheckboxOptions = useMemo(() => {
-    const selected = new Set((form.mcpIds || []).map((id) => String(id)));
-    const list = mcps.filter((m) => {
-      const en = m.enabled === true || (m as { enabled?: unknown }).enabled === 'true';
-      if (en) return true;
-      return selected.has(String(m.id));
-    });
-    return list.map((m) => ({
-      label: `${m.name} (${m.server})${m.enabled ? '' : ' [已停用]'}`,
-      value: String(m.id),
-    }));
-  }, [mcps, form.mcpIds]);
 
   const configName = useCallback(
     (id: number) => enabledLlmConfigs.find((c) => c.id === id)?.name || `#${id}`,
@@ -144,7 +117,7 @@ export const ManagedAgentsSection: React.FC = () => {
       systemPrompt: r.systemPrompt || '',
       workspaceId: r.workspaceId || '',
       skillPackageIds: [],
-      mcpIds: normalizeMcpIdList(r.mcpIds),
+      mcpIds: [],
       llmConfigId: r.llmConfigId,
       modelScope: r.modelScope === 'explicit' ? 'explicit' : 'all',
       modelEntryIds: [...(r.modelEntryIds || [])],
@@ -167,6 +140,7 @@ export const ManagedAgentsSection: React.FC = () => {
       name: form.name.trim(),
       description: (form.description || '').trim(),
       skillPackageIds: [],
+      mcpIds: [],
       modelEntryIds: form.modelScope === 'explicit' ? form.modelEntryIds || [] : [],
     };
     if (
@@ -243,22 +217,6 @@ export const ManagedAgentsSection: React.FC = () => {
         if (!wid) return '—';
         const matched = workspaces.find((w) => (w.id || '').trim() === wid);
         return matched ? `${matched.name}（${matched.id}）` : wid;
-      },
-    },
-    {
-      title: 'MCP',
-      key: 'mcp',
-      width: 240,
-      ellipsis: true,
-      render: (_: unknown, r: ManagedAgentItem) => {
-        const ids = normalizeMcpIdList(r.mcpIds);
-        if (ids.length === 0) return '—';
-        return ids
-          .map((id) => {
-            const m = mcps.find((x) => Number(x.id) === Number(id));
-            return m ? m.name : `#${id}`;
-          })
-          .join('、');
       },
     },
     {
@@ -362,30 +320,9 @@ export const ManagedAgentsSection: React.FC = () => {
 
           <Divider margin="12px" />
 
-          <div style={{ width: '100%' }}>
-            <Text strong>MCP</Text>
-            <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-              勾选可用的 MCP 配置；默认仅列出「已启用」项；若某条已停用但仍被本 Agent 引用，会带
-              [已停用] 标出以便取消勾选
-            </Text>
-            {mcpCheckboxOptions.length === 0 ? (
-              <Text type="warning">暂无可选 MCP：请先在「MCP 配置」中新增并启用至少一条。</Text>
-            ) : (
-              <CheckboxGroup
-                direction="vertical"
-                value={(form.mcpIds || []).map(String)}
-                onChange={(v) =>
-                  setForm((f) => ({
-                    ...f,
-                    mcpIds: normalizeMcpIdList(v as string[]),
-                  }))
-                }
-                options={mcpCheckboxOptions}
-              />
-            )}
-          </div>
-
-          <Divider margin="12px" />
+          <Text type="tertiary" size="small">
+            MCP 默认加载「MCP 配置」中所有已启用的 server，无需在每个 Agent 中单独勾选。
+          </Text>
 
           <div style={{ width: '100%' }}>
             <Text strong>模型（模型管理）</Text>

@@ -89,7 +89,7 @@ src/
 │   ├── end/                 # 结束节点
 │   ├── group/               # 分组节点
 │   ├── http/                # HTTP节点
-│   ├── agent-harness/       # Agent LLM（Skill/MCP）节点
+│   ├── agent-harness/       # Agent LLM节点
 │   ├── loop/                # 循环节点
 │   ├── start/               # 开始节点
 │   └── variable/            # 变量节点
@@ -183,7 +183,7 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   ConditionNodeRegistry,    // 条件节点
   StartNodeRegistry,        // 开始节点
   EndNodeRegistry,          // 结束节点
-  AgentHarnessNodeRegistry,  // Agent LLM（Skill/MCP）节点
+  AgentHarnessNodeRegistry,  // Agent LLM节点
   LoopNodeRegistry,         // 循环节点
   CommentNodeRegistry,      // 注释节点
   HTTPNodeRegistry,         // HTTP节点
@@ -249,7 +249,7 @@ export function useEditorProps(
 export enum WorkflowNodeType {
   Start = 'start',           // 开始节点
   End = 'end',               // 结束节点
-  AgentHarness = 'ai/agentHarness', // Agent LLM（Skill/MCP）
+  AgentHarness = 'ai/agentHarness', // Agent LLM）
   HTTP = 'http',             // HTTP请求节点
   Code = 'code',             // 代码执行节点
   Variable = 'variable',     // 变量节点

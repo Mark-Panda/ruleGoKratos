@@ -241,7 +241,7 @@ export function transformCursorCliConfigIn(
   return next;
 }
 
-/** fromDSL：agentHarness 白名单历史为逗号分隔字符串时转为 string[]，便于勾选组件与 JSON 数组 DSL。 */
+/** fromDSL：agentHarness Skill 白名单历史为逗号分隔字符串时转为 string[]，便于 JSON 数组 DSL。 */
 export function transformAgentHarnessConfigIn(
   config: Record<string, unknown>
 ): Record<string, unknown> {
@@ -257,17 +257,6 @@ export function transformAgentHarnessConfigIn(
   if (typeof skill === 'string') {
     const t = skill.trim();
     next.skillAllowlist =
-      t === ''
-        ? []
-        : t
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean);
-  }
-  const mcp = next.mcpAllowlist;
-  if (typeof mcp === 'string') {
-    const t = mcp.trim();
-    next.mcpAllowlist =
       t === ''
         ? []
         : t

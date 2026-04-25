@@ -198,9 +198,9 @@ export const AdminPanel: React.FC = () => {
       case 'admin-terminal':
         return '终端';
       case 'admin-lark-cli':
-        return '飞书 CLI 配置';
+        return '飞书';
       case 'admin-cursor-cli':
-        return 'Cursor CLI 登录';
+        return 'Cursor';
       case 'task-board':
         return '任务看板';
       case 'service-management':
@@ -321,8 +321,8 @@ export const AdminPanel: React.FC = () => {
                 itemKey: 'admin-cli',
                 icon: <IconSetting />,
                 items: [
-                  { itemKey: 'admin-lark-cli', text: '飞书 CLI 配置' },
-                  { itemKey: 'admin-cursor-cli', text: 'Cursor CLI 登录' },
+                  { itemKey: 'admin-lark-cli', text: '飞书' },
+                  { itemKey: 'admin-cursor-cli', text: 'Cursor' },
                 ],
               },
               {

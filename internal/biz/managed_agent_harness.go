@@ -13,17 +13,16 @@ type ManagedAgentProfile struct {
 	WorkspaceID     string
 	WorkspacePrompt string
 	SkillPackageIDs []string
-	McpIDs          []int64
 	LLMConfigID     int64
 	ModelScope      string // all | explicit
 	ModelEntryIDs   []int64
 }
 
-// ManagedAgentLoader 从存储加载 Agent 配置并解析模型、MCP 白名单（实现放在 data 包，避免 biz 依赖 dao）。
+// ManagedAgentLoader 从存储加载 Agent 配置并解析模型、全局启用 MCP（实现放在 data 包，避免 biz 依赖 dao）。
 type ManagedAgentLoader interface {
 	Load(ctx context.Context, id int64) (*ManagedAgentProfile, error)
 	ResolveModelEntryForHarness(ctx context.Context, p *ManagedAgentProfile) (configID, entryID int64, err error)
-	McpAllowlistStrings(ctx context.Context, mcpIDs []int64) ([]string, error)
+	EnabledMcpAllowlistStrings(ctx context.Context) ([]string, error)
 }
 
 // PackageIDFromSkillName 与技能包 id 规则一致：技能名（与 run_skill 一致）的首段路径。

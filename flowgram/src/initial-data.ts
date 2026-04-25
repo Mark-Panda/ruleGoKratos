@@ -23,10 +23,8 @@ function demoAgentHarnessNodeData(opts: {
       userPrompt: { type: 'template' as const, content: opts.userPrompt },
       systemPrompt: { type: 'template' as const, content: opts.systemPrompt ?? defaultSys },
       enableSkillTool: { type: 'constant' as const, content: true },
-      enableMcpTool: { type: 'constant' as const, content: true },
       enableWorkspaceTools: { type: 'constant' as const, content: false },
       skillAllowlist: { type: 'constant' as const, content: [] as string[] },
-      mcpAllowlist: { type: 'constant' as const, content: [] as string[] },
       maxIterations: { type: 'constant' as const, content: 0 },
       maxToolCalls: { type: 'constant' as const, content: 0 },
       toolTimeoutSecs: { type: 'constant' as const, content: 0 },
@@ -40,10 +38,8 @@ function demoAgentHarnessNodeData(opts: {
         'userPrompt',
         'systemPrompt',
         'enableSkillTool',
-        'enableMcpTool',
         'enableWorkspaceTools',
         'skillAllowlist',
-        'mcpAllowlist',
         'maxIterations',
         'maxToolCalls',
         'toolTimeoutSecs',
@@ -89,10 +85,6 @@ function demoAgentHarnessNodeData(opts: {
           type: 'boolean',
           extra: { label: '启用 run_skill', description: '允许模型调用 Skill 执行器' },
         },
-        enableMcpTool: {
-          type: 'boolean',
-          extra: { label: '启用 call_mcp_tool', description: '允许模型调用 MCP' },
-        },
         enableWorkspaceTools: {
           type: 'boolean',
           extra: {
@@ -106,14 +98,6 @@ function demoAgentHarnessNodeData(opts: {
           extra: {
             label: 'Skill 白名单',
             description: '由侧边栏勾选维护（string[]）；空=不限制',
-          },
-        },
-        mcpAllowlist: {
-          type: 'array',
-          items: { type: 'string' },
-          extra: {
-            label: 'MCP 白名单',
-            description: '勾选 MCP 后写入 server:*；空=不限制',
           },
         },
         maxIterations: {
