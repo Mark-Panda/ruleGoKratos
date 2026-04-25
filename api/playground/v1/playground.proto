@@ -89,14 +89,14 @@ service AgentPlayground {
     // 获取运行结果
     rpc GetRun(GetRunReq) returns (GetRunReply) {
         option (google.api.http) = {
-            get: "/api/v1/playground/run/{runId}"
+            get: "/api/v1/playground/run/{run_id}"
         };
     }
 
     // 获取运行事件（用于 Trace）
     rpc GetRunEvents(GetRunEventsReq) returns (GetRunEventsReply) {
         option (google.api.http) = {
-            get: "/api/v1/playground/run/{runId}/events"
+            get: "/api/v1/playground/run/{run_id}/events"
         };
     }
 

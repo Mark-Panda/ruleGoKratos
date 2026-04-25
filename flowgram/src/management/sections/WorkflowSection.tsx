@@ -25,6 +25,7 @@ import {
   deleteRuleChain,
 } from '../../services/api-rules';
 import { Editor } from '../../editor';
+import { RuleChainSkillAction } from '../../components/rule-chain-skill-action';
 
 export const WorkflowSection: React.FC = () => {
   const [showEditor, setShowEditor] = useState(false);
@@ -176,6 +177,20 @@ export const WorkflowSection: React.FC = () => {
           >
             {desc}
           </Typography.Text>
+        );
+      },
+    },
+    {
+      title: '技能',
+      width: 220,
+      render: (_: any, record: any) => {
+        const chain = record?.ruleChain;
+        return (
+          <RuleChainSkillAction
+            ruleChainId={String(chain?.id ?? '')}
+            isRoot={Boolean(chain?.root)}
+            size="small"
+          />
         );
       },
     },

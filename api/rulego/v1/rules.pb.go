@@ -229,7 +229,8 @@ type ExecuteRuleChainReq struct {
 	MsgType       string           `protobuf:"bytes,2,opt,name=msgType,proto3" json:"msgType,omitempty"`
 	DebugMode     bool             `protobuf:"varint,3,opt,name=debugMode,proto3" json:"debugMode,omitempty"`
 	MsgId         string           `protobuf:"bytes,4,opt,name=msgId,proto3" json:"msgId,omitempty"`
-	Data          *structpb.Struct `protobuf:"bytes,5,opt,name=data,proto3" json:"data,omitempty"`
+	Metadata      *structpb.Struct `protobuf:"bytes,5,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Data          *structpb.Struct `protobuf:"bytes,6,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -290,6 +291,13 @@ func (x *ExecuteRuleChainReq) GetMsgId() string {
 		return x.MsgId
 	}
 	return ""
+}
+
+func (x *ExecuteRuleChainReq) GetMetadata() *structpb.Struct {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
 }
 
 func (x *ExecuteRuleChainReq) GetData() *structpb.Struct {
@@ -715,6 +723,246 @@ func (x *GetRuleChainReply) GetMetadata() *structpb.Struct {
 	return nil
 }
 
+type GetRuleChainSkillStatusReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRuleChainSkillStatusReq) Reset() {
+	*x = GetRuleChainSkillStatusReq{}
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRuleChainSkillStatusReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRuleChainSkillStatusReq) ProtoMessage() {}
+
+func (x *GetRuleChainSkillStatusReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRuleChainSkillStatusReq.ProtoReflect.Descriptor instead.
+func (*GetRuleChainSkillStatusReq) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetRuleChainSkillStatusReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetRuleChainSkillStatusReply struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Status                    string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	DirName                   string                 `protobuf:"bytes,2,opt,name=dir_name,json=dirName,proto3" json:"dir_name,omitempty"`
+	EntryFile                 string                 `protobuf:"bytes,3,opt,name=entry_file,json=entryFile,proto3" json:"entry_file,omitempty"`
+	Signature                 string                 `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+	GeneratedAt               string                 `protobuf:"bytes,5,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	GeneratedByManagedAgentId int64                  `protobuf:"varint,6,opt,name=generated_by_managed_agent_id,json=generatedByManagedAgentId,proto3" json:"generated_by_managed_agent_id,omitempty"`
+	LastError                 string                 `protobuf:"bytes,7,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *GetRuleChainSkillStatusReply) Reset() {
+	*x = GetRuleChainSkillStatusReply{}
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRuleChainSkillStatusReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRuleChainSkillStatusReply) ProtoMessage() {}
+
+func (x *GetRuleChainSkillStatusReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRuleChainSkillStatusReply.ProtoReflect.Descriptor instead.
+func (*GetRuleChainSkillStatusReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetRuleChainSkillStatusReply) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *GetRuleChainSkillStatusReply) GetDirName() string {
+	if x != nil {
+		return x.DirName
+	}
+	return ""
+}
+
+func (x *GetRuleChainSkillStatusReply) GetEntryFile() string {
+	if x != nil {
+		return x.EntryFile
+	}
+	return ""
+}
+
+func (x *GetRuleChainSkillStatusReply) GetSignature() string {
+	if x != nil {
+		return x.Signature
+	}
+	return ""
+}
+
+func (x *GetRuleChainSkillStatusReply) GetGeneratedAt() string {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return ""
+}
+
+func (x *GetRuleChainSkillStatusReply) GetGeneratedByManagedAgentId() int64 {
+	if x != nil {
+		return x.GeneratedByManagedAgentId
+	}
+	return 0
+}
+
+func (x *GetRuleChainSkillStatusReply) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
+type GenerateRuleChainSkillReq struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ManagedAgentId int64                  `protobuf:"varint,2,opt,name=managed_agent_id,json=managedAgentId,proto3" json:"managed_agent_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GenerateRuleChainSkillReq) Reset() {
+	*x = GenerateRuleChainSkillReq{}
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateRuleChainSkillReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateRuleChainSkillReq) ProtoMessage() {}
+
+func (x *GenerateRuleChainSkillReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateRuleChainSkillReq.ProtoReflect.Descriptor instead.
+func (*GenerateRuleChainSkillReq) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GenerateRuleChainSkillReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GenerateRuleChainSkillReq) GetManagedAgentId() int64 {
+	if x != nil {
+		return x.ManagedAgentId
+	}
+	return 0
+}
+
+type GenerateRuleChainSkillReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	DirName       string                 `protobuf:"bytes,2,opt,name=dir_name,json=dirName,proto3" json:"dir_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateRuleChainSkillReply) Reset() {
+	*x = GenerateRuleChainSkillReply{}
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateRuleChainSkillReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateRuleChainSkillReply) ProtoMessage() {}
+
+func (x *GenerateRuleChainSkillReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateRuleChainSkillReply.ProtoReflect.Descriptor instead.
+func (*GenerateRuleChainSkillReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GenerateRuleChainSkillReply) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *GenerateRuleChainSkillReply) GetDirName() string {
+	if x != nil {
+		return x.DirName
+	}
+	return ""
+}
+
 type UpdateRuleChainBaseInfoReq struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -730,7 +978,7 @@ type UpdateRuleChainBaseInfoReq struct {
 
 func (x *UpdateRuleChainBaseInfoReq) Reset() {
 	*x = UpdateRuleChainBaseInfoReq{}
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[13]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +990,7 @@ func (x *UpdateRuleChainBaseInfoReq) String() string {
 func (*UpdateRuleChainBaseInfoReq) ProtoMessage() {}
 
 func (x *UpdateRuleChainBaseInfoReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[13]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +1003,7 @@ func (x *UpdateRuleChainBaseInfoReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRuleChainBaseInfoReq.ProtoReflect.Descriptor instead.
 func (*UpdateRuleChainBaseInfoReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{13}
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpdateRuleChainBaseInfoReq) GetId() string {
@@ -815,7 +1063,7 @@ type UpdateRuleChainBaseInfoReply struct {
 
 func (x *UpdateRuleChainBaseInfoReply) Reset() {
 	*x = UpdateRuleChainBaseInfoReply{}
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[14]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -827,7 +1075,7 @@ func (x *UpdateRuleChainBaseInfoReply) String() string {
 func (*UpdateRuleChainBaseInfoReply) ProtoMessage() {}
 
 func (x *UpdateRuleChainBaseInfoReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[14]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -840,7 +1088,7 @@ func (x *UpdateRuleChainBaseInfoReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRuleChainBaseInfoReply.ProtoReflect.Descriptor instead.
 func (*UpdateRuleChainBaseInfoReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{14}
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{18}
 }
 
 type DeleteRuleChainReq struct {
@@ -852,7 +1100,7 @@ type DeleteRuleChainReq struct {
 
 func (x *DeleteRuleChainReq) Reset() {
 	*x = DeleteRuleChainReq{}
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[15]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -864,7 +1112,7 @@ func (x *DeleteRuleChainReq) String() string {
 func (*DeleteRuleChainReq) ProtoMessage() {}
 
 func (x *DeleteRuleChainReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[15]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -877,7 +1125,7 @@ func (x *DeleteRuleChainReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRuleChainReq.ProtoReflect.Descriptor instead.
 func (*DeleteRuleChainReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{15}
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DeleteRuleChainReq) GetId() string {
@@ -895,7 +1143,7 @@ type DeleteRuleChainReply struct {
 
 func (x *DeleteRuleChainReply) Reset() {
 	*x = DeleteRuleChainReply{}
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[16]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -907,7 +1155,7 @@ func (x *DeleteRuleChainReply) String() string {
 func (*DeleteRuleChainReply) ProtoMessage() {}
 
 func (x *DeleteRuleChainReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_rules_proto_msgTypes[16]
+	mi := &file_api_rulego_v1_rules_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -920,7 +1168,7 @@ func (x *DeleteRuleChainReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRuleChainReply.ProtoReflect.Descriptor instead.
 func (*DeleteRuleChainReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{16}
+	return file_api_rulego_v1_rules_proto_rawDescGZIP(), []int{20}
 }
 
 var File_api_rulego_v1_rules_proto protoreflect.FileDescriptor
@@ -937,13 +1185,14 @@ const file_api_rulego_v1_rules_proto_rawDesc = "" +
 	"\x12DeployRuleChainReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\x12\x1b\n" +
 	"\x04type\x18\x02 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x04type\"\x16\n" +
-	"\x14DeployRuleChainReply\"\xbb\x01\n" +
+	"\x14DeployRuleChainReply\"\xf0\x01\n" +
 	"\x13ExecuteRuleChainReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\x12!\n" +
 	"\amsgType\x18\x02 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\amsgType\x12\x1c\n" +
 	"\tdebugMode\x18\x03 \x01(\bR\tdebugMode\x12\x1d\n" +
-	"\x05msgId\x18\x04 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x05msgId\x12+\n" +
-	"\x04data\x18\x05 \x01(\v2\x17.google.protobuf.StructR\x04data\"\x17\n" +
+	"\x05msgId\x18\x04 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x05msgId\x123\n" +
+	"\bmetadata\x18\x05 \x01(\v2\x17.google.protobuf.StructR\bmetadata\x12+\n" +
+	"\x04data\x18\x06 \x01(\v2\x17.google.protobuf.StructR\x04data\"\x17\n" +
 	"\x15ExecuteRuleChainReply\"H\n" +
 	"\x19ExecuteRuleChainSyncReply\x12+\n" +
 	"\x04data\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x04data\"\x12\n" +
@@ -967,7 +1216,25 @@ const file_api_rulego_v1_rules_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\"\x7f\n" +
 	"\x11GetRuleChainReply\x125\n" +
 	"\truleChain\x18\x01 \x01(\v2\x17.google.protobuf.StructR\truleChain\x123\n" +
-	"\bmetadata\x18\x02 \x01(\v2\x17.google.protobuf.StructR\bmetadata\"\x97\x02\n" +
+	"\bmetadata\x18\x02 \x01(\v2\x17.google.protobuf.StructR\bmetadata\"5\n" +
+	"\x1aGetRuleChainSkillStatusReq\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\"\x92\x02\n" +
+	"\x1cGetRuleChainSkillStatusReply\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x19\n" +
+	"\bdir_name\x18\x02 \x01(\tR\adirName\x12\x1d\n" +
+	"\n" +
+	"entry_file\x18\x03 \x01(\tR\tentryFile\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\tR\tsignature\x12!\n" +
+	"\fgenerated_at\x18\x05 \x01(\tR\vgeneratedAt\x12@\n" +
+	"\x1dgenerated_by_managed_agent_id\x18\x06 \x01(\x03R\x19generatedByManagedAgentId\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\a \x01(\tR\tlastError\"^\n" +
+	"\x19GenerateRuleChainSkillReq\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\x12(\n" +
+	"\x10managed_agent_id\x18\x02 \x01(\x03R\x0emanagedAgentId\"P\n" +
+	"\x1bGenerateRuleChainSkillReply\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x19\n" +
+	"\bdir_name\x18\x02 \x01(\tR\adirName\"\x97\x02\n" +
 	"\x1aUpdateRuleChainBaseInfoReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -979,8 +1246,7 @@ const file_api_rulego_v1_rules_proto_rawDesc = "" +
 	"\x1cUpdateRuleChainBaseInfoReply\"-\n" +
 	"\x12DeleteRuleChainReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x02id\"\x16\n" +
-	"\x14DeleteRuleChainReply2\xc4\n" +
-	"\n" +
+	"\x14DeleteRuleChainReply2\xed\f\n" +
 	"\x06RuleGo\x12\xd1\x02\n" +
 	"\rGetComponents\x12\x1b.rulego.v1.GetComponentsReq\x1a\x1d.rulego.v1.GetComponentsReply\"\x83\x02\xbaG\xe5\x01\n" +
 	"\x06RuleGo\x12\x12获取所有组件\x1a\x7f获取所有可用的组件列表，包括端点、节点和内置组件。\n" +
@@ -989,9 +1255,11 @@ const file_api_rulego_v1_rules_proto_rawDesc = "" +
 	"\x03uid\x12\x06header\x1a\x17用户ID，必填字段 \x01R\v\n" +
 	"\t\xca\x01\x06string\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/components\x12q\n" +
 	"\x12GetRegulationsList\x12 .rulego.v1.GetRegulationsListReq\x1a\".rulego.v1.GetRegulationsListReply\"\x15\x82\xd3\xe4\x93\x02\x0f\x12\r/api/v1/rules\x12d\n" +
-	"\fGetRuleChain\x12\x1a.rulego.v1.GetRuleChainReq\x1a\x1c.rulego.v1.GetRuleChainReply\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/rules/{id}\x12\x87\x01\n" +
-	"\x10ExecuteRuleChain\x12\x1e.rulego.v1.ExecuteRuleChainReq\x1a .rulego.v1.ExecuteRuleChainReply\"1\x82\xd3\xe4\x93\x02+:\x04data\"#/api/v1/rules/{id}/notify/{msgType}\x12\x90\x01\n" +
-	"\x14ExecuteRuleChainSync\x12\x1e.rulego.v1.ExecuteRuleChainReq\x1a$.rulego.v1.ExecuteRuleChainSyncReply\"2\x82\xd3\xe4\x93\x02,:\x04data\"$/api/v1/rules/{id}/execute/{msgType}\x12\x7f\n" +
+	"\fGetRuleChain\x12\x1a.rulego.v1.GetRuleChainReq\x1a\x1c.rulego.v1.GetRuleChainReply\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/rules/{id}\x12\x92\x01\n" +
+	"\x17GetRuleChainSkillStatus\x12%.rulego.v1.GetRuleChainSkillStatusReq\x1a'.rulego.v1.GetRuleChainSkillStatusReply\"'\x82\xd3\xe4\x93\x02!\x12\x1f/api/v1/rules/{id}/skill/status\x12\x94\x01\n" +
+	"\x16GenerateRuleChainSkill\x12$.rulego.v1.GenerateRuleChainSkillReq\x1a&.rulego.v1.GenerateRuleChainSkillReply\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/rules/{id}/skill/generate\x12\x87\x01\n" +
+	"\x10ExecuteRuleChain\x12\x1e.rulego.v1.ExecuteRuleChainReq\x1a .rulego.v1.ExecuteRuleChainReply\"1\x82\xd3\xe4\x93\x02+:\x04data\"#/api/v1/rules/{id}/notify/{msgType}\x12\x8d\x01\n" +
+	"\x14ExecuteRuleChainSync\x12\x1e.rulego.v1.ExecuteRuleChainReq\x1a$.rulego.v1.ExecuteRuleChainSyncReply\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/rules/{id}/execute/{msgType}\x12\x7f\n" +
 	"\x0fDeployRuleChain\x12\x1d.rulego.v1.DeployRuleChainReq\x1a\x1f.rulego.v1.DeployRuleChainReply\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/rules/{id}/operate/{type}\x12p\n" +
 	"\x0fUpsertRuleChain\x12\x1d.rulego.v1.UpsertRuleChainReq\x1a\x1f.rulego.v1.UpsertRuleChainReply\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/api/v1/rules/{id}\x12m\n" +
 	"\x0fDeleteRuleChain\x12\x1d.rulego.v1.DeleteRuleChainReq\x1a\x1f.rulego.v1.DeleteRuleChainReply\"\x1a\x82\xd3\xe4\x93\x02\x14*\x12/api/v1/rules/{id}\x12\x8d\x01\n" +
@@ -1009,7 +1277,7 @@ func file_api_rulego_v1_rules_proto_rawDescGZIP() []byte {
 	return file_api_rulego_v1_rules_proto_rawDescData
 }
 
-var file_api_rulego_v1_rules_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_api_rulego_v1_rules_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_api_rulego_v1_rules_proto_goTypes = []any{
 	(*UpsertRuleChainReq)(nil),           // 0: rulego.v1.UpsertRuleChainReq
 	(*UpsertRuleChainReply)(nil),         // 1: rulego.v1.UpsertRuleChainReply
@@ -1024,49 +1292,58 @@ var file_api_rulego_v1_rules_proto_goTypes = []any{
 	(*GetRegulationsListReply)(nil),      // 10: rulego.v1.GetRegulationsListReply
 	(*GetRuleChainReq)(nil),              // 11: rulego.v1.GetRuleChainReq
 	(*GetRuleChainReply)(nil),            // 12: rulego.v1.GetRuleChainReply
-	(*UpdateRuleChainBaseInfoReq)(nil),   // 13: rulego.v1.UpdateRuleChainBaseInfoReq
-	(*UpdateRuleChainBaseInfoReply)(nil), // 14: rulego.v1.UpdateRuleChainBaseInfoReply
-	(*DeleteRuleChainReq)(nil),           // 15: rulego.v1.DeleteRuleChainReq
-	(*DeleteRuleChainReply)(nil),         // 16: rulego.v1.DeleteRuleChainReply
-	(*structpb.Struct)(nil),              // 17: google.protobuf.Struct
-	(*structpb.ListValue)(nil),           // 18: google.protobuf.ListValue
+	(*GetRuleChainSkillStatusReq)(nil),   // 13: rulego.v1.GetRuleChainSkillStatusReq
+	(*GetRuleChainSkillStatusReply)(nil), // 14: rulego.v1.GetRuleChainSkillStatusReply
+	(*GenerateRuleChainSkillReq)(nil),    // 15: rulego.v1.GenerateRuleChainSkillReq
+	(*GenerateRuleChainSkillReply)(nil),  // 16: rulego.v1.GenerateRuleChainSkillReply
+	(*UpdateRuleChainBaseInfoReq)(nil),   // 17: rulego.v1.UpdateRuleChainBaseInfoReq
+	(*UpdateRuleChainBaseInfoReply)(nil), // 18: rulego.v1.UpdateRuleChainBaseInfoReply
+	(*DeleteRuleChainReq)(nil),           // 19: rulego.v1.DeleteRuleChainReq
+	(*DeleteRuleChainReply)(nil),         // 20: rulego.v1.DeleteRuleChainReply
+	(*structpb.Struct)(nil),              // 21: google.protobuf.Struct
+	(*structpb.ListValue)(nil),           // 22: google.protobuf.ListValue
 }
 var file_api_rulego_v1_rules_proto_depIdxs = []int32{
-	17, // 0: rulego.v1.UpsertRuleChainReq.rule_chain:type_name -> google.protobuf.Struct
-	17, // 1: rulego.v1.UpsertRuleChainReq.metadata:type_name -> google.protobuf.Struct
-	17, // 2: rulego.v1.ExecuteRuleChainReq.data:type_name -> google.protobuf.Struct
-	17, // 3: rulego.v1.ExecuteRuleChainSyncReply.data:type_name -> google.protobuf.Struct
-	18, // 4: rulego.v1.GetComponentsReply.endpoints:type_name -> google.protobuf.ListValue
-	18, // 5: rulego.v1.GetComponentsReply.nodes:type_name -> google.protobuf.ListValue
-	17, // 6: rulego.v1.GetComponentsReply.builtins:type_name -> google.protobuf.Struct
-	17, // 7: rulego.v1.GetRegulationsListReply.items:type_name -> google.protobuf.Struct
-	17, // 8: rulego.v1.GetRuleChainReply.ruleChain:type_name -> google.protobuf.Struct
-	17, // 9: rulego.v1.GetRuleChainReply.metadata:type_name -> google.protobuf.Struct
-	17, // 10: rulego.v1.UpdateRuleChainBaseInfoReq.additionalInfo:type_name -> google.protobuf.Struct
-	17, // 11: rulego.v1.UpdateRuleChainBaseInfoReq.configuration:type_name -> google.protobuf.Struct
-	7,  // 12: rulego.v1.RuleGo.GetComponents:input_type -> rulego.v1.GetComponentsReq
-	9,  // 13: rulego.v1.RuleGo.GetRegulationsList:input_type -> rulego.v1.GetRegulationsListReq
-	11, // 14: rulego.v1.RuleGo.GetRuleChain:input_type -> rulego.v1.GetRuleChainReq
-	4,  // 15: rulego.v1.RuleGo.ExecuteRuleChain:input_type -> rulego.v1.ExecuteRuleChainReq
-	4,  // 16: rulego.v1.RuleGo.ExecuteRuleChainSync:input_type -> rulego.v1.ExecuteRuleChainReq
-	2,  // 17: rulego.v1.RuleGo.DeployRuleChain:input_type -> rulego.v1.DeployRuleChainReq
-	0,  // 18: rulego.v1.RuleGo.UpsertRuleChain:input_type -> rulego.v1.UpsertRuleChainReq
-	15, // 19: rulego.v1.RuleGo.DeleteRuleChain:input_type -> rulego.v1.DeleteRuleChainReq
-	13, // 20: rulego.v1.RuleGo.UpdateRuleChainBaseInfo:input_type -> rulego.v1.UpdateRuleChainBaseInfoReq
-	8,  // 21: rulego.v1.RuleGo.GetComponents:output_type -> rulego.v1.GetComponentsReply
-	10, // 22: rulego.v1.RuleGo.GetRegulationsList:output_type -> rulego.v1.GetRegulationsListReply
-	12, // 23: rulego.v1.RuleGo.GetRuleChain:output_type -> rulego.v1.GetRuleChainReply
-	5,  // 24: rulego.v1.RuleGo.ExecuteRuleChain:output_type -> rulego.v1.ExecuteRuleChainReply
-	6,  // 25: rulego.v1.RuleGo.ExecuteRuleChainSync:output_type -> rulego.v1.ExecuteRuleChainSyncReply
-	3,  // 26: rulego.v1.RuleGo.DeployRuleChain:output_type -> rulego.v1.DeployRuleChainReply
-	1,  // 27: rulego.v1.RuleGo.UpsertRuleChain:output_type -> rulego.v1.UpsertRuleChainReply
-	16, // 28: rulego.v1.RuleGo.DeleteRuleChain:output_type -> rulego.v1.DeleteRuleChainReply
-	14, // 29: rulego.v1.RuleGo.UpdateRuleChainBaseInfo:output_type -> rulego.v1.UpdateRuleChainBaseInfoReply
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	21, // 0: rulego.v1.UpsertRuleChainReq.rule_chain:type_name -> google.protobuf.Struct
+	21, // 1: rulego.v1.UpsertRuleChainReq.metadata:type_name -> google.protobuf.Struct
+	21, // 2: rulego.v1.ExecuteRuleChainReq.metadata:type_name -> google.protobuf.Struct
+	21, // 3: rulego.v1.ExecuteRuleChainReq.data:type_name -> google.protobuf.Struct
+	21, // 4: rulego.v1.ExecuteRuleChainSyncReply.data:type_name -> google.protobuf.Struct
+	22, // 5: rulego.v1.GetComponentsReply.endpoints:type_name -> google.protobuf.ListValue
+	22, // 6: rulego.v1.GetComponentsReply.nodes:type_name -> google.protobuf.ListValue
+	21, // 7: rulego.v1.GetComponentsReply.builtins:type_name -> google.protobuf.Struct
+	21, // 8: rulego.v1.GetRegulationsListReply.items:type_name -> google.protobuf.Struct
+	21, // 9: rulego.v1.GetRuleChainReply.ruleChain:type_name -> google.protobuf.Struct
+	21, // 10: rulego.v1.GetRuleChainReply.metadata:type_name -> google.protobuf.Struct
+	21, // 11: rulego.v1.UpdateRuleChainBaseInfoReq.additionalInfo:type_name -> google.protobuf.Struct
+	21, // 12: rulego.v1.UpdateRuleChainBaseInfoReq.configuration:type_name -> google.protobuf.Struct
+	7,  // 13: rulego.v1.RuleGo.GetComponents:input_type -> rulego.v1.GetComponentsReq
+	9,  // 14: rulego.v1.RuleGo.GetRegulationsList:input_type -> rulego.v1.GetRegulationsListReq
+	11, // 15: rulego.v1.RuleGo.GetRuleChain:input_type -> rulego.v1.GetRuleChainReq
+	13, // 16: rulego.v1.RuleGo.GetRuleChainSkillStatus:input_type -> rulego.v1.GetRuleChainSkillStatusReq
+	15, // 17: rulego.v1.RuleGo.GenerateRuleChainSkill:input_type -> rulego.v1.GenerateRuleChainSkillReq
+	4,  // 18: rulego.v1.RuleGo.ExecuteRuleChain:input_type -> rulego.v1.ExecuteRuleChainReq
+	4,  // 19: rulego.v1.RuleGo.ExecuteRuleChainSync:input_type -> rulego.v1.ExecuteRuleChainReq
+	2,  // 20: rulego.v1.RuleGo.DeployRuleChain:input_type -> rulego.v1.DeployRuleChainReq
+	0,  // 21: rulego.v1.RuleGo.UpsertRuleChain:input_type -> rulego.v1.UpsertRuleChainReq
+	19, // 22: rulego.v1.RuleGo.DeleteRuleChain:input_type -> rulego.v1.DeleteRuleChainReq
+	17, // 23: rulego.v1.RuleGo.UpdateRuleChainBaseInfo:input_type -> rulego.v1.UpdateRuleChainBaseInfoReq
+	8,  // 24: rulego.v1.RuleGo.GetComponents:output_type -> rulego.v1.GetComponentsReply
+	10, // 25: rulego.v1.RuleGo.GetRegulationsList:output_type -> rulego.v1.GetRegulationsListReply
+	12, // 26: rulego.v1.RuleGo.GetRuleChain:output_type -> rulego.v1.GetRuleChainReply
+	14, // 27: rulego.v1.RuleGo.GetRuleChainSkillStatus:output_type -> rulego.v1.GetRuleChainSkillStatusReply
+	16, // 28: rulego.v1.RuleGo.GenerateRuleChainSkill:output_type -> rulego.v1.GenerateRuleChainSkillReply
+	5,  // 29: rulego.v1.RuleGo.ExecuteRuleChain:output_type -> rulego.v1.ExecuteRuleChainReply
+	6,  // 30: rulego.v1.RuleGo.ExecuteRuleChainSync:output_type -> rulego.v1.ExecuteRuleChainSyncReply
+	3,  // 31: rulego.v1.RuleGo.DeployRuleChain:output_type -> rulego.v1.DeployRuleChainReply
+	1,  // 32: rulego.v1.RuleGo.UpsertRuleChain:output_type -> rulego.v1.UpsertRuleChainReply
+	20, // 33: rulego.v1.RuleGo.DeleteRuleChain:output_type -> rulego.v1.DeleteRuleChainReply
+	18, // 34: rulego.v1.RuleGo.UpdateRuleChainBaseInfo:output_type -> rulego.v1.UpdateRuleChainBaseInfoReply
+	24, // [24:35] is the sub-list for method output_type
+	13, // [13:24] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_api_rulego_v1_rules_proto_init() }
@@ -1080,7 +1357,7 @@ func file_api_rulego_v1_rules_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_rulego_v1_rules_proto_rawDesc), len(file_api_rulego_v1_rules_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

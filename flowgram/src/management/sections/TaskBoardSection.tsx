@@ -6,7 +6,6 @@ import {
   Form,
   Input,
   Select,
-  TextArea,
   Modal,
   Space,
   Tag,
@@ -17,6 +16,7 @@ import {
   Radio,
   Spin,
 } from '@douyinfe/semi-ui';
+import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import { IconPlus, IconEdit, IconDelete, IconUser, IconInfoCircle } from '@douyinfe/semi-icons';
 
 import {
@@ -32,8 +32,8 @@ import {
   taskTypeOptions,
   priorityOptions,
   CreateTaskParams,
-  UpdateTaskParams,
 } from '../../services/api-task';
+import { priorityTagColor, taskStatusTagColor, taskTypeTagColor } from './section-display';
 
 const VIEW_MODE_KEY = 'task-board-view-mode';
 const KANBAN_PAGE_SIZE = 300;
@@ -130,9 +130,7 @@ export const TaskBoardSection: React.FC = () => {
   /** 仅用于 Form initValues；与 Semi Form 内部状态同步靠 formKey 重挂载 */
   const [formInitSnapshot, setFormInitSnapshot] = useState<Record<string, unknown>>({});
   const [formModalKey, setFormModalKey] = useState(0);
-  const taskFormApiRef = useRef<{ validate: () => Promise<void>; getValues: () => Record<string, unknown> } | null>(
-    null
-  );
+  const taskFormApiRef = useRef<FormApi<Record<string, unknown>> | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [detailVisible, setDetailVisible] = useState(false);
@@ -334,9 +332,7 @@ export const TaskBoardSection: React.FC = () => {
       title: '优先级',
       dataIndex: 'priority',
       width: 100,
-      render: (val: number) => (
-        <Tag color={val <= 10 ? 'red' : val <= 30 ? 'orange' : 'grey'}>{val}</Tag>
-      ),
+      render: (val: number) => <Tag color={priorityTagColor(val)}>{val}</Tag>,
     },
     {
       title: '状态',
@@ -344,7 +340,7 @@ export const TaskBoardSection: React.FC = () => {
       width: 120,
       render: (val: TaskStatus) => {
         const option = taskStatusOptions.find((o) => o.value === val);
-        return option ? <Tag color={option.color}>{option.label}</Tag> : val;
+        return option ? <Tag color={taskStatusTagColor(val)}>{option.label}</Tag> : val;
       },
     },
     {
@@ -353,7 +349,7 @@ export const TaskBoardSection: React.FC = () => {
       width: 120,
       render: (val: TaskType) => {
         const option = taskTypeOptions.find((o) => o.value === val);
-        return option ? <Tag color={option.color}>{option.label}</Tag> : val;
+        return option ? <Tag color={taskTypeTagColor(val)}>{option.label}</Tag> : val;
       },
     },
     {
@@ -379,7 +375,7 @@ export const TaskBoardSection: React.FC = () => {
     {
       title: '操作',
       width: 160,
-      render: (_, record: TaskItem) => (
+      render: (_value: unknown, record: TaskItem) => (
         <Space>
           <Button
             icon={<IconInfoCircle />}
@@ -483,7 +479,7 @@ export const TaskBoardSection: React.FC = () => {
               }
               placeholder="全部状态"
               style={{ width: 160 }}
-              allowClear
+              showClear
               optionList={taskStatusOptions.map((o) => ({ label: o.label, value: o.value }))}
             />
           </div>
@@ -501,7 +497,7 @@ export const TaskBoardSection: React.FC = () => {
               }
               placeholder="全部类型"
               style={{ width: 160 }}
-              allowClear
+              showClear
               optionList={taskTypeOptions.map((o) => ({ label: o.label, value: o.value }))}
             />
           </div>
@@ -520,7 +516,7 @@ export const TaskBoardSection: React.FC = () => {
               total,
               showSizeChanger: true,
               pageSizeOpts: [10, 20, 50, 100],
-              onPageChange: (page, size) => {
+              onPageChange: (page: number, size = pageSize) => {
                 setPageSize(size);
                 void fetchTasks(page, size);
               },
@@ -656,7 +652,7 @@ export const TaskBoardSection: React.FC = () => {
                               </Space>
                               <Space spacing={4}>
                                 {typeOpt && (
-                                  <Tag size="small" color={typeOpt.color}>
+                                  <Tag size="small" color={taskTypeTagColor(task.type)}>
                                     {typeOpt.label}
                                   </Tag>
                                 )}

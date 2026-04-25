@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import hljs from 'highlight.js/lib/common';
 import 'highlight.js/styles/github.css';
-import { marked } from 'marked';
 import {
   Button,
   Empty,
@@ -24,52 +22,15 @@ import {
   type ChatStreamPayload,
 } from '../../services/api-chat';
 import { listLlmConfigs, type LlmConfigItem } from '../../services/api-agent';
-
-function escapeHtml(raw: string): string {
-  return raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-const markedRenderer = new marked.Renderer();
-(markedRenderer as any).code = (code: string, infostring?: string) => {
-  const rawLang = (infostring || '').trim().split(/\s+/)[0] || '';
-  let lang = rawLang.toLowerCase();
-  let highlighted = escapeHtml(code || '');
-  try {
-    if (lang && hljs.getLanguage(lang)) {
-      highlighted = hljs.highlight(code || '', { language: lang, ignoreIllegals: true }).value;
-    } else {
-      const auto = hljs.highlightAuto(code || '');
-      highlighted = auto.value || highlighted;
-      if (!lang && auto.language) lang = auto.language;
-    }
-  } catch {
-    highlighted = escapeHtml(code || '');
-  }
-  if (!lang) lang = 'text';
-  const encoded = encodeURIComponent(code || '');
-  return `
-<div class="overview-chat-code-wrap">
-  <div class="overview-chat-code-toolbar">
-    <span class="overview-chat-code-lang">${escapeHtml(lang)}</span>
-    <button class="overview-chat-code-copy" type="button" data-copy-code="${encoded}">复制代码</button>
-  </div>
-  <pre><code class="hljs language-${escapeHtml(lang)}">${highlighted}</code></pre>
-</div>`;
-};
-
-marked.use({
-  breaks: true,
-  renderer: markedRenderer,
-});
+import { patchSessionById } from '../../utils/chat-session-store';
+import {
+  loadStoredManagedAgentId,
+  saveStoredManagedAgentId,
+} from '../../utils/managed-agent-storage';
+import { renderOverviewChatMarkdown } from '../../utils/overview-chat-markdown';
 
 const STORAGE_MODEL_KEY = 'flowgram-overview-chat-model-v1';
 const STORAGE_CHAT_STORE_KEY = 'flowgram-overview-chat-store-v1';
-const STORAGE_MANAGED_AGENT_KEY = 'flowgram-overview-chat-managed-agent-v1';
 const STORAGE_LAST_REQUEST_KEY = 'flowgram-overview-chat-last-request-v1';
 const RETRY_PAYLOAD_MAX_BYTES = 380000;
 
@@ -179,27 +140,6 @@ function saveStoredModel(m: ModelPick) {
   }
 }
 
-function loadStoredManagedAgentId(): number {
-  try {
-    const raw =
-      typeof window !== 'undefined' ? localStorage.getItem(STORAGE_MANAGED_AGENT_KEY) : null;
-    if (!raw) return 0;
-    const n = Number(JSON.parse(raw));
-    return Number.isFinite(n) && n > 0 ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function saveStoredManagedAgentId(id: number) {
-  try {
-    if (id > 0) window.localStorage.setItem(STORAGE_MANAGED_AGENT_KEY, JSON.stringify(id));
-    else window.localStorage.removeItem(STORAGE_MANAGED_AGENT_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
 function loadLastRequestStore(): RetryPayloadStore {
   try {
     const raw =
@@ -243,14 +183,6 @@ function removeLastRequestStore(sessionId: string) {
   saveLastRequestStore(next);
 }
 
-function markdownToHtml(raw: string): string {
-  try {
-    return String(marked.parse(raw || ''));
-  } catch {
-    return `<p>${(raw || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
-  }
-}
-
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
@@ -274,19 +206,22 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 function patchActiveSession(prev: ChatStore, recipe: (s: ChatSession) => ChatSession): ChatStore {
   const aid = prev.activeId;
-  if (!aid) return prev;
-  return {
-    ...prev,
-    sessions: prev.sessions.map((s) => {
-      if (s.id !== aid) return s;
-      const next = recipe(s);
-      return {
-        ...next,
-        title: deriveTitle(next.messages),
-        updatedAt: Date.now(),
-      };
-    }),
-  };
+  return patchNamedSession(prev, aid, recipe);
+}
+
+function patchNamedSession(
+  prev: ChatStore,
+  sessionId: string | null | undefined,
+  recipe: (s: ChatSession) => ChatSession
+): ChatStore {
+  return patchSessionById(prev, sessionId, (session) => {
+    const next = recipe(session);
+    return {
+      ...next,
+      title: deriveTitle(next.messages),
+      updatedAt: Date.now(),
+    };
+  });
 }
 
 export const OverviewChatSection: React.FC = () => {
@@ -441,9 +376,9 @@ export const OverviewChatSection: React.FC = () => {
   }, [streaming]);
 
   /** fetch 被 Abort 后整理最后一条助手气泡：用户主动暂停时保留已生成内容并追加说明 */
-  const applyAbortErrorToAssistant = useCallback((userRequested: boolean) => {
+  const applyAbortErrorToAssistant = useCallback((sessionId: string, userRequested: boolean) => {
     setStore((prev) =>
-      patchActiveSession(prev, (s) => {
+      patchNamedSession(prev, sessionId, (s) => {
         const next = [...s.messages];
         const last = next[next.length - 1];
         if (last?.role !== 'assistant') {
@@ -556,6 +491,8 @@ export const OverviewChatSection: React.FC = () => {
     const history = prior.map(({ role, content }) => ({ role, content }));
 
     const filesSnapshot = [...pendingFiles];
+    const sessionId = store.activeId;
+    if (!sessionId) return;
     setPendingFiles([]);
     setInput('');
     setStreaming(true);
@@ -584,12 +521,12 @@ export const OverviewChatSection: React.FC = () => {
       llmModelEntryId: modelPick?.entryId ?? 0,
       ...(managedAgentId > 0 ? { managedAgentId } : {}),
     };
-    if (store.activeId) {
-      lastRequestBySessionRef.current[store.activeId] = requestPayload;
-      const ok = upsertLastRequestStore(store.activeId, requestPayload);
+    if (sessionId) {
+      lastRequestBySessionRef.current[sessionId] = requestPayload;
+      const ok = upsertLastRequestStore(sessionId, requestPayload);
       setRetrySourceBySession((prev) => ({
         ...prev,
-        [store.activeId as string]: ok ? 'persisted' : 'memory',
+        [sessionId]: ok ? 'persisted' : 'memory',
       }));
       if (!ok && requestPayload.attachments?.length) {
         Toast.warning({ content: '附件较大：已仅在当前页面保留重试快照，刷新后可能无法重试' });
@@ -597,7 +534,7 @@ export const OverviewChatSection: React.FC = () => {
     }
 
     setStore((prev) =>
-      patchActiveSession(prev, (s) => ({
+      patchNamedSession(prev, sessionId, (s) => ({
         ...s,
         messages: [...s.messages, userMsg, { role: 'assistant', content: '' }],
       }))
@@ -613,7 +550,7 @@ export const OverviewChatSection: React.FC = () => {
           if (err) {
             Toast.error({ content: err });
             setStore((prev) =>
-              patchActiveSession(prev, (s) => {
+              patchNamedSession(prev, sessionId, (s) => {
                 const next = [...s.messages];
                 const last = next[next.length - 1];
                 if (last?.role === 'assistant') {
@@ -632,7 +569,7 @@ export const OverviewChatSection: React.FC = () => {
           if (chunk) {
             assistantBuf += chunk;
             setStore((prev) =>
-              patchActiveSession(prev, (s) => {
+              patchNamedSession(prev, sessionId, (s) => {
                 const next = [...s.messages];
                 const last = next[next.length - 1];
                 if (last?.role === 'assistant') {
@@ -651,13 +588,13 @@ export const OverviewChatSection: React.FC = () => {
     } catch (e) {
       const aborted = (e as Error)?.name === 'AbortError';
       if (aborted) {
-        applyAbortErrorToAssistant(stopByUserRef.current);
+        applyAbortErrorToAssistant(sessionId, stopByUserRef.current);
         return;
       }
       const msg = String((e as Error)?.message ?? e) || '请求失败';
       Toast.error({ content: msg });
       setStore((prev) =>
-        patchActiveSession(prev, (s) => ({
+        patchNamedSession(prev, sessionId, (s) => ({
           ...s,
           messages: (() => {
             const next = [...s.messages];
@@ -709,7 +646,7 @@ export const OverviewChatSection: React.FC = () => {
     setStreaming(true);
     stopByUserRef.current = false;
     setStore((p) =>
-      patchActiveSession(p, (s) => {
+      patchNamedSession(p, sid, (s) => {
         const next = [...s.messages];
         next[next.length - 1] = { role: 'assistant', content: '' };
         return { ...s, messages: next };
@@ -731,7 +668,7 @@ export const OverviewChatSection: React.FC = () => {
           if (chunk) {
             assistantBuf += chunk;
             setStore((prevStore) =>
-              patchActiveSession(prevStore, (s) => {
+              patchNamedSession(prevStore, sid, (s) => {
                 const next = [...s.messages];
                 const tail = next[next.length - 1];
                 if (tail?.role === 'assistant') {
@@ -748,12 +685,12 @@ export const OverviewChatSection: React.FC = () => {
     } catch (e) {
       const aborted = (e as Error)?.name === 'AbortError';
       if (aborted) {
-        applyAbortErrorToAssistant(stopByUserRef.current);
+        applyAbortErrorToAssistant(sid, stopByUserRef.current);
       } else {
         const msg = String((e as Error)?.message ?? e) || '请求失败';
         Toast.error({ content: msg });
         setStore((prevStore) =>
-          patchActiveSession(prevStore, (s) => {
+          patchNamedSession(prevStore, sid, (s) => {
             const next = [...s.messages];
             const tail = next[next.length - 1];
             if (tail?.role === 'assistant') {
@@ -786,7 +723,7 @@ export const OverviewChatSection: React.FC = () => {
     setStreaming(true);
     stopByUserRef.current = false;
     setStore((prev) =>
-      patchActiveSession(prev, (s) => {
+      patchNamedSession(prev, sid, (s) => {
         const next = [...s.messages];
         if (next.length > 0 && next[next.length - 1]?.role === 'assistant') {
           next[next.length - 1] = { role: 'assistant', content: '' };
@@ -808,7 +745,7 @@ export const OverviewChatSection: React.FC = () => {
           if (err) {
             Toast.error({ content: err });
             setStore((prevStore) =>
-              patchActiveSession(prevStore, (s) => {
+              patchNamedSession(prevStore, sid, (s) => {
                 const next = [...s.messages];
                 const tail = next[next.length - 1];
                 if (tail?.role === 'assistant') {
@@ -827,7 +764,7 @@ export const OverviewChatSection: React.FC = () => {
           if (chunk) {
             assistantBuf += chunk;
             setStore((prevStore) =>
-              patchActiveSession(prevStore, (s) => {
+              patchNamedSession(prevStore, sid, (s) => {
                 const next = [...s.messages];
                 const tail = next[next.length - 1];
                 if (tail?.role === 'assistant') {
@@ -846,12 +783,12 @@ export const OverviewChatSection: React.FC = () => {
     } catch (e) {
       const aborted = (e as Error)?.name === 'AbortError';
       if (aborted) {
-        applyAbortErrorToAssistant(stopByUserRef.current);
+        applyAbortErrorToAssistant(sid, stopByUserRef.current);
       } else {
         const msg = String((e as Error)?.message ?? e) || '请求失败';
         Toast.error({ content: msg });
         setStore((prevStore) =>
-          patchActiveSession(prevStore, (s) => {
+          patchNamedSession(prevStore, sid, (s) => {
             const next = [...s.messages];
             const tail = next[next.length - 1];
             if (tail?.role === 'assistant') {
@@ -1231,7 +1168,7 @@ export const OverviewChatSection: React.FC = () => {
                   {messages.map((m, i) => {
                     const isLastAssistantStreaming =
                       streaming && i === messages.length - 1 && m.role === 'assistant';
-                    const html = m.content.trim() !== '' ? markdownToHtml(m.content) : '';
+                    const html = m.content.trim() !== '' ? renderOverviewChatMarkdown(m.content) : '';
                     const bubbleKey = `${store.activeId}-${i}`;
                     const isUser = m.role === 'user';
                     return (

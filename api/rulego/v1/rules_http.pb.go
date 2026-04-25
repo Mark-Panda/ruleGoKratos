@@ -23,9 +23,11 @@ const OperationRuleGoDeleteRuleChain = "/rulego.v1.RuleGo/DeleteRuleChain"
 const OperationRuleGoDeployRuleChain = "/rulego.v1.RuleGo/DeployRuleChain"
 const OperationRuleGoExecuteRuleChain = "/rulego.v1.RuleGo/ExecuteRuleChain"
 const OperationRuleGoExecuteRuleChainSync = "/rulego.v1.RuleGo/ExecuteRuleChainSync"
+const OperationRuleGoGenerateRuleChainSkill = "/rulego.v1.RuleGo/GenerateRuleChainSkill"
 const OperationRuleGoGetComponents = "/rulego.v1.RuleGo/GetComponents"
 const OperationRuleGoGetRegulationsList = "/rulego.v1.RuleGo/GetRegulationsList"
 const OperationRuleGoGetRuleChain = "/rulego.v1.RuleGo/GetRuleChain"
+const OperationRuleGoGetRuleChainSkillStatus = "/rulego.v1.RuleGo/GetRuleChainSkillStatus"
 const OperationRuleGoUpdateRuleChainBaseInfo = "/rulego.v1.RuleGo/UpdateRuleChainBaseInfo"
 const OperationRuleGoUpsertRuleChain = "/rulego.v1.RuleGo/UpsertRuleChain"
 
@@ -38,6 +40,8 @@ type RuleGoHTTPServer interface {
 	ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error)
 	// ExecuteRuleChainSync 同步执行规则链
 	ExecuteRuleChainSync(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainSyncReply, error)
+	// GenerateRuleChainSkill 同步生成规则链 Skill
+	GenerateRuleChainSkill(context.Context, *GenerateRuleChainSkillReq) (*GenerateRuleChainSkillReply, error)
 	// GetComponents 获取所有组件
 	// 注意: 请求 header 中的 uid 字段不能为空
 	GetComponents(context.Context, *GetComponentsReq) (*GetComponentsReply, error)
@@ -45,6 +49,8 @@ type RuleGoHTTPServer interface {
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
 	// GetRuleChain 获取单个规则链
 	GetRuleChain(context.Context, *GetRuleChainReq) (*GetRuleChainReply, error)
+	// GetRuleChainSkillStatus 获取规则链 Skill 状态
+	GetRuleChainSkillStatus(context.Context, *GetRuleChainSkillStatusReq) (*GetRuleChainSkillStatusReply, error)
 	// UpdateRuleChainBaseInfo 保存规则链附加信息
 	UpdateRuleChainBaseInfo(context.Context, *UpdateRuleChainBaseInfoReq) (*UpdateRuleChainBaseInfoReply, error)
 	// UpsertRuleChain 新增或修改规则链
@@ -56,6 +62,8 @@ func RegisterRuleGoHTTPServer(s *http.Server, srv RuleGoHTTPServer) {
 	r.GET("/api/v1/components", _RuleGo_GetComponents0_HTTP_Handler(srv))
 	r.GET("/api/v1/rules", _RuleGo_GetRegulationsList0_HTTP_Handler(srv))
 	r.GET("/api/v1/rules/{id}", _RuleGo_GetRuleChain0_HTTP_Handler(srv))
+	r.GET("/api/v1/rules/{id}/skill/status", _RuleGo_GetRuleChainSkillStatus0_HTTP_Handler(srv))
+	r.POST("/api/v1/rules/{id}/skill/generate", _RuleGo_GenerateRuleChainSkill0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/notify/{msgType}", _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/execute/{msgType}", _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv))
 	r.POST("/api/v1/rules/{id}/operate/{type}", _RuleGo_DeployRuleChain0_HTTP_Handler(srv))
@@ -124,6 +132,53 @@ func _RuleGo_GetRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Cont
 	}
 }
 
+func _RuleGo_GetRuleChainSkillStatus0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetRuleChainSkillStatusReq
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoGetRuleChainSkillStatus)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetRuleChainSkillStatus(ctx, req.(*GetRuleChainSkillStatusReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GetRuleChainSkillStatusReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _RuleGo_GenerateRuleChainSkill0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GenerateRuleChainSkillReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationRuleGoGenerateRuleChainSkill)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GenerateRuleChainSkill(ctx, req.(*GenerateRuleChainSkillReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GenerateRuleChainSkillReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 func _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in ExecuteRuleChainReq
@@ -152,7 +207,7 @@ func _RuleGo_ExecuteRuleChain0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.
 func _RuleGo_ExecuteRuleChainSync0_HTTP_Handler(srv RuleGoHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in ExecuteRuleChainReq
-		if err := ctx.Bind(&in.Data); err != nil {
+		if err := ctx.Bind(&in); err != nil {
 			return err
 		}
 		if err := ctx.BindQuery(&in); err != nil {
@@ -280,6 +335,8 @@ type RuleGoHTTPClient interface {
 	ExecuteRuleChain(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainReply, err error)
 	// ExecuteRuleChainSync 同步执行规则链
 	ExecuteRuleChainSync(ctx context.Context, req *ExecuteRuleChainReq, opts ...http.CallOption) (rsp *ExecuteRuleChainSyncReply, err error)
+	// GenerateRuleChainSkill 同步生成规则链 Skill
+	GenerateRuleChainSkill(ctx context.Context, req *GenerateRuleChainSkillReq, opts ...http.CallOption) (rsp *GenerateRuleChainSkillReply, err error)
 	// GetComponents 获取所有组件
 	// 注意: 请求 header 中的 uid 字段不能为空
 	GetComponents(ctx context.Context, req *GetComponentsReq, opts ...http.CallOption) (rsp *GetComponentsReply, err error)
@@ -287,6 +344,8 @@ type RuleGoHTTPClient interface {
 	GetRegulationsList(ctx context.Context, req *GetRegulationsListReq, opts ...http.CallOption) (rsp *GetRegulationsListReply, err error)
 	// GetRuleChain 获取单个规则链
 	GetRuleChain(ctx context.Context, req *GetRuleChainReq, opts ...http.CallOption) (rsp *GetRuleChainReply, err error)
+	// GetRuleChainSkillStatus 获取规则链 Skill 状态
+	GetRuleChainSkillStatus(ctx context.Context, req *GetRuleChainSkillStatusReq, opts ...http.CallOption) (rsp *GetRuleChainSkillStatusReply, err error)
 	// UpdateRuleChainBaseInfo 保存规则链附加信息
 	UpdateRuleChainBaseInfo(ctx context.Context, req *UpdateRuleChainBaseInfoReq, opts ...http.CallOption) (rsp *UpdateRuleChainBaseInfoReply, err error)
 	// UpsertRuleChain 新增或修改规则链
@@ -350,7 +409,21 @@ func (c *RuleGoHTTPClientImpl) ExecuteRuleChainSync(ctx context.Context, in *Exe
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationRuleGoExecuteRuleChainSync))
 	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in.Data, &out, opts...)
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GenerateRuleChainSkill 同步生成规则链 Skill
+func (c *RuleGoHTTPClientImpl) GenerateRuleChainSkill(ctx context.Context, in *GenerateRuleChainSkillReq, opts ...http.CallOption) (*GenerateRuleChainSkillReply, error) {
+	var out GenerateRuleChainSkillReply
+	pattern := "/api/v1/rules/{id}/skill/generate"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationRuleGoGenerateRuleChainSkill))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -392,6 +465,20 @@ func (c *RuleGoHTTPClientImpl) GetRuleChain(ctx context.Context, in *GetRuleChai
 	pattern := "/api/v1/rules/{id}"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationRuleGoGetRuleChain))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetRuleChainSkillStatus 获取规则链 Skill 状态
+func (c *RuleGoHTTPClientImpl) GetRuleChainSkillStatus(ctx context.Context, in *GetRuleChainSkillStatusReq, opts ...http.CallOption) (*GetRuleChainSkillStatusReply, error) {
+	var out GetRuleChainSkillStatusReply
+	pattern := "/api/v1/rules/{id}/skill/status"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationRuleGoGetRuleChainSkillStatus))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {

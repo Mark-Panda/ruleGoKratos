@@ -35,6 +35,14 @@ func (s *RuleGoService) GetRuleChain(ctx context.Context, in *v1.GetRuleChainReq
 	return s.rc.GetRuleChain(ctx, in)
 }
 
+func (s *RuleGoService) GetRuleChainSkillStatus(ctx context.Context, in *v1.GetRuleChainSkillStatusReq) (*v1.GetRuleChainSkillStatusReply, error) {
+	return s.rc.GetRuleChainSkillStatus(ctx, in)
+}
+
+func (s *RuleGoService) GenerateRuleChainSkill(ctx context.Context, in *v1.GenerateRuleChainSkillReq) (*v1.GenerateRuleChainSkillReply, error) {
+	return s.rc.GenerateRuleChainSkill(ctx, in)
+}
+
 func (s *RuleGoService) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
 	return s.rc.ExecuteRuleChain(ctx, in)
 }

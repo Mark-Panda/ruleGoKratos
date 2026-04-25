@@ -160,12 +160,23 @@ export function buildRuleChainConfigurationWithFlowgram(
       ? { ...existingConfiguration }
       : {};
   delete base[LEGACY_RULE_CHAIN_CONFIG_KEY];
+  const existingFlowgram =
+    base[RULE_CHAIN_FLOWGRAM_CONFIG_KEY] &&
+    typeof base[RULE_CHAIN_FLOWGRAM_CONFIG_KEY] === 'object' &&
+    !Array.isArray(base[RULE_CHAIN_FLOWGRAM_CONFIG_KEY])
+      ? ({ ...base[RULE_CHAIN_FLOWGRAM_CONFIG_KEY] } as Record<string, unknown>)
+      : {};
+  const existingSkill =
+    existingFlowgram.skill && typeof existingFlowgram.skill === 'object' && !Array.isArray(existingFlowgram.skill)
+      ? ({ ...(existingFlowgram.skill as Record<string, unknown>) } as Record<string, unknown>)
+      : {};
   const io = paramsJsonStringsToIOArrays(
     input.requestMetadataParamsJson,
     input.requestMessageBodyParamsJson,
     input.responseMessageBodyParamsJson
   );
   base[RULE_CHAIN_FLOWGRAM_CONFIG_KEY] = {
+    ...existingFlowgram,
     schema_version: FLOWGRAM_DSL_SCHEMA_VERSION,
     description: String(input.description ?? '').trim(),
     io,
@@ -173,6 +184,7 @@ export function buildRuleChainConfigurationWithFlowgram(
       scratch_json: String(input.editorScratchJson ?? '').trim(),
     },
     skill: {
+      ...existingSkill,
       dir_name: String(input.skillDirName ?? '').trim(),
     },
   };

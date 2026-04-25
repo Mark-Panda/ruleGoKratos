@@ -43,6 +43,9 @@ export const listManagedAgents = async () => {
   return r.items || [];
 };
 
+export const listEnabledManagedAgents = async () =>
+  (await listManagedAgents()).filter((item) => item.enabled !== false);
+
 export const getManagedAgent = async (id: number) => {
   const r = await requestJSON<{ item: ManagedAgentItem }>(
     `/admin/managed-agents/${encodeURIComponent(String(id))}`
