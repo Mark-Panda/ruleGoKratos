@@ -3,7 +3,7 @@
 
 openapi: 3.0.3
 info:
-    title: Admin API
+    title: ""
     version: 0.0.1
 paths:
     /api/v1/admin/lark-cli/config:
@@ -522,8 +522,1360 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.SyncWorkspaceReply'
+    /api/v1/chat/stream:
+        post:
+            tags:
+                - Chat
+                - Chat
+            summary: 与大模型流式对话
+            description: 使用Server-Sent Events (SSE)实现与大模型的流式对话
+            operationId: ChatStream
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.ChatStreamReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ChatStreamReply'
+    /api/v1/componentUseRule/create:
+        post:
+            tags:
+                - Component
+            operationId: Component_CreateComponentUseRule
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateComponentUseRuleRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateComponentUseRuleReply'
+    /api/v1/componentUseRule/page:
+        get:
+            tags:
+                - Component
+            operationId: Component_ListComponentUseRule
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListComponentUseRuleReply'
+    /api/v1/componentUseRule/update:
+        post:
+            tags:
+                - Component
+            operationId: Component_UpdateComponentUseRule
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateComponentUseRuleRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateComponentUseRuleReply'
+    /api/v1/components:
+        get:
+            tags:
+                - RuleGo
+                - RuleGo
+            summary: 获取所有组件
+            description: |-
+                获取所有可用的组件列表，包括端点、节点和内置组件。
+                注意: 请求 header 中的 uid 字段不能为空
+            operationId: GetComponents
+            parameters:
+                - name: uid
+                  in: header
+                  description: 用户ID，必填字段
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetComponentsReply'
+    /api/v1/doc/create:
+        post:
+            tags:
+                - MdWorkflow
+            operationId: MdWorkflow_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateMdRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.MdItem'
+    /api/v1/doc/edit:
+        post:
+            tags:
+                - MdWorkflow
+            operationId: MdWorkflow_Update
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateMdRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.MdItem'
+    /api/v1/doc/list:
+        get:
+            tags:
+                - MdWorkflow
+            operationId: MdWorkflow_List
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListMdReply'
+    /api/v1/logs/runs:
+        get:
+            tags:
+                - RunLog
+            operationId: RunLog_ListRunLogs
+            parameters:
+                - name: size
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: startTime
+                  in: query
+                  schema:
+                    type: string
+                - name: endTime
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListRunLogsReply'
+    /api/v1/logs/runs/msgId:
+        get:
+            tags:
+                - RunLog
+            operationId: RunLog_GetRunLogByMsgId
+            parameters:
+                - name: msgId
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.RunLogItem'
+    /api/v1/playground/modes:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取可用协作模式
+            operationId: AgentPlayground_GetCollaborationModes
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.GetCollaborationModesReply'
+    /api/v1/playground/pools:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取 Agent 池列表
+            operationId: AgentPlayground_ListAgentPools
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.ListAgentPoolsReply'
+        post:
+            tags:
+                - AgentPlayground
+            description: 创建 Agent 池
+            operationId: AgentPlayground_CreateAgentPool
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/playground.v1.CreateAgentPoolReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.CreateAgentPoolReply'
+    /api/v1/playground/pools/{id}:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取单个 Agent 池
+            operationId: AgentPlayground_GetAgentPool
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.GetAgentPoolReply'
+        put:
+            tags:
+                - AgentPlayground
+            description: 更新 Agent 池
+            operationId: AgentPlayground_UpdateAgentPool
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/playground.v1.UpdateAgentPoolReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.UpdateAgentPoolReply'
+    /api/v1/playground/run:
+        post:
+            tags:
+                - AgentPlayground
+            description: 运行工作流
+            operationId: AgentPlayground_RunWorkflow
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/playground.v1.RunWorkflowReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.RunWorkflowReply'
+    /api/v1/playground/run/{runId}:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取运行结果
+            operationId: AgentPlayground_GetRun
+            parameters:
+                - name: runId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.GetRunReply'
+    /api/v1/playground/run/{runId}/events:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取运行事件（用于 Trace）
+            operationId: AgentPlayground_GetRunEvents
+            parameters:
+                - name: runId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.GetRunEventsReply'
+    /api/v1/playground/schemes:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取协作方案列表
+            operationId: AgentPlayground_ListSchemes
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.ListSchemesReply'
+        post:
+            tags:
+                - AgentPlayground
+            description: 创建协作方案
+            operationId: AgentPlayground_CreateScheme
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/playground.v1.CreateSchemeReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.CreateSchemeReply'
+    /api/v1/playground/schemes/{id}:
+        get:
+            tags:
+                - AgentPlayground
+            description: 获取单个协作方案
+            operationId: AgentPlayground_GetScheme
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.GetSchemeReply'
+        put:
+            tags:
+                - AgentPlayground
+            description: 更新协作方案
+            operationId: AgentPlayground_UpdateScheme
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/playground.v1.UpdateSchemeReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.UpdateSchemeReply'
+        delete:
+            tags:
+                - AgentPlayground
+            description: 删除协作方案
+            operationId: AgentPlayground_DeleteScheme
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/playground.v1.DeleteSchemeReply'
+    /api/v1/rules:
+        get:
+            tags:
+                - RuleGo
+            description: 获取所有规则链列表
+            operationId: RuleGo_GetRegulationsList
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: string
+                - name: size
+                  in: query
+                  schema:
+                    type: string
+                - name: keywords
+                  in: query
+                  schema:
+                    type: string
+                - name: root
+                  in: query
+                  schema:
+                    type: string
+                - name: disabled
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetRegulationsListReply'
+    /api/v1/rules/{id}:
+        get:
+            tags:
+                - RuleGo
+            description: 获取单个规则链
+            operationId: RuleGo_GetRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetRuleChainReply'
+        post:
+            tags:
+                - RuleGo
+            description: 新增或修改规则链
+            operationId: RuleGo_UpsertRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpsertRuleChainReply'
+        delete:
+            tags:
+                - RuleGo
+            description: 删除规则链
+            operationId: RuleGo_DeleteRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteRuleChainReply'
+    /api/v1/rules/{id}/base:
+        post:
+            tags:
+                - RuleGo
+            description: 保存规则链附加信息
+            operationId: RuleGo_UpdateRuleChainBaseInfo
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateRuleChainBaseInfoReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateRuleChainBaseInfoReply'
+    /api/v1/rules/{id}/execute/{msgType}:
+        post:
+            tags:
+                - RuleGo
+            description: 同步执行规则链
+            operationId: RuleGo_ExecuteRuleChainSync
+            parameters:
+                - name: id
+                  in: path
+                  description: 不能为空
+                  required: true
+                  schema:
+                    type: string
+                - name: msgType
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainSyncReply'
+    /api/v1/rules/{id}/notify/{msgType}:
+        post:
+            tags:
+                - RuleGo
+            description: 异步执行规则链
+            operationId: RuleGo_ExecuteRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  description: 不能为空
+                  required: true
+                  schema:
+                    type: string
+                - name: msgType
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: debugMode
+                  in: query
+                  schema:
+                    type: boolean
+                - name: msgId
+                  in: query
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ExecuteRuleChainReply'
+    /api/v1/rules/{id}/operate/{type}:
+        post:
+            tags:
+                - RuleGo
+            description: 部署或者下线规则链
+            operationId: RuleGo_DeployRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: type
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.DeployRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeployRuleChainReply'
+    /api/v1/rules/{id}/skill/generate:
+        post:
+            tags:
+                - RuleGo
+            description: 同步生成规则链 Skill
+            operationId: RuleGo_GenerateRuleChainSkill
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.GenerateRuleChainSkillReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GenerateRuleChainSkillReply'
+    /api/v1/rules/{id}/skill/status:
+        get:
+            tags:
+                - RuleGo
+            description: 获取规则链 Skill 状态
+            operationId: RuleGo_GetRuleChainSkillStatus
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetRuleChainSkillStatusReply'
+    /api/v1/services:
+        get:
+            tags:
+                - ServiceManagementService
+                - ServiceManagement
+            summary: 查询服务列表
+            description: 获取所有服务管理记录
+            operationId: ListServices
+            parameters:
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: enum
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListServicesReply'
+        post:
+            tags:
+                - ServiceManagementService
+                - ServiceManagement
+            summary: 创建服务
+            description: 创建新的服务管理记录
+            operationId: CreateService
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateServiceReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateServiceReply'
+    /api/v1/services/{id}:
+        get:
+            tags:
+                - ServiceManagementService
+                - ServiceManagement
+            summary: 获取服务详情
+            description: 根据服务ID获取服务详细信息
+            operationId: GetService
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetServiceReply'
+        put:
+            tags:
+                - ServiceManagementService
+                - ServiceManagement
+            summary: 更新服务
+            description: 更新服务信息
+            operationId: UpdateService
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateServiceReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateServiceReply'
+        delete:
+            tags:
+                - ServiceManagementService
+                - ServiceManagement
+            summary: 删除服务
+            description: 软删除指定服务
+            operationId: DeleteService
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteServiceReply'
+    /api/v1/tasks:
+        get:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 查询任务列表
+            description: 支持根据任务状态、类型、处理用户等多条件查询
+            operationId: ListTasks
+            parameters:
+                - name: status
+                  in: query
+                  schema:
+                    type: integer
+                    format: enum
+                - name: type
+                  in: query
+                  schema:
+                    type: integer
+                    format: enum
+                - name: handlerUserId
+                  in: query
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListTasksReply'
+        post:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 创建任务
+            description: 创建新的任务看板记录
+            operationId: CreateTask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateTaskReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateTaskReply'
+    /api/v1/tasks/{id}:
+        get:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 获取任务详情
+            description: 根据任务ID获取任务详细信息
+            operationId: GetTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetTaskReply'
+        put:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 更新任务
+            description: 可以修改任务状态、优先级、描述等信息
+            operationId: UpdateTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateTaskReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateTaskReply'
+        delete:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 删除任务
+            description: 软删除指定任务
+            operationId: DeleteTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteTaskReply'
 components:
     schemas:
+        google.protobuf.ListValue:
+            type: object
+            properties:
+                values:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/google.protobuf.Value'
+                    description: Repeated field of dynamically typed values.
+            description: |-
+                `ListValue` is a wrapper around a repeated field of values.
+
+                 The JSON representation for `ListValue` is JSON array.
+        google.protobuf.Value:
+            description: Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values.
+        playground.v1.AgentBinding:
+            type: object
+            properties:
+                agentId:
+                    type: string
+                role:
+                    type: string
+                model:
+                    type: string
+                tools:
+                    type: array
+                    items:
+                        type: string
+        playground.v1.AgentDefinition:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                role:
+                    type: string
+                desc:
+                    type: string
+                model:
+                    type: string
+                tools:
+                    type: array
+                    items:
+                        type: string
+                enabled:
+                    type: boolean
+                priority:
+                    type: integer
+                    format: int32
+                managedAgentId:
+                    type: string
+        playground.v1.AgentPool:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                agents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentDefinition'
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        playground.v1.CollaborationMode:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+        playground.v1.CollaborationScheme:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                mode:
+                    type: string
+                bindAgents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentBinding'
+                config:
+                    $ref: '#/components/schemas/playground.v1.SchemeConfig'
+                enabled:
+                    type: boolean
+                enableFinalizer:
+                    type: boolean
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        playground.v1.CreateAgentPoolReply:
+            type: object
+            properties:
+                pool:
+                    $ref: '#/components/schemas/playground.v1.AgentPool'
+        playground.v1.CreateAgentPoolReq:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                agents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentDefinition'
+        playground.v1.CreateSchemeReply:
+            type: object
+            properties:
+                scheme:
+                    $ref: '#/components/schemas/playground.v1.CollaborationScheme'
+        playground.v1.CreateSchemeReq:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                mode:
+                    type: string
+                bindAgents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentBinding'
+                config:
+                    $ref: '#/components/schemas/playground.v1.SchemeConfig'
+                enableFinalizer:
+                    type: boolean
+        playground.v1.DeleteSchemeReply:
+            type: object
+            properties: {}
+        playground.v1.GetAgentPoolReply:
+            type: object
+            properties:
+                pool:
+                    $ref: '#/components/schemas/playground.v1.AgentPool'
+        playground.v1.GetCollaborationModesReply:
+            type: object
+            properties:
+                modes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.CollaborationMode'
+        playground.v1.GetRunEventsReply:
+            type: object
+            properties:
+                events:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.TraceEvent'
+        playground.v1.GetRunReply:
+            type: object
+            properties:
+                run:
+                    $ref: '#/components/schemas/playground.v1.TraceRun'
+        playground.v1.GetSchemeReply:
+            type: object
+            properties:
+                scheme:
+                    $ref: '#/components/schemas/playground.v1.CollaborationScheme'
+        playground.v1.ListAgentPoolsReply:
+            type: object
+            properties:
+                pools:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentPool'
+        playground.v1.ListSchemesReply:
+            type: object
+            properties:
+                schemes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.CollaborationScheme'
+        playground.v1.RunWorkflowReply:
+            type: object
+            properties:
+                runId:
+                    type: string
+        playground.v1.RunWorkflowReq:
+            type: object
+            properties:
+                schemeId:
+                    type: string
+                userInput:
+                    type: string
+        playground.v1.SchemeConfig:
+            type: object
+            properties:
+                maxIterations:
+                    type: integer
+                    format: int32
+                maxToolCalls:
+                    type: integer
+                    format: int32
+                timeoutSeconds:
+                    type: integer
+                    format: int32
+                finalizerPrompt:
+                    type: string
+        playground.v1.TraceEvent:
+            type: object
+            properties:
+                id:
+                    type: string
+                runId:
+                    type: string
+                timestamp:
+                    type: string
+                type:
+                    type: string
+                agentId:
+                    type: string
+                nodeId:
+                    type: string
+                taskDesc:
+                    type: string
+                message:
+                    type: string
+                metadata:
+                    type: object
+                    additionalProperties:
+                        type: string
+        playground.v1.TraceRun:
+            type: object
+            properties:
+                id:
+                    type: string
+                runId:
+                    type: string
+                schemeId:
+                    type: string
+                userInput:
+                    type: string
+                status:
+                    type: string
+                startTime:
+                    type: string
+                endTime:
+                    type: string
+                totalMs:
+                    type: string
+                events:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.TraceEvent'
+                finalOutput:
+                    type: string
+        playground.v1.UpdateAgentPoolReply:
+            type: object
+            properties:
+                pool:
+                    $ref: '#/components/schemas/playground.v1.AgentPool'
+        playground.v1.UpdateAgentPoolReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                agents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentDefinition'
+        playground.v1.UpdateSchemeReply:
+            type: object
+            properties:
+                scheme:
+                    $ref: '#/components/schemas/playground.v1.CollaborationScheme'
+        playground.v1.UpdateSchemeReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                mode:
+                    type: string
+                bindAgents:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/playground.v1.AgentBinding'
+                config:
+                    $ref: '#/components/schemas/playground.v1.SchemeConfig'
+                enableFinalizer:
+                    type: boolean
+        rulego.v1.ChatAttachment:
+            type: object
+            properties:
+                filename:
+                    type: string
+                mimeType:
+                    type: string
+                text:
+                    type: string
+                contentBase64:
+                    type: string
+            description: 对话附件：优先使用 text（UTF-8）；二进制可用 content_base64 + mime_type。
+        rulego.v1.ChatMessage:
+            type: object
+            properties:
+                role:
+                    type: string
+                content:
+                    type: string
+        rulego.v1.ChatStreamReply:
+            type: object
+            properties:
+                content:
+                    type: string
+                done:
+                    type: boolean
+                error:
+                    type: string
+        rulego.v1.ChatStreamReq:
+            type: object
+            properties:
+                message:
+                    type: string
+                model:
+                    type: string
+                history:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ChatMessage'
+                llmConfigId:
+                    type: string
+                llmModelEntryId:
+                    type: string
+                attachments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ChatAttachment'
+                managedAgentId:
+                    type: string
+        rulego.v1.ComponentUseRuleItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                componentName:
+                    type: string
+                componentType:
+                    type: string
+                disabled:
+                    type: boolean
+                useDesc:
+                    type: string
+                useRuleDesc:
+                    type: string
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        rulego.v1.CreateComponentUseRuleReply:
+            type: object
+            properties: {}
+        rulego.v1.CreateComponentUseRuleRequest:
+            type: object
+            properties:
+                componentName:
+                    type: string
+                componentType:
+                    type: string
+                disabled:
+                    type: boolean
+                useDesc:
+                    type: string
+                useRuleDesc:
+                    type: string
         rulego.v1.CreateLlmConfigRequest:
             type: object
             properties:
@@ -611,6 +1963,60 @@ components:
                     type: string
                 stdioEnvJson:
                     type: string
+        rulego.v1.CreateMdRequest:
+            type: object
+            properties:
+                title:
+                    type: string
+                content:
+                    type: string
+                desc:
+                    type: string
+                chainId:
+                    type: string
+        rulego.v1.CreateServiceReply:
+            type: object
+            properties:
+                service:
+                    $ref: '#/components/schemas/rulego.v1.ServiceManagement'
+            description: 创建服务响应
+        rulego.v1.CreateServiceReq:
+            type: object
+            properties:
+                name:
+                    type: string
+                status:
+                    type: integer
+                    format: enum
+                volcLogServiceId:
+                    type: string
+                gitRepoUrl:
+                    type: string
+                description:
+                    type: string
+            description: 创建服务请求
+        rulego.v1.CreateTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.TaskBoard'
+            description: 创建任务响应
+        rulego.v1.CreateTaskReq:
+            type: object
+            properties:
+                name:
+                    type: string
+                priority:
+                    type: integer
+                    format: int32
+                type:
+                    type: integer
+                    format: enum
+                handlerUserId:
+                    type: string
+                description:
+                    type: string
+            description: 创建任务请求
         rulego.v1.CreateWorkspaceReply:
             type: object
             properties:
@@ -643,11 +2049,83 @@ components:
         rulego.v1.DeleteMcpConfigReply:
             type: object
             properties: {}
+        rulego.v1.DeleteRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.DeleteServiceReply:
+            type: object
+            properties:
+                success:
+                    type: boolean
+            description: 删除服务响应
+        rulego.v1.DeleteTaskReply:
+            type: object
+            properties:
+                success:
+                    type: boolean
+            description: 删除任务响应
         rulego.v1.DeleteWorkspaceReply:
             type: object
             properties:
                 ok:
                     type: boolean
+        rulego.v1.DeployRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.DeployRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                type:
+                    type: string
+        rulego.v1.ExecuteRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.ExecuteRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 不能为空
+                msgType:
+                    type: string
+                debugMode:
+                    type: boolean
+                msgId:
+                    type: string
+                metadata:
+                    type: object
+                data:
+                    type: object
+        rulego.v1.ExecuteRuleChainSyncReply:
+            type: object
+            properties:
+                data:
+                    type: object
+        rulego.v1.GenerateRuleChainSkillReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                dirName:
+                    type: string
+        rulego.v1.GenerateRuleChainSkillReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                managedAgentId:
+                    type: string
+        rulego.v1.GetComponentsReply:
+            type: object
+            properties:
+                endpoints:
+                    $ref: '#/components/schemas/google.protobuf.ListValue'
+                nodes:
+                    $ref: '#/components/schemas/google.protobuf.ListValue'
+                builtins:
+                    type: object
         rulego.v1.GetLarkCliConfigReply:
             type: object
             properties:
@@ -668,11 +2146,72 @@ components:
             properties:
                 item:
                     $ref: '#/components/schemas/rulego.v1.ManagedAgentItem'
+        rulego.v1.GetRegulationsListReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        type: object
+                total:
+                    type: integer
+                    format: int32
+                page:
+                    type: integer
+                    format: int32
+                size:
+                    type: integer
+                    format: int32
+        rulego.v1.GetRuleChainReply:
+            type: object
+            properties:
+                ruleChain:
+                    type: object
+                metadata:
+                    type: object
+        rulego.v1.GetRuleChainSkillStatusReply:
+            type: object
+            properties:
+                status:
+                    type: string
+                dirName:
+                    type: string
+                entryFile:
+                    type: string
+                signature:
+                    type: string
+                generatedAt:
+                    type: string
+                generatedByManagedAgentId:
+                    type: string
+                lastError:
+                    type: string
+        rulego.v1.GetServiceReply:
+            type: object
+            properties:
+                service:
+                    $ref: '#/components/schemas/rulego.v1.ServiceManagement'
+            description: 获取服务响应
+        rulego.v1.GetTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.TaskBoard'
+            description: 获取任务响应
         rulego.v1.GetWorkspaceReply:
             type: object
             properties:
                 item:
                     $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
+        rulego.v1.ListComponentUseRuleReply:
+            type: object
+            properties:
+                list:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ComponentUseRuleItem'
+                total:
+                    type: string
         rulego.v1.ListLlmConfigsReply:
             type: object
             properties:
@@ -694,6 +2233,47 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.McpConfigItem'
+        rulego.v1.ListMdReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.MdItem'
+                page:
+                    type: integer
+                    format: int32
+                size:
+                    type: integer
+                    format: int32
+                total:
+                    type: string
+        rulego.v1.ListRunLogsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.RunLogItem'
+                page:
+                    type: integer
+                    format: int32
+                size:
+                    type: integer
+                    format: int32
+                total:
+                    type: integer
+                    format: int32
+        rulego.v1.ListServicesReply:
+            type: object
+            properties:
+                services:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ServiceManagement'
+                total:
+                    type: string
+            description: 查询服务列表响应
         rulego.v1.ListSkillPackagesReply:
             type: object
             properties:
@@ -712,6 +2292,16 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.SkillItem'
+        rulego.v1.ListTasksReply:
+            type: object
+            properties:
+                tasks:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.TaskBoard'
+                total:
+                    type: string
+            description: 查询任务列表响应
         rulego.v1.ListWorkspacesReply:
             type: object
             properties:
@@ -835,6 +2425,45 @@ components:
                     type: string
                 stdioEnvJson:
                     type: string
+        rulego.v1.MdItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                desc:
+                    type: string
+                chainId:
+                    type: string
+                chainName:
+                    type: string
+                chainVersion:
+                    type: integer
+                    format: int32
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+        rulego.v1.RunLogItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                ruleChain:
+                    type: object
+                metadata:
+                    type: object
+                startTs:
+                    type: string
+                endTs:
+                    type: string
+                logs:
+                    type: array
+                    items:
+                        type: object
         rulego.v1.RunTerminalReply:
             type: object
             properties:
@@ -862,6 +2491,32 @@ components:
             properties:
                 jsonRaw:
                     type: string
+        rulego.v1.ServiceManagement:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                status:
+                    type: integer
+                    format: enum
+                volcLogServiceId:
+                    type: string
+                gitRepoUrl:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+                deletedAt:
+                    type: string
+                    format: date-time
+                description:
+                    type: string
+            description: 服务管理实体
         rulego.v1.SkillItem:
             type: object
             properties:
@@ -887,6 +2542,36 @@ components:
                     $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
                 message:
                     type: string
+        rulego.v1.TaskBoard:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                priority:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: enum
+                type:
+                    type: integer
+                    format: enum
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+                deletedAt:
+                    type: string
+                    format: date-time
+                handlerUserId:
+                    type: string
+                description:
+                    type: string
+            description: 任务看板实体
         rulego.v1.TestMcpConfigReply:
             type: object
             properties:
@@ -906,6 +2591,24 @@ components:
             type: object
             properties:
                 id:
+                    type: string
+        rulego.v1.UpdateComponentUseRuleReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateComponentUseRuleRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                componentName:
+                    type: string
+                componentType:
+                    type: string
+                disabled:
+                    type: boolean
+                useDesc:
+                    type: string
+                useRuleDesc:
                     type: string
         rulego.v1.UpdateLlmConfigReply:
             type: object
@@ -1005,6 +2708,86 @@ components:
                     type: string
                 stdioEnvJson:
                     type: string
+        rulego.v1.UpdateMdRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                desc:
+                    type: string
+                chainId:
+                    type: string
+        rulego.v1.UpdateRuleChainBaseInfoReply:
+            type: object
+            properties: {}
+        rulego.v1.UpdateRuleChainBaseInfoReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                root:
+                    type: boolean
+                disabled:
+                    type: boolean
+                debugMode:
+                    type: boolean
+                additionalInfo:
+                    type: object
+                configuration:
+                    type: object
+        rulego.v1.UpdateServiceReply:
+            type: object
+            properties:
+                service:
+                    $ref: '#/components/schemas/rulego.v1.ServiceManagement'
+            description: 更新服务响应
+        rulego.v1.UpdateServiceReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                status:
+                    type: integer
+                    format: enum
+                volcLogServiceId:
+                    type: string
+                gitRepoUrl:
+                    type: string
+                description:
+                    type: string
+            description: 更新服务请求
+        rulego.v1.UpdateTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.TaskBoard'
+            description: 更新任务响应
+        rulego.v1.UpdateTaskReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                priority:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: enum
+                handlerUserId:
+                    type: string
+                description:
+                    type: string
+            description: 更新任务请求
         rulego.v1.UpdateWorkspaceReply:
             type: object
             properties:
@@ -1035,6 +2818,18 @@ components:
                     type: string
                 contentBase64:
                     type: string
+        rulego.v1.UpsertRuleChainReply:
+            type: object
+            properties: {}
+        rulego.v1.UpsertRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                ruleChain:
+                    type: object
+                metadata:
+                    type: object
         rulego.v1.WorkspaceItem:
             type: object
             properties:
@@ -1069,3 +2864,19 @@ components:
                     type: string
 tags:
     - name: Admin
+    - name: AgentPlayground
+      description: Agent Playground 服务定义
+    - name: Chat
+      description: Chat服务定义
+    - name: Component
+      description: The greeting service definition.
+    - name: MdWorkflow
+      description: The greeting service definition.
+    - name: RuleGo
+      description: The greeting service definition.
+    - name: RunLog
+      description: The greeting service definition.
+    - name: ServiceManagementService
+      description: 服务管理服务
+    - name: TaskBoardService
+      description: 任务看板服务

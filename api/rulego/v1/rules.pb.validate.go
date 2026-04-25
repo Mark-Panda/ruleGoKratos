@@ -592,6 +592,35 @@ func (m *ExecuteRuleChainReq) validate(all bool) error {
 	}
 
 	if all {
+		switch v := interface{}(m.GetMetadata()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, ExecuteRuleChainReqValidationError{
+					field:  "Metadata",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, ExecuteRuleChainReqValidationError{
+					field:  "Metadata",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetMetadata()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ExecuteRuleChainReqValidationError{
+				field:  "Metadata",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if all {
 		switch v := interface{}(m.GetData()).(type) {
 		case interface{ ValidateAll() error }:
 			if err := v.ValidateAll(); err != nil {
@@ -1746,6 +1775,458 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = GetRuleChainReplyValidationError{}
+
+// Validate checks the field values on GetRuleChainSkillStatusReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *GetRuleChainSkillStatusReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on GetRuleChainSkillStatusReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// GetRuleChainSkillStatusReqMultiError, or nil if none found.
+func (m *GetRuleChainSkillStatusReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *GetRuleChainSkillStatusReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if utf8.RuneCountInString(m.GetId()) < 1 {
+		err := GetRuleChainSkillStatusReqValidationError{
+			field:  "Id",
+			reason: "value length must be at least 1 runes",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		return GetRuleChainSkillStatusReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// GetRuleChainSkillStatusReqMultiError is an error wrapping multiple
+// validation errors returned by GetRuleChainSkillStatusReq.ValidateAll() if
+// the designated constraints aren't met.
+type GetRuleChainSkillStatusReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m GetRuleChainSkillStatusReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m GetRuleChainSkillStatusReqMultiError) AllErrors() []error { return m }
+
+// GetRuleChainSkillStatusReqValidationError is the validation error returned
+// by GetRuleChainSkillStatusReq.Validate if the designated constraints aren't met.
+type GetRuleChainSkillStatusReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetRuleChainSkillStatusReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetRuleChainSkillStatusReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetRuleChainSkillStatusReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetRuleChainSkillStatusReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetRuleChainSkillStatusReqValidationError) ErrorName() string {
+	return "GetRuleChainSkillStatusReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetRuleChainSkillStatusReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetRuleChainSkillStatusReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetRuleChainSkillStatusReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetRuleChainSkillStatusReqValidationError{}
+
+// Validate checks the field values on GetRuleChainSkillStatusReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *GetRuleChainSkillStatusReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on GetRuleChainSkillStatusReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// GetRuleChainSkillStatusReplyMultiError, or nil if none found.
+func (m *GetRuleChainSkillStatusReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *GetRuleChainSkillStatusReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Status
+
+	// no validation rules for DirName
+
+	// no validation rules for EntryFile
+
+	// no validation rules for Signature
+
+	// no validation rules for GeneratedAt
+
+	// no validation rules for GeneratedByManagedAgentId
+
+	// no validation rules for LastError
+
+	if len(errors) > 0 {
+		return GetRuleChainSkillStatusReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// GetRuleChainSkillStatusReplyMultiError is an error wrapping multiple
+// validation errors returned by GetRuleChainSkillStatusReply.ValidateAll() if
+// the designated constraints aren't met.
+type GetRuleChainSkillStatusReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m GetRuleChainSkillStatusReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m GetRuleChainSkillStatusReplyMultiError) AllErrors() []error { return m }
+
+// GetRuleChainSkillStatusReplyValidationError is the validation error returned
+// by GetRuleChainSkillStatusReply.Validate if the designated constraints
+// aren't met.
+type GetRuleChainSkillStatusReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetRuleChainSkillStatusReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetRuleChainSkillStatusReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetRuleChainSkillStatusReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetRuleChainSkillStatusReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetRuleChainSkillStatusReplyValidationError) ErrorName() string {
+	return "GetRuleChainSkillStatusReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetRuleChainSkillStatusReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetRuleChainSkillStatusReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetRuleChainSkillStatusReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetRuleChainSkillStatusReplyValidationError{}
+
+// Validate checks the field values on GenerateRuleChainSkillReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *GenerateRuleChainSkillReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on GenerateRuleChainSkillReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// GenerateRuleChainSkillReqMultiError, or nil if none found.
+func (m *GenerateRuleChainSkillReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *GenerateRuleChainSkillReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if utf8.RuneCountInString(m.GetId()) < 1 {
+		err := GenerateRuleChainSkillReqValidationError{
+			field:  "Id",
+			reason: "value length must be at least 1 runes",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	// no validation rules for ManagedAgentId
+
+	if len(errors) > 0 {
+		return GenerateRuleChainSkillReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// GenerateRuleChainSkillReqMultiError is an error wrapping multiple validation
+// errors returned by GenerateRuleChainSkillReq.ValidateAll() if the
+// designated constraints aren't met.
+type GenerateRuleChainSkillReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m GenerateRuleChainSkillReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m GenerateRuleChainSkillReqMultiError) AllErrors() []error { return m }
+
+// GenerateRuleChainSkillReqValidationError is the validation error returned by
+// GenerateRuleChainSkillReq.Validate if the designated constraints aren't met.
+type GenerateRuleChainSkillReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GenerateRuleChainSkillReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GenerateRuleChainSkillReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GenerateRuleChainSkillReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GenerateRuleChainSkillReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GenerateRuleChainSkillReqValidationError) ErrorName() string {
+	return "GenerateRuleChainSkillReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GenerateRuleChainSkillReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGenerateRuleChainSkillReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GenerateRuleChainSkillReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GenerateRuleChainSkillReqValidationError{}
+
+// Validate checks the field values on GenerateRuleChainSkillReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *GenerateRuleChainSkillReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on GenerateRuleChainSkillReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// GenerateRuleChainSkillReplyMultiError, or nil if none found.
+func (m *GenerateRuleChainSkillReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *GenerateRuleChainSkillReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Status
+
+	// no validation rules for DirName
+
+	if len(errors) > 0 {
+		return GenerateRuleChainSkillReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// GenerateRuleChainSkillReplyMultiError is an error wrapping multiple
+// validation errors returned by GenerateRuleChainSkillReply.ValidateAll() if
+// the designated constraints aren't met.
+type GenerateRuleChainSkillReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m GenerateRuleChainSkillReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m GenerateRuleChainSkillReplyMultiError) AllErrors() []error { return m }
+
+// GenerateRuleChainSkillReplyValidationError is the validation error returned
+// by GenerateRuleChainSkillReply.Validate if the designated constraints
+// aren't met.
+type GenerateRuleChainSkillReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GenerateRuleChainSkillReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GenerateRuleChainSkillReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GenerateRuleChainSkillReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GenerateRuleChainSkillReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GenerateRuleChainSkillReplyValidationError) ErrorName() string {
+	return "GenerateRuleChainSkillReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GenerateRuleChainSkillReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGenerateRuleChainSkillReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GenerateRuleChainSkillReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GenerateRuleChainSkillReplyValidationError{}
 
 // Validate checks the field values on UpdateRuleChainBaseInfoReq with the
 // rules defined in the proto definition for this message. If any rules are

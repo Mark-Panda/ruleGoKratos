@@ -34,6 +34,7 @@ import { createRuleBase, getRuleDetail } from '../services/api-rules';
 import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
 import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
+import { RuleChainSkillAction } from '../components/rule-chain-skill-action';
 
 export interface RuleDetailData {
   ruleChain: {
@@ -89,6 +90,7 @@ export const RuleDetail: React.FC<{
   );
   const [flowgramEditorJson, setFlowgramEditorJson] = useState<string>('');
   const [flowgramSkillDirName, setFlowgramSkillDirName] = useState<string>('');
+  const [skillRefreshVersion, setSkillRefreshVersion] = useState(0);
 
   const configurationSyncKey = useMemo(() => {
     const id = data?.ruleChain?.id ?? '';
@@ -350,6 +352,27 @@ export const RuleDetail: React.FC<{
                         <Typography.Text type="tertiary">当前为根规则链</Typography.Text>
                       </div>
 
+                      <Typography.Text type="tertiary">技能</Typography.Text>
+                      <RuleChainSkillAction
+                        ruleChainId={String(data?.ruleChain?.id ?? '')}
+                        isRoot={root}
+                        showStatusText
+                        refreshToken={skillRefreshVersion}
+                        onGenerated={async () => {
+                          try {
+                            const json = await getRuleDetail(String(data?.ruleChain?.id ?? ''));
+                            const rc = json?.ruleChain || {};
+                            const cfg = ((rc as any)?.configuration || {}) as Record<string, unknown>;
+                            setConfigurationSnapshot({ ...cfg });
+                            const fg = parseRuleChainFlowgramFromConfiguration(cfg);
+                            setFlowgramSkillDirName(fg.skillDirName);
+                            setSkillRefreshVersion((value) => value + 1);
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                      />
+
                       <Typography.Text type="tertiary">描述</Typography.Text>
                       <Input value={desc} onChange={setDesc} placeholder="描述" />
                     </div>
@@ -430,6 +453,7 @@ export const RuleDetail: React.FC<{
                             try {
                               setRuleBaseInfo(rc);
                             } catch {}
+                            setSkillRefreshVersion((value) => value + 1);
                             setSaving(false);
                             Toast.success({ content: '保存成功并已刷新' });
                           } catch (e) {

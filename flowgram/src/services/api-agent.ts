@@ -1,5 +1,66 @@
 import { requestJSON } from './http';
 
+export type RuleChainSkillStatus = 'missing' | 'stale' | 'ready';
+
+export interface RuleChainSkillStatusReply {
+  status: RuleChainSkillStatus | string;
+  dirName?: string;
+  entryFile?: string;
+  signature?: string;
+  generatedAt?: string;
+  generatedByManagedAgentId?: number;
+  lastError?: string;
+}
+
+export interface GenerateRuleChainSkillPayload {
+  managedAgentId: number;
+}
+
+export interface GenerateRuleChainSkillReply {
+  status: RuleChainSkillStatus | string;
+  dirName?: string;
+}
+
+function normalizeRuleChainSkillStatusReply(raw: Record<string, unknown>): RuleChainSkillStatusReply {
+  return {
+    status: String(raw.status ?? 'missing'),
+    dirName:
+      raw.dirName != null ? String(raw.dirName) : raw.dir_name != null ? String(raw.dir_name) : '',
+    entryFile:
+      raw.entryFile != null
+        ? String(raw.entryFile)
+        : raw.entry_file != null
+        ? String(raw.entry_file)
+        : '',
+    signature: raw.signature != null ? String(raw.signature) : '',
+    generatedAt:
+      raw.generatedAt != null
+        ? String(raw.generatedAt)
+        : raw.generated_at != null
+        ? String(raw.generated_at)
+        : '',
+    generatedByManagedAgentId: Number(
+      raw.generatedByManagedAgentId ?? raw.generated_by_managed_agent_id ?? 0
+    ),
+    lastError:
+      raw.lastError != null
+        ? String(raw.lastError)
+        : raw.last_error != null
+        ? String(raw.last_error)
+        : '',
+  };
+}
+
+function normalizeGenerateRuleChainSkillReply(
+  raw: Record<string, unknown>
+): GenerateRuleChainSkillReply {
+  return {
+    status: String(raw.status ?? 'missing'),
+    dirName:
+      raw.dirName != null ? String(raw.dirName) : raw.dir_name != null ? String(raw.dir_name) : '',
+  };
+}
+
 export interface SkillItem {
   name: string;
   path: string;
@@ -205,6 +266,27 @@ export async function saveLarkCliConfig(jsonRaw: string): Promise<void> {
     method: 'PUT',
     body: { jsonRaw },
   });
+}
+
+export async function getRuleChainSkillStatus(id: string): Promise<RuleChainSkillStatusReply> {
+  const raw = await requestJSON<Record<string, unknown>>(
+    `/rules/${encodeURIComponent(id)}/skill/status`
+  );
+  return normalizeRuleChainSkillStatusReply(raw);
+}
+
+export async function generateRuleChainSkill(
+  id: string,
+  payload: GenerateRuleChainSkillPayload
+): Promise<GenerateRuleChainSkillReply> {
+  const raw = await requestJSON<Record<string, unknown>>(
+    `/rules/${encodeURIComponent(id)}/skill/generate`,
+    {
+      method: 'POST',
+      body: payload,
+    }
+  );
+  return normalizeGenerateRuleChainSkillReply(raw);
 }
 
 /** 一条模型记录（隶属于某个 LLM 配置，共享凭证） */

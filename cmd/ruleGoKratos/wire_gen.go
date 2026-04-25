@@ -43,7 +43,7 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 		cleanup()
 		return nil, nil, err
 	}
-	ruleChainUsecase := biz.NewRuleChainUsecase(ruleChainRepo, runLogRepo, logger, ruleGo, config)
+	ruleChainUsecase := biz.NewRuleChainUsecase(ruleChainRepo, runLogRepo, logger, ruleGo, config, agentUsecase, bootstrap)
 	componentRegulationRepo := data.NewComponentRegulationRepo(dataData, logger)
 	componentRegulationUsecase := biz.NewComponentRegulationUsecase(componentRegulationRepo, logger)
 	componentUseRuleRepo := data.NewComponentUseRuleRepo(dataData, logger)

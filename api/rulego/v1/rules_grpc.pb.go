@@ -35,6 +35,8 @@ const (
 	RuleGo_GetComponents_FullMethodName           = "/rulego.v1.RuleGo/GetComponents"
 	RuleGo_GetRegulationsList_FullMethodName      = "/rulego.v1.RuleGo/GetRegulationsList"
 	RuleGo_GetRuleChain_FullMethodName            = "/rulego.v1.RuleGo/GetRuleChain"
+	RuleGo_GetRuleChainSkillStatus_FullMethodName = "/rulego.v1.RuleGo/GetRuleChainSkillStatus"
+	RuleGo_GenerateRuleChainSkill_FullMethodName  = "/rulego.v1.RuleGo/GenerateRuleChainSkill"
 	RuleGo_ExecuteRuleChain_FullMethodName        = "/rulego.v1.RuleGo/ExecuteRuleChain"
 	RuleGo_ExecuteRuleChainSync_FullMethodName    = "/rulego.v1.RuleGo/ExecuteRuleChainSync"
 	RuleGo_DeployRuleChain_FullMethodName         = "/rulego.v1.RuleGo/DeployRuleChain"
@@ -56,6 +58,10 @@ type RuleGoClient interface {
 	GetRegulationsList(ctx context.Context, in *GetRegulationsListReq, opts ...grpc.CallOption) (*GetRegulationsListReply, error)
 	// 获取单个规则链
 	GetRuleChain(ctx context.Context, in *GetRuleChainReq, opts ...grpc.CallOption) (*GetRuleChainReply, error)
+	// 获取规则链 Skill 状态
+	GetRuleChainSkillStatus(ctx context.Context, in *GetRuleChainSkillStatusReq, opts ...grpc.CallOption) (*GetRuleChainSkillStatusReply, error)
+	// 同步生成规则链 Skill
+	GenerateRuleChainSkill(ctx context.Context, in *GenerateRuleChainSkillReq, opts ...grpc.CallOption) (*GenerateRuleChainSkillReply, error)
 	// 异步执行规则链
 	ExecuteRuleChain(ctx context.Context, in *ExecuteRuleChainReq, opts ...grpc.CallOption) (*ExecuteRuleChainReply, error)
 	// 同步执行规则链
@@ -102,6 +108,26 @@ func (c *ruleGoClient) GetRuleChain(ctx context.Context, in *GetRuleChainReq, op
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRuleChainReply)
 	err := c.cc.Invoke(ctx, RuleGo_GetRuleChain_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ruleGoClient) GetRuleChainSkillStatus(ctx context.Context, in *GetRuleChainSkillStatusReq, opts ...grpc.CallOption) (*GetRuleChainSkillStatusReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRuleChainSkillStatusReply)
+	err := c.cc.Invoke(ctx, RuleGo_GetRuleChainSkillStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ruleGoClient) GenerateRuleChainSkill(ctx context.Context, in *GenerateRuleChainSkillReq, opts ...grpc.CallOption) (*GenerateRuleChainSkillReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateRuleChainSkillReply)
+	err := c.cc.Invoke(ctx, RuleGo_GenerateRuleChainSkill_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +207,10 @@ type RuleGoServer interface {
 	GetRegulationsList(context.Context, *GetRegulationsListReq) (*GetRegulationsListReply, error)
 	// 获取单个规则链
 	GetRuleChain(context.Context, *GetRuleChainReq) (*GetRuleChainReply, error)
+	// 获取规则链 Skill 状态
+	GetRuleChainSkillStatus(context.Context, *GetRuleChainSkillStatusReq) (*GetRuleChainSkillStatusReply, error)
+	// 同步生成规则链 Skill
+	GenerateRuleChainSkill(context.Context, *GenerateRuleChainSkillReq) (*GenerateRuleChainSkillReply, error)
 	// 异步执行规则链
 	ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error)
 	// 同步执行规则链
@@ -211,6 +241,12 @@ func (UnimplementedRuleGoServer) GetRegulationsList(context.Context, *GetRegulat
 }
 func (UnimplementedRuleGoServer) GetRuleChain(context.Context, *GetRuleChainReq) (*GetRuleChainReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRuleChain not implemented")
+}
+func (UnimplementedRuleGoServer) GetRuleChainSkillStatus(context.Context, *GetRuleChainSkillStatusReq) (*GetRuleChainSkillStatusReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRuleChainSkillStatus not implemented")
+}
+func (UnimplementedRuleGoServer) GenerateRuleChainSkill(context.Context, *GenerateRuleChainSkillReq) (*GenerateRuleChainSkillReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GenerateRuleChainSkill not implemented")
 }
 func (UnimplementedRuleGoServer) ExecuteRuleChain(context.Context, *ExecuteRuleChainReq) (*ExecuteRuleChainReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ExecuteRuleChain not implemented")
@@ -301,6 +337,42 @@ func _RuleGo_GetRuleChain_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RuleGoServer).GetRuleChain(ctx, req.(*GetRuleChainReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuleGo_GetRuleChainSkillStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRuleChainSkillStatusReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).GetRuleChainSkillStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RuleGo_GetRuleChainSkillStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).GetRuleChainSkillStatus(ctx, req.(*GetRuleChainSkillStatusReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuleGo_GenerateRuleChainSkill_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateRuleChainSkillReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleGoServer).GenerateRuleChainSkill(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RuleGo_GenerateRuleChainSkill_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleGoServer).GenerateRuleChainSkill(ctx, req.(*GenerateRuleChainSkillReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -431,6 +503,14 @@ var RuleGo_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRuleChain",
 			Handler:    _RuleGo_GetRuleChain_Handler,
+		},
+		{
+			MethodName: "GetRuleChainSkillStatus",
+			Handler:    _RuleGo_GetRuleChainSkillStatus_Handler,
+		},
+		{
+			MethodName: "GenerateRuleChainSkill",
+			Handler:    _RuleGo_GenerateRuleChainSkill_Handler,
 		},
 		{
 			MethodName: "ExecuteRuleChain",

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/entity"
+	"ruleGoKratos/internal/conf"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
@@ -18,6 +20,8 @@ import (
 	"github.com/rulego/rulego/endpoint"
 	"github.com/rulego/rulego/engine"
 	"github.com/rulego/rulego/node_pool"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -30,16 +34,31 @@ type RuleChainRepo interface {
 	FindAllRuleChain(ctx context.Context, where map[string]interface{}) ([]entity.RuleChain, error)
 }
 
+// RuleChainSkillAgentRunner 是规则链 Skill 同步生成所需的最小 Agent 依赖。
+type RuleChainSkillAgentRunner interface {
+	ExecuteHarnessSync(ctx context.Context, req HarnessRequest) (string, error)
+}
+
 type RuleChainUsecase struct {
 	ruleChainRepo RuleChainRepo
 	log           *log.Helper
 	runLogRepo    RunLogRepo
 	ruleEngine    *rulego.RuleGo
 	ruleConfig    *types.Config
+	skillAgent    RuleChainSkillAgentRunner
+	skillRoot     string
 }
 
-func NewRuleChainUsecase(ruleChainRepo RuleChainRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config) *RuleChainUsecase {
-	return &RuleChainUsecase{ruleChainRepo: ruleChainRepo, runLogRepo: runLogRepo, log: log.NewHelper(logger), ruleEngine: ruleEngine, ruleConfig: ruleConfig}
+func NewRuleChainUsecase(ruleChainRepo RuleChainRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config, skillAgent RuleChainSkillAgentRunner, config *conf.Bootstrap) *RuleChainUsecase {
+	return &RuleChainUsecase{
+		ruleChainRepo: ruleChainRepo,
+		runLogRepo:    runLogRepo,
+		log:           log.NewHelper(logger),
+		ruleEngine:    ruleEngine,
+		ruleConfig:    ruleConfig,
+		skillAgent:    skillAgent,
+		skillRoot:     resolveRuleChainSkillRoot(config),
+	}
 }
 
 // 辅助函数：将任意对象转换为 *structpb.Struct
@@ -197,6 +216,218 @@ func (s *RuleChainUsecase) GetRuleChain(ctx context.Context, in *v1.GetRuleChain
 	}, nil
 }
 
+func (s *RuleChainUsecase) GetRuleChainSkillStatus(ctx context.Context, in *v1.GetRuleChainSkillStatusReq) (*v1.GetRuleChainSkillStatusReply, error) {
+	_, ruleChain, err := s.loadRootRuleChainForSkill(ctx, in.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	currentSignature := s.computeRuleChainSkillSignature(ruleChain)
+	meta := ParseRuleChainSkillMeta(asJSONMap(ruleChain.RuleChain.Configuration))
+	currentStatus, err := ResolveRuleChainSkillStatus(s.effectiveRuleChainSkillRoot(), meta, currentSignature)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1.GetRuleChainSkillStatusReply{
+		Status:                    string(currentStatus),
+		DirName:                   normalizeRuleChainSkillDirName(meta.DirName),
+		EntryFile:                 normalizeRuleChainSkillEntryFile(meta.EntryFile),
+		Signature:                 currentSignature,
+		GeneratedAt:               strings.TrimSpace(meta.GeneratedAt),
+		GeneratedByManagedAgentId: meta.GeneratedByManagedAgentID,
+		LastError:                 strings.TrimSpace(meta.LastError),
+	}, nil
+}
+
+func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.GenerateRuleChainSkillReq) (*v1.GenerateRuleChainSkillReply, error) {
+	if in.GetManagedAgentId() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "managedAgentId 必须大于 0")
+	}
+	if s.skillAgent == nil {
+		return nil, status.Error(codes.FailedPrecondition, "规则链 Skill Agent 未配置")
+	}
+
+	ruleChainDB, ruleChain, err := s.loadRootRuleChainForSkill(ctx, in.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	currentSignature := s.computeRuleChainSkillSignature(ruleChain)
+	existingMeta := ParseRuleChainSkillMeta(asJSONMap(ruleChain.RuleChain.Configuration))
+	dirName, err := s.chooseRuleChainSkillDirName(ctx, ruleChainDB, ruleChain, existingMeta)
+	if err != nil {
+		return nil, err
+	}
+	promptInput := BuildRuleChainSkillPromptInput(ruleChain, dirName)
+	promptInput.SkillRoot = s.effectiveRuleChainSkillRoot()
+	prompt := BuildRuleChainSkillGenerationPrompt(promptInput)
+	entryFile := normalizeRuleChainSkillEntryFile(existingMeta.EntryFile)
+
+	successMeta := RuleChainSkillMeta{
+		DirName:                   dirName,
+		EntryFile:                 entryFile,
+		Signature:                 currentSignature,
+		LastGenerated:             currentSignature,
+		GeneratedByManagedAgentID: in.GetManagedAgentId(),
+	}
+
+	_, err = s.skillAgent.ExecuteHarnessSync(ctx, HarnessRequest{
+		Input:          prompt,
+		ManagedAgentID: in.GetManagedAgentId(),
+	})
+	if err != nil {
+		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, err.Error())
+		return nil, err
+	}
+
+	content, err := ReadRuleChainSkillFile(s.effectiveRuleChainSkillRoot(), dirName, entryFile)
+	if err != nil {
+		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, fmt.Sprintf("生成后未找到有效的 %s: %v", entryFile, err))
+		return nil, status.Errorf(codes.FailedPrecondition, "生成后未找到有效的 %s: %v", entryFile, err)
+	}
+	if err := ValidateGeneratedRuleChainSkillContent(content, promptInput); err != nil {
+		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, err.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, "%s", err.Error())
+	}
+
+	readyMeta := successMeta
+	readyMeta.GeneratedAt = time.Now().UTC().Format(time.RFC3339)
+	readyMeta.LastError = ""
+	currentStatus, err := ResolveRuleChainSkillStatus(s.effectiveRuleChainSkillRoot(), readyMeta, currentSignature)
+	if err != nil {
+		return nil, err
+	}
+	readyMeta.Status = string(currentStatus)
+	if readyMeta.Status != string(RuleChainSkillStatusReady) {
+		return nil, status.Errorf(codes.FailedPrecondition, "规则链 Skill 未达到 ready 状态: %s", readyMeta.Status)
+	}
+
+	if err := s.persistRuleChainSkillMeta(ctx, ruleChainDB, ruleChain, readyMeta); err != nil {
+		return nil, err
+	}
+
+	return &v1.GenerateRuleChainSkillReply{
+		Status:  readyMeta.Status,
+		DirName: readyMeta.DirName,
+	}, nil
+}
+
+func resolveRuleChainSkillRoot(config *conf.Bootstrap) string {
+	if config != nil && config.Agent != nil && config.Agent.Skill != nil {
+		if dir := strings.TrimSpace(config.Agent.Skill.GetDir()); dir != "" {
+			return dir
+		}
+		if dirs := ParseCommaSeparated(config.Agent.Skill.GetDirs()); len(dirs) > 0 {
+			return dirs[0]
+		}
+	}
+	return "/app/skills"
+}
+
+func (s *RuleChainUsecase) effectiveRuleChainSkillRoot() string {
+	return effectiveRuleChainSkillRootPath(s.skillRoot)
+}
+
+func (s *RuleChainUsecase) loadRootRuleChainForSkill(ctx context.Context, id string) (*entity.RuleChain, *types.RuleChain, error) {
+	ruleChainDB, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
+		"rule_chain_id": id,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	ruleChain, err := s.RuleChainDBToRuleChain(ruleChainDB)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !ruleChain.RuleChain.Root {
+		return nil, nil, status.Error(codes.InvalidArgument, "仅主规则链支持 Skill 状态查询与生成")
+	}
+	return ruleChainDB, ruleChain, nil
+}
+
+func (s *RuleChainUsecase) computeRuleChainSkillSignature(ruleChain *types.RuleChain) string {
+	input := BuildRuleChainSkillPromptInput(ruleChain, "")
+	return BuildRuleChainSkillSignature(
+		input.Description,
+		input.RequestMetadataParams,
+		input.RequestBodyParams,
+		input.ResponseBodyParams,
+	)
+}
+
+func (s *RuleChainUsecase) chooseRuleChainSkillDirName(ctx context.Context, ruleChainDB *entity.RuleChain, ruleChain *types.RuleChain, meta RuleChainSkillMeta) (string, error) {
+	baseDir := BuildRuleChainSkillBaseDirName(ruleChain)
+	explicitDir := normalizeRuleChainSkillDirName(meta.DirName)
+	candidateDir := explicitDir
+	if candidateDir == "" {
+		candidateDir = baseDir
+	}
+	all, err := s.ruleChainRepo.FindAllRuleChain(ctx, map[string]interface{}{})
+	if err != nil {
+		return "", err
+	}
+	for _, item := range all {
+		if item.RuleChainID == ruleChainDB.RuleChainID {
+			continue
+		}
+		other, convErr := s.RuleChainDBToRuleChain(&item)
+		if convErr != nil {
+			return "", convErr
+		}
+		otherMeta := ParseRuleChainSkillMeta(asJSONMap(other.RuleChain.Configuration))
+		if normalizeRuleChainSkillDirName(otherMeta.DirName) == candidateDir {
+			return BuildRuleChainSkillConflictDirName(baseDir, ruleChain.RuleChain.ID), nil
+		}
+	}
+	if explicitDir == "" {
+		exists, err := RuleChainSkillDirExists(s.effectiveRuleChainSkillRoot(), candidateDir)
+		if err != nil {
+			return "", err
+		}
+		if exists {
+			return BuildRuleChainSkillConflictDirName(baseDir, ruleChain.RuleChain.ID), nil
+		}
+	}
+	return candidateDir, nil
+}
+
+func (s *RuleChainUsecase) persistRuleChainSkillMeta(ctx context.Context, ruleChainDB *entity.RuleChain, ruleChain *types.RuleChain, meta RuleChainSkillMeta) error {
+	configuration := mergeRuleChainConfigurationPatch(ruleChain.RuleChain.Configuration, BuildRuleChainSkillMetaPatch(meta))
+	configurationBytes, err := json.Marshal(configuration)
+	if err != nil {
+		return err
+	}
+	if err := s.ruleChainRepo.UpdateRuleChain(ctx, map[string]interface{}{
+		"rule_chain_id": ruleChainDB.RuleChainID,
+	}, map[string]interface{}{
+		"configuration": string(configurationBytes),
+	}); err != nil {
+		return err
+	}
+	ruleChain.RuleChain.Configuration = configuration
+	return nil
+}
+
+func (s *RuleChainUsecase) persistRuleChainSkillFailure(ctx context.Context, ruleChainDB *entity.RuleChain, ruleChain *types.RuleChain, existingMeta RuleChainSkillMeta, dirName string, entryFile string, currentSignature string, lastError string) error {
+	failureMeta := RuleChainSkillMeta{
+		DirName:                   dirName,
+		EntryFile:                 entryFile,
+		Signature:                 strings.TrimSpace(existingMeta.Signature),
+		LastGenerated:             strings.TrimSpace(existingMeta.LastGenerated),
+		Status:                    strings.TrimSpace(existingMeta.Status),
+		GeneratedAt:               strings.TrimSpace(existingMeta.GeneratedAt),
+		GeneratedByManagedAgentID: existingMeta.GeneratedByManagedAgentID,
+		LastError:                 strings.TrimSpace(lastError),
+	}
+	failureStatus, err := ResolveRuleChainSkillStatus(s.effectiveRuleChainSkillRoot(), failureMeta, currentSignature)
+	if err != nil {
+		return err
+	}
+	failureMeta.Status = string(failureStatus)
+	return s.persistRuleChainSkillMeta(ctx, ruleChainDB, ruleChain, failureMeta)
+}
+
 // RuleChainDBToRuleChain 将数据库中的规则链转换为RuleChain
 func (s *RuleChainUsecase) RuleChainDBToRuleChain(ruleChainDB *entity.RuleChain) (*types.RuleChain, error) {
 	var ruleChain types.RuleChain
@@ -232,7 +463,11 @@ func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteR
 	if !find {
 		return nil, errors.New("规则链未部署")
 	}
-	data, err := json.Marshal(in.Data)
+	data, err := json.Marshal(structToMap(in.Data))
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := buildRuleMsgMetadata(in.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -241,6 +476,7 @@ func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteR
 		Data:     types.NewSharedData(string(data)),
 		Type:     in.MsgType,
 		DataType: types.JSON,
+		Metadata: metadata,
 	}
 	engine.OnMsg(msg, s.addWithOnRuleChainCompleted(ctx))
 	return res, nil
@@ -280,7 +516,11 @@ func (s *RuleChainUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exec
 		return nil, errors.New("规则链未部署")
 	}
 	var err error
-	data, err := json.Marshal(in.Data)
+	data, err := json.Marshal(structToMap(in.Data))
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := buildRuleMsgMetadata(in.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +529,7 @@ func (s *RuleChainUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exec
 		Data:     types.NewSharedData(string(data)),
 		Type:     in.MsgType,
 		DataType: types.JSON,
+		Metadata: metadata,
 	}
 	var result string
 	engine.OnMsgAndWait(msg, types.WithOnEnd(func(ctn types.RuleContext, msg types.RuleMsg, err1 error, relationType string) {
@@ -303,6 +544,16 @@ func (s *RuleChainUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exec
 	}
 	if result == "" {
 		return nil, errors.New("result is empty")
+	}
+	var resultMap map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &resultMap); err == nil && resultMap != nil {
+		structPb, err := structpb.NewStruct(resultMap)
+		if err != nil {
+			return nil, err
+		}
+		return &v1.ExecuteRuleChainSyncReply{
+			Data: structPb,
+		}, nil
 	}
 	structPb, err := toStructPb(result)
 	if err != nil {
@@ -512,7 +763,18 @@ func asJSONMap(v interface{}) map[string]interface{} {
 	if m, ok := v.(map[string]interface{}); ok {
 		return m
 	}
-	return map[string]interface{}{}
+	if m, ok := v.(types.Configuration); ok {
+		return cloneJSONMap(map[string]interface{}(m))
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(b, &out); err != nil || out == nil {
+		return map[string]interface{}{}
+	}
+	return out
 }
 
 func cloneJSONMap(m map[string]interface{}) map[string]interface{} {
@@ -532,6 +794,79 @@ func cloneJSONMap(m map[string]interface{}) map[string]interface{} {
 		return map[string]interface{}{}
 	}
 	return out
+}
+
+// BuildRuleChainSyncExecutePayload 统一构建同步执行入口的 metadata/data 载荷。
+func BuildRuleChainSyncExecutePayload(metadata, data map[string]interface{}) (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"metadata": cloneJSONMap(metadata),
+		"data":     cloneJSONMap(data),
+	}, nil
+}
+
+func structToMap(st *structpb.Struct) map[string]interface{} {
+	if st == nil {
+		return map[string]interface{}{}
+	}
+	return st.AsMap()
+}
+
+func buildRuleMsgMetadata(st *structpb.Struct) (*types.Metadata, error) {
+	values := structToMap(st)
+	if len(values) == 0 {
+		return nil, nil
+	}
+	metadata := make(map[string]string, len(values))
+	for key, value := range values {
+		metadata[key] = stringifyRuleMsgMetadataValue(value)
+	}
+	return types.BuildMetadata(metadata), nil
+}
+
+func stringifyRuleMsgMetadataValue(v interface{}) string {
+	switch typed := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return typed
+	case json.Number:
+		return typed.String()
+	case bool:
+		if typed {
+			return "true"
+		}
+		return "false"
+	case float32:
+		return strconv.FormatFloat(float64(typed), 'f', -1, 32)
+	case float64:
+		return strconv.FormatFloat(typed, 'f', -1, 64)
+	case int:
+		return strconv.Itoa(typed)
+	case int8:
+		return strconv.FormatInt(int64(typed), 10)
+	case int16:
+		return strconv.FormatInt(int64(typed), 10)
+	case int32:
+		return strconv.FormatInt(int64(typed), 10)
+	case int64:
+		return strconv.FormatInt(typed, 10)
+	case uint:
+		return strconv.FormatUint(uint64(typed), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(typed), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(typed), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(typed), 10)
+	case uint64:
+		return strconv.FormatUint(typed, 10)
+	default:
+		b, err := json.Marshal(v)
+		if err == nil {
+			return string(b)
+		}
+		return fmt.Sprint(v)
+	}
 }
 
 // mergeFlowgramJSON 深度合并 flowgram 下的 io / editor / skill，避免 PATCH 时误删子字段。
@@ -685,14 +1020,35 @@ func (s *RuleChainUsecase) reloadEngineIfDeployed(ctx context.Context, chainId s
 }
 
 func (s *RuleChainUsecase) DeleteRuleChain(ctx context.Context, in *v1.DeleteRuleChainReq) (*v1.DeleteRuleChainReply, error) {
-	// 先从引擎中删除
-	s.ruleEngine.Del(in.Id)
-	// 再从数据库删除
-	err := s.ruleChainRepo.DeleteRuleChain(ctx, map[string]interface{}{
+	ruleChainDB, err := s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
 		"rule_chain_id": in.Id,
 	})
 	if err != nil {
 		return nil, err
+	}
+	ruleChain, err := s.RuleChainDBToRuleChain(ruleChainDB)
+	if err != nil {
+		return nil, err
+	}
+	meta := ParseRuleChainSkillMeta(asJSONMap(ruleChain.RuleChain.Configuration))
+	pendingSkillDir, err := PrepareDeleteRuleChainSkillDir(s.effectiveRuleChainSkillRoot(), meta)
+	if err != nil {
+		return nil, err
+	}
+	// 先从数据库删除；失败时恢复暂存的 skill 目录，避免半成功状态。
+	err = s.ruleChainRepo.DeleteRuleChain(ctx, map[string]interface{}{
+		"rule_chain_id": in.Id,
+	})
+	if err != nil {
+		if restoreErr := pendingSkillDir.Restore(); restoreErr != nil {
+			return nil, fmt.Errorf("删除规则链失败，且恢复 skill 目录失败: deleteErr=%v restoreErr=%v", err, restoreErr)
+		}
+		return nil, err
+	}
+	// 数据库删除成功后，再从引擎移除并清理暂存目录。
+	s.ruleEngine.Del(in.Id)
+	if err := pendingSkillDir.Finalize(); err != nil {
+		s.log.Warnf("best-effort cleanup recycled skill dir failed for ruleChain=%s: %v", in.Id, err)
 	}
 	return &v1.DeleteRuleChainReply{}, nil
 }

@@ -14,6 +14,7 @@ import {
   Typography,
   Spin,
 } from '@douyinfe/semi-ui';
+import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import { IconPlus, IconEdit, IconDelete, IconInfoCircle } from '@douyinfe/semi-icons';
 
 import {
@@ -28,6 +29,7 @@ import {
   CreateServiceParams,
   UpdateServiceParams,
 } from '../../services/api-service';
+import { serviceStatusTagColor } from './section-display';
 
 export const ServiceManagementSection: React.FC = () => {
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -43,9 +45,7 @@ export const ServiceManagementSection: React.FC = () => {
   const [editingService, setEditingService] = useState<ServiceItem | null>(null);
   const [formInitSnapshot, setFormInitSnapshot] = useState<Record<string, unknown>>({});
   const [formModalKey, setFormModalKey] = useState(0);
-  const serviceFormApiRef = useRef<{ validate: () => Promise<void>; getValues: () => Record<string, unknown> } | null>(
-    null
-  );
+  const serviceFormApiRef = useRef<FormApi<Record<string, unknown>> | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [detailVisible, setDetailVisible] = useState(false);
@@ -206,7 +206,7 @@ export const ServiceManagementSection: React.FC = () => {
       width: 120,
       render: (val: ServiceStatus) => {
         const option = serviceStatusOptions.find((o) => o.value === val);
-        return option ? <Tag color={option.color}>{option.label}</Tag> : val;
+        return option ? <Tag color={serviceStatusTagColor(val)}>{option.label}</Tag> : val;
       },
     },
     {
@@ -246,7 +246,7 @@ export const ServiceManagementSection: React.FC = () => {
     {
       title: '操作',
       width: 160,
-      render: (_, record: ServiceItem) => (
+      render: (_value: unknown, record: ServiceItem) => (
         <Space>
           <Button
             icon={<IconInfoCircle />}
@@ -313,7 +313,7 @@ export const ServiceManagementSection: React.FC = () => {
               }
               placeholder="全部状态"
               style={{ width: 160 }}
-              allowClear
+              showClear
               optionList={serviceStatusOptions.map((o) => ({ label: o.label, value: o.value }))}
             />
           </div>
@@ -332,9 +332,9 @@ export const ServiceManagementSection: React.FC = () => {
             total,
             showSizeChanger: true,
             pageSizeOpts: [10, 20, 50, 100],
-            onPageChange: (page, size) => {
+            onPageChange: (page: number, size = pageSize) => {
               setPageSize(size);
-              fetchServices(page, size);
+              void fetchServices(page, size);
             },
           }}
         />

@@ -22,7 +22,7 @@ export function OutputsPeek() {
     <Field name="outputs">
       {({ field }) => {
         const text = canvasSchemaPreviewText(field.value, 220);
-        if (!text.trim()) return null;
+        if (!text.trim()) return <></>;
         return (
           <div
             style={{

@@ -2167,7 +2167,7 @@ const file_api_playground_v1_playground_proto_rawDesc = "" +
 	"\x11CollaborationMode\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription2\xcc\f\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription2\xcf\f\n" +
 	"\x0fAgentPlayground\x12x\n" +
 	"\x0eListAgentPools\x12 .playground.v1.ListAgentPoolsReq\x1a\".playground.v1.ListAgentPoolsReply\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/playground/pools\x12w\n" +
 	"\fGetAgentPool\x12\x1e.playground.v1.GetAgentPoolReq\x1a .playground.v1.GetAgentPoolReply\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/playground/pools/{id}\x12~\n" +
@@ -2178,9 +2178,9 @@ const file_api_playground_v1_playground_proto_rawDesc = "" +
 	"\fCreateScheme\x12\x1e.playground.v1.CreateSchemeReq\x1a .playground.v1.CreateSchemeReply\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/playground/schemes\x12|\n" +
 	"\fUpdateScheme\x12\x1e.playground.v1.UpdateSchemeReq\x1a .playground.v1.UpdateSchemeReply\"*\x82\xd3\xe4\x93\x02$:\x01*\x1a\x1f/api/v1/playground/schemes/{id}\x12y\n" +
 	"\fDeleteScheme\x12\x1e.playground.v1.DeleteSchemeReq\x1a .playground.v1.DeleteSchemeReply\"'\x82\xd3\xe4\x93\x02!*\x1f/api/v1/playground/schemes/{id}\x12p\n" +
-	"\vRunWorkflow\x12\x1d.playground.v1.RunWorkflowReq\x1a\x1f.playground.v1.RunWorkflowReply\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/v1/playground/run\x12f\n" +
-	"\x06GetRun\x12\x18.playground.v1.GetRunReq\x1a\x1a.playground.v1.GetRunReply\"&\x82\xd3\xe4\x93\x02 \x12\x1e/api/v1/playground/run/{runId}\x12\x7f\n" +
-	"\fGetRunEvents\x12\x1e.playground.v1.GetRunEventsReq\x1a .playground.v1.GetRunEventsReply\"-\x82\xd3\xe4\x93\x02'\x12%/api/v1/playground/run/{runId}/events\x12\x8d\x01\n" +
+	"\vRunWorkflow\x12\x1d.playground.v1.RunWorkflowReq\x1a\x1f.playground.v1.RunWorkflowReply\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/v1/playground/run\x12g\n" +
+	"\x06GetRun\x12\x18.playground.v1.GetRunReq\x1a\x1a.playground.v1.GetRunReply\"'\x82\xd3\xe4\x93\x02!\x12\x1f/api/v1/playground/run/{run_id}\x12\x80\x01\n" +
+	"\fGetRunEvents\x12\x1e.playground.v1.GetRunEventsReq\x1a .playground.v1.GetRunEventsReply\".\x82\xd3\xe4\x93\x02(\x12&/api/v1/playground/run/{run_id}/events\x12\x8d\x01\n" +
 	"\x15GetCollaborationModes\x12'.playground.v1.GetCollaborationModesReq\x1a).playground.v1.GetCollaborationModesReply\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/playground/modesB#Z!ruleGoKratos/api/playground/v1;v1b\x06proto3"
 
 var (

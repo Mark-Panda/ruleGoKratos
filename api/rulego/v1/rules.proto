@@ -66,6 +66,21 @@ service RuleGo {
         };
     }
 
+    // 获取规则链 Skill 状态
+    rpc GetRuleChainSkillStatus(GetRuleChainSkillStatusReq) returns (GetRuleChainSkillStatusReply) {
+        option (google.api.http) = {
+            get: "/api/v1/rules/{id}/skill/status"
+        };
+    }
+
+    // 同步生成规则链 Skill
+    rpc GenerateRuleChainSkill(GenerateRuleChainSkillReq) returns (GenerateRuleChainSkillReply) {
+        option (google.api.http) = {
+            post: "/api/v1/rules/{id}/skill/generate"
+            body: "*"
+        };
+    }
+
     // 异步执行规则链
     rpc ExecuteRuleChain(ExecuteRuleChainReq) returns (ExecuteRuleChainReply) {
         option (google.api.http) = {
@@ -78,7 +93,7 @@ service RuleGo {
     rpc ExecuteRuleChainSync(ExecuteRuleChainReq) returns (ExecuteRuleChainSyncReply) {
         option (google.api.http) = {
             post: "/api/v1/rules/{id}/execute/{msgType}",
-            body: "data"
+            body: "*"
         };
     }
 
@@ -137,7 +152,8 @@ message ExecuteRuleChainReq {
     string msgType              = 2 [(validate.rules).string.min_len = 1];
     bool debugMode              = 3;
     string msgId                = 4 [(validate.rules).string.min_len = 1];
-    google.protobuf.Struct data = 5;
+    google.protobuf.Struct metadata = 5;
+    google.protobuf.Struct data     = 6;
 }
 
 message ExecuteRuleChainReply {
@@ -177,6 +193,30 @@ message GetRuleChainReq {
 message GetRuleChainReply {
     google.protobuf.Struct ruleChain = 1;
     google.protobuf.Struct metadata  = 2;
+}
+
+message GetRuleChainSkillStatusReq {
+    string id = 1 [(validate.rules).string.min_len = 1];
+}
+
+message GetRuleChainSkillStatusReply {
+    string status                        = 1;
+    string dir_name                      = 2 [json_name = "dirName"];
+    string entry_file                    = 3 [json_name = "entryFile"];
+    string signature                     = 4;
+    string generated_at                  = 5 [json_name = "generatedAt"];
+    int64 generated_by_managed_agent_id  = 6 [json_name = "generatedByManagedAgentId"];
+    string last_error                    = 7 [json_name = "lastError"];
+}
+
+message GenerateRuleChainSkillReq {
+    string id               = 1 [(validate.rules).string.min_len = 1];
+    int64 managed_agent_id  = 2 [json_name = "managedAgentId"];
+}
+
+message GenerateRuleChainSkillReply {
+    string status   = 1;
+    string dir_name = 2 [json_name = "dirName"];
 }
 
 message UpdateRuleChainBaseInfoReq {
