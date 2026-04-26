@@ -1243,6 +1243,204 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.GetRuleChainSkillStatusReply'
+    /api/v1/scheduled-tasks:
+        get:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 查询定时任务列表
+            description: 按名称、规则链和启停状态查询定时任务列表
+            operationId: ListScheduledTasks
+            parameters:
+                - name: name
+                  in: query
+                  schema:
+                    type: string
+                - name: ruleChainId
+                  in: query
+                  schema:
+                    type: string
+                - name: disabled
+                  in: query
+                  schema:
+                    type: boolean
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListScheduledTasksReply'
+        post:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 创建定时任务
+            description: 创建新的定时任务配置
+            operationId: CreateScheduledTask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateScheduledTaskReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateScheduledTaskReply'
+    /api/v1/scheduled-tasks/{id}:
+        get:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 获取定时任务详情
+            description: 根据定时任务ID获取任务配置和最近执行状态
+            operationId: GetScheduledTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetScheduledTaskReply'
+        put:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 更新定时任务
+            description: 更新指定定时任务的基础信息和调度配置
+            operationId: UpdateScheduledTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.UpdateScheduledTaskReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.UpdateScheduledTaskReply'
+        delete:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 删除定时任务
+            description: 软删除指定定时任务
+            operationId: DeleteScheduledTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DeleteScheduledTaskReply'
+    /api/v1/scheduled-tasks/{id}/disable:
+        post:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 禁用定时任务
+            description: 禁用指定定时任务，停止后续调度执行
+            operationId: DisableScheduledTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.DisableScheduledTaskReply'
+    /api/v1/scheduled-tasks/{id}/enable:
+        post:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 启用定时任务
+            description: 启用指定定时任务，使其恢复调度执行
+            operationId: EnableScheduledTask
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.EnableScheduledTaskReply'
+    /api/v1/scheduled-tasks/{task_id}/runs:
+        get:
+            tags:
+                - ScheduledTaskService
+                - ScheduledTask
+            summary: 查询定时任务执行历史
+            description: 分页查询指定定时任务的执行历史记录
+            operationId: ListScheduledTaskRuns
+            parameters:
+                - name: task_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListScheduledTaskRunsReply'
     /api/v1/services:
         get:
             tags:
@@ -1974,6 +2172,26 @@ components:
                     type: string
                 chainId:
                     type: string
+        rulego.v1.CreateScheduledTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.ScheduledTask'
+        rulego.v1.CreateScheduledTaskReq:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                ruleChainId:
+                    type: string
+                cronExpr:
+                    type: string
+                scheduleType:
+                    type: string
+                scheduleConfig:
+                    type: string
         rulego.v1.CreateServiceReply:
             type: object
             properties:
@@ -2052,6 +2270,9 @@ components:
         rulego.v1.DeleteRuleChainReply:
             type: object
             properties: {}
+        rulego.v1.DeleteScheduledTaskReply:
+            type: object
+            properties: {}
         rulego.v1.DeleteServiceReply:
             type: object
             properties:
@@ -2079,6 +2300,16 @@ components:
                     type: string
                 type:
                     type: string
+        rulego.v1.DisableScheduledTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.ScheduledTask'
+        rulego.v1.EnableScheduledTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.ScheduledTask'
         rulego.v1.ExecuteRuleChainReply:
             type: object
             properties: {}
@@ -2186,6 +2417,11 @@ components:
                     type: string
                 lastError:
                     type: string
+        rulego.v1.GetScheduledTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.ScheduledTask'
         rulego.v1.GetServiceReply:
             type: object
             properties:
@@ -2264,6 +2500,24 @@ components:
                 total:
                     type: integer
                     format: int32
+        rulego.v1.ListScheduledTaskRunsReply:
+            type: object
+            properties:
+                runs:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ScheduledTaskRun'
+                total:
+                    type: string
+        rulego.v1.ListScheduledTasksReply:
+            type: object
+            properties:
+                tasks:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.ScheduledTask'
+                total:
+                    type: string
         rulego.v1.ListServicesReply:
             type: object
             properties:
@@ -2491,6 +2745,67 @@ components:
             properties:
                 jsonRaw:
                     type: string
+        rulego.v1.ScheduledTask:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                ruleChainId:
+                    type: string
+                cronExpr:
+                    type: string
+                scheduleType:
+                    type: string
+                scheduleConfig:
+                    type: string
+                disabled:
+                    type: boolean
+                lastRunAt:
+                    type: string
+                    format: date-time
+                lastStatus:
+                    type: integer
+                    format: enum
+                lastError:
+                    type: string
+                createdAt:
+                    type: string
+                    format: date-time
+                updatedAt:
+                    type: string
+                    format: date-time
+                deletedAt:
+                    type: string
+                    format: date-time
+        rulego.v1.ScheduledTaskRun:
+            type: object
+            properties:
+                id:
+                    type: string
+                taskId:
+                    type: string
+                ruleChainId:
+                    type: string
+                status:
+                    type: integer
+                    format: enum
+                triggerPayload:
+                    type: string
+                errorMessage:
+                    type: string
+                startedAt:
+                    type: string
+                    format: date-time
+                finishedAt:
+                    type: string
+                    format: date-time
+                createdAt:
+                    type: string
+                    format: date-time
         rulego.v1.ServiceManagement:
             type: object
             properties:
@@ -2741,6 +3056,28 @@ components:
                     type: object
                 configuration:
                     type: object
+        rulego.v1.UpdateScheduledTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.ScheduledTask'
+        rulego.v1.UpdateScheduledTaskReq:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                ruleChainId:
+                    type: string
+                cronExpr:
+                    type: string
+                scheduleType:
+                    type: string
+                scheduleConfig:
+                    type: string
         rulego.v1.UpdateServiceReply:
             type: object
             properties:
@@ -2876,6 +3213,7 @@ tags:
       description: The greeting service definition.
     - name: RunLog
       description: The greeting service definition.
+    - name: ScheduledTaskService
     - name: ServiceManagementService
       description: 服务管理服务
     - name: TaskBoardService

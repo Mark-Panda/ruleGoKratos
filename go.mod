@@ -18,6 +18,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jinzhu/copier v0.4.0
 	github.com/mark3labs/mcp-go v0.43.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rulego/rulego v0.35.2
 	github.com/rulego/rulego-components v0.35.2
 	github.com/rulego/rulego-components-ci v0.32.0
@@ -124,7 +125,6 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/redis/go-redis/v9 v9.18.0-beta.2 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.5-0.20250517063057-34ac457e154c // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect

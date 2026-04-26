@@ -507,6 +507,23 @@ func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteR
 	return res, nil
 }
 
+func (s *RuleChainUsecase) GetScheduledTaskRuleChain(ctx context.Context, id string) (*entity.RuleChain, error) {
+	if s == nil || s.ruleChainRepo == nil {
+		return nil, errors.New("规则链仓储未配置")
+	}
+	return s.ruleChainRepo.FindOneRuleChain(ctx, map[string]interface{}{
+		"rule_chain_id": id,
+	})
+}
+
+func (s *RuleChainUsecase) IsRuleChainLoaded(id string) bool {
+	if s == nil || s.ruleEngine == nil {
+		return false
+	}
+	_, ok := s.ruleEngine.Get(id)
+	return ok
+}
+
 func (s *RuleChainUsecase) addWithOnRuleChainCompleted(ctt context.Context) types.RuleContextOption {
 	return types.WithOnRuleChainCompleted(func(ctn types.RuleContext, snapshot types.RuleChainRunSnapshot) {
 		ctx, cancel := context.WithCancel(context.Background())

@@ -13,7 +13,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *service.RunLogService, components *service.ComponentService, admin *service.AdminService, chat *service.ChatService, playground *service.PlaygroundService, taskService *service.TaskBoardService, logger log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *service.RunLogService, components *service.ComponentService, admin *service.AdminService, chat *service.ChatService, playground *service.PlaygroundService, taskService *service.TaskBoardService, scheduledTasks *service.ScheduledTaskService, logger log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
@@ -39,6 +39,7 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	service.RegisterPlaygroundHTTPRoutes(srv, playground)
 	v1.RegisterTaskBoardServiceHTTPServer(srv, taskService)
 	v1.RegisterServiceManagementServiceHTTPServer(srv, taskService)
+	v1.RegisterScheduledTaskServiceHTTPServer(srv, scheduledTasks)
 	RegisterTerminalWebSocket(srv, admin, logger)
 
 	return srv

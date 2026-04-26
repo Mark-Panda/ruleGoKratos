@@ -41,6 +41,7 @@ var ProviderSet = wire.NewSet(
 	NewMdWorkflowRepo,
 	NewRunLogRepo,
 	NewRuleChainRepo,
+	NewScheduledTaskRepo,
 	NewTaskBoardRepo,
 	NewServiceManagementRepo,
 )

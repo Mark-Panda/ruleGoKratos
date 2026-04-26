@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
+	"ruleGoKratos/internal/biz"
 	"ruleGoKratos/internal/conf"
 
 	"github.com/go-kratos/kratos/v2"
@@ -34,18 +36,39 @@ func init() {
 	flag.StringVar(&flagconf, "conf", "../../configs", "config path, eg: -conf config.yaml")
 }
 
-func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server) *kratos.App {
+func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, scheduledTasks *biz.ScheduledTaskUsecase) *kratos.App {
 	return kratos.New(
 		kratos.ID(id),
 		kratos.Name(Name),
 		kratos.Version(Version),
 		kratos.Metadata(map[string]string{}),
 		kratos.Logger(logger),
+		kratos.BeforeStart(scheduledTaskBeforeStart(scheduledTasks)),
+		kratos.AfterStop(scheduledTaskAfterStop(scheduledTasks)),
 		kratos.Server(
 			gs,
 			hs,
 		),
 	)
+}
+
+func scheduledTaskBeforeStart(scheduledTasks *biz.ScheduledTaskUsecase) func(context.Context) error {
+	return func(ctx context.Context) error {
+		if scheduledTasks == nil {
+			return nil
+		}
+		return scheduledTasks.StartEnabledTasks(ctx)
+	}
+}
+
+func scheduledTaskAfterStop(scheduledTasks *biz.ScheduledTaskUsecase) func(context.Context) error {
+	return func(context.Context) error {
+		if scheduledTasks == nil {
+			return nil
+		}
+		scheduledTasks.StopScheduledTasks()
+		return nil
+	}
 }
 
 func main() {

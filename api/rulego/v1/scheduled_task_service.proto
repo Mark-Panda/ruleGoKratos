@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package rulego.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "validate/validate.proto";
+import "openapi/v3/annotations.proto";
+
+option go_package = "ruleGoKratos/api/rulego/v1;v1";
+
+enum ScheduledTaskRunStatus {
+  SCHEDULED_TASK_RUN_STATUS_UNSPECIFIED = 0;
+  SCHEDULED_TASK_RUN_STATUS_SUCCESS = 1;
+  SCHEDULED_TASK_RUN_STATUS_FAILED = 2;
+}
+
+message ScheduledTask {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  string rule_chain_id = 4;
+  string cron_expr = 5;
+  string schedule_type = 6;
+  string schedule_config = 7;
+  bool disabled = 8;
+  google.protobuf.Timestamp last_run_at = 9;
+  ScheduledTaskRunStatus last_status = 10;
+  string last_error = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp deleted_at = 14;
+}
+
+message ScheduledTaskRun {
+  int64 id = 1;
+  int64 task_id = 2;
+  string rule_chain_id = 3;
+  ScheduledTaskRunStatus status = 4;
+  string trigger_payload = 5;
+  string error_message = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+service ScheduledTaskService {
+  rpc CreateScheduledTask(CreateScheduledTaskReq) returns (CreateScheduledTaskReply) {
+    option (google.api.http) = { post: "/api/v1/scheduled-tasks" body: "*" };
+    option (openapi.v3.operation) = {
+      operation_id: "CreateScheduledTask"
+      tags: "ScheduledTask"
+      summary: "创建定时任务"
+      description: "创建新的定时任务配置"
+    };
+  }
+  rpc GetScheduledTask(GetScheduledTaskReq) returns (GetScheduledTaskReply) {
+    option (google.api.http) = { get: "/api/v1/scheduled-tasks/{id}" };
+    option (openapi.v3.operation) = {
+      operation_id: "GetScheduledTask"
+      tags: "ScheduledTask"
+      summary: "获取定时任务详情"
+      description: "根据定时任务ID获取任务配置和最近执行状态"
+    };
+  }
+  rpc ListScheduledTasks(ListScheduledTasksReq) returns (ListScheduledTasksReply) {
+    option (google.api.http) = { get: "/api/v1/scheduled-tasks" };
+    option (openapi.v3.operation) = {
+      operation_id: "ListScheduledTasks"
+      tags: "ScheduledTask"
+      summary: "查询定时任务列表"
+      description: "按名称、规则链和启停状态查询定时任务列表"
+    };
+  }
+  rpc UpdateScheduledTask(UpdateScheduledTaskReq) returns (UpdateScheduledTaskReply) {
+    option (google.api.http) = { put: "/api/v1/scheduled-tasks/{id}" body: "*" };
+    option (openapi.v3.operation) = {
+      operation_id: "UpdateScheduledTask"
+      tags: "ScheduledTask"
+      summary: "更新定时任务"
+      description: "更新指定定时任务的基础信息和调度配置"
+    };
+  }
+  rpc DeleteScheduledTask(DeleteScheduledTaskReq) returns (DeleteScheduledTaskReply) {
+    option (google.api.http) = { delete: "/api/v1/scheduled-tasks/{id}" };
+    option (openapi.v3.operation) = {
+      operation_id: "DeleteScheduledTask"
+      tags: "ScheduledTask"
+      summary: "删除定时任务"
+      description: "软删除指定定时任务"
+    };
+  }
+  rpc EnableScheduledTask(EnableScheduledTaskReq) returns (EnableScheduledTaskReply) {
+    option (google.api.http) = { post: "/api/v1/scheduled-tasks/{id}/enable" };
+    option (openapi.v3.operation) = {
+      operation_id: "EnableScheduledTask"
+      tags: "ScheduledTask"
+      summary: "启用定时任务"
+      description: "启用指定定时任务，使其恢复调度执行"
+    };
+  }
+  rpc DisableScheduledTask(DisableScheduledTaskReq) returns (DisableScheduledTaskReply) {
+    option (google.api.http) = { post: "/api/v1/scheduled-tasks/{id}/disable" };
+    option (openapi.v3.operation) = {
+      operation_id: "DisableScheduledTask"
+      tags: "ScheduledTask"
+      summary: "禁用定时任务"
+      description: "禁用指定定时任务，停止后续调度执行"
+    };
+  }
+  rpc ListScheduledTaskRuns(ListScheduledTaskRunsReq) returns (ListScheduledTaskRunsReply) {
+    option (google.api.http) = { get: "/api/v1/scheduled-tasks/{task_id}/runs" };
+    option (openapi.v3.operation) = {
+      operation_id: "ListScheduledTaskRuns"
+      tags: "ScheduledTask"
+      summary: "查询定时任务执行历史"
+      description: "分页查询指定定时任务的执行历史记录"
+    };
+  }
+}
+
+message CreateScheduledTaskReq {
+  string name = 1 [(validate.rules).string.min_len = 1];
+  string description = 2;
+  string rule_chain_id = 3 [(validate.rules).string.min_len = 1];
+  string cron_expr = 4 [(validate.rules).string.min_len = 1];
+  string schedule_type = 5 [(validate.rules).string.min_len = 1];
+  string schedule_config = 6;
+}
+
+message CreateScheduledTaskReply { ScheduledTask task = 1; }
+message GetScheduledTaskReq { int64 id = 1 [(validate.rules).int64.gt = 0]; }
+message GetScheduledTaskReply { ScheduledTask task = 1; }
+
+message ListScheduledTasksReq {
+  string name = 1;
+  string rule_chain_id = 2;
+  optional bool disabled = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+message ListScheduledTasksReply {
+  repeated ScheduledTask tasks = 1;
+  int64 total = 2;
+}
+
+message UpdateScheduledTaskReq {
+  int64 id = 1 [(validate.rules).int64.gt = 0];
+  string name = 2;
+  string description = 3;
+  string rule_chain_id = 4;
+  string cron_expr = 5;
+  string schedule_type = 6;
+  string schedule_config = 7;
+}
+message UpdateScheduledTaskReply { ScheduledTask task = 1; }
+
+message DeleteScheduledTaskReq { int64 id = 1 [(validate.rules).int64.gt = 0]; }
+message DeleteScheduledTaskReply {}
+message EnableScheduledTaskReq { int64 id = 1 [(validate.rules).int64.gt = 0]; }
+message EnableScheduledTaskReply { ScheduledTask task = 1; }
+message DisableScheduledTaskReq { int64 id = 1 [(validate.rules).int64.gt = 0]; }
+message DisableScheduledTaskReply { ScheduledTask task = 1; }
+
+message ListScheduledTaskRunsReq {
+  int64 task_id = 1 [json_name = "task_id", (validate.rules).int64.gt = 0];
+  int32 page = 2;
+  int32 page_size = 3;
+}
+message ListScheduledTaskRunsReply {
+  repeated ScheduledTaskRun runs = 1;
+  int64 total = 2;
+}

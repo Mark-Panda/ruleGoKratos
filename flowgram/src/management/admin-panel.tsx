@@ -24,6 +24,7 @@ import { WorkflowExecuteSection } from './sections/WorkflowExecuteSection';
 import { TerminalSection } from './sections/TerminalSection';
 import { TaskBoardSection } from './sections/TaskBoardSection';
 import { ServiceManagementSection } from './sections/ServiceManagementSection';
+import { ScheduledTaskSection } from './sections/ScheduledTaskSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
 import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
 import { LarkCliSection } from './sections/LarkCliSection';
@@ -53,7 +54,8 @@ type MenuKey =
   | 'component'
   | 'agent'
   | 'task-board'
-  | 'service-management';
+  | 'service-management'
+  | 'scheduled-tasks';
 
 /** 与路由对应的菜单页 itemKey（不含 Nav 分组占位 key） */
 const MENU_KEYS: MenuKey[] = [
@@ -74,6 +76,7 @@ const MENU_KEYS: MenuKey[] = [
   'admin-cursor-cli',
   'task-board',
   'service-management',
+  'scheduled-tasks',
 ];
 
 function getMenuFromHash(h: string): MenuKey {
@@ -93,6 +96,7 @@ function getMenuFromHash(h: string): MenuKey {
   if (h.startsWith('#/workflow/logs')) return 'workflow-logs';
   if (h.startsWith('#/task-board')) return 'task-board';
   if (h.startsWith('#/service-management')) return 'service-management';
+  if (h.startsWith('#/scheduled-tasks')) return 'scheduled-tasks';
   return 'workflow';
 }
 
@@ -114,6 +118,7 @@ function setHashForMenu(key: MenuKey) {
   else if (key === 'admin-cursor-cli') window.location.hash = '#/cursor-cli';
   else if (key === 'task-board') window.location.hash = '#/task-board';
   else if (key === 'service-management') window.location.hash = '#/service-management';
+  else if (key === 'scheduled-tasks') window.location.hash = '#/scheduled-tasks';
 }
 
 export const AdminPanel: React.FC = () => {
@@ -166,6 +171,7 @@ export const AdminPanel: React.FC = () => {
     if (key === 'component-rules') return <ComponentsSection view="rules" />;
     if (key === 'task-board') return <TaskBoardSection />;
     if (key === 'service-management') return <ServiceManagementSection />;
+    if (key === 'scheduled-tasks') return <ScheduledTaskSection />;
     return <ComponentsSection view="installed" />;
   };
 
@@ -205,6 +211,8 @@ export const AdminPanel: React.FC = () => {
         return '任务看板';
       case 'service-management':
         return '服务管理';
+      case 'scheduled-tasks':
+        return '定时任务';
       default:
         return 'Code 助手';
     }
@@ -235,7 +243,8 @@ export const AdminPanel: React.FC = () => {
     if (
       activeMenu === 'admin-terminal' ||
       activeMenu === 'task-board' ||
-      activeMenu === 'service-management'
+      activeMenu === 'service-management' ||
+      activeMenu === 'scheduled-tasks'
     )
       return '运维';
     return '系统';
@@ -315,6 +324,7 @@ export const AdminPanel: React.FC = () => {
               { itemKey: 'workspace-manager', text: '工作区管理', icon: <IconList /> },
               { itemKey: 'task-board', text: '任务看板', icon: <IconList /> },
               { itemKey: 'service-management', text: '服务管理', icon: <IconSetting /> },
+              { itemKey: 'scheduled-tasks', text: '定时任务', icon: <IconList /> },
               { itemKey: 'admin-terminal', text: '终端', icon: <IconDesktop /> },
               {
                 text: 'CLI 配置',
