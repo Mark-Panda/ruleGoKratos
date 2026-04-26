@@ -38,19 +38,59 @@ export interface ManagedAgentPayload {
   enabled?: boolean;
 }
 
+function normalizeManagedAgentItem(raw: Record<string, unknown>): ManagedAgentItem {
+  const modelEntryIdsRaw = raw.modelEntryIds ?? raw.model_entry_ids;
+  const modelEntryIds = Array.isArray(modelEntryIdsRaw)
+    ? modelEntryIdsRaw.map((id) => Number(id))
+    : [];
+  const mcpIdsRaw = raw.mcpIds ?? raw.mcp_ids;
+  const mcpIds = Array.isArray(mcpIdsRaw) ? mcpIdsRaw.map((id) => Number(id)) : [];
+  const skillPkgRaw = raw.skillPackageIds ?? raw.skill_package_ids;
+  const skillPackageIds = Array.isArray(skillPkgRaw)
+    ? skillPkgRaw.map((s) => String(s))
+    : [];
+  const created =
+    raw.createdAt != null
+      ? String(raw.createdAt)
+      : raw.created_at != null
+        ? String(raw.created_at)
+        : undefined;
+  const updated =
+    raw.updatedAt != null
+      ? String(raw.updatedAt)
+      : raw.updated_at != null
+        ? String(raw.updated_at)
+        : undefined;
+  return {
+    id: Number(raw.id ?? 0),
+    name: String(raw.name ?? ''),
+    description: String(raw.description ?? ''),
+    systemPrompt: String(raw.systemPrompt ?? raw.system_prompt ?? ''),
+    workspaceId: String(raw.workspaceId ?? raw.workspace_id ?? ''),
+    skillPackageIds,
+    mcpIds,
+    llmConfigId: Number(raw.llmConfigId ?? raw.llm_config_id ?? 0),
+    modelScope: (raw.modelScope ?? raw.model_scope ?? 'all') as 'all' | 'explicit',
+    modelEntryIds,
+    enabled: raw.enabled === true,
+    ...(created != null ? { createdAt: created } : {}),
+    ...(updated != null ? { updatedAt: updated } : {}),
+  };
+}
+
 export const listManagedAgents = async () => {
-  const r = await requestJSON<{ items: ManagedAgentItem[] }>('/admin/managed-agents');
-  return r.items || [];
+  const r = await requestJSON<{ items: Record<string, unknown>[] }>('/admin/managed-agents');
+  return (Array.isArray(r.items) ? r.items : []).map(normalizeManagedAgentItem);
 };
 
 export const listEnabledManagedAgents = async () =>
   (await listManagedAgents()).filter((item) => item.enabled !== false);
 
 export const getManagedAgent = async (id: number) => {
-  const r = await requestJSON<{ item: ManagedAgentItem }>(
+  const r = await requestJSON<{ item: Record<string, unknown> }>(
     `/admin/managed-agents/${encodeURIComponent(String(id))}`
   );
-  return r.item;
+  return normalizeManagedAgentItem(r.item || {});
 };
 
 export const createManagedAgent = async (body: ManagedAgentPayload) =>
