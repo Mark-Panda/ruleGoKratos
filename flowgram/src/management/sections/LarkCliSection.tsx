@@ -1,13 +1,26 @@
 /**
- * 管理端「飞书 CLI」：仅保留终端交互式配置（config init --new -> auth login --recommend）。
+ * 管理端「飞书 CLI」：终端交互式配置（config init --new -> auth login --recommend）。
  * 参考：https://github.com/larksuite/cli/blob/main/README.zh.md
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Banner, Button, Card, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import {
+  Banner,
+  Button,
+  Card,
+  Collapse,
+  Divider,
+  Spin,
+  Tag,
+  Toast,
+  Typography,
+} from '@douyinfe/semi-ui';
+import { IconCopy, IconDelete, IconLink, IconRefresh, IconStop } from '@douyinfe/semi-icons';
 
 import { getApiOrigin, getAuthToken } from '../../services/http';
 import { runTerminal } from '../../services/api-agent';
+
+/* ───── 类型 & 工具函数 ───── */
 
 interface AuthStatusParsed {
   tokenStatus?: string;
@@ -49,7 +62,6 @@ function formatToCnTime(raw?: string): string {
   }).format(d);
 }
 
-/** 从命令输出中提取飞书开放平台 / 账号相关的 https 链接（供浏览器打开） */
 function extractLarkHttpsUrls(raw: string): string[] {
   const re = /https:\/\/[^\s\)\]'"]+/g;
   const candidates = raw.match(re) ?? [];
@@ -66,7 +78,6 @@ function extractLarkHttpsUrls(raw: string): string[] {
   return [...new Set(filtered)];
 }
 
-/** 从 device verify URL 解析 user_code，便于对照终端截图 */
 function parseUserCodeFromVerifyUrl(url: string): string | null {
   try {
     const sp = new URL(url).searchParams;
@@ -86,22 +97,152 @@ async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
+/* ───── 状态指示圆点 ───── */
+
+function StatusDot({ color }: { color: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+        background: color,
+        boxShadow: `0 0 6px ${color}60`,
+        marginRight: 8,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+/* ───── 信息行组件 ───── */
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, lineHeight: 1.8 }}>
+      <Typography.Text type="tertiary" size="small" style={{ flexShrink: 0, minWidth: 80 }}>
+        {label}
+      </Typography.Text>
+      <Typography.Text style={{ flex: 1 }}>{children}</Typography.Text>
+    </div>
+  );
+}
+
+/* ───── 步骤指示器 ───── */
+
+interface StepInfo {
+  key: string;
+  label: string;
+  desc: string;
+}
+
+const SETUP_STEPS: StepInfo[] = [
+  { key: 'config', label: '应用配置', desc: 'lark-cli config init --new' },
+  { key: 'auth', label: '授权登录', desc: 'lark-cli auth login --recommend' },
+];
+
+function StepIndicator({ current }: { current: string }) {
+  const idx = current === 'auth' ? 1 : current === 'config' ? 0 : -1;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginTop: 12, marginBottom: 4 }}>
+      {SETUP_STEPS.map((step, i) => {
+        const done = idx > i || current === 'done';
+        const active = idx === i;
+        return (
+          <React.Fragment key={step.key}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: done
+                    ? 'var(--semi-color-success)'
+                    : active
+                      ? 'var(--semi-color-primary)'
+                      : 'var(--semi-color-fill-1)',
+                  color: done || active ? '#fff' : 'var(--semi-color-text-2)',
+                  transition: 'all 0.25s',
+                }}
+              >
+                {done ? '✓' : i + 1}
+              </div>
+              <div>
+                <Typography.Text
+                  strong={active}
+                  style={{
+                    color: done
+                      ? 'var(--semi-color-success)'
+                      : active
+                        ? 'var(--semi-color-primary)'
+                        : 'var(--semi-color-text-2)',
+                    fontSize: 13,
+                  }}
+                >
+                  {step.label}
+                </Typography.Text>
+                <Typography.Text
+                  type="tertiary"
+                  size="small"
+                  style={{ display: 'block', marginTop: -2 }}
+                >
+                  {step.desc}
+                </Typography.Text>
+              </div>
+            </div>
+            {i < SETUP_STEPS.length - 1 && (
+              <div
+                style={{
+                  flex: '0 0 32px',
+                  height: 2,
+                  background:
+                    done || active
+                      ? 'var(--semi-color-primary)'
+                      : 'var(--semi-color-fill-1)',
+                  borderRadius: 1,
+                  margin: '0 12px',
+                  alignSelf: 'center',
+                  transition: 'background 0.25s',
+                }}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ───── URL 操作卡片 ───── */
+
 function UrlActions({ urls }: { urls: string[] }) {
   if (!urls.length) return null;
   return (
     <div
       style={{
         marginTop: 12,
-        padding: 12,
-        background: 'var(--semi-color-fill-0)',
-        borderRadius: 6,
-        border: '1px solid rgba(28,31,35,0.08)',
+        padding: 14,
+        background: 'linear-gradient(135deg, var(--semi-color-fill-0), var(--semi-color-fill-1))',
+        borderRadius: 10,
+        border: '1px solid var(--semi-color-border)',
       }}
     >
-      <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-        从此输出解析到的链接（终端里的二维码无法在网页中扫码，请优先用浏览器打开下列链接）
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <IconLink style={{ color: 'var(--semi-color-primary)' }} />
+        <Typography.Text strong style={{ fontSize: 13 }}>
+          检测到授权链接
+        </Typography.Text>
+      </div>
+      <Typography.Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 10 }}>
+        终端中的二维码无法在网页中扫码，请优先用浏览器打开下列链接
       </Typography.Text>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {urls.map((href) => {
           const code = parseUserCodeFromVerifyUrl(href);
           return (
@@ -112,27 +253,31 @@ function UrlActions({ urls }: { urls: string[] }) {
                 flexWrap: 'wrap',
                 gap: 8,
                 alignItems: 'center',
-                padding: '8px 10px',
-                background: '#fff',
-                borderRadius: 4,
-                border: '1px solid rgba(28,31,35,0.06)',
+                padding: '10px 12px',
+                background: 'var(--semi-color-bg-1)',
+                borderRadius: 8,
+                border: '1px solid var(--semi-color-border)',
               }}
             >
               <a
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ wordBreak: 'break-all', flex: '1 1 220px' }}
+                style={{ wordBreak: 'break-all', flex: '1 1 220px', fontSize: 13 }}
               >
                 {href}
               </a>
               {code && (
-                <Typography.Text type="tertiary" size="small">
+                <Tag color="blue" size="small">
                   用户码：{code}
-                </Typography.Text>
+                </Tag>
               )}
-              <Button size="small" onClick={() => void copyToClipboard(href)}>
-                复制链接
+              <Button
+                size="small"
+                icon={<IconCopy />}
+                onClick={() => void copyToClipboard(href)}
+              >
+                复制
               </Button>
             </div>
           );
@@ -141,6 +286,63 @@ function UrlActions({ urls }: { urls: string[] }) {
     </div>
   );
 }
+
+/* ───── 终端日志面板 ───── */
+
+const TERMINAL_STYLE: React.CSSProperties = {
+  padding: 14,
+  background: 'linear-gradient(180deg, #0d1117 0%, #0f1720 100%)',
+  color: '#e6edf3',
+  borderRadius: 10,
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+  fontSize: 12,
+  lineHeight: 1.6,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+  maxHeight: 420,
+  overflow: 'auto',
+  border: '1px solid rgba(148,163,184,0.2)',
+  boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.15)',
+};
+
+function TerminalLogPanel({
+  fullLog,
+  busy,
+  lastCommandLabel,
+  lastExit,
+  logWrapRef,
+}: {
+  fullLog: string;
+  busy: boolean;
+  lastCommandLabel: string;
+  lastExit: number | null;
+  logWrapRef: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div ref={logWrapRef} style={TERMINAL_STYLE}>
+      {fullLog || (busy ? '⏳ 正在连接终端，等待输出…' : '等待命令输出… 请先点击「开始自动交互式配置」')}
+    </div>
+  );
+}
+
+/* ───── 主组件 ───── */
+
+const PAGE_PAD: React.CSSProperties = {
+  padding: '20px clamp(16px, 2.5vw, 40px) 32px',
+  width: '100%',
+  maxWidth: '100%',
+  alignSelf: 'stretch',
+  flex: 1,
+  minHeight: 0,
+  minWidth: 0,
+  overflowY: 'auto',
+  boxSizing: 'border-box',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+};
+
+const CARD_STYLE: React.CSSProperties = { borderRadius: 12 };
 
 export const LarkCliSection: React.FC = () => {
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -217,13 +419,12 @@ export const LarkCliSection: React.FC = () => {
 
   const appendConsole = useCallback(
     (rawChunk: string) => {
-      // 去除 ANSI 颜色控制序列，保留字符画二维码主体，便于复制链接/阅读日志
-      const clean = rawChunk.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, '');
+      const clean = rawChunk.replace(/\[[0-9;?]*[ -/]*[@-~]/g, '');
       logBufRef.current += clean;
       setLastStdout(logBufRef.current);
       if (!sentAuthRef.current && /OK:\s*应用配置成功/i.test(logBufRef.current)) {
         sentAuthRef.current = true;
-        setAutoSetupStage('步骤 2/2：执行 lark-cli auth login --recommend');
+        setAutoSetupStage('auth');
         try {
           const ws = wsRef.current;
           if (ws && ws.readyState === WebSocket.OPEN) {
@@ -235,7 +436,7 @@ export const LarkCliSection: React.FC = () => {
       }
       if (!doneRef.current && /OK:\s*授权成功/i.test(logBufRef.current)) {
         doneRef.current = true;
-        setAutoSetupStage('配置完成');
+        setAutoSetupStage('done');
         setLastExit(0);
         Toast.success('自动交互式配置完成，授权成功。');
         void refreshStatus();
@@ -246,7 +447,7 @@ export const LarkCliSection: React.FC = () => {
 
   const runAutoInteractiveSetup = useCallback(async () => {
     setBusyAutoSetup(true);
-    setAutoSetupStage('步骤 1/2：执行 lark-cli config init --new');
+    setAutoSetupStage('config');
     logBufRef.current = '$ lark-cli config init --new\n';
     setLastStdout(logBufRef.current);
     setLastStderr('');
@@ -323,219 +524,287 @@ export const LarkCliSection: React.FC = () => {
     setLastCommandLabel('');
   }, []);
 
+  /* ───── 渲染 ───── */
   return (
-    <div
-      style={{
-        padding: '24px clamp(16px, 2.5vw, 40px) 32px',
-        width: '100%',
-        maxWidth: '100%',
-        alignSelf: 'stretch',
-        flex: 1,
-        minHeight: 0,
-        minWidth: 0,
-        overflowY: 'auto',
-        boxSizing: 'border-box',
-      }}
-    >
-      <Typography.Title heading={6} style={{ margin: 0 }}>
-        飞书 CLI（lark-cli）配置
-      </Typography.Title>
-
-      {configured && statusParsed?.tokenStatus === 'valid' && (
-        <Banner
-          type="success"
-          fullMode={false}
-          title="飞书 CLI 已配置且令牌有效"
-          description={
-            <div style={{ lineHeight: 1.6 }}>
-              <div>
-                用户：<strong>{statusParsed.userName ?? '—'}</strong>（
-                {statusParsed.identity ?? '—'}）
-              </div>
-              <div>
-                应用 ID：{statusParsed.appId ?? '—'} · 品牌：{statusParsed.brand ?? '—'}
-              </div>
-              <div>令牌创建时间（东八区）：{formatToCnTime(statusParsed.grantedAt)}</div>
+    <div style={PAGE_PAD}>
+      {/* 页面标题 & 状态概览 */}
+      <Card style={CARD_STYLE} bodyStyle={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #3370ff, #5e8cff)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: 18,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              L
             </div>
-          }
-          style={{ marginTop: 12 }}
-        />
+            <div>
+              <Typography.Title heading={6} style={{ margin: 0 }}>
+                飞书 CLI
+              </Typography.Title>
+              <Typography.Text type="tertiary" size="small">
+                lark-cli 配置与授权管理
+              </Typography.Text>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <StatusDot color={configured ? 'var(--semi-color-success)' : 'var(--semi-color-warning)'} />
+            <Tag color={configured ? 'green' : 'orange'} size="small">
+              {configured ? '已授权' : '未授权'}
+            </Tag>
+          </div>
+        </div>
+      </Card>
+
+      {/* 已配置 — 状态信息卡 */}
+      {configured && statusParsed?.tokenStatus === 'valid' && (
+        <Card style={CARD_STYLE} bodyStyle={{ padding: 0 }}>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(51,112,255,0.06), rgba(51,112,255,0.02))',
+              padding: '18px 20px',
+              borderRadius: '12px 12px 0 0',
+              borderBottom: '1px solid var(--semi-color-border)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <StatusDot color="var(--semi-color-success)" />
+              <Typography.Text strong style={{ fontSize: 14 }}>令牌有效</Typography.Text>
+            </div>
+          </div>
+          <div style={{ padding: '16px 20px' }}>
+            <InfoRow label="用户">{statusParsed.userName ?? '—'}</InfoRow>
+            <InfoRow label="身份">{statusParsed.identity ?? '—'}</InfoRow>
+            <InfoRow label="应用 ID">
+              <Typography.Text code>{statusParsed.appId ?? '—'}</Typography.Text>
+            </InfoRow>
+            <InfoRow label="品牌">{statusParsed.brand ?? '—'}</InfoRow>
+            <InfoRow label="授权时间">{formatToCnTime(statusParsed.grantedAt)}</InfoRow>
+          </div>
+          <div
+            style={{
+              padding: '12px 20px',
+              borderTop: '1px solid var(--semi-color-border)',
+              display: 'flex',
+              gap: 8,
+            }}
+          >
+            <Button
+              icon={<IconRefresh />}
+              loading={loadingStatus}
+              onClick={() => void refreshStatus()}
+            >
+              刷新状态
+            </Button>
+          </div>
+        </Card>
       )}
 
+      {/* 未配置 — 告警 */}
       {!configured && (
         <Banner
           type="warning"
           fullMode={false}
           title="尚未检测到有效登录"
-          description="点击下方“一键自动交互式配置”，先完成应用配置，再自动进入授权。完成后点“刷新状态”。"
-          style={{ marginTop: 12 }}
+          description="点击下方「开始自动交互式配置」，完成应用配置与授权登录。"
+          style={{ borderRadius: 10 }}
         />
       )}
 
-      <Card title="一键终端交互式配置（推荐）" style={{ marginTop: 16 }}>
-        <Typography.Paragraph type="tertiary" size="small" style={{ marginTop: 0 }}>
-          严格按顺序执行：先 <Typography.Text code>lark-cli config init --new</Typography.Text>，
-          检测到「OK: 应用配置成功」后，再自动执行{' '}
-          <Typography.Text code>lark-cli auth login --recommend</Typography.Text> 并等待授权完成。
-        </Typography.Paragraph>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: 10,
-            flexWrap: 'wrap',
-          }}
-        >
-          <Tag color={busyAutoSetup ? 'blue' : configured ? 'green' : 'orange'}>
-            {busyAutoSetup
-              ? `运行中：${autoSetupStage || '处理中'}`
-              : configured
-              ? '已登录'
-              : '未登录'}
-          </Tag>
-          {lastExit !== null && (
-            <Tag color={lastExit === 0 ? 'green' : 'red'}>最近退出码：{lastExit}</Tag>
-          )}
+      {/* 一键配置卡片 */}
+      <Card style={CARD_STYLE} bodyStyle={{ padding: 0 }}>
+        <div style={{ padding: '18px 20px' }}>
+          <Typography.Title heading={6} style={{ margin: 0, marginBottom: 4 }}>
+            一键终端交互式配置
+          </Typography.Title>
+          <Typography.Text type="tertiary" size="small">
+            严格按顺序执行两步操作，自动衔接
+          </Typography.Text>
         </div>
-        {busyAutoSetup && (
-          <Banner
-            type="info"
-            fullMode={false}
-            closeIcon={null}
-            icon={<Spin size="small" />}
-            title="自动交互式配置进行中"
-            description={autoSetupStage || '请在浏览器/飞书完成扫码和授权，命令会自动继续。'}
-            style={{ marginBottom: 10 }}
-          />
-        )}
-        <Button
-          theme="solid"
-          type="primary"
-          loading={busyAutoSetup}
-          disabled={anyLongRunning && !busyAutoSetup}
-          onClick={() => void runAutoInteractiveSetup()}
-        >
-          开始自动交互式配置
-        </Button>
-        <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <Button
-            loading={loadingStatus}
-            disabled={anyLongRunning}
-            onClick={() => void refreshStatus()}
-          >
-            刷新状态（lark-cli auth status）
-          </Button>
-          <Button
-            disabled={!busyAutoSetup}
-            onClick={() => {
-              closeAutoSetupSocket();
-              setBusyAutoSetup(false);
-              setAutoSetupStage('');
-            }}
-          >
-            停止当前流程
-          </Button>
+        <StepIndicator current={autoSetupStage} />
+        <Divider margin="12px" />
+        <div style={{ padding: '0 20px 16px' }}>
+          {busyAutoSetup && (
+            <Banner
+              type="info"
+              fullMode={false}
+              closeIcon={null}
+              icon={<Spin size="small" />}
+              title={
+                autoSetupStage === 'config'
+                  ? '步骤 1/2：应用配置中'
+                  : autoSetupStage === 'auth'
+                    ? '步骤 2/2：等待授权'
+                    : '处理中'
+              }
+              description={
+                autoSetupStage === 'config'
+                  ? '请根据终端输出，在浏览器中打开链接完成应用创建'
+                  : '请在浏览器/飞书完成扫码授权，命令会自动继续'
+              }
+              style={{ marginBottom: 12, borderRadius: 8 }}
+            />
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <Button
+              theme="solid"
+              type="primary"
+              size="large"
+              loading={busyAutoSetup}
+              disabled={anyLongRunning && !busyAutoSetup}
+              onClick={() => void runAutoInteractiveSetup()}
+              style={{ borderRadius: 8, fontWeight: 600 }}
+            >
+              {busyAutoSetup ? '配置进行中…' : '开始自动交互式配置'}
+            </Button>
+            <Button
+              icon={<IconRefresh />}
+              loading={loadingStatus}
+              disabled={anyLongRunning}
+              onClick={() => void refreshStatus()}
+            >
+              刷新状态
+            </Button>
+            <Button
+              icon={<IconStop />}
+              disabled={!busyAutoSetup}
+              type="danger"
+              onClick={() => {
+                closeAutoSetupSocket();
+                setBusyAutoSetup(false);
+                setAutoSetupStage('');
+              }}
+            >
+              停止
+            </Button>
+          </div>
         </div>
       </Card>
 
+      {/* 终端日志 */}
+      <Card style={CARD_STYLE} bodyStyle={{ padding: 0 }}>
+        <div
+          style={{
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid var(--semi-color-border)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: busyAutoSetup
+                  ? 'var(--semi-color-success)'
+                  : 'var(--semi-color-fill-2)',
+                boxShadow: busyAutoSetup ? '0 0 6px var(--semi-color-success)' : 'none',
+                transition: 'all 0.3s',
+              }}
+            />
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              实时终端日志
+            </Typography.Text>
+            {lastExit !== null && (
+              <Tag color={lastExit === 0 ? 'green' : 'red'} size="small">
+                exit {lastExit}
+              </Tag>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Button
+              size="small"
+              icon={<IconCopy />}
+              disabled={!fullLog}
+              onClick={() => void copyToClipboard(fullLog)}
+            />
+            <Button
+              size="small"
+              icon={<IconDelete />}
+              disabled={anyLongRunning}
+              onClick={clearConsole}
+            />
+            <Button
+              size="small"
+              onClick={() => setAutoFollowLog((v) => !v)}
+              style={{ fontSize: 11 }}
+            >
+              {autoFollowLog ? '🔒 跟随' : '🔓 自由'}
+            </Button>
+          </div>
+        </div>
+        <div style={{ padding: '14px 20px' }}>
+          {lastCommandLabel && (
+            <Typography.Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+              {lastCommandLabel}
+            </Typography.Text>
+          )}
+          <UrlActions urls={extractedUrls} />
+          <TerminalLogPanel
+            fullLog={fullLog}
+            busy={busyAutoSetup}
+            lastCommandLabel={lastCommandLabel}
+            lastExit={lastExit}
+            logWrapRef={logWrapRef}
+          />
+        </div>
+      </Card>
+
+      {/* 原始状态输出（折叠） */}
+      <Collapse style={{ borderRadius: 12 }}>
+        <Collapse.Panel header="原始状态输出（lark-cli auth status）" itemKey="status">
+          <pre
+            style={{
+              margin: 0,
+              padding: 12,
+              background: 'rgba(6,7,9,0.03)',
+              borderRadius: 8,
+              fontSize: 12,
+              maxHeight: 200,
+              overflow: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              border: '1px solid var(--semi-color-border)',
+            }}
+          >
+            {loadingStatus ? '加载中…' : statusText || '（暂无）'}
+          </pre>
+        </Collapse.Panel>
+      </Collapse>
+
+      {/* 说明 */}
       <Banner
         type="info"
         fullMode={false}
-        title="与命令行一致的流程说明"
+        title="流程说明"
         description={
           <div style={{ lineHeight: 1.65 }}>
             <div>
-              <strong>步骤 1</strong> 会实时打印终端字符二维码与配置链接；可直接在下方日志区复制链接
-              （二维码在网页字体下可能不够清晰时，优先使用链接）：
-              <Typography.Text code>open.feishu.cn/page/cli</Typography.Text>{' '}
-              链接在浏览器完成应用创建。
+              <strong>步骤 1</strong> 会实时打印终端字符二维码与配置链接；链接也可在下方日志区的「检测到授权链接」面板中一键复制。
             </div>
-            <div style={{ marginTop: 8 }}>
-              <strong>步骤 2</strong>{' '}
-              会输出「在浏览器中打开以下链接进行认证」并进入「等待用户授权…」；
-              与你在容器里手动执行的体验保持一致。
+            <div style={{ marginTop: 6 }}>
+              <strong>步骤 2</strong> 会输出授权链接并等待扫码；完成授权后自动检测成功。
             </div>
-            <div style={{ marginTop: 8 }}>
-              服务端单次命令超时由{' '}
-              <Typography.Text code>agent.terminal_exec_timeout</Typography.Text>{' '}
-              控制；如授权耗时较长可适当调大。
+            <div style={{ marginTop: 6 }}>
+              服务端单次命令超时由 <Typography.Text code>agent.terminal_exec_timeout</Typography.Text> 控制；如授权耗时较长可适当调大。
             </div>
           </div>
         }
-        style={{ marginTop: 16 }}
+        style={{ borderRadius: 10 }}
       />
-
-      <Card
-        title="当前登录状态（lark-cli auth status）"
-        style={{ marginTop: 16 }}
-        bodyStyle={{ paddingTop: 12 }}
-      >
-        <pre
-          style={{
-            margin: 0,
-            padding: 10,
-            background: 'rgba(6,7,9,0.04)',
-            borderRadius: 4,
-            fontSize: 12,
-            maxHeight: 200,
-            overflow: 'auto',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {loadingStatus ? '加载中…' : statusText || '（暂无）'}
-        </pre>
-      </Card>
-
-      <Card title="实时终端日志" style={{ marginTop: 16 }}>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            marginBottom: 8,
-          }}
-        >
-          <Button size="small" disabled={!fullLog} onClick={() => void copyToClipboard(fullLog)}>
-            复制全部日志
-          </Button>
-          <Button size="small" disabled={anyLongRunning} onClick={clearConsole}>
-            清空日志
-          </Button>
-          <Button size="small" onClick={() => setAutoFollowLog((v) => !v)}>
-            {autoFollowLog ? '关闭自动滚动' : '开启自动滚动'}
-          </Button>
-        </div>
-        <Typography.Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
-          {lastCommandLabel ? `命令：${lastCommandLabel}` : '命令：尚未开始'}
-          {lastExit !== null ? ` · exit code: ${lastExit}` : ''}
-        </Typography.Text>
-
-        <UrlActions urls={extractedUrls} />
-
-        <div
-          ref={logWrapRef}
-          style={{
-            marginTop: 12,
-            padding: 12,
-            background: '#0f1720',
-            color: '#e6edf3',
-            borderRadius: 6,
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            fontSize: 11,
-            lineHeight: 1.45,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            maxHeight: 420,
-            overflow: 'auto',
-            border: '1px solid rgba(148,163,184,0.25)',
-          }}
-        >
-          {fullLog || '等待命令输出...'}
-        </div>
-      </Card>
     </div>
   );
 };
