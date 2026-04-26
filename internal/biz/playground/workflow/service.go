@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"ruleGoKratos/internal/biz"
 	"ruleGoKratos/internal/biz/entity"
@@ -519,17 +518,19 @@ func (s *WorkflowService) SubscribeRunEvents(runID string) (<-chan *entity.Trace
 // ResolveRunWorkspacePath 返回指定 run 的工作区绝对路径；目录不存在时返回空串。
 func (s *WorkflowService) ResolveRunWorkspacePath(runID string) string {
 	if s.agentUC == nil {
+		log.Printf("ResolveRunWorkspacePath: agentUC is nil, runID=%s", runID)
 		return ""
 	}
 	root, err := s.agentUC.ResolveAgentWorkspaceRoot()
 	if err != nil {
+		log.Printf("ResolveRunWorkspacePath: ResolveAgentWorkspaceRoot failed: %v, runID=%s", err, runID)
 		return ""
 	}
 	dir := filepath.Join(root, "playground", "run_"+wfSanitizeRunIDForPath(runID))
-	if st, err := os.Stat(dir); err == nil && st.IsDir() {
-		return dir
-	}
-	return ""
+	// 直接返回计算出的路径，不检查目录是否存在
+	// 因为目录在 harness 运行时已通过 MkdirAll 创建
+	log.Printf("ResolveRunWorkspacePath: runID=%s -> dir=%s", runID, dir)
+	return dir
 }
 
 // ResolveAgentWorkspaceRoot 返回 agent workspace 根目录（绝对路径）。

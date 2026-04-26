@@ -1980,11 +1980,11 @@ export const AgentPlaygroundPage: React.FC = () => {
             {/* 运行页 */}
             {activeTab === 'run' && (
               <div className="pg-fade-in">
-                <Row gutter={[16, 16]} style={{ alignItems: 'stretch', minHeight: runAreaMinH }}>
+                <Row gutter={[16, 16]} style={{ alignItems: 'stretch', height: runAreaMinH }}>
                   <Col
                     xs={24}
                     xl={8}
-                    style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
+                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
                   >
                     <Card
                       className="pg-graph-card"
@@ -1992,7 +1992,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        minHeight: runAreaMinH,
+                        height: '100%',
                         borderRadius: 14,
                         overflow: 'hidden',
                         boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
@@ -2003,6 +2003,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                         flexDirection: 'column',
                         padding: 0,
                         minHeight: 0,
+                        overflow: 'auto',
                       }}
                     >
                       <div style={{ padding: '16px 16px 8px' }}>
@@ -2151,7 +2152,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                   <Col
                     xs={24}
                     xl={8}
-                    style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
+                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
                   >
                     <RunConsole
                       scheme={selectedScheme}
@@ -2176,7 +2177,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                   <Col
                     xs={24}
                     xl={8}
-                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
                   >
                     <TracePanel
                       events={displayedRuntimeState.events}
