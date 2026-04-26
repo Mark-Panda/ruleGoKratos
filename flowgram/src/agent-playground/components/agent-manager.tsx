@@ -9,7 +9,6 @@ import {
   Typography,
   Table,
   Tag,
-  Space,
   Toast,
   Card,
   Switch,
@@ -17,6 +16,7 @@ import {
   Divider,
   Select,
 } from '@douyinfe/semi-ui';
+import { IconSave } from '@douyinfe/semi-icons';
 
 import { AgentPool, AgentDefinition, updateAgentPool } from '../../services/api-playground';
 import { listManagedAgents, type ManagedAgentItem } from '../../services/api-managed-agents';
@@ -29,7 +29,6 @@ interface AgentManagerProps {
 }
 
 export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange }) => {
-  /** 协作运行固定使用 default；兼容旧库中仅剩其它 id 的首项 */
   const displayPool = useMemo(() => pools.find((p) => p.id === 'default') ?? pools[0], [pools]);
 
   const [poolName, setPoolName] = useState('');
@@ -109,7 +108,6 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
     }
   };
 
-  /** 将池内某一成员关联到主站「Agent 配置」，模型/SKILL/MCP 以托管为准 */
   const handleBindManagedAgent = async (
     pool: AgentPool,
     agentId: string,
@@ -139,7 +137,23 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
     {
       title: '序号',
       dataIndex: 'index',
-      render: (_: unknown, __: unknown, index: number) => index + 1,
+      render: (_: unknown, __: unknown, index: number) => (
+        <div
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: 'var(--semi-color-fill-0)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            color: 'var(--semi-color-tertiary)',
+          }}
+        >
+          {index + 1}
+        </div>
+      ),
       width: 60,
     },
     {
@@ -156,14 +170,18 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
       ),
     },
     {
-      title: 'Agent名称',
+      title: 'Agent 名称',
       dataIndex: 'name',
       render: (text: string) => <Text strong>{text}</Text>,
     },
     {
       title: '角色',
       dataIndex: 'role',
-      render: (text: string) => <Tag>{text}</Tag>,
+      render: (text: string) => (
+        <Tag color="cyan" style={{ borderRadius: 6 }}>
+          {text}
+        </Tag>
+      ),
     },
     {
       title: '绑定托管 Agent',
@@ -213,6 +231,11 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
       title: '优先级',
       dataIndex: 'priority',
       width: 72,
+      render: (val: number) => (
+        <Tag size="small" style={{ borderRadius: 4 }}>
+          {val}
+        </Tag>
+      ),
     },
     {
       title: '状态',
@@ -229,47 +252,127 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
 
   return (
     <div>
-      <Card title="默认 Agent 池">
-        <Text
-          type="tertiary"
-          size="small"
-          style={{ display: 'block', marginBottom: 16, lineHeight: 1.65 }}
+      <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, rgba(22, 100, 255, 0.08), rgba(19, 194, 194, 0.08))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 16,
+              }}
+            >
+              🤖
+            </div>
+            <div>
+              <Text strong style={{ fontSize: 14, display: 'block' }}>默认 Agent 池</Text>
+              <Text type="tertiary" size="small">id=default</Text>
+            </div>
+          </div>
+        }
+        style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+      >
+        <div
+          style={{
+            padding: '12px 16px',
+            background: 'var(--semi-color-info-light-default)',
+            border: '1px solid rgba(22, 100, 255, 0.12)',
+            borderRadius: 10,
+            marginBottom: 16,
+            lineHeight: 1.65,
+          }}
         >
-          <strong style={{ color: 'var(--semi-color-text-1)' }}>
-            协作运行仅使用本池（id=default）
-          </strong>
-          。下方的「设计师」「规划师」等是预置
-          <strong style={{ color: 'var(--semi-color-text-1)' }}>角色槽位</strong>
-          ，请在「绑定托管 Agent」列为每个槽位选择主站「Agent 配置」；模型与工具以托管为准。
-          若下拉为空，请先到顶部菜单 <strong>Agent 管理 → Agent 配置</strong> 新建并启用。
-        </Text>
+          <Text size="small" style={{ lineHeight: 1.65 }}>
+            <strong style={{ color: 'var(--semi-color-text-1)' }}>
+              协作运行仅使用本池（id=default）
+            </strong>
+            。下方的「设计师」「规划师」等是预置
+            <strong style={{ color: 'var(--semi-color-text-1)' }}>角色槽位</strong>
+            ，请在「绑定托管 Agent」列为每个槽位选择主站「Agent 配置」；模型与工具以托管为准。
+            若下拉为空，请先到顶部菜单 <strong>Agent 管理 → Agent 配置</strong> 新建并启用。
+          </Text>
+        </div>
 
         {!displayPool ? (
-          <Text type="warning" size="small">
-            暂无默认 Agent 池。请刷新页面；首次请求池列表时服务会自动创建 default。
-          </Text>
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                background: 'var(--semi-color-warning-light-default)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px',
+                fontSize: 24,
+              }}
+            >
+              ⚠️
+            </div>
+            <Text type="warning" size="small">
+              暂无默认 Agent 池。请刷新页面；首次请求池列表时服务会自动创建 default。
+            </Text>
+          </div>
         ) : (
           <>
             <Divider margin="12px" align="center">
               池信息
             </Divider>
-            <Space vertical align="start" style={{ width: '100%', marginBottom: 16 }}>
-              <div style={{ width: '100%', maxWidth: 480 }}>
-                <Text type="tertiary" style={{ display: 'block', marginBottom: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                maxWidth: 520,
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <Text
+                  type="tertiary"
+                  size="small"
+                  style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}
+                >
                   名称
                 </Text>
-                <Input value={poolName} onChange={setPoolName} placeholder="池名称" />
+                <Input
+                  value={poolName}
+                  onChange={setPoolName}
+                  placeholder="池名称"
+                  style={{ borderRadius: 8 }}
+                />
               </div>
-              <div style={{ width: '100%', maxWidth: 480 }}>
-                <Text type="tertiary" style={{ display: 'block', marginBottom: 8 }}>
+              <div>
+                <Text
+                  type="tertiary"
+                  size="small"
+                  style={{ display: 'block', marginBottom: 6, fontWeight: 500 }}
+                >
                   描述
                 </Text>
-                <Input value={poolDesc} onChange={setPoolDesc} placeholder="可选" />
+                <Input
+                  value={poolDesc}
+                  onChange={setPoolDesc}
+                  placeholder="可选"
+                  style={{ borderRadius: 8 }}
+                />
               </div>
-              <Button type="primary" onClick={() => void handleSavePoolMeta()}>
+              <Button
+                type="primary"
+                theme="solid"
+                icon={<IconSave />}
+                onClick={() => void handleSavePoolMeta()}
+                style={{ alignSelf: 'flex-start', borderRadius: 8 }}
+              >
                 保存池信息
               </Button>
-            </Space>
+            </div>
 
             <Divider margin="12px" align="center">
               Agent 列表
@@ -279,6 +382,7 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
               dataSource={displayPool.agents || []}
               rowKey="id"
               pagination={false}
+              style={{ borderRadius: 10, overflow: 'hidden' }}
             />
           </>
         )}

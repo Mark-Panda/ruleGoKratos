@@ -1,3 +1,7 @@
+/**
+ * Trace Panel 组件
+ */
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, ButtonGroup, Card, Empty, Space, Tag, Typography } from '@douyinfe/semi-ui';
@@ -64,28 +68,39 @@ export const TracePanel: React.FC<TracePanelProps> = ({
       className="pg-trace-card"
       title={
         <Space spacing="tight">
-          <span
+          <div
             style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'var(--semi-color-fill-0)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               fontFamily: 'var(--semi-font-family-monospace)',
               fontWeight: 600,
-              letterSpacing: '-0.02em',
+              fontSize: 14,
             }}
           >
-            {'>_ Runtime Context'}
-          </span>
-          <Tag
-            color={
-              run.status === 'completed'
-                ? 'green'
-                : run.isWaitingRecovery
-                ? 'orange'
-                : run.status === 'failed'
-                ? 'red'
-                : 'grey'
-            }
-          >
-            {run.label}
-          </Tag>
+            &gt;_
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Text strong style={{ fontSize: 14 }}>Runtime Context</Text>
+            <Tag
+              size="small"
+              color={
+                run.status === 'completed'
+                  ? 'green'
+                  : run.isWaitingRecovery
+                  ? 'orange'
+                  : run.status === 'failed'
+                  ? 'red'
+                  : 'grey'
+              }
+            >
+              {run.label}
+            </Tag>
+          </div>
         </Space>
       }
       headerExtraContent={
@@ -149,15 +164,16 @@ export const TracePanel: React.FC<TracePanelProps> = ({
             borderRadius: 10,
             marginBottom: 12,
             fontSize: 12,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '4px 12px',
           }}
         >
-          <Space wrap>
-            <Text type="tertiary">Run ID: {run.runId}</Text>
-            <Text type="tertiary">步骤: {planNodes.length}</Text>
-            <Text type="tertiary">产物: {runtimeViewModel.artifacts.total}</Text>
-            <Text type="tertiary">恢复动作: {recovery.summary.count}</Text>
-            <Text type="tertiary">错误事件: {runtimeViewModel.trace.errorCount}</Text>
-          </Space>
+          <Text type="tertiary">Run ID: {run.runId}</Text>
+          <Text type="tertiary">步骤: {planNodes.length}</Text>
+          <Text type="tertiary">产物: {runtimeViewModel.artifacts.total}</Text>
+          <Text type="tertiary">恢复动作: {recovery.summary.count}</Text>
+          <Text type="tertiary">错误事件: {runtimeViewModel.trace.errorCount}</Text>
         </div>
       ) : null}
 
@@ -183,13 +199,30 @@ export const TracePanel: React.FC<TracePanelProps> = ({
           </div>
           <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', minHeight: 120 }}>
             {displayEvents.length === 0 ? (
-              <Empty
-                description={
-                  events.length === 0
-                    ? '运行一次方案后会在这里显示事件'
-                    : '当前筛选下暂无事件，可切换到「全部事件」'
-                }
-              />
+              <div style={{ padding: '40px 16px', textAlign: 'center' }}>
+                <div
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 16,
+                    background: 'var(--semi-color-fill-0)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 12px',
+                    fontSize: 24,
+                  }}
+                >
+                  📋
+                </div>
+                <Empty
+                  description={
+                    events.length === 0
+                      ? '运行一次方案后会在这里显示事件'
+                      : '当前筛选下暂无事件，可切换到「全部事件」'
+                  }
+                />
+              </div>
             ) : (
               <div style={{ padding: '4px 2px 8px' }}>
                 {displayEvents.map((event, index) => (
@@ -197,40 +230,56 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     key={event.id || index}
                     style={{
                       display: 'flex',
-                      gap: 8,
-                      padding: '8px 10px',
+                      gap: 10,
+                      padding: '8px 12px',
                       borderRadius: 10,
-                      marginBottom: 6,
+                      marginBottom: 4,
                       background: 'var(--semi-color-bg-1)',
                       fontSize: 12,
                       borderLeft: `3px solid ${leftBorderColor(event.type)}`,
+                      transition: 'background 0.15s ease',
                     }}
                   >
-                    <Text type="tertiary" style={{ fontSize: 10, minWidth: 70, flexShrink: 0 }}>
+                    <Text type="tertiary" style={{ fontSize: 10, minWidth: 64, flexShrink: 0, paddingTop: 1 }}>
                       {formatTime(event.timestamp)}
                     </Text>
-                    <span style={{ fontSize: 12, flexShrink: 0 }}>{getEventIcon(event.type)}</span>
-                    {event.agentId ? <Tag size="small">{event.agentId}</Tag> : null}
+                    <span style={{ fontSize: 14, flexShrink: 0, lineHeight: '18px' }}>
+                      {getEventIcon(event.type)}
+                    </span>
+                    {event.agentId ? (
+                      <Tag size="small" style={{ borderRadius: 4, flexShrink: 0 }}>
+                        {event.agentId}
+                      </Tag>
+                    ) : null}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ wordBreak: 'break-all', display: 'block' }}>
+                      <Text style={{ wordBreak: 'break-all', display: 'block', lineHeight: 1.5 }}>
                         {event.message}
                       </Text>
                       {renderSubAgentConcurrency(event)}
                     </div>
                     {event.metadata && Object.keys(event.metadata).length > 0 ? (
                       <details style={{ fontSize: 10, flexShrink: 0 }}>
-                        <summary style={{ cursor: 'pointer', color: 'var(--semi-color-tertiary)' }}>
-                          ...
+                        <summary
+                          style={{
+                            cursor: 'pointer',
+                            color: 'var(--semi-color-tertiary)',
+                            borderRadius: 4,
+                            padding: '2px 6px',
+                            transition: 'background 0.15s ease',
+                          }}
+                        >
+                          meta
                         </summary>
                         <pre
                           style={{
                             fontSize: 10,
                             background: 'var(--semi-color-fill-actual)',
-                            padding: 6,
-                            borderRadius: 6,
+                            padding: 8,
+                            borderRadius: 8,
                             marginTop: 4,
                             overflow: 'auto',
-                            maxWidth: 220,
+                            maxWidth: 240,
+                            border: '1px solid var(--semi-color-border)',
                           }}
                         >
                           {JSON.stringify(event.metadata, null, 2)}
@@ -248,7 +297,24 @@ export const TracePanel: React.FC<TracePanelProps> = ({
       {view === 'artifacts' ? (
         <div style={{ flex: 1, overflow: 'auto', minHeight: 120 }}>
           {planNodes.every((node) => node.artifacts.length === 0) ? (
-            <Empty description="当前运行还没有结构化产物。" />
+            <div style={{ padding: '40px 16px', textAlign: 'center' }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: 'var(--semi-color-fill-0)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  fontSize: 24,
+                }}
+              >
+                📦
+              </div>
+              <Empty description="当前运行还没有结构化产物。" />
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {planNodes.map((node) => (
@@ -259,12 +325,13 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                     borderRadius: 12,
                     border: '1px solid rgba(28,31,35,0.08)',
                     background: 'var(--semi-color-bg-0)',
+                    transition: 'box-shadow 0.2s ease',
                   }}
                 >
                   <Space wrap style={{ marginBottom: 8 }}>
                     <Text strong>{node.name}</Text>
-                    <Tag size="small">{node.kind}</Tag>
-                    <Tag size="small" color={node.artifacts.length ? 'green' : 'grey'}>
+                    <Tag size="small" style={{ borderRadius: 4 }}>{node.kind}</Tag>
+                    <Tag size="small" color={node.artifacts.length ? 'green' : 'grey'} style={{ borderRadius: 4 }}>
                       产物 {node.artifacts.length}
                     </Tag>
                   </Space>
@@ -277,10 +344,11 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                             padding: '10px 12px',
                             borderRadius: 10,
                             background: 'var(--semi-color-fill-0)',
+                            border: '1px solid rgba(28,31,35,0.04)',
                           }}
                         >
                           <Space wrap>
-                            <Tag size="small" color="green">
+                            <Tag size="small" color="green" style={{ borderRadius: 4 }}>
                               {artifact.type}
                             </Tag>
                             <Text size="small">{artifact.artifactId}</Text>
@@ -310,7 +378,24 @@ export const TracePanel: React.FC<TracePanelProps> = ({
       {view === 'recovery' ? (
         <div style={{ flex: 1, overflow: 'auto', minHeight: 120 }}>
           {recovery.actions.length === 0 && !runtimeViewModel.failedStep ? (
-            <Empty description="当前运行没有恢复上下文。" />
+            <div style={{ padding: '40px 16px', textAlign: 'center' }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: 'var(--semi-color-fill-0)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  fontSize: 24,
+                }}
+              >
+                🛡️
+              </div>
+              <Empty description="当前运行没有恢复上下文。" />
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {runtimeViewModel.failedStep ? (

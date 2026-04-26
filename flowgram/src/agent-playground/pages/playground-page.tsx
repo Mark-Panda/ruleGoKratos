@@ -33,13 +33,12 @@ import {
   IconRefresh,
   IconDelete,
   IconEdit,
-  IconTick,
-  IconClose,
   IconGallery,
   IconUserGroup,
   IconLayers,
   IconDesktop,
   IconSetting,
+  IconArrowRight,
 } from '@douyinfe/semi-icons';
 
 function mergeTraceEvents(prev: TraceEvent[], incoming: TraceEvent): TraceEvent[] {
@@ -105,7 +104,6 @@ function coerceInteger(value: number | string | undefined, fallback: number): nu
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-/** 服务端持久化的 userInput 可能是「关联块 + 本轮正文」；快照里只保留最后一轮真实提问，避免链式膨胀 */
 function extractLatestRoundUserOnly(storedUserInput: string): string {
   const marker = '【本轮说明 / Bug / 追问】\n';
   const idx = storedUserInput.indexOf(marker);
@@ -115,7 +113,6 @@ function extractLatestRoundUserOnly(storedUserInput: string): string {
   return storedUserInput.trim();
 }
 
-/** 将上一轮 run 摘要拼入下一轮 userInput，避免新区间无法理解 Bug 语义 */
 function buildPlaygroundFollowUpUserPayload(
   snapshot: PreviousRunSnapshot,
   roundText: string
@@ -195,20 +192,21 @@ const PLAYGROUND_UI: Record<
   },
 };
 
-// Playground 主页面组件
+const OVERVIEW_CARD_HOVER_STYLE: React.CSSProperties = {
+  cursor: 'pointer',
+  transition: 'box-shadow 0.25s ease, transform 0.15s ease',
+};
+
 export const AgentPlaygroundPage: React.FC = () => {
-  // 状态
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [schemes, setSchemes] = useState<CollaborationScheme[]>([]);
   const [pools, setPools] = useState<AgentPool[]>([]);
-  /** 协作运行固定使用服务端 default 池；无则退回列表首项兼容旧数据 */
   const defaultAgentPool = useMemo(
     () => pools.find((p) => p.id === 'default') ?? pools[0],
     [pools]
   );
 
-  /** default 池中已启用成员，用于方案编辑里下拉 / 勾选 */
   const poolAgentsSelectable = useMemo(() => {
     const list = defaultAgentPool?.agents || [];
     return list.filter((a) => a && a.enabled !== false);
@@ -233,24 +231,20 @@ export const AgentPlaygroundPage: React.FC = () => {
   const [lang, setLang] = useState<PlaygroundLang>('zh');
   const [running, setRunning] = useState(false);
   const [applyingRecoveryActionId, setApplyingRecoveryActionId] = useState<string | undefined>();
-  /** 最近一次已完成/失败的 run，用于下一轮附带上下文 */
   const [previousRunSnapshot, setPreviousRunSnapshot] = useState<PreviousRunSnapshot | null>(null);
   const [attachPreviousRunContext, setAttachPreviousRunContext] = useState(true);
 
-  // Scheme CRUD Modal
   const [showSchemeModal, setShowSchemeModal] = useState(false);
   const [schemeModalMode, setSchemeModalMode] = useState<'create' | 'edit'>('create');
   const [editingScheme, setEditingScheme] = useState<CollaborationScheme | undefined>();
   const [schemeForm, setSchemeForm] = useState<SchemeFormState>(() => buildSchemeFormState());
 
-  /** SSE EventSource（实时 Trace）；失败时用 fallback 定时拉取 */
   const eventSourceRef = useRef<EventSource | null>(null);
   const sseFallbackPollRef = useRef<number | null>(null);
   const runDetailPollRef = useRef<number | null>(null);
   const activeRunIdRef = useRef<string | undefined>();
   const runDetailRequestVersionRef = useRef(0);
   const eventsRequestVersionRef = useRef(0);
-  /** 单次运行完成/失败仅弹出一次 Toast（SSE 与轮询路径共用） */
   const completionToastRunIdRef = useRef<string | null>(null);
 
   const applyRunDetailIfCurrent = useCallback((runRes: RuntimeRunDetail, guardVersion: number) => {
@@ -354,7 +348,6 @@ export const AgentPlaygroundPage: React.FC = () => {
     [applyEventsIfCurrent, applyRunDetailIfCurrent, issueEventsGuard, issueRunDetailGuard]
   );
 
-  // 运行结束后 Toast 告知用户最终结果摘要（与中间栏「最终结果」一致）
   useEffect(() => {
     if (!currentRunDetail?.run.runId) return;
     const { runId, status, finalOutput } = currentRunDetail.run;
@@ -398,7 +391,6 @@ export const AgentPlaygroundPage: React.FC = () => {
     runtimeViewModel,
   ]);
 
-  // 记录「可附带的上一轮」：完成、失败或进入恢复时均可能需基于该 run 报 Bug
   useEffect(() => {
     const d = currentRunDetail;
     if (!d?.run?.runId) {
@@ -416,7 +408,6 @@ export const AgentPlaygroundPage: React.FC = () => {
     });
   }, [currentRunDetail]);
 
-  // 加载数据
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(undefined);
@@ -1086,7 +1077,6 @@ export const AgentPlaygroundPage: React.FC = () => {
     }
   };
 
-  // Scheme Modal 操作
   const openCreateSchemeModal = () => {
     setEditingScheme(undefined);
     setSchemeForm(buildSchemeFormState());
@@ -1169,7 +1159,6 @@ export const AgentPlaygroundPage: React.FC = () => {
     }
   };
 
-  // 运行工作流
   const handleRunWorkflow = async (scheme: CollaborationScheme, userInput: string) => {
     if (!userInput.trim()) {
       Toast.error('请输入任务描述');
@@ -1229,12 +1218,27 @@ export const AgentPlaygroundPage: React.FC = () => {
     [refreshRunState, runtimeViewModel.run.runId]
   );
 
-  // Scheme 表格列
   const schemeColumns = [
     {
       title: '序号',
       dataIndex: 'index',
-      render: (_: any, __: any, index: number) => index + 1,
+      render: (_: any, __: any, index: number) => (
+        <div
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: 'var(--semi-color-fill-0)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            color: 'var(--semi-color-tertiary)',
+          }}
+        >
+          {index + 1}
+        </div>
+      ),
       width: 60,
     },
     {
@@ -1245,7 +1249,9 @@ export const AgentPlaygroundPage: React.FC = () => {
     {
       title: '协作模式',
       dataIndex: 'mode',
-      render: (mode: CollaborationMode) => <Tag color="blue">{MODE_NAME_MAP[mode] || mode}</Tag>,
+      render: (mode: CollaborationMode) => (
+        <Tag color="blue" style={{ borderRadius: 6 }}>{MODE_NAME_MAP[mode] || mode}</Tag>
+      ),
     },
     {
       title: '绑定Agent',
@@ -1253,7 +1259,7 @@ export const AgentPlaygroundPage: React.FC = () => {
       render: (agents: any[]) => (
         <Space>
           {(agents || []).map((a, i) => (
-            <Tag key={i} type="ghost">
+            <Tag key={i} type="ghost" style={{ borderRadius: 6 }}>
               {a.role || a.agentId}
             </Tag>
           ))}
@@ -1263,17 +1269,32 @@ export const AgentPlaygroundPage: React.FC = () => {
     {
       title: 'Finalizer',
       dataIndex: 'enableFinalizer',
-      render: (enabled: boolean) => (enabled ? <IconTick /> : <IconClose />),
+      render: (enabled: boolean) =>
+        enabled ? (
+          <Tag color="green" style={{ borderRadius: 6 }}>ON</Tag>
+        ) : (
+          <Tag color="grey" style={{ borderRadius: 6 }}>OFF</Tag>
+        ),
       width: 80,
     },
     {
       title: '操作',
       render: (_: any, record: CollaborationScheme) => (
         <Space>
-          <Button size="small" icon={<IconPlay />} onClick={() => setSelectedScheme(record)}>
+          <Button
+            size="small"
+            icon={<IconPlay />}
+            onClick={() => setSelectedScheme(record)}
+            style={{ borderRadius: 6 }}
+          >
             选择
           </Button>
-          <Button size="small" icon={<IconEdit />} onClick={() => openEditSchemeModal(record)} />
+          <Button
+            size="small"
+            icon={<IconEdit />}
+            onClick={() => openEditSchemeModal(record)}
+            style={{ borderRadius: 6 }}
+          />
           <Button
             size="small"
             icon={<IconDelete />}
@@ -1284,6 +1305,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                 onOk: () => handleDeleteScheme(record),
               })
             }
+            style={{ borderRadius: 6 }}
           />
         </Space>
       ),
@@ -1292,6 +1314,7 @@ export const AgentPlaygroundPage: React.FC = () => {
   ];
 
   const totalAgents = defaultAgentPool?.agents?.length ?? 0;
+  const enabledAgents = defaultAgentPool?.agents?.filter((a) => a.enabled !== false).length ?? 0;
   const ui = PLAYGROUND_UI[lang];
 
   const graphFooterLine = useMemo(() => {
@@ -1319,13 +1342,7 @@ export const AgentPlaygroundPage: React.FC = () => {
     return '> 等待选择方案…';
   }, [runtimeViewModel, selectedScheme]);
 
-  /** 运行页三栏最小高度，兼顾笔记本小屏 */
   const runAreaMinH = 'min(72vh, 760px)';
-
-  const cardClickStyle: React.CSSProperties = {
-    cursor: 'pointer',
-    transition: 'box-shadow 0.2s, transform 0.15s',
-  };
 
   return (
     <div
@@ -1371,14 +1388,29 @@ export const AgentPlaygroundPage: React.FC = () => {
         .pg-playground-shell .pg-graph-card.semi-card > .semi-card-header {
           border-bottom: none;
         }
+        .pg-playground-shell .pg-overview-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 24px rgba(28, 31, 35, 0.10) !important;
+        }
+        .pg-playground-shell .pg-scheme-table .semi-table {
+          border-radius: 10px;
+          overflow: hidden;
+        }
         @keyframes pg-ready-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.65; transform: scale(0.92); }
         }
+        @keyframes pg-fade-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .pg-playground-shell .pg-fade-in {
+          animation: pg-fade-in 0.3s ease-out;
+        }
       `}
       </style>
 
-      {/* 顶栏：品牌 + 标签 + 状态 */}
+      {/* 顶栏 */}
       <div
         style={{
           display: 'flex',
@@ -1390,7 +1422,22 @@ export const AgentPlaygroundPage: React.FC = () => {
         }}
       >
         <Space align="center" spacing="loose">
-          <IconDesktop size="large" style={{ color: 'var(--semi-color-primary)' }} />
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, var(--semi-color-primary), var(--semi-color-primary-light-default))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontSize: 20,
+              boxShadow: '0 2px 8px rgba(22, 100, 255, 0.2)',
+            }}
+          >
+            <IconDesktop />
+          </div>
           <div>
             <Text strong style={{ fontSize: 18, display: 'block', lineHeight: '24px' }}>
               Agent Playground
@@ -1503,7 +1550,25 @@ export const AgentPlaygroundPage: React.FC = () => {
             }}
           />
         ) : error ? (
-          <Card bodyStyle={{ textAlign: 'center', padding: '40px 24px' }}>
+          <Card
+            bodyStyle={{ textAlign: 'center', padding: '40px 24px' }}
+            style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                background: 'var(--semi-color-danger-light-default)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px',
+                fontSize: 24,
+              }}
+            >
+              ⚠️
+            </div>
             <Title heading={6} style={{ marginBottom: 8 }}>
               加载失败
             </Title>
@@ -1518,358 +1583,614 @@ export const AgentPlaygroundPage: React.FC = () => {
           <>
             {/* 总览页 */}
             {activeTab === 'overview' && (
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={8}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setActiveTab('agents')}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setActiveTab('agents');
-                      }
-                    }}
-                    style={cardClickStyle}
-                  >
-                    <Card title="Agent 池" bodyStyle={{ paddingTop: 8 }}>
-                      <Text strong style={{ fontSize: 22 }}>
-                        {totalAgents}
-                      </Text>
-                      <Text type="tertiary" style={{ marginLeft: 8 }}>
-                        个 Agent
-                      </Text>
-                      <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
-                        协作使用 default 池 · 点此进入管理
-                      </Text>
-                      <Divider margin="12px" />
-                      <Space wrap>
-                        {(defaultAgentPool?.agents || []).slice(0, 6).map((a, i) => (
-                          <Tag key={`${a.id}-${i}`}>{a.name}</Tag>
-                        ))}
-                        {totalAgents === 0 ? (
-                          <Text type="tertiary" size="small">
-                            暂无 Agent，请在默认池中绑定托管配置
-                          </Text>
-                        ) : null}
-                      </Space>
-                    </Card>
-                  </div>
-                </Col>
-                <Col xs={24} md={8}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setActiveTab('schemes')}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setActiveTab('schemes');
-                      }
-                    }}
-                    style={cardClickStyle}
-                  >
-                    <Card title="协作方案" bodyStyle={{ paddingTop: 8 }}>
-                      <Text strong style={{ fontSize: 22 }}>
-                        {schemes.length}
-                      </Text>
-                      <Text type="tertiary" style={{ marginLeft: 8 }}>
-                        个方案
-                      </Text>
-                      <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 8 }}>
-                        点此进入方案列表
-                      </Text>
-                      <Divider margin="12px" />
-                      <Space vertical align="start">
-                        {schemes.slice(0, 5).map((s) => (
-                          <Space key={s.id}>
-                            <Tag color="blue">{MODE_NAME_MAP[s.mode]}</Tag>
-                            <span
-                              title={s.name}
-                              style={{
-                                maxWidth: 200,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                display: 'inline-block',
-                                verticalAlign: 'bottom',
-                              }}
-                            >
-                              {s.name}
-                            </span>
-                          </Space>
-                        ))}
-                        {schemes.length === 0 ? (
-                          <Text type="tertiary" size="small">
-                            暂无方案
-                          </Text>
-                        ) : null}
-                      </Space>
-                    </Card>
-                  </div>
-                </Col>
-                <Col xs={24} md={8}>
-                  <Card title="协作模式速览" bodyStyle={{ paddingTop: 8 }}>
-                    <Space vertical align="start" style={{ rowGap: 12 }}>
-                      {(Object.keys(MODE_NAME_MAP) as CollaborationMode[]).map((mode) => (
-                        <div key={mode}>
-                          <Tag color="cyan" style={{ marginBottom: 4 }}>
-                            {MODE_NAME_MAP[mode]}
-                          </Tag>
-                          <Text
-                            type="tertiary"
-                            size="small"
-                            style={{ display: 'block', lineHeight: 1.5 }}
-                          >
-                            {MODE_DESC_MAP[mode]}
-                          </Text>
-                        </div>
-                      ))}
-                    </Space>
-                  </Card>
-                </Col>
-              </Row>
-            )}
-
-            {/* Agent 管理页 */}
-            {activeTab === 'agents' && <AgentManager pools={pools} onPoolsChange={loadData} />}
-
-            {/* 方案管理页 */}
-            {activeTab === 'schemes' && (
-              <Card
-                title="协作方案"
-                headerExtraContent={
-                  <Button
-                    type="primary"
-                    theme="solid"
-                    icon={<IconPlus />}
-                    onClick={openCreateSchemeModal}
-                  >
-                    新建方案
-                  </Button>
-                }
-              >
-                <Table
-                  size="small"
-                  columns={schemeColumns}
-                  dataSource={schemes}
-                  rowKey="id"
-                  pagination={{ pageSize: 10, showSizeChanger: true }}
-                />
-              </Card>
-            )}
-
-            {/* 设置占位 */}
-            {activeTab === 'settings' && (
-              <Card
-                style={{
-                  borderRadius: 14,
-                  boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
-                }}
-                title="设置"
-              >
-                <Text type="tertiary" style={{ lineHeight: 1.7 }}>
-                  语言切换已在顶栏生效（标签与常用文案）。默认模型、超时与 Trace
-                  采样等将后续在此集中配置；Agent 与模型绑定请使用后台「托管 Agent」相关页面。
-                </Text>
-              </Card>
-            )}
-
-            {/* 运行页：三栏等高，内部各自滚动 */}
-            {activeTab === 'run' && (
-              <Row gutter={[16, 16]} style={{ alignItems: 'stretch', minHeight: runAreaMinH }}>
-                <Col
-                  xs={24}
-                  xl={8}
-                  style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
-                >
-                  <Card
-                    className="pg-graph-card"
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      minHeight: runAreaMinH,
-                      borderRadius: 14,
-                      overflow: 'hidden',
-                      boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
-                    }}
-                    bodyStyle={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      padding: 0,
-                      minHeight: 0,
-                    }}
-                  >
-                    <div style={{ padding: '16px 16px 8px' }}>
-                      <Text
-                        type="tertiary"
-                        size="small"
-                        style={{ display: 'block', marginBottom: 8 }}
-                      >
-                        计划
-                      </Text>
-                      <Select
-                        placeholder={
-                          schemes.length ? '请选择要运行的方案' : '暂无方案，请先到「协作编排」新建'
+              <div className="pg-fade-in">
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} md={8}>
+                    <div
+                      className="pg-overview-card"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setActiveTab('agents')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setActiveTab('agents');
                         }
-                        style={{ width: '100%' }}
-                        value={selectedScheme?.id}
-                        disabled={!schemes.length}
-                        onChange={(id) => {
-                          const s = schemes.find((x) => x.id === id);
-                          setSelectedScheme(s);
-                        }}
-                      >
-                        {schemes.map((s) => (
-                          <Select.Option key={s.id} value={s.id}>
-                            <Space>
-                              <Badge dot type={s.enabled ? 'success' : 'danger'} />
-                              <span>{s.name}</span>
-                              <Tag size="small">{MODE_NAME_MAP[s.mode]}</Tag>
-                            </Space>
-                          </Select.Option>
-                        ))}
-                      </Select>
-                      {selectedScheme ? (
-                        <>
-                          <Divider margin="12px" />
-                          <Text
-                            type="tertiary"
-                            size="small"
-                            style={{ display: 'block', marginBottom: 8 }}
-                          >
-                            {MODE_DESC_MAP[selectedScheme.mode]}
-                          </Text>
-                          <Text
-                            type="tertiary"
-                            size="small"
-                            style={{ display: 'block', marginBottom: 6 }}
-                          >
-                            绑定 Agent
-                          </Text>
-                          <Space wrap>
-                            {(selectedScheme.bindAgents || []).map((a, i) => (
-                              <Tag key={i}>{a.role || a.agentId}</Tag>
-                            ))}
-                          </Space>
-                        </>
-                      ) : (
-                        <Text
-                          type="tertiary"
-                          size="small"
-                          style={{ marginTop: 12, display: 'block' }}
-                        >
-                          选择方案后将展示示意图并可在中间发起运行
-                        </Text>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        padding: '4px 16px 8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 12,
                       }}
+                      style={OVERVIEW_CARD_HOVER_STYLE}
                     >
-                      <Text strong style={{ fontSize: 14 }}>
-                        Execution Plan
-                      </Text>
-                      <Tag size="small" color="grey">
-                        RUNTIME
-                      </Tag>
-                    </div>
-
-                    <div
-                      style={{ flex: 1, overflow: 'auto', padding: '0 16px 12px', minHeight: 200 }}
-                    >
-                      {selectedScheme ? (
-                        <WorkflowGraph
-                          variant="embedded"
-                          scheme={selectedScheme}
-                          runtimeViewModel={runtimeViewModel}
-                        />
-                      ) : (
+                      <Card
+                        style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+                        bodyStyle={{ paddingTop: 8 }}
+                      >
                         <div
                           style={{
-                            height: '100%',
-                            minHeight: 160,
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            background: 'linear-gradient(135deg, rgba(22, 100, 255, 0.10), rgba(22, 100, 255, 0.04))',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            borderRadius: 12,
-                            border: `1px dashed var(--semi-color-border)`,
-                            color: 'var(--semi-color-tertiary)',
-                            fontSize: 13,
+                            marginBottom: 16,
+                            fontSize: 22,
                           }}
                         >
-                          选择左侧计划后展示拓扑
+                          🤖
                         </div>
-                      )}
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                          <Text strong style={{ fontSize: 28, lineHeight: 1 }}>
+                            {totalAgents}
+                          </Text>
+                          <Text type="tertiary" size="small">
+                            个 Agent
+                          </Text>
+                        </div>
+                        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 12 }}>
+                          已启用 {enabledAgents} 个 · default 池
+                        </Text>
+                        <Divider margin="12px" />
+                        <Space wrap>
+                          {(defaultAgentPool?.agents || []).slice(0, 6).map((a, i) => (
+                            <Tag key={`${a.id}-${i}`} style={{ borderRadius: 6 }}>{a.name}</Tag>
+                          ))}
+                          {totalAgents === 0 ? (
+                            <Text type="tertiary" size="small">
+                              暂无 Agent，请在默认池中绑定托管配置
+                            </Text>
+                          ) : null}
+                        </Space>
+                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Text type="primary" size="small" style={{ cursor: 'pointer' }}>
+                            管理智能体
+                          </Text>
+                          <IconArrowRight size="small" style={{ color: 'var(--semi-color-primary)' }} />
+                        </div>
+                      </Card>
                     </div>
-
+                  </Col>
+                  <Col xs={24} md={8}>
                     <div
+                      className="pg-overview-card"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setActiveTab('schemes')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setActiveTab('schemes');
+                        }
+                      }}
+                      style={OVERVIEW_CARD_HOVER_STYLE}
+                    >
+                      <Card
+                        style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+                        bodyStyle={{ paddingTop: 8 }}
+                      >
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            background: 'linear-gradient(135deg, rgba(19, 194, 194, 0.10), rgba(19, 194, 194, 0.04))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 16,
+                            fontSize: 22,
+                          }}
+                        >
+                          📋
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                          <Text strong style={{ fontSize: 28, lineHeight: 1 }}>
+                            {schemes.length}
+                          </Text>
+                          <Text type="tertiary" size="small">
+                            个方案
+                          </Text>
+                        </div>
+                        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 12 }}>
+                          已就绪协作编排
+                        </Text>
+                        <Divider margin="12px" />
+                        <Space vertical align="start">
+                          {schemes.slice(0, 5).map((s) => (
+                            <Space key={s.id}>
+                              <Tag color="blue" style={{ borderRadius: 6 }}>{MODE_NAME_MAP[s.mode]}</Tag>
+                              <span
+                                title={s.name}
+                                style={{
+                                  maxWidth: 200,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  display: 'inline-block',
+                                  verticalAlign: 'bottom',
+                                }}
+                              >
+                                {s.name}
+                              </span>
+                            </Space>
+                          ))}
+                          {schemes.length === 0 ? (
+                            <Text type="tertiary" size="small">
+                              暂无方案
+                            </Text>
+                          ) : null}
+                        </Space>
+                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Text type="primary" size="small" style={{ cursor: 'pointer' }}>
+                            管理方案
+                          </Text>
+                          <IconArrowRight size="small" style={{ color: 'var(--semi-color-primary)' }} />
+                        </div>
+                      </Card>
+                    </div>
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <Card
+                      style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+                      bodyStyle={{ paddingTop: 8 }}
+                    >
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 12,
+                          background: 'linear-gradient(135deg, rgba(250, 173, 20, 0.10), rgba(250, 173, 20, 0.04))',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 16,
+                          fontSize: 22,
+                        }}
+                      >
+                        🧩
+                      </div>
+                      <Text strong style={{ display: 'block', marginBottom: 12, fontSize: 14 }}>
+                        协作模式速览
+                      </Text>
+                      <Space vertical align="start" style={{ rowGap: 10, width: '100%' }}>
+                        {(Object.keys(MODE_NAME_MAP) as CollaborationMode[]).map((mode) => (
+                          <div key={mode} style={{ width: '100%' }}>
+                            <Tag color="cyan" style={{ marginBottom: 2, borderRadius: 6 }}>
+                              {MODE_NAME_MAP[mode]}
+                            </Tag>
+                            <Text
+                              type="tertiary"
+                              size="small"
+                              style={{ display: 'block', lineHeight: 1.5, fontSize: 11 }}
+                            >
+                              {MODE_DESC_MAP[mode]}
+                            </Text>
+                          </div>
+                        ))}
+                      </Space>
+                    </Card>
+                  </Col>
+                </Row>
+
+                {/* Quick Actions */}
+                <Card
+                  style={{
+                    marginTop: 16,
+                    borderRadius: 14,
+                    boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
+                  }}
+                  bodyStyle={{ padding: '16px 20px' }}
+                >
+                  <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 12, fontWeight: 500 }}>
+                    快捷操作
+                  </Text>
+                  <Space wrap spacing="loose">
+                    <Button
+                      type="primary"
+                      theme="solid"
+                      icon={<IconPlus />}
+                      onClick={openCreateSchemeModal}
+                      style={{ borderRadius: 8 }}
+                    >
+                      新建方案
+                    </Button>
+                    <Button
+                      icon={<IconPlay />}
+                      onClick={() => setActiveTab('run')}
+                      style={{ borderRadius: 8 }}
+                    >
+                      进入运行
+                    </Button>
+                    <Button
+                      icon={<IconUserGroup />}
+                      onClick={() => setActiveTab('agents')}
+                      style={{ borderRadius: 8 }}
+                    >
+                      管理 Agent
+                    </Button>
+                  </Space>
+                </Card>
+              </div>
+            )}
+
+            {/* Agent 管理页 */}
+            {activeTab === 'agents' && (
+              <div className="pg-fade-in">
+                <AgentManager pools={pools} onPoolsChange={loadData} />
+              </div>
+            )}
+
+            {/* 方案管理页 */}
+            {activeTab === 'schemes' && (
+              <div className="pg-fade-in">
+                <Card
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, rgba(19, 194, 194, 0.10), rgba(19, 194, 194, 0.04))',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 16,
+                        }}
+                      >
+                        📋
+                      </div>
+                      <Text strong style={{ fontSize: 14 }}>协作方案</Text>
+                    </div>
+                  }
+                  headerExtraContent={
+                    <Button
+                      type="primary"
+                      theme="solid"
+                      icon={<IconPlus />}
+                      onClick={openCreateSchemeModal}
+                      style={{ borderRadius: 8 }}
+                    >
+                      新建方案
+                    </Button>
+                  }
+                  style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+                >
+                  <Table
+                    className="pg-scheme-table"
+                    size="small"
+                    columns={schemeColumns}
+                    dataSource={schemes}
+                    rowKey="id"
+                    pagination={{ pageSize: 10, showSizeChanger: true }}
+                  />
+                </Card>
+              </div>
+            )}
+
+            {/* 设置页 */}
+            {activeTab === 'settings' && (
+              <div className="pg-fade-in">
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} md={12}>
+                    <Card
+                      style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+                      title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 8,
+                              background: 'var(--semi-color-fill-0)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 16,
+                            }}
+                          >
+                            🌐
+                          </div>
+                          <Text strong style={{ fontSize: 14 }}>显示设置</Text>
+                        </div>
+                      }
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div>
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}
+                          >
+                            界面语言
+                          </Text>
+                          <ButtonGroup>
+                            <Button
+                              type={lang === 'zh' ? 'primary' : 'tertiary'}
+                              onClick={() => setLang('zh')}
+                              style={{ borderRadius: '8px 0 0 8px' }}
+                            >
+                              中文
+                            </Button>
+                            <Button
+                              type={lang === 'en' ? 'primary' : 'tertiary'}
+                              onClick={() => setLang('en')}
+                              style={{ borderRadius: '0 8px 8px 0' }}
+                            >
+                              English
+                            </Button>
+                          </ButtonGroup>
+                          <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
+                            控制标签页名称及常用文案的语言
+                          </Text>
+                        </div>
+                      </div>
+                    </Card>
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <Card
+                      style={{ borderRadius: 14, boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)' }}
+                      title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 8,
+                              background: 'var(--semi-color-fill-0)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 16,
+                            }}
+                          >
+                            🔧
+                          </div>
+                          <Text strong style={{ fontSize: 14 }}>运行设置</Text>
+                        </div>
+                      }
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div>
+                          <Text type="tertiary" size="small" style={{ display: 'block', lineHeight: 1.65 }}>
+                            默认模型、超时与 Trace 采样等将后续在此集中配置；
+                            Agent 与模型绑定请使用后台「托管 Agent」相关页面。
+                          </Text>
+                        </div>
+                        <div
+                          style={{
+                            padding: '12px 16px',
+                            background: 'var(--semi-color-fill-0)',
+                            borderRadius: 10,
+                            border: '1px dashed var(--semi-color-border)',
+                            textAlign: 'center',
+                          }}
+                        >
+                          <Text type="tertiary" size="small">
+                            更多运行配置即将推出…
+                          </Text>
+                        </div>
+                      </div>
+                    </Card>
+                  </Col>
+                </Row>
+              </div>
+            )}
+
+            {/* 运行页 */}
+            {activeTab === 'run' && (
+              <div className="pg-fade-in">
+                <Row gutter={[16, 16]} style={{ alignItems: 'stretch', minHeight: runAreaMinH }}>
+                  <Col
+                    xs={24}
+                    xl={8}
+                    style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
+                  >
+                    <Card
+                      className="pg-graph-card"
                       style={{
-                        flexShrink: 0,
-                        padding: '10px 16px',
-                        fontFamily: 'var(--semi-font-family-monospace)',
-                        fontSize: 12,
-                        background: 'rgba(28, 31, 35, 0.94)',
-                        color: 'rgba(232, 234, 237, 0.92)',
-                        letterSpacing: 0.2,
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: runAreaMinH,
+                        borderRadius: 14,
+                        overflow: 'hidden',
+                        boxShadow: '0 1px 12px rgba(28, 31, 35, 0.06)',
+                      }}
+                      bodyStyle={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        padding: 0,
+                        minHeight: 0,
                       }}
                     >
-                      {graphFooterLine}
-                    </div>
-                  </Card>
-                </Col>
+                      <div style={{ padding: '16px 16px 8px' }}>
+                        <Text
+                          type="tertiary"
+                          size="small"
+                          style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}
+                        >
+                          计划
+                        </Text>
+                        <Select
+                          placeholder={
+                            schemes.length ? '请选择要运行的方案' : '暂无方案，请先到「协作编排」新建'
+                          }
+                          style={{ width: '100%' }}
+                          value={selectedScheme?.id}
+                          disabled={!schemes.length}
+                          onChange={(id) => {
+                            const s = schemes.find((x) => x.id === id);
+                            setSelectedScheme(s);
+                          }}
+                        >
+                          {schemes.map((s) => (
+                            <Select.Option key={s.id} value={s.id}>
+                              <Space>
+                                <Badge dot type={s.enabled ? 'success' : 'danger'} />
+                                <span>{s.name}</span>
+                                <Tag size="small" style={{ borderRadius: 4 }}>{MODE_NAME_MAP[s.mode]}</Tag>
+                              </Space>
+                            </Select.Option>
+                          ))}
+                        </Select>
+                        {selectedScheme ? (
+                          <>
+                            <Divider margin="12px" />
+                            <Text
+                              type="tertiary"
+                              size="small"
+                              style={{ display: 'block', marginBottom: 8 }}
+                            >
+                              {MODE_DESC_MAP[selectedScheme.mode]}
+                            </Text>
+                            <Text
+                              type="tertiary"
+                              size="small"
+                              style={{ display: 'block', marginBottom: 6 }}
+                            >
+                              绑定 Agent
+                            </Text>
+                            <Space wrap>
+                              {(selectedScheme.bindAgents || []).map((a, i) => (
+                                <Tag key={i} style={{ borderRadius: 6 }}>{a.role || a.agentId}</Tag>
+                              ))}
+                            </Space>
+                          </>
+                        ) : (
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ marginTop: 12, display: 'block' }}
+                          >
+                            选择方案后将展示示意图并可在中间发起运行
+                          </Text>
+                        )}
+                      </div>
 
-                <Col
-                  xs={24}
-                  xl={8}
-                  style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
-                >
-                  <RunConsole
-                    scheme={selectedScheme}
-                    onRun={(input) => selectedScheme && handleRunWorkflow(selectedScheme, input)}
-                    onClear={() => {
-                      invalidateActiveRunRequests();
-                      setCurrentRunDetail(undefined);
-                      setCurrentRunSchemeId(undefined);
-                      setEvents([]);
-                      setRunning(false);
-                    }}
-                    onApplyRecovery={handleApplyRecovery}
-                    applyingRecoveryActionId={applyingRecoveryActionId}
-                    running={displayedRuntimeState.running}
-                    runtimeViewModel={runtimeViewModel}
-                    attachPreviousRunContext={attachPreviousRunContext}
-                    onAttachPreviousRunContextChange={setAttachPreviousRunContext}
-                    previousRunSnapshot={previousRunSnapshot}
-                  />
-                </Col>
+                      <div
+                        style={{
+                          padding: '4px 16px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                        }}
+                      >
+                        <Text strong style={{ fontSize: 14 }}>
+                          Execution Plan
+                        </Text>
+                        <Tag size="small" color="grey">
+                          RUNTIME
+                        </Tag>
+                      </div>
 
-                <Col
-                  xs={24}
-                  xl={8}
-                  style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-                >
-                  <TracePanel
-                    events={displayedRuntimeState.events}
-                    runtimeViewModel={runtimeViewModel}
-                    onRefresh={async () => {
-                      if (runtimeViewModel.run.runId) {
-                        await refreshRunState(runtimeViewModel.run.runId);
-                      }
-                    }}
-                    onApplyRecovery={handleApplyRecovery}
-                    applyingRecoveryActionId={applyingRecoveryActionId}
-                  />
-                </Col>
-              </Row>
+                      <div
+                        style={{ flex: 1, overflow: 'auto', padding: '0 16px 12px', minHeight: 200 }}
+                      >
+                        {selectedScheme ? (
+                          <WorkflowGraph
+                            variant="embedded"
+                            scheme={selectedScheme}
+                            runtimeViewModel={runtimeViewModel}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              height: '100%',
+                              minHeight: 160,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: 12,
+                              border: `1px dashed var(--semi-color-border)`,
+                              color: 'var(--semi-color-tertiary)',
+                              fontSize: 13,
+                              gap: 8,
+                              background: 'var(--semi-color-bg-0)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 14,
+                                background: 'var(--semi-color-fill-0)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 20,
+                              }}
+                            >
+                              📊
+                            </div>
+                            选择左侧计划后展示拓扑
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          padding: '10px 16px',
+                          fontFamily: 'var(--semi-font-family-monospace)',
+                          fontSize: 12,
+                          background: 'rgba(28, 31, 35, 0.94)',
+                          color: 'rgba(232, 234, 237, 0.92)',
+                          letterSpacing: 0.2,
+                          borderRadius: '0 0 14px 14px',
+                        }}
+                      >
+                        {graphFooterLine}
+                      </div>
+                    </Card>
+                  </Col>
+
+                  <Col
+                    xs={24}
+                    xl={8}
+                    style={{ display: 'flex', flexDirection: 'column', minHeight: runAreaMinH }}
+                  >
+                    <RunConsole
+                      scheme={selectedScheme}
+                      onRun={(input) => selectedScheme && handleRunWorkflow(selectedScheme, input)}
+                      onClear={() => {
+                        invalidateActiveRunRequests();
+                        setCurrentRunDetail(undefined);
+                        setCurrentRunSchemeId(undefined);
+                        setEvents([]);
+                        setRunning(false);
+                      }}
+                      onApplyRecovery={handleApplyRecovery}
+                      applyingRecoveryActionId={applyingRecoveryActionId}
+                      running={displayedRuntimeState.running}
+                      runtimeViewModel={runtimeViewModel}
+                      attachPreviousRunContext={attachPreviousRunContext}
+                      onAttachPreviousRunContextChange={setAttachPreviousRunContext}
+                      previousRunSnapshot={previousRunSnapshot}
+                    />
+                  </Col>
+
+                  <Col
+                    xs={24}
+                    xl={8}
+                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                  >
+                    <TracePanel
+                      events={displayedRuntimeState.events}
+                      runtimeViewModel={runtimeViewModel}
+                      onRefresh={async () => {
+                        if (runtimeViewModel.run.runId) {
+                          await refreshRunState(runtimeViewModel.run.runId);
+                        }
+                      }}
+                      onApplyRecovery={handleApplyRecovery}
+                      applyingRecoveryActionId={applyingRecoveryActionId}
+                    />
+                  </Col>
+                </Row>
+              </div>
             )}
           </>
         )}
@@ -1892,7 +2213,7 @@ export const AgentPlaygroundPage: React.FC = () => {
             </Text>
             <Input
               autoFocus
-              style={{ width: '100%' }}
+              style={{ width: '100%', borderRadius: 8 }}
               value={schemeForm.name}
               onChange={(v) => setSchemeForm({ ...schemeForm, name: v })}
               placeholder="例如：需求评审流水线"
@@ -1903,7 +2224,7 @@ export const AgentPlaygroundPage: React.FC = () => {
               描述
             </Text>
             <Input
-              style={{ width: '100%' }}
+              style={{ width: '100%', borderRadius: 8 }}
               value={schemeForm.description}
               onChange={(v) => setSchemeForm({ ...schemeForm, description: v })}
               placeholder="可选，便于区分多个方案"
@@ -1937,7 +2258,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <InputNumber
                   min={1}
                   precision={0}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', borderRadius: 8 }}
                   value={schemeForm.config.maxIterations}
                   onChange={(value) =>
                     updateSchemeConfig((config) => ({
@@ -1954,7 +2275,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <InputNumber
                   min={1}
                   precision={0}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', borderRadius: 8 }}
                   value={schemeForm.config.maxToolCalls}
                   onChange={(value) =>
                     updateSchemeConfig((config) => ({
@@ -1971,7 +2292,7 @@ export const AgentPlaygroundPage: React.FC = () => {
                 <InputNumber
                   min={1}
                   precision={0}
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', borderRadius: 8 }}
                   value={schemeForm.config.timeoutSeconds}
                   onChange={(value) =>
                     updateSchemeConfig((config) => ({
@@ -1988,7 +2309,7 @@ export const AgentPlaygroundPage: React.FC = () => {
               </Text>
               <TextArea
                 rows={3}
-                style={{ width: '100%' }}
+                style={{ width: '100%', borderRadius: 8 }}
                 value={schemeForm.config.finalizerPrompt ?? ''}
                 onChange={(value: string) =>
                   updateSchemeConfig((config) => ({

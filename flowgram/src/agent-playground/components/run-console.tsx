@@ -1,3 +1,7 @@
+/**
+ * Run Console 组件
+ */
+
 import React, { useRef, useState } from 'react';
 
 import {
@@ -19,7 +23,6 @@ import { CollaborationScheme, MODE_NAME_MAP, RecoveryAction } from '../../servic
 
 const { Text } = Typography;
 
-/** 上一轮已结束的运行摘要，用于下一轮输入时附带上下文（避免新 run 丢失 Bug 语义） */
 export interface PreviousRunSnapshot {
   runId: string;
   userInput: string;
@@ -35,24 +38,23 @@ interface RunConsoleProps {
   applyingRecoveryActionId?: string;
   running: boolean;
   runtimeViewModel: RuntimeViewModel;
-  /** 存在上一轮快照时，是否在发送时自动拼入完整上下文 */
   attachPreviousRunContext?: boolean;
   onAttachPreviousRunContextChange?: (value: boolean) => void;
   previousRunSnapshot?: PreviousRunSnapshot | null;
 }
 
-const STATUS_COLOR_MAP: Record<
+const STATUS_CONFIG: Record<
   RuntimeViewModel['run']['status'],
-  'blue' | 'green' | 'red' | 'orange' | 'grey'
+  { color: 'blue' | 'green' | 'red' | 'orange' | 'grey'; border: string; bg: string; label: string }
 > = {
-  idle: 'grey',
-  pending: 'blue',
-  ready: 'blue',
-  running: 'blue',
-  waiting_recovery: 'orange',
-  completed: 'green',
-  failed: 'red',
-  cancelled: 'grey',
+  idle: { color: 'grey', border: 'var(--semi-color-border)', bg: 'var(--semi-color-fill-0)', label: '空闲' },
+  pending: { color: 'blue', border: 'rgba(22, 100, 255, 0.35)', bg: 'var(--semi-color-primary-light-default)', label: '排队中' },
+  ready: { color: 'blue', border: 'rgba(22, 100, 255, 0.35)', bg: 'var(--semi-color-primary-light-default)', label: '就绪' },
+  running: { color: 'blue', border: 'rgba(22, 100, 255, 0.35)', bg: 'var(--semi-color-primary-light-default)', label: '运行中' },
+  waiting_recovery: { color: 'orange', border: 'var(--semi-color-warning)', bg: 'var(--semi-color-warning-light-default)', label: '等待恢复' },
+  completed: { color: 'green', border: 'var(--semi-color-success)', bg: 'var(--semi-color-success-light-default)', label: '已完成' },
+  failed: { color: 'red', border: 'var(--semi-color-danger)', bg: 'var(--semi-color-danger-light-default)', label: '失败' },
+  cancelled: { color: 'grey', border: 'var(--semi-color-border)', bg: 'var(--semi-color-fill-0)', label: '已取消' },
 };
 
 export const RunConsole: React.FC<RunConsoleProps> = ({
@@ -92,6 +94,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
   };
 
   const showIdleHero = !running && run.status === 'idle';
+  const statusConfig = STATUS_CONFIG[run.status];
 
   return (
     <Card
@@ -107,11 +110,22 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
           }}
         >
           <Space spacing="tight">
-            <span style={{ fontSize: 18 }} role="img" aria-label="run">
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'var(--semi-color-primary-light-default)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 16,
+              }}
+            >
               💬
-            </span>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Text strong style={{ fontSize: 15, lineHeight: '20px' }}>
+              <Text strong style={{ fontSize: 14, lineHeight: '20px' }}>
                 Run / Recovery
               </Text>
               {scheme ? (
@@ -164,23 +178,9 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             padding: '12px 14px',
             marginBottom: 12,
             borderRadius: 12,
-            border: `1px solid ${
-              run.status === 'completed'
-                ? 'var(--semi-color-success)'
-                : run.status === 'waiting_recovery'
-                ? 'var(--semi-color-warning)'
-                : run.status === 'failed'
-                ? 'var(--semi-color-danger)'
-                : 'rgba(22, 100, 255, 0.35)'
-            }`,
-            background:
-              run.status === 'completed'
-                ? 'var(--semi-color-success-light-default)'
-                : run.status === 'waiting_recovery'
-                ? 'var(--semi-color-warning-light-default)'
-                : run.status === 'failed'
-                ? 'var(--semi-color-danger-light-default)'
-                : 'var(--semi-color-primary-light-default)',
+            border: `1px solid ${statusConfig.border}`,
+            background: statusConfig.bg,
+            transition: 'all 0.3s ease',
           }}
         >
           <Space vertical align="start" spacing="tight" style={{ width: '100%' }}>
@@ -196,7 +196,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
               <Space spacing="tight">
                 {running ? <Spin size="small" /> : null}
                 <Text strong>{run.label}</Text>
-                <Tag color={STATUS_COLOR_MAP[run.status]}>{run.status}</Tag>
+                <Tag color={statusConfig.color}>{statusConfig.label}</Tag>
               </Space>
               {run.finalOutput ? (
                 <Button
@@ -217,10 +217,18 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             </div>
 
             <Space wrap>
-              {activeStep ? <Tag color="blue">当前步骤: {activeStep.name}</Tag> : null}
-              {failedStep ? <Tag color="red">失败步骤: {failedStep.name}</Tag> : null}
-              <Tag>步骤数: {planNodes.length}</Tag>
-              <Tag>恢复动作: {recovery.summary.count}</Tag>
+              {activeStep ? (
+                <Tag color="blue" style={{ borderRadius: 6 }}>
+                  当前步骤: {activeStep.name}
+                </Tag>
+              ) : null}
+              {failedStep ? (
+                <Tag color="red" style={{ borderRadius: 6 }}>
+                  失败步骤: {failedStep.name}
+                </Tag>
+              ) : null}
+              <Tag style={{ borderRadius: 6 }}>步骤数: {planNodes.length}</Tag>
+              <Tag style={{ borderRadius: 6 }}>恢复动作: {recovery.summary.count}</Tag>
             </Space>
 
             {run.failureSummary ? (
@@ -250,7 +258,18 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         {showIdleHero ? (
           <div style={{ textAlign: 'center', maxWidth: 360, margin: 'auto' }}>
             <div
-              style={{ fontSize: 52, lineHeight: 1.2, marginBottom: 12, opacity: 0.88 }}
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 20,
+                background: 'linear-gradient(135deg, var(--semi-color-primary-light-default), var(--semi-color-fill-0))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                fontSize: 32,
+                boxShadow: '0 4px 16px rgba(22, 100, 255, 0.08)',
+              }}
               aria-hidden
             >
               ✈️
@@ -328,6 +347,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                       borderRadius: 10,
                       background: 'rgba(255, 255, 255, 0.72)',
                       border: '1px solid rgba(244, 114, 23, 0.18)',
+                      transition: 'box-shadow 0.2s ease',
                     }}
                   >
                     <Space wrap>
@@ -426,6 +446,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
               disabled={!scheme || !input.trim() || running}
               loading={running}
               onClick={handleSubmit}
+              style={{ borderRadius: 8 }}
             >
               {running ? '运行中…' : '发送'}
             </Button>

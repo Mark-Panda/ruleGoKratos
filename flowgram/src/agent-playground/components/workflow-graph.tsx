@@ -1,3 +1,7 @@
+/**
+ * 工作流图组件
+ */
+
 import React from 'react';
 
 import { Space, Tag, Typography } from '@douyinfe/semi-ui';
@@ -22,32 +26,37 @@ type FallbackNode = Pick<RuntimePlanNode, 'stepId' | 'kind' | 'name' | 'agentBin
 
 const STATUS_META: Record<
   RuntimePlanNode['status'],
-  { label: string; color: string; background: string }
+  { label: string; color: string; background: string; icon: string }
 > = {
   pending: {
     label: '待执行',
     color: 'var(--semi-color-border)',
     background: 'var(--semi-color-fill-0)',
+    icon: '⏳',
   },
   active: {
     label: '执行中',
     color: 'var(--semi-color-primary)',
     background: 'var(--semi-color-primary-light-default)',
+    icon: '⚡',
   },
   completed: {
     label: '已完成',
     color: 'var(--semi-color-success)',
     background: 'var(--semi-color-success-light-default)',
+    icon: '✅',
   },
   failed: {
     label: '失败',
     color: 'var(--semi-color-danger)',
     background: 'var(--semi-color-danger-light-default)',
+    icon: '❌',
   },
   skipped: {
     label: '已跳过',
     color: 'var(--semi-color-warning)',
     background: 'var(--semi-color-warning-light-default)',
+    icon: '⏭️',
   },
 };
 
@@ -69,6 +78,15 @@ const KIND_LABEL_MAP: Record<RuntimePlanNode['kind'], string> = {
   finalize: 'Finalize',
 };
 
+const KIND_BG_MAP: Record<RuntimePlanNode['kind'], string> = {
+  route: 'rgba(19, 194, 194, 0.10)',
+  agent: 'rgba(22, 100, 255, 0.10)',
+  parallel: 'rgba(250, 173, 20, 0.10)',
+  review: 'rgba(82, 196, 26, 0.10)',
+  handoff: 'rgba(114, 46, 209, 0.10)',
+  finalize: 'rgba(28, 31, 35, 0.06)',
+};
+
 export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({
   scheme,
   runtimeViewModel,
@@ -87,11 +105,11 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({
         </Space>
       ) : null}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {nodes.map((node, index) => (
           <React.Fragment key={node.stepId}>
             <PlanNodeCard node={node} runtimeEnabled={runtimeNodes.length > 0} />
-            {index < nodes.length - 1 ? <ArrowDown /> : null}
+            {index < nodes.length - 1 ? <ArrowConnector /> : null}
           </React.Fragment>
         ))}
       </div>
@@ -108,7 +126,7 @@ export const WorkflowGraph: React.FC<WorkflowGraphProps> = ({
           {runtimeNodes.length > 0 ? (
             <>
               {MODE_NAME_MAP[scheme.mode]} · 共 {runtimeNodes.length} 个运行步骤，已产出{' '}
-              {runtimeViewModel?.artifacts.total ?? 0} 个 产物，恢复动作{' '}
+              {runtimeViewModel?.artifacts.total ?? 0} 个产物，恢复动作{' '}
               {runtimeViewModel?.recovery.summary.count ?? 0} 个。
             </>
           ) : (
@@ -136,7 +154,11 @@ const PlanNodeCard: React.FC<{
         borderRadius: 12,
         padding: '12px 14px',
         background: meta.background,
-        boxShadow: runtimeNode?.isCurrent ? '0 0 0 2px rgba(22, 100, 255, 0.12)' : 'none',
+        boxShadow: runtimeNode?.isCurrent
+          ? `0 0 0 2px rgba(22, 100, 255, 0.12), 0 2px 8px rgba(22, 100, 255, 0.08)`
+          : '0 1px 4px rgba(28, 31, 35, 0.04)',
+        transition: 'all 0.2s ease',
+        position: 'relative',
       }}
     >
       <div
@@ -148,12 +170,26 @@ const PlanNodeCard: React.FC<{
         }}
       >
         <Space align="start" spacing="tight">
-          <span style={{ fontSize: 18, lineHeight: '22px' }}>{KIND_ICON_MAP[node.kind]}</span>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: KIND_BG_MAP[node.kind],
+              fontSize: 16,
+              flexShrink: 0,
+            }}
+          >
+            {KIND_ICON_MAP[node.kind]}
+          </div>
           <div>
-            <Text strong style={{ display: 'block', lineHeight: 1.5 }}>
+            <Text strong style={{ display: 'block', lineHeight: 1.5, fontSize: 13 }}>
               {node.name}
             </Text>
-            <Text type="tertiary" size="small">
+            <Text type="tertiary" size="small" style={{ fontSize: 11 }}>
               {node.stepId}
             </Text>
           </div>
@@ -164,6 +200,8 @@ const PlanNodeCard: React.FC<{
               ? 'red'
               : runtimeNode?.status === 'completed'
               ? 'green'
+              : runtimeNode?.status === 'active'
+              ? 'blue'
               : 'grey'
           }
         >
@@ -171,7 +209,7 @@ const PlanNodeCard: React.FC<{
         </Tag>
       </div>
 
-      <Space wrap style={{ marginTop: 10 }}>
+      <Space wrap style={{ marginTop: 8 }}>
         <Tag size="small">{KIND_LABEL_MAP[node.kind]}</Tag>
         {node.agentBinding ? (
           <Tag size="small" color="blue">
@@ -195,7 +233,7 @@ const PlanNodeCard: React.FC<{
         <Text
           type="danger"
           size="small"
-          style={{ display: 'block', marginTop: 10, lineHeight: 1.6 }}
+          style={{ display: 'block', marginTop: 8, lineHeight: 1.6 }}
         >
           {runtimeNode.failureSummary}
         </Text>
@@ -204,27 +242,32 @@ const PlanNodeCard: React.FC<{
   );
 };
 
-const ArrowDown: React.FC = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--semi-color-tertiary)' }}>
+const ArrowConnector: React.FC = () => (
+  <div
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: '2px 0',
+    }}
+  >
     <div
       style={{
-        width: 1,
-        height: 18,
-        borderLeft: '1px dashed currentColor',
-        position: 'relative',
+        width: 2,
+        height: 16,
+        background: 'linear-gradient(to bottom, var(--semi-color-border), var(--semi-color-tertiary))',
+        borderRadius: 1,
       }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          bottom: -2,
-          left: -4,
-          fontSize: 10,
-        }}
-      >
-        ▼
-      </span>
-    </div>
+    />
+    <div
+      style={{
+        width: 0,
+        height: 0,
+        borderLeft: '5px solid transparent',
+        borderRight: '5px solid transparent',
+        borderTop: '6px solid var(--semi-color-tertiary)',
+      }}
+    />
   </div>
 );
 
