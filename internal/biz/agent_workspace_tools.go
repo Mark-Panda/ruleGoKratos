@@ -32,7 +32,7 @@ func (uc *AgentUsecase) effectiveWorkspaceRoot(ctx context.Context) (string, err
 			return filepath.Clean(s), nil
 		}
 	}
-	return uc.resolveAgentWorkspaceRoot()
+	return uc.ResolveAgentWorkspaceRoot()
 }
 
 // sanitizePlaygroundWorkspaceSessionDir 校验相对配置的子路径：禁止绝对路径、..、空段。
@@ -57,7 +57,7 @@ func sanitizePlaygroundWorkspaceSessionDir(sub string) string {
 	return sub
 }
 
-func (uc *AgentUsecase) resolveAgentWorkspaceRoot() (string, error) {
+func (uc *AgentUsecase) ResolveAgentWorkspaceRoot() (string, error) {
 	var raw string
 	if uc.config != nil && uc.config.Agent != nil {
 		if s := strings.TrimSpace(uc.config.Agent.GetWorkspaceRoot()); s != "" {
@@ -136,6 +136,10 @@ func (uc *AgentUsecase) writableAbsoluteRoots(ctx context.Context) []string {
 	}
 
 	if root, err := uc.effectiveWorkspaceRoot(ctx); err == nil {
+		appendIfNeeded(root)
+	}
+	// Also add the resolved absolute workspace root (config value may be relative)
+	if root, err := uc.ResolveAgentWorkspaceRoot(); err == nil {
 		appendIfNeeded(root)
 	}
 	if uc.config != nil && uc.config.Agent != nil {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"ruleGoKratos/internal/biz"
 	"ruleGoKratos/internal/biz/entity"
 	"ruleGoKratos/internal/biz/playground/agentpool"
@@ -14,6 +16,7 @@ import (
 	"ruleGoKratos/internal/biz/playground/trace"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -511,6 +514,54 @@ func (s *WorkflowService) GetRunEvents(ctx context.Context, runID string) ([]*en
 // SubscribeRunEvents 订阅实时 Trace（供 SSE）；与 GetRunEvents 叠加可做到先回放再接流。
 func (s *WorkflowService) SubscribeRunEvents(runID string) (<-chan *entity.TraceEvent, func()) {
 	return s.traceEngine.SubscribeRun(runID)
+}
+
+// ResolveRunWorkspacePath 返回指定 run 的工作区绝对路径；目录不存在时返回空串。
+func (s *WorkflowService) ResolveRunWorkspacePath(runID string) string {
+	if s.agentUC == nil {
+		return ""
+	}
+	root, err := s.agentUC.ResolveAgentWorkspaceRoot()
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Join(root, "playground", "run_"+wfSanitizeRunIDForPath(runID))
+	if st, err := os.Stat(dir); err == nil && st.IsDir() {
+		return dir
+	}
+	return ""
+}
+
+// ResolveAgentWorkspaceRoot 返回 agent workspace 根目录（绝对路径）。
+func (s *WorkflowService) ResolveAgentWorkspaceRoot() (string, error) {
+	if s.agentUC == nil {
+		abs, _ := filepath.Abs(".")
+		return abs, nil
+	}
+	return s.agentUC.ResolveAgentWorkspaceRoot()
+}
+
+// wfSanitizeRunIDForPath 将 runId 转为目录名安全片段（仅保留字母数字、-、_）。
+func wfSanitizeRunIDForPath(runID string) string {
+	runID = strings.TrimSpace(runID)
+	if runID == "" {
+		return "unknown"
+	}
+	const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+	var b strings.Builder
+	b.Grow(len(runID))
+	for _, r := range runID {
+		if strings.ContainsRune(allowed, r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+	out := b.String()
+	if out == "" {
+		return "unknown"
+	}
+	return out
 }
 
 // traceAdapter Trace 追踪适配器，实现 TraceEmitter 接口

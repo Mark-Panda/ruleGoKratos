@@ -151,6 +151,14 @@ export interface RuntimeRun {
   finishedAt?: string;
   userInput?: string;
   finalOutput?: string;
+  workspacePath?: string;
+}
+
+export interface WorkspaceFileItem {
+  name: string;
+  type: 'file' | 'dir';
+  size: number;
+  modTime: string;
 }
 
 export interface RuntimeStep {
@@ -513,3 +521,17 @@ export const MODE_DESC_MAP: Record<CollaborationMode, string> = {
   supervision: '监督者并行监控 Workers',
   peer_handoff: 'Agent 之间自主协商交接任务',
 };
+
+// ========== Run Workspace APIs ==========
+
+export const listRunWorkspaceFiles = async (runId: string, path?: string) =>
+  requestJSON<{ items: WorkspaceFileItem[] }>(
+    `/playground/run/${encodeURIComponent(runId)}/workspace/files`,
+    { params: path ? { path } : undefined }
+  );
+
+export const readRunWorkspaceFile = async (runId: string, path: string) =>
+  requestJSON<{ content: string; path: string }>(
+    `/playground/run/${encodeURIComponent(runId)}/workspace/file`,
+    { params: { path } }
+  );

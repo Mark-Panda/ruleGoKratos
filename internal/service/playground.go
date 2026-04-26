@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -64,6 +66,10 @@ func RegisterPlaygroundHTTPRoutes(s *khttp.Server, svc *PlaygroundService) {
 	r.POST("/run/{runId}/recovery-actions/{actionId}", svc.applyRecoveryAction)
 	r.GET("/run/{runId}/events/stream", svc.streamRunEvents)
 	r.GET("/run/{runId}/events", svc.getRunEvents)
+
+	// Run Workspace APIs
+	r.GET("/run/{runId}/workspace/files", svc.listRunWorkspaceFiles)
+	r.GET("/run/{runId}/workspace/file", svc.readRunWorkspaceFile)
 
 	// Mode APIs
 	r.GET("/modes", svc.getCollaborationModes)
@@ -646,17 +652,18 @@ type traceRunResp struct {
 }
 
 type runtimeRunResp struct {
-	RunID              string   `json:"runId"`
-	SchemeID           string   `json:"schemeId"`
-	PlanID             string   `json:"planId"`
-	Status             string   `json:"status"`
-	CurrentStepIDs     []string `json:"currentStepIds,omitempty"`
-	LastCheckpointID   string   `json:"lastCheckpointId,omitempty"`
-	FailureSummary     string   `json:"failureSummary,omitempty"`
-	StartedAt          string   `json:"startedAt"`
-	FinishedAt         string   `json:"finishedAt"`
-	UserInput          string   `json:"userInput,omitempty"`
-	FinalOutput        string   `json:"finalOutput,omitempty"`
+	RunID            string   `json:"runId"`
+	SchemeID         string   `json:"schemeId"`
+	PlanID           string   `json:"planId"`
+	Status           string   `json:"status"`
+	CurrentStepIDs   []string `json:"currentStepIds,omitempty"`
+	LastCheckpointID string   `json:"lastCheckpointId,omitempty"`
+	FailureSummary   string   `json:"failureSummary,omitempty"`
+	StartedAt        string   `json:"startedAt"`
+	FinishedAt       string   `json:"finishedAt"`
+	UserInput        string   `json:"userInput,omitempty"`
+	FinalOutput      string   `json:"finalOutput,omitempty"`
+	WorkspacePath    string   `json:"workspacePath,omitempty"`
 }
 
 type runtimeStepResp struct {
@@ -775,7 +782,7 @@ func (s *PlaygroundService) buildRunDetailResp(
 	}
 
 	return &runDetailResp{
-		Run:             runtimeRunToResp(run),
+		Run:             s.runtimeRunToResp(run),
 		Steps:           stepResp,
 		Artifacts:       artifactResp,
 		RecoveryActions: actionResp,
@@ -805,7 +812,7 @@ func (s *PlaygroundService) traceEventToResp(e *entity.TraceEvent) *traceEventRe
 	}
 }
 
-func runtimeRunToResp(run *entity.PlaygroundRun) *runtimeRunResp {
+func (s *PlaygroundService) runtimeRunToResp(run *entity.PlaygroundRun) *runtimeRunResp {
 	if run == nil {
 		return &runtimeRunResp{}
 	}
@@ -819,6 +826,7 @@ func runtimeRunToResp(run *entity.PlaygroundRun) *runtimeRunResp {
 		FailureSummary:   run.FailureSummary,
 		StartedAt:        formatTime(run.StartedAt),
 		FinishedAt:       formatTime(run.FinishedAt),
+		WorkspacePath:    s.workflowSvc.ResolveRunWorkspacePath(run.RunID),
 	}
 }
 
@@ -931,6 +939,180 @@ func (s *PlaygroundService) getCollaborationModes(ctx khttp.Context) error {
 		{ID: "peer_handoff", Name: "同伴交接", Description: "Agent 之间自主协商交接任务"},
 	}
 	return ctx.JSON(http.StatusOK, map[string]interface{}{"modes": modes})
+}
+
+// ========== Run Workspace Handlers ==========
+
+const maxWorkspaceFileReadBytes = 4 << 20 // 4 MiB
+
+// workspaceFileItem 工作区文件列表项
+type workspaceFileItem struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"` // "file" | "dir"
+	Size    int64  `json:"size"`
+	ModTime string `json:"modTime"`
+}
+
+// listRunWorkspaceFiles 列出运行工作区内指定子路径的文件和目录。
+func (s *PlaygroundService) listRunWorkspaceFiles(ctx khttp.Context) error {
+	var path struct {
+		RunID string `json:"runId"`
+	}
+	if err := ctx.BindVars(&path); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	runID := path.RunID
+
+	// 验证 run 存在
+	if _, err := s.workflowSvc.GetRun(ctx.Request().Context(), runID); err != nil {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "run not found"})
+	}
+
+	runDir := s.workflowSvc.ResolveRunWorkspacePath(runID)
+	if runDir == "" {
+		return ctx.JSON(http.StatusOK, map[string]interface{}{"items": []workspaceFileItem{}})
+	}
+
+	// 解析子路径，防止路径穿越
+	subPath := strings.TrimSpace(ctx.Request().URL.Query().Get("path"))
+
+	var absDir string
+	if subPath == "" {
+		absDir = runDir
+	} else {
+		resolved, err := pgAbsPathUnderWorkspace(runDir, subPath)
+		if err != nil {
+			return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid path: " + err.Error()})
+		}
+		absDir = resolved
+	}
+
+	entries, err := os.ReadDir(absDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ctx.JSON(http.StatusOK, map[string]interface{}{"items": []workspaceFileItem{}})
+		}
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	items := make([]workspaceFileItem, 0, len(entries))
+	for _, e := range entries {
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		itemType := "file"
+		if e.IsDir() {
+			itemType = "dir"
+		}
+		items = append(items, workspaceFileItem{
+			Name:    e.Name(),
+			Type:    itemType,
+			Size:    info.Size(),
+			ModTime: info.ModTime().Format(time.RFC3339),
+		})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]interface{}{"items": items})
+}
+
+// readRunWorkspaceFile 读取运行工作区内指定文件的内容。
+func (s *PlaygroundService) readRunWorkspaceFile(ctx khttp.Context) error {
+	var path struct {
+		RunID string `json:"runId"`
+	}
+	if err := ctx.BindVars(&path); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	runID := path.RunID
+
+	// 验证 run 存在
+	if _, err := s.workflowSvc.GetRun(ctx.Request().Context(), runID); err != nil {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "run not found"})
+	}
+
+	runDir := s.workflowSvc.ResolveRunWorkspacePath(runID)
+	if runDir == "" {
+		return ctx.JSON(http.StatusNotFound, map[string]string{"error": "run workspace directory not found"})
+	}
+
+	filePath := strings.TrimSpace(ctx.Request().URL.Query().Get("path"))
+	if filePath == "" {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "path parameter is required"})
+	}
+
+	absPath, err := pgAbsPathUnderWorkspace(runDir, filePath)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "invalid path: " + err.Error()})
+	}
+
+	st, err := os.Stat(absPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ctx.JSON(http.StatusNotFound, map[string]string{"error": "file not found"})
+		}
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if st.IsDir() {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "path is a directory, not a file"})
+	}
+	if st.Size() > maxWorkspaceFileReadBytes {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "file too large (exceeds 4 MiB)"})
+	}
+
+	b, err := os.ReadFile(absPath)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if !pgIsMostlyText(b) {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "file appears to be binary, only text files are supported"})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]interface{}{
+		"content": string(b),
+		"path":    filePath,
+	})
+}
+
+// pgIsMostlyText 判断字节内容是否主要为文本。
+func pgIsMostlyText(b []byte) bool {
+	if len(b) == 0 {
+		return true
+	}
+	n := len(b)
+	if n > 8192 {
+		n = 8192
+	}
+	ctl := 0
+	for i := 0; i < n; i++ {
+		c := b[i]
+		if c == 0 || (c < 0x09 && c != 0x09 && c != 0x0a && c != 0x0d) {
+			ctl++
+		}
+	}
+	return ctl*20 < n
+}
+
+// pgAbsPathUnderWorkspace 确保路径在 workspace 根目录内，防止路径穿越。
+func pgAbsPathUnderWorkspace(rootAbs, userPath string) (string, error) {
+	userPath = strings.TrimSpace(userPath)
+	if userPath == "" {
+		return "", errors.New("path cannot be empty")
+	}
+	p := userPath
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(rootAbs, p)
+	}
+	p = filepath.Clean(p)
+	rootAbs = filepath.Clean(rootAbs)
+	rel, err := filepath.Rel(rootAbs, p)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", errors.New("path must be within workspace directory")
+	}
+	return p, nil
 }
 
 // ========== Helper ==========

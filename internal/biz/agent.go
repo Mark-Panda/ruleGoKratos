@@ -486,7 +486,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		if sub := strings.TrimSpace(req.WorkspaceSessionDir); sub != "" {
 			sub = sanitizePlaygroundWorkspaceSessionDir(sub)
 			if sub != "" {
-				baseRoot, err := uc.resolveAgentWorkspaceRoot()
+				baseRoot, err := uc.ResolveAgentWorkspaceRoot()
 				if err != nil {
 					uc.harnessLogger.LogError(requestID, "workspace_root", err)
 					yield(nil, sanitizeExternalError("workspace_root", err))
@@ -947,6 +947,7 @@ func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
 		}
 		raw := strings.TrimSpace(subTasksJSON)
 		if raw != "" {
+			// Try string array first: ["task1", "task2"]
 			var arr []string
 			if err := json.Unmarshal([]byte(raw), &arr); err == nil {
 				for _, item := range arr {
@@ -955,7 +956,21 @@ func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
 					}
 				}
 			} else {
-				return nil, fmt.Errorf("sub_tasks_json 不是合法 JSON 数组: %w", err)
+				// Fallback: try object array [{...}, {...}] and extract string representations
+				var objArr []json.RawMessage
+				if err := json.Unmarshal([]byte(raw), &objArr); err == nil {
+					for _, item := range objArr {
+						var s string
+						if err := json.Unmarshal(item, &s); err == nil && strings.TrimSpace(s) != "" {
+							tasks = append(tasks, s)
+						} else {
+							// Object item — serialize as compact JSON string for the task
+							tasks = append(tasks, string(item))
+						}
+					}
+				} else {
+					return nil, fmt.Errorf("sub_tasks_json 不是合法 JSON 数组: %w", err)
+				}
 			}
 		}
 		if len(tasks) == 0 {

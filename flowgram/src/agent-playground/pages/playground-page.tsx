@@ -60,6 +60,7 @@ import { TracePanel } from '../components/trace-panel';
 import { RunConsole, PreviousRunSnapshot } from '../components/run-console';
 import { ModeSelector } from '../components/mode-selector';
 import { AgentManager } from '../components/agent-manager';
+import { RunWorkspacePanel } from '../components/run-workspace-panel';
 import { getApiOrigin } from '../../services/http';
 import {
   AgentDefinition,
@@ -2190,6 +2191,15 @@ export const AgentPlaygroundPage: React.FC = () => {
                     />
                   </Col>
                 </Row>
+
+                {/* 工作区文件面板 - 运行完成后展示 */}
+                {currentRunDetail?.run?.status === 'completed' &&
+                  currentRunDetail.run.workspacePath && (
+                    <RunWorkspacePanel
+                      runId={currentRunDetail.run.runId}
+                      workspacePath={currentRunDetail.run.workspacePath}
+                    />
+                  )}
               </div>
             )}
           </>
