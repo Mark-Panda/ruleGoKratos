@@ -30,6 +30,7 @@ message ScheduledTask {
   google.protobuf.Timestamp created_at = 12;
   google.protobuf.Timestamp updated_at = 13;
   google.protobuf.Timestamp deleted_at = 14;
+  string payload_template = 15;
 }
 
 message ScheduledTaskRun {
@@ -126,6 +127,7 @@ message CreateScheduledTaskReq {
   string cron_expr = 4 [(validate.rules).string.min_len = 1];
   string schedule_type = 5 [(validate.rules).string.min_len = 1];
   string schedule_config = 6;
+  string payload_template = 7;
 }
 
 message CreateScheduledTaskReply { ScheduledTask task = 1; }
@@ -152,6 +154,7 @@ message UpdateScheduledTaskReq {
   string cron_expr = 5;
   string schedule_type = 6;
   string schedule_config = 7;
+  string payload_template = 8;
 }
 message UpdateScheduledTaskReply { ScheduledTask task = 1; }
 

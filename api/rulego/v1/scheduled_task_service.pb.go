@@ -75,23 +75,24 @@ func (ScheduledTaskRunStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 type ScheduledTask struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description    string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	RuleChainId    string                 `protobuf:"bytes,4,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`
-	CronExpr       string                 `protobuf:"bytes,5,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`
-	ScheduleType   string                 `protobuf:"bytes,6,opt,name=schedule_type,json=scheduleType,proto3" json:"schedule_type,omitempty"`
-	ScheduleConfig string                 `protobuf:"bytes,7,opt,name=schedule_config,json=scheduleConfig,proto3" json:"schedule_config,omitempty"`
-	Disabled       bool                   `protobuf:"varint,8,opt,name=disabled,proto3" json:"disabled,omitempty"`
-	LastRunAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_run_at,json=lastRunAt,proto3" json:"last_run_at,omitempty"`
-	LastStatus     ScheduledTaskRunStatus `protobuf:"varint,10,opt,name=last_status,json=lastStatus,proto3,enum=rulego.v1.ScheduledTaskRunStatus" json:"last_status,omitempty"`
-	LastError      string                 `protobuf:"bytes,11,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
-	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	DeletedAt      *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description     string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	RuleChainId     string                 `protobuf:"bytes,4,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`
+	CronExpr        string                 `protobuf:"bytes,5,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`
+	ScheduleType    string                 `protobuf:"bytes,6,opt,name=schedule_type,json=scheduleType,proto3" json:"schedule_type,omitempty"`
+	ScheduleConfig  string                 `protobuf:"bytes,7,opt,name=schedule_config,json=scheduleConfig,proto3" json:"schedule_config,omitempty"`
+	Disabled        bool                   `protobuf:"varint,8,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	LastRunAt       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_run_at,json=lastRunAt,proto3" json:"last_run_at,omitempty"`
+	LastStatus      ScheduledTaskRunStatus `protobuf:"varint,10,opt,name=last_status,json=lastStatus,proto3,enum=rulego.v1.ScheduledTaskRunStatus" json:"last_status,omitempty"`
+	LastError       string                 `protobuf:"bytes,11,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	DeletedAt       *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
+	PayloadTemplate string                 `protobuf:"bytes,15,opt,name=payload_template,json=payloadTemplate,proto3" json:"payload_template,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ScheduledTask) Reset() {
@@ -222,6 +223,13 @@ func (x *ScheduledTask) GetDeletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ScheduledTask) GetPayloadTemplate() string {
+	if x != nil {
+		return x.PayloadTemplate
+	}
+	return ""
+}
+
 type ScheduledTaskRun struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -331,15 +339,16 @@ func (x *ScheduledTaskRun) GetCreatedAt() *timestamppb.Timestamp {
 }
 
 type CreateScheduledTaskReq struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Name           string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description    string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	RuleChainId    string                 `protobuf:"bytes,3,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`
-	CronExpr       string                 `protobuf:"bytes,4,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`
-	ScheduleType   string                 `protobuf:"bytes,5,opt,name=schedule_type,json=scheduleType,proto3" json:"schedule_type,omitempty"`
-	ScheduleConfig string                 `protobuf:"bytes,6,opt,name=schedule_config,json=scheduleConfig,proto3" json:"schedule_config,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description     string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	RuleChainId     string                 `protobuf:"bytes,3,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`
+	CronExpr        string                 `protobuf:"bytes,4,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`
+	ScheduleType    string                 `protobuf:"bytes,5,opt,name=schedule_type,json=scheduleType,proto3" json:"schedule_type,omitempty"`
+	ScheduleConfig  string                 `protobuf:"bytes,6,opt,name=schedule_config,json=scheduleConfig,proto3" json:"schedule_config,omitempty"`
+	PayloadTemplate string                 `protobuf:"bytes,7,opt,name=payload_template,json=payloadTemplate,proto3" json:"payload_template,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CreateScheduledTaskReq) Reset() {
@@ -410,6 +419,13 @@ func (x *CreateScheduledTaskReq) GetScheduleType() string {
 func (x *CreateScheduledTaskReq) GetScheduleConfig() string {
 	if x != nil {
 		return x.ScheduleConfig
+	}
+	return ""
+}
+
+func (x *CreateScheduledTaskReq) GetPayloadTemplate() string {
+	if x != nil {
+		return x.PayloadTemplate
 	}
 	return ""
 }
@@ -675,16 +691,17 @@ func (x *ListScheduledTasksReply) GetTotal() int64 {
 }
 
 type UpdateScheduledTaskReq struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description    string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	RuleChainId    string                 `protobuf:"bytes,4,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`
-	CronExpr       string                 `protobuf:"bytes,5,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`
-	ScheduleType   string                 `protobuf:"bytes,6,opt,name=schedule_type,json=scheduleType,proto3" json:"schedule_type,omitempty"`
-	ScheduleConfig string                 `protobuf:"bytes,7,opt,name=schedule_config,json=scheduleConfig,proto3" json:"schedule_config,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description     string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	RuleChainId     string                 `protobuf:"bytes,4,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`
+	CronExpr        string                 `protobuf:"bytes,5,opt,name=cron_expr,json=cronExpr,proto3" json:"cron_expr,omitempty"`
+	ScheduleType    string                 `protobuf:"bytes,6,opt,name=schedule_type,json=scheduleType,proto3" json:"schedule_type,omitempty"`
+	ScheduleConfig  string                 `protobuf:"bytes,7,opt,name=schedule_config,json=scheduleConfig,proto3" json:"schedule_config,omitempty"`
+	PayloadTemplate string                 `protobuf:"bytes,8,opt,name=payload_template,json=payloadTemplate,proto3" json:"payload_template,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UpdateScheduledTaskReq) Reset() {
@@ -762,6 +779,13 @@ func (x *UpdateScheduledTaskReq) GetScheduleType() string {
 func (x *UpdateScheduledTaskReq) GetScheduleConfig() string {
 	if x != nil {
 		return x.ScheduleConfig
+	}
+	return ""
+}
+
+func (x *UpdateScheduledTaskReq) GetPayloadTemplate() string {
+	if x != nil {
+		return x.PayloadTemplate
 	}
 	return ""
 }
@@ -1182,7 +1206,7 @@ var File_api_rulego_v1_scheduled_task_service_proto protoreflect.FileDescriptor
 
 const file_api_rulego_v1_scheduled_task_service_proto_rawDesc = "" +
 	"\n" +
-	"*api/rulego/v1/scheduled_task_service.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17validate/validate.proto\x1a\x1copenapi/v3/annotations.proto\"\xd0\x04\n" +
+	"*api/rulego/v1/scheduled_task_service.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17validate/validate.proto\x1a\x1copenapi/v3/annotations.proto\"\xfb\x04\n" +
 	"\rScheduledTask\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -1203,7 +1227,8 @@ const file_api_rulego_v1_scheduled_task_service_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x129\n" +
 	"\n" +
-	"deleted_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\"\x9b\x03\n" +
+	"deleted_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12)\n" +
+	"\x10payload_template\x18\x0f \x01(\tR\x0fpayloadTemplate\"\x9b\x03\n" +
 	"\x10ScheduledTaskRun\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\x03R\x06taskId\x12\"\n" +
@@ -1216,14 +1241,15 @@ const file_api_rulego_v1_scheduled_task_service_proto_rawDesc = "" +
 	"\vfinished_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"finishedAt\x129\n" +
 	"\n" +
-	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x81\x02\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xac\x02\n" +
 	"\x16CreateScheduledTaskReq\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12+\n" +
 	"\rrule_chain_id\x18\x03 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\vruleChainId\x12$\n" +
 	"\tcron_expr\x18\x04 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\bcronExpr\x12,\n" +
 	"\rschedule_type\x18\x05 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\fscheduleType\x12'\n" +
-	"\x0fschedule_config\x18\x06 \x01(\tR\x0escheduleConfig\"H\n" +
+	"\x0fschedule_config\x18\x06 \x01(\tR\x0escheduleConfig\x12)\n" +
+	"\x10payload_template\x18\a \x01(\tR\x0fpayloadTemplate\"H\n" +
 	"\x18CreateScheduledTaskReply\x12,\n" +
 	"\x04task\x18\x01 \x01(\v2\x18.rulego.v1.ScheduledTaskR\x04task\".\n" +
 	"\x13GetScheduledTaskReq\x12\x17\n" +
@@ -1239,7 +1265,7 @@ const file_api_rulego_v1_scheduled_task_service_proto_rawDesc = "" +
 	"\t_disabled\"_\n" +
 	"\x17ListScheduledTasksReply\x12.\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x18.rulego.v1.ScheduledTaskR\x05tasks\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x03R\x05total\"\xf6\x01\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\"\xa1\x02\n" +
 	"\x16UpdateScheduledTaskReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -1247,7 +1273,8 @@ const file_api_rulego_v1_scheduled_task_service_proto_rawDesc = "" +
 	"\rrule_chain_id\x18\x04 \x01(\tR\vruleChainId\x12\x1b\n" +
 	"\tcron_expr\x18\x05 \x01(\tR\bcronExpr\x12#\n" +
 	"\rschedule_type\x18\x06 \x01(\tR\fscheduleType\x12'\n" +
-	"\x0fschedule_config\x18\a \x01(\tR\x0escheduleConfig\"H\n" +
+	"\x0fschedule_config\x18\a \x01(\tR\x0escheduleConfig\x12)\n" +
+	"\x10payload_template\x18\b \x01(\tR\x0fpayloadTemplate\"H\n" +
 	"\x18UpdateScheduledTaskReply\x12,\n" +
 	"\x04task\x18\x01 \x01(\v2\x18.rulego.v1.ScheduledTaskR\x04task\"1\n" +
 	"\x16DeleteScheduledTaskReq\x12\x17\n" +

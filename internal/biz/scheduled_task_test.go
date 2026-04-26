@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,7 +18,7 @@ func TestScheduledTaskCreateDefaultsToDisabled(t *testing.T) {
 	repo := newFakeScheduledTaskRepo()
 	uc := &ScheduledTaskUsecase{repo: repo}
 
-	task, err := uc.CreateScheduledTask(context.Background(), "daily", "desc", "chain-root", "0 8 * * *", "daily", `{"hour":8}`)
+	task, err := uc.CreateScheduledTask(context.Background(), "daily", "desc", "chain-root", "0 8 * * *", "daily", `{"hour":8}`, "")
 	if err != nil {
 		t.Fatalf("CreateScheduledTask returned error: %v", err)
 	}
@@ -128,7 +129,7 @@ func TestScheduledTaskUpdateEnabledSchedulerAddFailureKeepsOldTaskAndJob(t *test
 	scheduler.jobs[1] = scheduledTaskAddCall{taskID: 1, cronExpr: "0 8 * * *"}
 	uc := &ScheduledTaskUsecase{repo: repo, scheduler: scheduler}
 
-	_, err := uc.UpdateScheduledTask(context.Background(), 1, "new name", "new desc", "chain-root", "bad cron", "custom", `{"bad":true}`)
+	_, err := uc.UpdateScheduledTask(context.Background(), 1, "new name", "new desc", "chain-root", "bad cron", "custom", `{"bad":true}`, "")
 	if err == nil || !strings.Contains(err.Error(), "invalid cron") {
 		t.Fatalf("UpdateScheduledTask error=%v, want scheduler error", err)
 	}
@@ -163,7 +164,7 @@ func TestScheduledTaskUpdateEnabledDBFailureRestoresOldSchedulerJob(t *testing.T
 	scheduler.jobs[1] = scheduledTaskAddCall{taskID: 1, cronExpr: "0 8 * * *"}
 	uc := &ScheduledTaskUsecase{repo: repo, scheduler: scheduler}
 
-	_, err := uc.UpdateScheduledTask(context.Background(), 1, "new name", "new desc", "chain-root", "0 9 * * *", "daily", `{"hour":9}`)
+	_, err := uc.UpdateScheduledTask(context.Background(), 1, "new name", "new desc", "chain-root", "0 9 * * *", "daily", `{"hour":9}`, "")
 	if err == nil || !strings.Contains(err.Error(), "update failed") {
 		t.Fatalf("UpdateScheduledTask error=%v, want repo update error", err)
 	}
@@ -478,7 +479,7 @@ func TestScheduledTaskRunExecutesRuleChainWithFixedPayloadAndWritesSuccessRun(t 
 		t.Fatalf("expected one run history, got %d", len(repo.runs))
 	}
 	run := repo.runs[0]
-	if run.Status != entity.ScheduledTaskRunStatusSuccess || run.TriggerPayload != entity.NewScheduledTriggerPayload(12) || run.ErrorMessage != "" {
+	if run.Status != entity.ScheduledTaskRunStatusSuccess || run.TriggerPayload != entity.NewScheduledTriggerPayload(12, "") || run.ErrorMessage != "" {
 		t.Fatalf("success run mismatch: %#v", run)
 	}
 	if repo.tasks[12].LastStatus != entity.ScheduledTaskRunStatusSuccess || repo.tasks[12].LastError != "" || repo.tasks[12].LastRunAt == nil {
@@ -507,6 +508,91 @@ func TestScheduledTaskRunReturnsUpdateTaskError(t *testing.T) {
 	err := uc.runScheduledTask(context.Background(), 12)
 	if err == nil || !strings.Contains(err.Error(), "update scheduled task status") || !strings.Contains(err.Error(), "update task failed") {
 		t.Fatalf("runScheduledTask error=%v, want update task context", err)
+	}
+}
+
+func TestNewScheduledTriggerPayloadEmptyTemplate(t *testing.T) {
+	got := entity.NewScheduledTriggerPayload(12, "")
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &data); err != nil {
+		t.Fatalf("failed to parse payload: %v", err)
+	}
+	if data["trigger"] != "schedule" || data["taskId"] != "12" {
+		t.Fatalf("empty template: got %v, want trigger=schedule taskId=12", data)
+	}
+}
+
+func TestNewScheduledTriggerPayloadMergesBodyWithTriggerInfo(t *testing.T) {
+	template := `{"metadata":"city=Beijing","body":{"query":"weather","city":"Beijing"}}`
+	got := entity.NewScheduledTriggerPayload(12, template)
+
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &data); err != nil {
+		t.Fatalf("failed to parse payload: %v", err)
+	}
+	if data["query"] != "weather" {
+		t.Fatalf("body field 'query' mismatch: got %v, want weather", data["query"])
+	}
+	if data["city"] != "Beijing" {
+		t.Fatalf("body field 'city' mismatch: got %v, want Beijing", data["city"])
+	}
+	if data["trigger"] != "schedule" {
+		t.Fatalf("trigger field mismatch: got %v, want schedule", data["trigger"])
+	}
+	if data["taskId"] != "12" {
+		t.Fatalf("taskId field mismatch: got %v, want 12", data["taskId"])
+	}
+}
+
+func TestNewScheduledTriggerPayloadInvalidTemplateFallsBack(t *testing.T) {
+	got := entity.NewScheduledTriggerPayload(12, "not-json")
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &data); err != nil {
+		t.Fatalf("failed to parse payload: %v", err)
+	}
+	if data["trigger"] != "schedule" || data["taskId"] != "12" {
+		t.Fatalf("invalid template: got %v, want trigger=schedule taskId=12", data)
+	}
+}
+
+func TestNewScheduledTriggerPayloadNoBodyFallsBack(t *testing.T) {
+	template := `{"metadata":"key=val"}`
+	got := entity.NewScheduledTriggerPayload(12, template)
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &data); err != nil {
+		t.Fatalf("failed to parse payload: %v", err)
+	}
+	if data["trigger"] != "schedule" || data["taskId"] != "12" {
+		t.Fatalf("no body in template: got %v, want trigger=schedule taskId=12", data)
+	}
+}
+
+func TestScheduledTaskRunMergesPayloadTemplateWithTriggerInfo(t *testing.T) {
+	repo := newFakeScheduledTaskRepo()
+	repo.tasks[12] = &entity.ScheduledTask{
+		ID:             12,
+		RuleChainID:    "chain-root",
+		CronExpr:       "0 8 * * *",
+		Disabled:       false,
+		PayloadTemplate: `{"metadata":"city=Beijing","body":{"query":"weather","city":"Beijing"}}`,
+	}
+	ruleChain := newUsableFakeRuleChain("chain-root")
+	uc := &ScheduledTaskUsecase{repo: repo, ruleChain: ruleChain, scheduler: &fakeScheduledTaskScheduler{}}
+
+	if err := uc.runScheduledTask(context.Background(), 12); err != nil {
+		t.Fatalf("runScheduledTask returned error: %v", err)
+	}
+
+	req := ruleChain.executed[0]
+	data := req.GetData().AsMap()
+	if data["query"] != "weather" {
+		t.Fatalf("body field 'query' mismatch: got %v, want weather", data["query"])
+	}
+	if data["trigger"] != "schedule" {
+		t.Fatalf("trigger field mismatch: got %v, want schedule", data["trigger"])
+	}
+	if data["taskId"] != "12" {
+		t.Fatalf("taskId field mismatch: got %v, want 12", data["taskId"])
 	}
 }
 

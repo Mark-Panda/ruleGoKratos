@@ -17,6 +17,7 @@ export interface ScheduledTask {
   createdAt?: string | Record<string, unknown> | null;
   updatedAt?: string | Record<string, unknown> | null;
   deletedAt?: string | Record<string, unknown> | null;
+  payloadTemplate?: string;
 }
 
 export interface ScheduledTaskRun {
@@ -51,6 +52,7 @@ export interface ScheduledTaskPayload {
   cronExpr: string;
   scheduleType: string;
   scheduleConfig: string;
+  payloadTemplate?: string;
 }
 
 export type UpdateScheduledTaskPayload = ScheduledTaskPayload;

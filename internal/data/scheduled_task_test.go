@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -203,7 +204,7 @@ func TestScheduledTaskDAOCreateListUpdateDeleteAndRuns(t *testing.T) {
 		TaskID:         disabledTask.ID,
 		RuleChainID:    disabledTask.RuleChainID,
 		Status:         entity.ScheduledTaskRunStatusSuccess,
-		TriggerPayload: entity.NewScheduledTriggerPayload(disabledTask.ID),
+		TriggerPayload: entity.NewScheduledTriggerPayload(disabledTask.ID, ""),
 		StartedAt:      time.Now().Add(-time.Second),
 		FinishedAt:     time.Now(),
 	}
@@ -214,7 +215,7 @@ func TestScheduledTaskDAOCreateListUpdateDeleteAndRuns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list runs: %v", err)
 	}
-	if runTotal != 1 || len(runs) != 1 || runs[0].TriggerPayload != entity.NewScheduledTriggerPayload(disabledTask.ID) {
+	if runTotal != 1 || len(runs) != 1 || runs[0].TriggerPayload != entity.NewScheduledTriggerPayload(disabledTask.ID, "") {
 		t.Fatalf("unexpected run list total=%d len=%d", runTotal, len(runs))
 	}
 
@@ -222,7 +223,7 @@ func TestScheduledTaskDAOCreateListUpdateDeleteAndRuns(t *testing.T) {
 		TaskID:         remainingEnabled.ID,
 		RuleChainID:    remainingEnabled.RuleChainID,
 		Status:         entity.ScheduledTaskRunStatusSuccess,
-		TriggerPayload: entity.NewScheduledTriggerPayload(remainingEnabled.ID),
+		TriggerPayload: entity.NewScheduledTriggerPayload(remainingEnabled.ID, ""),
 		StartedAt:      sameCreatedAt,
 		FinishedAt:     sameCreatedAt,
 		CreatedAt:      sameCreatedAt,
@@ -234,7 +235,7 @@ func TestScheduledTaskDAOCreateListUpdateDeleteAndRuns(t *testing.T) {
 		TaskID:         remainingEnabled.ID,
 		RuleChainID:    remainingEnabled.RuleChainID,
 		Status:         entity.ScheduledTaskRunStatusFailed,
-		TriggerPayload: entity.NewScheduledTriggerPayload(remainingEnabled.ID),
+		TriggerPayload: entity.NewScheduledTriggerPayload(remainingEnabled.ID, ""),
 		ErrorMessage:   "failed",
 		StartedAt:      sameCreatedAt,
 		FinishedAt:     sameCreatedAt,
@@ -296,10 +297,13 @@ func TestScheduledTaskDAOCreateListUpdateDeleteAndRuns(t *testing.T) {
 }
 
 func TestScheduledTaskTriggerPayload(t *testing.T) {
-	got := entity.NewScheduledTriggerPayload(12)
-	want := `{"trigger":"schedule","taskId":"12"}`
-	if got != want {
-		t.Fatalf("payload mismatch got=%s want=%s", got, want)
+	got := entity.NewScheduledTriggerPayload(12, "")
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(got), &data); err != nil {
+		t.Fatalf("failed to parse payload: %v", err)
+	}
+	if data["trigger"] != "schedule" || data["taskId"] != "12" {
+		t.Fatalf("payload mismatch got=%v, want trigger=schedule taskId=12", data)
 	}
 }
 

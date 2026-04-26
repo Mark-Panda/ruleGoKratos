@@ -62,7 +62,7 @@ func NewNilScheduledTaskScheduler() ScheduledTaskScheduler {
 	return nil
 }
 
-func (uc *ScheduledTaskUsecase) CreateScheduledTask(ctx context.Context, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig string) (*entity.ScheduledTask, error) {
+func (uc *ScheduledTaskUsecase) CreateScheduledTask(ctx context.Context, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig, payloadTemplate string) (*entity.ScheduledTask, error) {
 	now := time.Now()
 	task := &entity.ScheduledTask{
 		Name:           name,
@@ -74,6 +74,7 @@ func (uc *ScheduledTaskUsecase) CreateScheduledTask(ctx context.Context, name, d
 		Disabled:       true,
 		CreatedAt:      now,
 		UpdatedAt:      now,
+		PayloadTemplate: payloadTemplate,
 	}
 	if err := uc.repo.CreateScheduledTask(ctx, task); err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func (uc *ScheduledTaskUsecase) ListScheduledTasks(ctx context.Context, name, ru
 	return uc.repo.ListScheduledTasks(ctx, name, ruleChainID, disabled, page, pageSize)
 }
 
-func (uc *ScheduledTaskUsecase) UpdateScheduledTask(ctx context.Context, id int64, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig string) (*entity.ScheduledTask, error) {
+func (uc *ScheduledTaskUsecase) UpdateScheduledTask(ctx context.Context, id int64, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig, payloadTemplate string) (*entity.ScheduledTask, error) {
 	task, err := uc.repo.GetScheduledTask(ctx, id)
 	if err != nil {
 		return nil, err
@@ -102,6 +103,7 @@ func (uc *ScheduledTaskUsecase) UpdateScheduledTask(ctx context.Context, id int6
 	task.CronExpr = cronExpr
 	task.ScheduleType = scheduleType
 	task.ScheduleConfig = scheduleConfig
+	task.PayloadTemplate = payloadTemplate
 	task.UpdatedAt = time.Now()
 	if !task.Disabled && uc.scheduler != nil {
 		if err := uc.scheduler.Add(task.ID, task.CronExpr, uc.scheduledTaskCallback(task.ID)); err != nil {
@@ -233,7 +235,7 @@ func (uc *ScheduledTaskUsecase) runScheduledTask(ctx context.Context, taskID int
 		return err
 	}
 	startedAt := time.Now()
-	payload := entity.NewScheduledTriggerPayload(task.ID)
+	payload := entity.NewScheduledTriggerPayload(task.ID, task.PayloadTemplate)
 	status := entity.ScheduledTaskRunStatusSuccess
 	errorMessage := ""
 	shouldRemoveScheduler := false

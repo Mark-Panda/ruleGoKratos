@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 )
@@ -25,6 +26,7 @@ type ScheduledTask struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
+	PayloadTemplate string
 }
 
 type ScheduledTaskRun struct {
@@ -39,6 +41,34 @@ type ScheduledTaskRun struct {
 	CreatedAt      time.Time
 }
 
-func NewScheduledTriggerPayload(taskID int64) string {
-	return `{"trigger":"schedule","taskId":"` + strconv.FormatInt(taskID, 10) + `"}`
+func NewScheduledTriggerPayload(taskID int64, payloadTemplate string) string {
+	base := map[string]interface{}{
+		"trigger": "schedule",
+		"taskId":  strconv.FormatInt(taskID, 10),
+	}
+
+	if payloadTemplate == "" {
+		b, _ := json.Marshal(base)
+		return string(b)
+	}
+
+	var tpl struct {
+		Metadata string                 `json:"metadata"`
+		Body     map[string]interface{} `json:"body"`
+	}
+	if err := json.Unmarshal([]byte(payloadTemplate), &tpl); err != nil || tpl.Body == nil {
+		b, _ := json.Marshal(base)
+		return string(b)
+	}
+
+	merged := make(map[string]interface{})
+	for k, v := range tpl.Body {
+		merged[k] = v
+	}
+	for k, v := range base {
+		merged[k] = v
+	}
+
+	b, _ := json.Marshal(merged)
+	return string(b)
 }

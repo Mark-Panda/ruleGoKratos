@@ -26,6 +26,7 @@ export interface ScheduledTaskFormValues {
   dayOfWeek?: unknown;
   dayOfMonth?: unknown;
   cronExpr?: unknown;
+  payloadTemplate?: unknown;
 }
 
 export interface ScheduledTaskLike {
@@ -37,6 +38,7 @@ export interface ScheduledTaskLike {
   cronExpr: string;
   scheduleType: string;
   scheduleConfig: string;
+  payloadTemplate?: string;
 }
 
 export interface ScheduledTaskPayloadLike {
@@ -46,6 +48,7 @@ export interface ScheduledTaskPayloadLike {
   cronExpr: string;
   scheduleType: string;
   scheduleConfig: string;
+  payloadTemplate?: string;
 }
 
 export type NormalizedScheduledTaskRunStatus = 'success' | 'failed' | 'unknown';
@@ -159,6 +162,7 @@ export function buildScheduledTaskPayload(values: ScheduledTaskFormValues): Sche
     scheduleType: config.type,
     scheduleConfig: JSON.stringify(config),
     cronExpr: buildCronExpr(config),
+    payloadTemplate: typeof values.payloadTemplate === 'string' ? values.payloadTemplate : '',
   };
 }
 
@@ -229,6 +233,7 @@ export function getScheduledTaskFormInitValues(task?: ScheduledTaskLike | null):
     dayOfWeek: toNumber(config.dayOfWeek, 1),
     dayOfMonth: toNumber(config.dayOfMonth, 1),
     cronExpr,
+    payloadTemplate: task?.payloadTemplate ?? '',
   };
 }
 

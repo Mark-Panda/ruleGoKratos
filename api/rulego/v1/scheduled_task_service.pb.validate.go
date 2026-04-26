@@ -193,6 +193,8 @@ func (m *ScheduledTask) validate(all bool) error {
 		}
 	}
 
+	// no validation rules for PayloadTemplate
+
 	if len(errors) > 0 {
 		return ScheduledTaskMultiError(errors)
 	}
@@ -539,6 +541,8 @@ func (m *CreateScheduledTaskReq) validate(all bool) error {
 	}
 
 	// no validation rules for ScheduleConfig
+
+	// no validation rules for PayloadTemplate
 
 	if len(errors) > 0 {
 		return CreateScheduledTaskReqMultiError(errors)
@@ -1291,6 +1295,8 @@ func (m *UpdateScheduledTaskReq) validate(all bool) error {
 	// no validation rules for ScheduleType
 
 	// no validation rules for ScheduleConfig
+
+	// no validation rules for PayloadTemplate
 
 	if len(errors) > 0 {
 		return UpdateScheduledTaskReqMultiError(errors)

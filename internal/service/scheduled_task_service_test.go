@@ -268,8 +268,8 @@ type fakeScheduledTaskUsecase struct {
 	listRunsTotal int64
 }
 
-func (f *fakeScheduledTaskUsecase) CreateScheduledTask(ctx context.Context, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig string) (*entity.ScheduledTask, error) {
-	f.createCall = createScheduledTaskCall{name: name, description: description, ruleChainID: ruleChainID, cronExpr: cronExpr, scheduleType: scheduleType, scheduleConfig: scheduleConfig}
+func (f *fakeScheduledTaskUsecase) CreateScheduledTask(ctx context.Context, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig, payloadTemplate string) (*entity.ScheduledTask, error) {
+	f.createCall = createScheduledTaskCall{name: name, description: description, ruleChainID: ruleChainID, cronExpr: cronExpr, scheduleType: scheduleType, scheduleConfig: scheduleConfig, payloadTemplate: payloadTemplate}
 	return f.createTask, nil
 }
 
@@ -282,8 +282,8 @@ func (f *fakeScheduledTaskUsecase) ListScheduledTasks(ctx context.Context, name,
 	return f.listTasks, f.listTotal, nil
 }
 
-func (f *fakeScheduledTaskUsecase) UpdateScheduledTask(ctx context.Context, id int64, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig string) (*entity.ScheduledTask, error) {
-	f.updateCall = updateScheduledTaskCall{id: id, name: name, description: description, ruleChainID: ruleChainID, cronExpr: cronExpr, scheduleType: scheduleType, scheduleConfig: scheduleConfig}
+func (f *fakeScheduledTaskUsecase) UpdateScheduledTask(ctx context.Context, id int64, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig, payloadTemplate string) (*entity.ScheduledTask, error) {
+	f.updateCall = updateScheduledTaskCall{id: id, name: name, description: description, ruleChainID: ruleChainID, cronExpr: cronExpr, scheduleType: scheduleType, scheduleConfig: scheduleConfig, payloadTemplate: payloadTemplate}
 	return f.updateTask, nil
 }
 
@@ -308,12 +308,13 @@ func (f *fakeScheduledTaskUsecase) ListScheduledTaskRuns(ctx context.Context, ta
 }
 
 type createScheduledTaskCall struct {
-	name           string
-	description    string
-	ruleChainID    string
-	cronExpr       string
-	scheduleType   string
-	scheduleConfig string
+	name            string
+	description     string
+	ruleChainID     string
+	cronExpr        string
+	scheduleType    string
+	scheduleConfig  string
+	payloadTemplate string
 }
 
 type listScheduledTasksCall struct {
@@ -325,13 +326,14 @@ type listScheduledTasksCall struct {
 }
 
 type updateScheduledTaskCall struct {
-	id             int64
-	name           string
-	description    string
-	ruleChainID    string
-	cronExpr       string
-	scheduleType   string
-	scheduleConfig string
+	id              int64
+	name            string
+	description     string
+	ruleChainID     string
+	cronExpr        string
+	scheduleType    string
+	scheduleConfig  string
+	payloadTemplate string
 }
 
 type listRunsCall struct {

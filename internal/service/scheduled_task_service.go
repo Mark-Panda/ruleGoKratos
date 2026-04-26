@@ -14,10 +14,10 @@ import (
 var _ v1.ScheduledTaskServiceServer = (*ScheduledTaskService)(nil)
 
 type scheduledTaskUsecase interface {
-	CreateScheduledTask(ctx context.Context, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig string) (*entity.ScheduledTask, error)
+	CreateScheduledTask(ctx context.Context, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig, payloadTemplate string) (*entity.ScheduledTask, error)
 	GetScheduledTask(ctx context.Context, id int64) (*entity.ScheduledTask, error)
 	ListScheduledTasks(ctx context.Context, name, ruleChainID string, disabled *bool, page, pageSize int32) ([]*entity.ScheduledTask, int64, error)
-	UpdateScheduledTask(ctx context.Context, id int64, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig string) (*entity.ScheduledTask, error)
+	UpdateScheduledTask(ctx context.Context, id int64, name, description, ruleChainID, cronExpr, scheduleType, scheduleConfig, payloadTemplate string) (*entity.ScheduledTask, error)
 	DeleteScheduledTask(ctx context.Context, id int64) error
 	EnableScheduledTask(ctx context.Context, id int64) (*entity.ScheduledTask, error)
 	DisableScheduledTask(ctx context.Context, id int64) (*entity.ScheduledTask, error)
@@ -34,7 +34,7 @@ func NewScheduledTaskService(uc *biz.ScheduledTaskUsecase) *ScheduledTaskService
 }
 
 func (s *ScheduledTaskService) CreateScheduledTask(ctx context.Context, req *v1.CreateScheduledTaskReq) (*v1.CreateScheduledTaskReply, error) {
-	task, err := s.uc.CreateScheduledTask(ctx, req.GetName(), req.GetDescription(), req.GetRuleChainId(), req.GetCronExpr(), req.GetScheduleType(), req.GetScheduleConfig())
+	task, err := s.uc.CreateScheduledTask(ctx, req.GetName(), req.GetDescription(), req.GetRuleChainId(), req.GetCronExpr(), req.GetScheduleType(), req.GetScheduleConfig(), req.GetPayloadTemplate())
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (s *ScheduledTaskService) ListScheduledTasks(ctx context.Context, req *v1.L
 }
 
 func (s *ScheduledTaskService) UpdateScheduledTask(ctx context.Context, req *v1.UpdateScheduledTaskReq) (*v1.UpdateScheduledTaskReply, error) {
-	task, err := s.uc.UpdateScheduledTask(ctx, req.GetId(), req.GetName(), req.GetDescription(), req.GetRuleChainId(), req.GetCronExpr(), req.GetScheduleType(), req.GetScheduleConfig())
+	task, err := s.uc.UpdateScheduledTask(ctx, req.GetId(), req.GetName(), req.GetDescription(), req.GetRuleChainId(), req.GetCronExpr(), req.GetScheduleType(), req.GetScheduleConfig(), req.GetPayloadTemplate())
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +125,7 @@ func scheduledTaskToProto(task *entity.ScheduledTask) *v1.ScheduledTask {
 		Disabled:       task.Disabled,
 		LastStatus:     v1.ScheduledTaskRunStatus(task.LastStatus),
 		LastError:      task.LastError,
+		PayloadTemplate: task.PayloadTemplate,
 		CreatedAt:      timestampFromTime(task.CreatedAt),
 		UpdatedAt:      timestampFromTime(task.UpdatedAt),
 	}

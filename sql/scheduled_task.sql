@@ -41,3 +41,5 @@ CREATE TABLE IF NOT EXISTS scheduled_task_runs (
 
 CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_task_id_created_at_id
   ON scheduled_task_runs (task_id, created_at DESC, id DESC);
+
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS payload_template TEXT;

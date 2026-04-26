@@ -2192,6 +2192,8 @@ components:
                     type: string
                 scheduleConfig:
                     type: string
+                payloadTemplate:
+                    type: string
         rulego.v1.CreateServiceReply:
             type: object
             properties:
@@ -2781,6 +2783,8 @@ components:
                 deletedAt:
                     type: string
                     format: date-time
+                payloadTemplate:
+                    type: string
         rulego.v1.ScheduledTaskRun:
             type: object
             properties:
@@ -3077,6 +3081,8 @@ components:
                 scheduleType:
                     type: string
                 scheduleConfig:
+                    type: string
+                payloadTemplate:
                     type: string
         rulego.v1.UpdateServiceReply:
             type: object

@@ -21,7 +21,8 @@ type ScheduledTask struct {
 	LastError  string     `gorm:"column:last_error;type:text;comment:最近失败原因"`
 	CreatedAt  time.Time  `gorm:"column:created_at;comment:创建时间"`
 	UpdatedAt  time.Time  `gorm:"column:updated_at;comment:更新时间"`
-	DeletedAt  *time.Time `gorm:"column:deleted_at;index;comment:删除时间"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at;index;comment:删除时间"`
+	PayloadTemplate string     `gorm:"column:payload_template;type:text;comment:用户自定义触发payload模板"`
 }
 
 func (ScheduledTask) TableName() string {

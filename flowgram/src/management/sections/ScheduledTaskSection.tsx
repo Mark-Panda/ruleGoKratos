@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   Button,
@@ -9,8 +9,10 @@ import {
   Popconfirm,
   Select,
   Space,
+  Spin,
   Table,
   Tag,
+  TextArea,
   Toast,
   Typography,
 } from '@douyinfe/semi-ui';
@@ -35,7 +37,7 @@ import {
   ScheduledTaskRun,
   updateScheduledTask,
 } from '../../services/api-scheduled-task';
-import { getRuleList } from '../../services/api-rules';
+import { getRuleList, getRuleDetail } from '../../services/api-rules';
 import {
   buildScheduledTaskPayload,
   describeScheduledTaskRunStatus,
@@ -44,6 +46,12 @@ import {
   normalizeScheduledTaskRunStatus,
   ScheduleType,
 } from './scheduled-task-cron';
+import { parseRuleChainFlowgramFromConfiguration } from '../../utils/rule-chain-flowgram-dsl';
+import {
+  parseRuleChainParamsJson,
+  buildRuleChainParamsPreviewValue,
+} from '../../utils/rule-chain-request-params';
+import { JsonValueEditor } from '../../components/testrun/json-value-editor';
 
 type ModalType = 'create' | 'edit';
 
@@ -112,6 +120,23 @@ function getRuleChainOption(raw: any): RuleChainOption | null {
   };
 }
 
+function metadataPreviewToQueryString(obj: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const walk = (prefix: string, val: unknown) => {
+    if (val === undefined || val === null) return;
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
+        walk(prefix ? `${prefix}.${k}` : k, v);
+      }
+      return;
+    }
+    const encVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    parts.push(`${encodeURIComponent(prefix)}=${encodeURIComponent(encVal)}`);
+  };
+  walk('', obj);
+  return parts.join('&');
+}
+
 export const ScheduledTaskSection: React.FC = () => {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [total, setTotal] = useState(0);
@@ -136,6 +161,11 @@ export const ScheduledTaskSection: React.FC = () => {
   const [activeScheduleType, setActiveScheduleType] = useState<ScheduleType>('daily');
   const formApiRef = useRef<FormApi<Record<string, unknown>> | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [selectedRuleChainId, setSelectedRuleChainId] = useState<string | undefined>();
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [metadataStr, setMetadataStr] = useState('');
+  const [body, setBody] = useState<Record<string, unknown>>({});
 
   const [historyVisible, setHistoryVisible] = useState(false);
   const [historyTask, setHistoryTask] = useState<ScheduledTask | null>(null);
@@ -191,9 +221,48 @@ export const ScheduledTaskSection: React.FC = () => {
     }
   };
 
+  const applyDetailToPayloadFields = useCallback((detail: any) => {
+    const cfg = detail?.ruleChain?.configuration;
+    const fg = parseRuleChainFlowgramFromConfiguration(cfg);
+    const metaNodes = parseRuleChainParamsJson(fg.requestMetadataParamsJson);
+    const bodyNodes = parseRuleChainParamsJson(fg.requestMessageBodyParamsJson);
+    const metaPreview = buildRuleChainParamsPreviewValue(metaNodes);
+    const bodyPreview = buildRuleChainParamsPreviewValue(bodyNodes);
+    setMetadataStr(metadataPreviewToQueryString(metaPreview));
+    setBody(bodyPreview);
+  }, []);
+
   useEffect(() => {
     void fetchRuleChains();
   }, []);
+
+  useEffect(() => {
+    if (!selectedRuleChainId) {
+      setMetadataStr('');
+      setBody({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setDetailLoading(true);
+      try {
+        const detail = await getRuleDetail(selectedRuleChainId);
+        if (!cancelled) {
+          applyDetailToPayloadFields(detail);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          Toast.warning('规则链详情加载失败，参数模板未自动填充');
+          console.error(e);
+        }
+      } finally {
+        if (!cancelled) setDetailLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRuleChainId, applyDetailToPayloadFields]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -205,6 +274,22 @@ export const ScheduledTaskSection: React.FC = () => {
     setModalType(type);
     setEditingTask(type === 'edit' && task ? task : null);
     setActiveScheduleType(initValues.scheduleType as ScheduleType);
+
+    if (type === 'edit' && task?.payloadTemplate) {
+      try {
+        const tpl = JSON.parse(task.payloadTemplate);
+        if (typeof tpl.metadata === 'string') setMetadataStr(tpl.metadata);
+        if (tpl.body && typeof tpl.body === 'object') setBody(tpl.body);
+      } catch {
+        setMetadataStr('');
+        setBody({});
+      }
+    } else {
+      setMetadataStr('');
+      setBody({});
+    }
+    setSelectedRuleChainId(type === 'edit' && task ? task.ruleChainId : undefined);
+
     setFormInitSnapshot(initValues as Record<string, unknown>);
     formApiRef.current = null;
     setFormModalKey((k) => k + 1);
@@ -216,6 +301,9 @@ export const ScheduledTaskSection: React.FC = () => {
     setEditingTask(null);
     setFormInitSnapshot({});
     formApiRef.current = null;
+    setSelectedRuleChainId(undefined);
+    setMetadataStr('');
+    setBody({});
   };
 
   const refreshCurrentPage = () => {
@@ -245,6 +333,11 @@ export const ScheduledTaskSection: React.FC = () => {
       Toast.warning('请填写任务名称、规则链和执行周期');
       return;
     }
+
+    payload.payloadTemplate = JSON.stringify({
+      metadata: metadataStr.trim(),
+      body,
+    });
 
     setSubmitting(true);
     try {
@@ -359,6 +452,7 @@ export const ScheduledTaskSection: React.FC = () => {
           filter
           rules={[{ required: true, message: '请选择绑定规则链' }]}
           optionList={ruleChainOptions}
+          onChange={(val: string) => setSelectedRuleChainId(val)}
         />
       );
     }
@@ -368,6 +462,7 @@ export const ScheduledTaskSection: React.FC = () => {
         label="绑定规则链"
         placeholder="请输入 ruleChainId"
         rules={[{ required: true, message: '请输入绑定规则链' }]}
+        onChange={(val: string) => setSelectedRuleChainId(val)}
       />
     );
   };
@@ -660,7 +755,7 @@ export const ScheduledTaskSection: React.FC = () => {
         title={modalType === 'create' ? '新增定时任务' : '编辑定时任务'}
         visible={modalVisible}
         onCancel={closeModal}
-        width={640}
+        width={800}
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
             <Button onClick={closeModal}>取消</Button>
@@ -698,6 +793,36 @@ export const ScheduledTaskSection: React.FC = () => {
           {renderScheduleFields()}
           <Form.TextArea field="description" label="任务描述" placeholder="请输入任务描述" rows={3} />
         </Form>
+
+        {selectedRuleChainId && (
+          <Spin spinning={detailLoading}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+              <Typography.Title heading={6} style={{ margin: 0 }}>
+                工作流入参
+              </Typography.Title>
+              <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 0 }}>
+                根据规则链 configuration.flowgram.io 中配置的入参自动生成，可修改。触发时将合并到执行 payload 中。
+              </Typography.Paragraph>
+              <div>
+                <Typography.Text size="small" style={{ display: 'block', marginBottom: 8 }}>
+                  元数据（query，由规则链入参自动生成，可修改）
+                </Typography.Text>
+                <TextArea
+                  value={metadataStr}
+                  onChange={setMetadataStr}
+                  rows={3}
+                  placeholder="key=value&..."
+                />
+              </div>
+              <div>
+                <Typography.Text size="small" style={{ display: 'block', marginBottom: 8 }}>
+                  请求体（由规则链入参自动生成，可修改）
+                </Typography.Text>
+                <JsonValueEditor value={body} onChange={setBody} />
+              </div>
+            </div>
+          </Spin>
+        )}
       </Modal>
 
       <Modal

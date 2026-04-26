@@ -71,6 +71,7 @@ func (r *scheduledTaskRepo) UpdateScheduledTask(ctx context.Context, task *entit
 		"last_status":     task.LastStatus,
 		"last_error":      task.LastError,
 		"updated_at":      task.UpdatedAt,
+		"payload_template": task.PayloadTemplate,
 	}
 	return dao.NewScheduledTask().Update(ctx, task.ID, data)
 }
@@ -122,6 +123,7 @@ func scheduledTaskEntityToDAO(task *entity.ScheduledTask) *dao.ScheduledTask {
 		CreatedAt:      task.CreatedAt,
 		UpdatedAt:      task.UpdatedAt,
 		DeletedAt:      task.DeletedAt,
+		PayloadTemplate: task.PayloadTemplate,
 	}
 }
 
@@ -144,6 +146,7 @@ func scheduledTaskDAOToEntity(task *dao.ScheduledTask) *entity.ScheduledTask {
 		CreatedAt:      task.CreatedAt,
 		UpdatedAt:      task.UpdatedAt,
 		DeletedAt:      task.DeletedAt,
+		PayloadTemplate: task.PayloadTemplate,
 	}
 }
 
