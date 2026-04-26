@@ -343,7 +343,8 @@ var (
 	reSkOpenAIStyle = regexp.MustCompile(`\bsk-[a-zA-Z0-9]{10,}\b`)
 	reUnixLikePath  = regexp.MustCompile(`(?:/Users|/home|/var|/tmp)(?:/[\w.-]+)+`)
 	reWinLikePath   = regexp.MustCompile(`\b[A-Za-z]:\\(?:[\w.-]+\\)+[\w.-]+`)
-	reLongOpaqueTok = regexp.MustCompile(`\b[A-Za-z0-9+/=_-]{64,}\b`)
+	// 仅在 Bearer 或 sk- 上下文中的长 token，不应用于文件路径
+	reBearerContextToken = regexp.MustCompile(`(?i)(?:Bearer|sk-)[A-Za-z0-9+/=_-]{32,}`)
 )
 
 func redactErrorText(s string) string {
@@ -355,9 +356,9 @@ func redactErrorText(s string) string {
 	s = strings.Join(strings.Fields(s), " ")
 	s = reBearerLike.ReplaceAllString(s, "Bearer [redacted]")
 	s = reSkOpenAIStyle.ReplaceAllString(s, "sk-[redacted]")
+	s = reBearerContextToken.ReplaceAllString(s, "[token]")
 	s = reUnixLikePath.ReplaceAllString(s, "[path]")
 	s = reWinLikePath.ReplaceAllString(s, "[path]")
-	s = reLongOpaqueTok.ReplaceAllString(s, "[token]")
 	if utf8.RuneCountInString(s) > harnessErrDetailMaxRunes {
 		r := []rune(s)
 		s = string(r[:harnessErrDetailMaxRunes]) + "…"
@@ -568,22 +569,49 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			chunks := make([]*schema.Message, 0, 32)
 			var streamedThisRound strings.Builder
 			seenToolCall := false
+			const maxStreamRetries = 2
+			const streamRetryDelay = 2 * time.Second
+
 			for {
 				if err := workCtx.Err(); err != nil {
 					stream.Close()
 					yield(nil, userFacingError("已取消执行"))
 					return
 				}
+
 				chunk, recvErr := stream.Recv()
 				if recvErr == io.EOF {
 					break
 				}
+
+				// 重试机制：非 EOF 错误最多重试 maxStreamRetries 次
 				if recvErr != nil {
 					stream.Close()
-					uc.harnessLogger.LogError(requestID, "model_stream_recv", recvErr)
-					yield(nil, sanitizeExternalError("model_stream_recv", recvErr))
+					lastErr := recvErr
+					for retry := 1; retry <= maxStreamRetries; retry++ {
+						uc.harnessLogger.LogError(requestID, "model_stream_recv_retry", fmt.Errorf("retry %d/%d: %v", retry, maxStreamRetries, lastErr))
+						time.Sleep(streamRetryDelay)
+						chunk, lastErr = stream.Recv()
+						if lastErr == nil {
+							// 重试成功，继续处理 chunk
+							goto processChunk
+						}
+						if lastErr == io.EOF {
+							// 重试时遇到 EOF，直接结束
+							stream = nil
+							break
+						}
+					}
+					// 重试全部失败
+					if stream != nil {
+						stream.Close()
+					}
+					uc.harnessLogger.LogError(requestID, "model_stream_recv", fmt.Errorf("after %d retries: %v", maxStreamRetries, lastErr))
+					yield(nil, sanitizeExternalError("model_stream_recv", fmt.Errorf("流读取超时，已重试 %d 次: %v", maxStreamRetries, lastErr)))
 					return
 				}
+
+			processChunk:
 				if chunk == nil {
 					continue
 				}
@@ -600,7 +628,9 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 					}
 				}
 			}
-			stream.Close()
+			if stream != nil {
+				stream.Close()
+			}
 
 			if err := workCtx.Err(); err != nil {
 				yield(nil, userFacingError("已取消执行"))

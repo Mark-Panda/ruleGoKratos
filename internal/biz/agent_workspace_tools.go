@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/cloudwego/eino/schema"
+	"github.com/go-kratos/kratos/v2/log"
 )
 
 const (
@@ -299,9 +300,11 @@ func (uc *AgentUsecase) BuildWriteWorkspaceFileTool() (*HarnessTool, error) {
 			}
 			var full string
 			if filepath.IsAbs(strings.TrimSpace(a.Path)) {
-				full, err = absPathUnderAnyRoot(uc.writableAbsoluteRoots(ctx), a.Path)
+				roots := uc.writableAbsoluteRoots(ctx)
+				full, err = absPathUnderAnyRoot(roots, a.Path)
 				if err != nil {
-					return "", err
+					log.Warn("write_workspace_file rejected", "path", a.Path, "roots", fmt.Sprintf("%v", roots), "error", err)
+					return "", fmt.Errorf("path=%s 不在允许写入的根目录内。可用根目录: %v", a.Path, roots)
 				}
 			} else {
 				full, err = absPathUnderWorkspace(root, a.Path)
@@ -371,7 +374,8 @@ func (uc *AgentUsecase) BuildRunWorkspaceShellTool() (*HarnessTool, error) {
 					}
 				}
 				if fi, statErr := os.Stat(cwd); statErr != nil || !fi.IsDir() {
-					return "", fmt.Errorf("working_directory 不是有效目录: %s", wd)
+					roots := uc.writableAbsoluteRoots(ctx)
+					return "", fmt.Errorf("working_directory=%s 不是有效目录。可用根目录: %v", wd, roots)
 				}
 			}
 			cmd := exec.CommandContext(ctx, "bash", "-lc", cmdStr)

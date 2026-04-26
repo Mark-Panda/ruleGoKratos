@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kratos/kratos/v2/log"
 )
 
 type FileSkillExecutor struct {
@@ -333,9 +335,11 @@ func (e *FileSkillExecutor) ListAvailableSkillNames() []string {
 // Execute 执行技能：先做热更新与权限校验，再读取内容并注入 payload。
 func (e *FileSkillExecutor) Execute(ctx context.Context, skillName string, payload string) (string, error) {
 	e.tryReload()
-	_ = ctx
 	normalizedName := normalizeByNamespace(e.namespace, skillName)
+	log.Info("skill_execute", "namespace", e.namespace, "skill", skillName, "normalized", normalizedName, "payload_len", len(payload))
+
 	if !e.isAllowed(normalizedName) {
+		log.Warn("skill_execute_rejected", "skill", skillName, "reason", "not_in_allowlist", "normalized", normalizedName)
 		return "", fmt.Errorf("skill无权限调用: %s", normalizedName)
 	}
 
@@ -349,6 +353,7 @@ func (e *FileSkillExecutor) Execute(ctx context.Context, skillName string, paylo
 
 	if !ok {
 		sort.Strings(names)
+		log.Warn("skill_execute_not_found", "skill", skillName, "normalized", normalizedName, "available", strings.Join(names, ","))
 		if len(names) == 0 {
 			return "", fmt.Errorf("skill目录中暂无可用技能，请检查目录: %v", e.dirs)
 		}

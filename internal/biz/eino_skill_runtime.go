@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/cloudwego/eino/adk/filesystem"
 	einoskill "github.com/cloudwego/eino/adk/middlewares/skill"
 	"github.com/cloudwego/eino/components/tool"
+	"github.com/go-kratos/kratos/v2/log"
 )
 
 type localSkillFilesystemBackend struct{}
@@ -134,8 +136,15 @@ func (b filteredSkillBackend) List(ctx context.Context) ([]einoskill.FrontMatter
 }
 
 func (b filteredSkillBackend) Get(ctx context.Context, name string) (einoskill.Skill, error) {
+	// 先检查 base backend 中 skill 是否存在，以区分"不存在"和"不允许调用"
+	_, baseErr := b.base.Get(ctx, name)
+	if baseErr != nil {
+		// skill 在 base 中不存在，说明是 LLM 幻觉或名称错误
+		return einoskill.Skill{}, fmt.Errorf("skill not found: %s", name)
+	}
 	if len(b.allow) > 0 {
 		if _, ok := b.allow[name]; !ok {
+			// skill 存在但不在白名单中，说明是权限问题
 			return einoskill.Skill{}, fmt.Errorf("skill not allowed: %s", name)
 		}
 	}
@@ -235,7 +244,22 @@ func harnessToolFromEinoTool(ctx context.Context, t tool.BaseTool) (*HarnessTool
 	return &HarnessTool{
 		Info: info,
 		Invoke: func(ctx context.Context, rawArgs string) (string, error) {
-			return invokable.InvokableRun(ctx, rawArgs)
+			// 解析 skill name 用于日志记录
+			var skillName string
+			if len(rawArgs) > 0 && rawArgs[0] == '{' {
+				var args struct {
+					Skill string `json:"skill"`
+				}
+				if err := json.Unmarshal([]byte(rawArgs), &args); err == nil {
+					skillName = args.Skill
+				}
+			}
+			log.Info("skill_invoke", "tool", info.Name, "skill", skillName, "args_len", len(rawArgs))
+			result, err := invokable.InvokableRun(ctx, rawArgs)
+			if err != nil {
+				log.Info("skill_invoke_error", "tool", info.Name, "skill", skillName, "error", err)
+			}
+			return result, err
 		},
 	}, nil
 }
