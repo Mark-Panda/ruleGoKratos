@@ -207,7 +207,22 @@ func (uc *AgentUsecase) BuildReadWorkspaceFileTool() (*HarnessTool, error) {
 				return "", err
 			}
 			if st.IsDir() {
-				return "", errors.New("path 是目录，不是文件")
+				entries, listErr := os.ReadDir(full)
+				if listErr != nil {
+					return "", fmt.Errorf("path is a directory and listing it failed: %w", listErr)
+				}
+				var sb strings.Builder
+				sb.WriteString(fmt.Sprintf("path is a directory (%d entries); please specify a file. Contents:\n", len(entries)))
+				for _, e := range entries {
+					if e.IsDir() {
+						sb.WriteString("  [dir]  ")
+					} else {
+						sb.WriteString("  [file] ")
+					}
+					sb.WriteString(e.Name())
+					sb.WriteByte('\n')
+				}
+				return sb.String(), nil
 			}
 			if st.Size() > maxWorkspaceFileReadBytes {
 				return "", fmt.Errorf("文件过大（>%d 字节），拒绝读取", maxWorkspaceFileReadBytes)

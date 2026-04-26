@@ -1,6 +1,7 @@
 package biz
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -878,14 +879,14 @@ func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
 		}),
 	}
 	type runSubAgentArgs struct {
-		Task            string `json:"task"`
-		SubTasksJSON    string `json:"sub_tasks_json"`
-		SystemPrompt    string `json:"system_prompt"`
-		ManagedAgentID  int64  `json:"managed_agent_id"`
-		MaxIterations   int    `json:"max_iterations"`
-		MaxToolCalls    int    `json:"max_tool_calls"`
-		ToolTimeoutSecs int    `json:"tool_timeout_secs"`
-		MaxConcurrency  int    `json:"max_concurrency"`
+		Task            string          `json:"task"`
+		SubTasksJSON    json.RawMessage `json:"sub_tasks_json"`
+		SystemPrompt    string          `json:"system_prompt"`
+		ManagedAgentID  int64           `json:"managed_agent_id"`
+		MaxIterations   int             `json:"max_iterations"`
+		MaxToolCalls    int             `json:"max_tool_calls"`
+		ToolTimeoutSecs int             `json:"tool_timeout_secs"`
+		MaxConcurrency  int             `json:"max_concurrency"`
 	}
 	type subAgentBatchItem struct {
 		Task      string   `json:"task"`
@@ -1022,7 +1023,25 @@ func (uc *AgentUsecase) BuildSubAgentTool() (*HarnessTool, error) {
 			if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 				return "", err
 			}
-			tasks, err := parseTasks(args.Task, args.SubTasksJSON)
+			// LLM may send sub_tasks_json as either a JSON string ("[\"a\"]") or a raw array (["a"]).
+			// json.RawMessage captures the raw bytes; normalize to string for parseTasks.
+			var subTasksStr string
+			if len(args.SubTasksJSON) > 0 {
+				trimmed := bytes.TrimSpace(args.SubTasksJSON)
+				if len(trimmed) > 0 && trimmed[0] == '"' {
+					// LLM sent a quoted JSON string — unquote to get the inner string value.
+					var s string
+					if err := json.Unmarshal(args.SubTasksJSON, &s); err == nil {
+						subTasksStr = s
+					} else {
+						subTasksStr = string(args.SubTasksJSON)
+					}
+				} else {
+					// LLM sent a raw JSON array or other content — pass as-is.
+					subTasksStr = string(args.SubTasksJSON)
+				}
+			}
+			tasks, err := parseTasks(args.Task, subTasksStr)
 			if err != nil {
 				return "", err
 			}
