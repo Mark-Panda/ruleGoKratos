@@ -8,8 +8,16 @@ import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
 import iconApi from '../../assets/icon_api.svg';
 import { formMeta } from './form-meta';
+import { serviceStatusOptions, ServiceStatus } from '../../services/api-service';
 
 let index = 0;
+const SERVICE_STATUS_VALUES = serviceStatusOptions.map((o) => o.value);
+const SERVICE_ACTION_OPTIONS = [
+  { label: '创建服务', value: 'create' },
+  { label: '获取服务', value: 'get' },
+  { label: '更新服务', value: 'update' },
+  { label: '删除服务', value: 'delete' },
+];
 
 export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.ServiceManagement,
@@ -43,7 +51,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
         inputsValues: {
           action: { type: 'constant', content: 'create' },
           name: { type: 'template', content: '' },
-          status: { type: 'constant', content: 0 },
+          status: { type: 'constant', content: ServiceStatus.STOPPED },
           volcLogServiceId: { type: 'template', content: '' },
           gitRepoUrl: { type: 'template', content: '' },
           description: { type: 'template', content: '' },
@@ -60,6 +68,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '操作类型',
                 formComponent: 'enum-select',
+                options: SERVICE_ACTION_OPTIONS,
                 description: 'create: 创建服务 | get: 获取服务 | update: 更新服务 | delete: 删除服务',
               },
             },
@@ -73,9 +82,13 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
             },
             status: {
               type: 'number',
+              enum: SERVICE_STATUS_VALUES,
+              default: { type: 'constant', content: ServiceStatus.STOPPED } as any,
               extra: {
                 label: '服务状态',
-                description: '服务状态（0=正常, 1=维护中, 2=已下线）',
+                formComponent: 'enum-select',
+                options: serviceStatusOptions.map((o) => ({ label: o.label, value: o.value })),
+                description: '服务状态（与服务管理一致）',
               },
             },
             volcLogServiceId: {
@@ -106,7 +119,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
               type: 'number',
               extra: {
                 label: '服务ID',
-                description: '服务ID（get/update/delete 时必填）',
+                description: '服务ID（create 时由数据库自动创建；get/update/delete 时必填）',
               },
             },
           },
