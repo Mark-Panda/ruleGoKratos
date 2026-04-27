@@ -5,7 +5,7 @@
 
 import type { SkillItem } from '../services/api-agent';
 
-const SKILL_FILE_EXTS = new Set(['.md', '.txt', '.yaml', '.yml', '.json']);
+const SKILL_FILE_EXTS = new Set(['.md', '.txt', '.yaml', '.yml', '.json', '.py', '.js', '.sh']);
 
 function extOf(rel: string): string {
   const i = rel.lastIndexOf('.');

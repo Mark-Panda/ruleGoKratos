@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -eo pipefail
+
+# 确保 ~/.local/bin 在 PATH 中（cursor-agent 安装于此）
+if [[ ":${PATH}:" != *":/root/.local/bin:"* ]]; then
+  export PATH="/root/.local/bin:${PATH}"
+fi
+
 cd /app
 
 if [ ! -x ./server ]; then

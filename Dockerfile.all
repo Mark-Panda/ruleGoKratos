@@ -45,8 +45,19 @@ RUN npm config set registry https://registry.npmmirror.com \
     && test -f /root/.agents/skills/lark-shared/SKILL.md \
     || (echo "skills add failed: missing /root/.agents/skills"; ls -la /root/.agents/skills /root/.claude/skills 2>&1; exit 1)
 
-# Stage 4: Final Image
-FROM docker.m.daocloud.io/debian:stable-slim
+# Stage 4: Cursor Agent CLI
+FROM docker.m.daocloud.io/debian:stable-slim AS cursor-installer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -fsSL https://cursor.com/install | bash \
+    && ln -sf /root/.local/share/cursor-agent/versions/*/cursor-agent /usr/local/bin/agent
+
+# Stage 5: Final Image
+FROM docker.m.daocloud.io/debian:stable-slim AS final
 
 # Replace sources with Aliyun mirror for speed in China
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
@@ -68,13 +79,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/ \
     && apt-get autoremove -y && apt-get autoclean -y
 
-# Cursor Agent CLI (~/.local/bin); Feishu CLI needs Node from /usr/local
-ENV PATH="/root/.local/bin:/usr/local/bin:${PATH}"
-
 # uv: Python 包/项目管理器（https://github.com/astral-sh/uv），安装到 ~/.local/bin
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-RUN curl -fsSL https://cursor.com/install | bash
+# Cursor Agent CLI 在 ~/.local/bin；在安装完成后设置 PATH，否则 CMD/exec  shell 可能找不到 agent
+ENV PATH="/root/.local/bin:/usr/local/bin:${PATH}"
+# ENV PATH="$HOME/.local/bin:$PATH"
 
 # 本机 ~/.cursor → 构建前执行: bash scripts/prepare-docker-cursor.sh（写入 deploy/docker-cursor-overlay/.cursor）
 # Dockerfile 的 COPY 目标不可用 ~（Shell 展开无效），必须用绝对路径
@@ -83,6 +93,9 @@ COPY deploy/docker-cursor-overlay/.cursor /root/.cursor/
 
 # Feishu CLI: copy Node runtime + global npm modules from lark-cli-installer
 COPY --from=lark-cli-installer /usr/local /usr/local
+# Cursor Agent: 符号链接在 ~/.local/bin/agent，实体在 ~/.local/share/cursor-agent/
+COPY --from=cursor-installer /root/.local /root/.local
+COPY --from=cursor-installer /usr/local /usr/local
 # skills add -g 实体在 /root/.agents/skills；/root/.claude/skills 多为 symlink，运行时 WalkDir 不跟随目录链接，须复制实体目录
 COPY --from=lark-cli-installer /root/.agents/skills /root/.agents/skills
 COPY --from=lark-cli-installer /root/.claude/skills /root/.claude/skills

@@ -391,6 +391,37 @@ export const fileListMappingSpec: NodeMappingSpec = {
   ],
 };
 
+/** 兼容历史：configuration 曾误写入整份 node.data，仅含嵌套 inputsValues 时拆出 source / extractPattern。 */
+export const jsonExtractMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/jsonExtract',
+  transformIn: (cfg) => {
+    const c = cfg as Record<string, unknown>;
+    // 引擎与正确导出的 configuration 在顶层使用字符串字段；整份 node.data 误入时无 string source，需从 inputsValues 拆出。
+    if (typeof c.source === 'string') return cfg;
+    const iv = c.inputsValues as Record<string, unknown> | undefined;
+    if (!iv || typeof iv !== 'object') return cfg;
+    const pick = (v: unknown): unknown => {
+      if (v != null && typeof v === 'object' && 'content' in (v as object)) {
+        return (v as { content: unknown }).content;
+      }
+      return v;
+    };
+    return {
+      source: pick(iv.source) ?? '',
+      extractPattern: pick(iv.extractPattern) ?? 'auto',
+    } as Record<string, unknown>;
+  },
+  fields: [
+    { inputKey: 'source', dslKey: 'source', valueType: 'template', defaultValue: '' },
+    {
+      inputKey: 'extractPattern',
+      dslKey: 'extractPattern',
+      valueType: 'constant',
+      defaultValue: 'auto',
+    },
+  ],
+};
+
 export const gitCloneMappingSpec: NodeMappingSpec = {
   nodeType: 'ci/gitClone',
   fields: [
@@ -612,6 +643,7 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'x/fileWrite': fileWriteMappingSpec,
   'x/fileDelete': fileDeleteMappingSpec,
   'x/fileList': fileListMappingSpec,
+  'x/jsonExtract': jsonExtractMappingSpec,
   'ci/gitClone': gitCloneMappingSpec,
   'ci/gitCommit': gitCommitMappingSpec,
   'ci/gitPush': gitPushMappingSpec,

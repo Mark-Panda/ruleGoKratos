@@ -38,7 +38,11 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 	runLogRepo := data.NewRunLogRepo(dataData, logger)
 	config := data.NewRuleConfig()
 	agentUsecase := biz.NewAgentUsecase(logger, bootstrap)
-	ruleGo, err := data.NewRuleEngine(confData, config, agentUsecase)
+	taskBoardRepo := data.NewTaskBoardRepo(dataData, logger)
+	taskBoardUsecase := biz.NewTaskBoardUsecase(taskBoardRepo)
+	serviceManagementRepo := data.NewServiceManagementRepo(dataData, logger)
+	serviceManagementUsecase := biz.NewServiceManagementUsecase(serviceManagementRepo)
+	ruleGo, err := data.NewRuleEngine(confData, config, agentUsecase, taskBoardUsecase, serviceManagementUsecase)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
@@ -58,10 +62,6 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 	agentPoolService := agentpool.NewAgentPoolService(agentPoolRepo)
 	adminService := service.NewAdminService(logger, bootstrap, agentPoolService)
 	chatService := service.NewChatService(agentUsecase)
-	taskBoardRepo := data.NewTaskBoardRepo(dataData, logger)
-	taskBoardUsecase := biz.NewTaskBoardUsecase(taskBoardRepo)
-	serviceManagementRepo := data.NewServiceManagementRepo(dataData, logger)
-	serviceManagementUsecase := biz.NewServiceManagementUsecase(serviceManagementRepo)
 	taskBoardService := service.NewTaskBoardService(taskBoardUsecase, serviceManagementUsecase, logger)
 	scheduledTaskRepo := data.NewScheduledTaskRepo(dataData, logger)
 	scheduledTaskScheduler := biz.NewScheduledTaskScheduler()

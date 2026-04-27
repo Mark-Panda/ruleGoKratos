@@ -52,6 +52,9 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   [WorkflowNodeType.GitClone]: 'Git 拉取',
   [WorkflowNodeType.GitCommit]: 'Git 提交',
   [WorkflowNodeType.GitPush]: 'Git 推送',
+  [WorkflowNodeType.TaskBoard]: '任务看板',
+  [WorkflowNodeType.ServiceManagement]: '服务管理',
+  [WorkflowNodeType.JsonExtract]: 'JSON 提取',
 
   // 辅助节点
   [WorkflowNodeType.LogString]: '日志输出',

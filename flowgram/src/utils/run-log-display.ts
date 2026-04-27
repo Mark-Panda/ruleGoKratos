@@ -91,12 +91,61 @@ function jsonCompact(v: unknown): string {
   }
 }
 
+/** 尝试解析字符串为 JSON，失败则返回原字符串 */
+function tryParseJson(s: string): unknown {
+  try {
+    const parsed = JSON.parse(s);
+    if (parsed !== null && typeof parsed === 'object') return parsed;
+    return s;
+  } catch {
+    return s;
+  }
+}
+
+/** 从 JSON 对象中提取关键摘要字段 */
+function summarizeJsonObject(o: Record<string, unknown>, max: number): string {
+  const keys = Object.keys(o);
+  if (keys.length === 0) return '{}';
+  // 如果有 success/message/error 等业务字段，优先展示
+  const priorityKeys = ['success', 'message', 'error', 'msg', 'task', 'service', 'tasks', 'services', 'data'];
+  const picked: string[] = [];
+  for (const pk of priorityKeys) {
+    if (pk in o) {
+      const val = o[pk];
+      if (val === null || val === undefined) continue;
+      if (typeof val === 'object') {
+        picked.push(`${pk}=${jsonCompact(val)}`);
+      } else {
+        picked.push(`${pk}=${String(val)}`);
+      }
+    }
+  }
+  if (picked.length > 0) {
+    const summary = picked.join(', ');
+    return truncateText(summary, max);
+  }
+  // 兜底：展示所有 key=value
+  const parts = keys.slice(0, 4).map((k) => {
+    const val = o[k];
+    if (val === null || val === undefined) return `${k}=null`;
+    if (typeof val === 'object') return `${k}=${jsonCompact(val)}`;
+    return `${k}=${String(val)}`;
+  });
+  const suffix = keys.length > 4 ? ` …(+${keys.length - 4})` : '';
+  return truncateText(parts.join(', ') + suffix, max);
+}
+
 /** RuleGo RuleNodeRunLog.inMsg/outMsg（RuleMsg）摘要，用于表格列 */
 export function summarizeRuleMsgLike(v: unknown, max = 160): string {
   if (v === undefined || v === null) return '—';
   if (typeof v === 'string') {
     const t = v.trim();
-    return t ? truncateText(t, max) : '—';
+    if (!t) return '—';
+    const parsed = tryParseJson(t);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return summarizeJsonObject(parsed as Record<string, unknown>, max);
+    }
+    return truncateText(t, max);
   }
   if (typeof v !== 'object' || Array.isArray(v)) {
     return truncateText(jsonCompact(v), max);
@@ -114,11 +163,23 @@ export function summarizeRuleMsgLike(v: unknown, max = 160): string {
   }
   let body = '';
   if (typeof dataPayload === 'string') {
-    body = dataPayload.trim();
+    const trimmed = dataPayload.trim();
+    if (trimmed) {
+      const parsed = tryParseJson(trimmed);
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        body = summarizeJsonObject(parsed as Record<string, unknown>, max);
+      } else {
+        body = truncateText(trimmed, max);
+      }
+    }
   } else if (dataPayload !== undefined && dataPayload !== null) {
-    body = jsonCompact(dataPayload);
+    if (typeof dataPayload === 'object' && !Array.isArray(dataPayload)) {
+      body = summarizeJsonObject(dataPayload as Record<string, unknown>, max);
+    } else {
+      body = jsonCompact(dataPayload);
+    }
   } else {
-    body = jsonCompact(o);
+    body = summarizeJsonObject(o, max);
   }
   const prefix = typ ? `[${typ}] ` : '';
   const combined = `${prefix}${body}`.trim();

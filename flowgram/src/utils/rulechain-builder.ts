@@ -421,6 +421,7 @@ function buildRuleChainMetaNodes(
     case 'x/fileWrite':
     case 'x/fileDelete':
     case 'x/fileList':
+    case 'x/jsonExtract':
     case 'ci/gitClone':
     case 'ci/gitCommit':
     case 'ci/gitPush':
@@ -1925,6 +1926,58 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   extra: { label: '路径模式', formComponent: 'prompt-editor' },
                 },
                 recursive: { type: 'boolean', extra: { label: '递归' } },
+              },
+            },
+          };
+          break;
+        }
+        case 'x/jsonExtract': {
+          const cfg = n.configuration ?? {};
+          const specJe = getNodeMappingSpec('x/jsonExtract');
+          const ivMapJe = specJe
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specJe)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'JSON 提取',
+            positionType: 'middle',
+            inputsValues: specJe
+              ? inputsValuesMapToFlowData(ivMapJe, specJe)
+              : {
+                  source: { type: 'template', content: String((cfg as any).source ?? '') },
+                  extractPattern: {
+                    type: 'constant',
+                    content: String((cfg as any).extractPattern ?? 'auto'),
+                  },
+                },
+            inputs: {
+              type: 'object',
+              required: ['source'],
+              properties: {
+                source: {
+                  type: 'string',
+                  extra: {
+                    label: '输入文本',
+                    formComponent: 'prompt-editor',
+                    description: '包含 JSON 的文本内容，通常来自 Agent 输出的 markdown 代码块',
+                  },
+                },
+                extractPattern: {
+                  type: 'string',
+                  extra: {
+                    label: '提取模式',
+                    description:
+                      'auto: 自动检测 JSON 代码块 | json: 仅提取标准 JSON | md: 仅提取 markdown 代码块',
+                  },
+                },
+              },
+            },
+            outputs: {
+              type: 'object',
+              properties: {
+                result: { type: 'string' },
+                extractedJson: { type: 'object' },
+                error: { type: 'string' },
+                success: { type: 'boolean' },
               },
             },
           };

@@ -23,6 +23,7 @@ import {
   execMappingSpec,
   volcTlsSearchLogsMappingSpec,
   yapiMappingSpec,
+  jsonExtractMappingSpec,
 } from '../specs';
 import { mapDslToNodeInputsValues, mapNodeToDslConfig } from '../engine';
 import {
@@ -1694,6 +1695,90 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     const node = back.nodes.find((n: any) => n.id === 'fn');
     expect((node as any)?.data?.inputsValues?.interactivePreset?.content).toBe('notice_card');
     expect((node as any)?.data?.inputsValues?.cardNoticeTitle?.content).toBe('标题A');
+  });
+});
+
+describe('x/jsonExtract spec', () => {
+  it('toDSL / fromDSL 与 RuleChain round-trip', () => {
+    const chainId = 'chain-json-extract-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'JeRT',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'je1',
+            type: 'x/jsonExtract',
+            meta: { position: { x: 200, y: 0 } },
+            data: {
+              title: 'Extract',
+              positionType: 'middle',
+              inputsValues: {
+                source: { type: 'template', content: '${msg.data}' },
+                extractPattern: { type: 'constant', content: 'md' },
+              },
+              inputs: {
+                type: 'object',
+                required: ['source'],
+                properties: {
+                  source: { type: 'string' },
+                  extractPattern: { type: 'string' },
+                },
+              },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'je1', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const cfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            source: { content: '${msg.data}' },
+            extractPattern: { content: 'md' },
+          },
+        },
+      },
+      jsonExtractMappingSpec
+    );
+    expect(cfg.source).toBe('${msg.data}');
+    expect(cfg.extractPattern).toBe('md');
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'je1');
+    expect(meta?.type).toBe('x/jsonExtract');
+    expect(meta.configuration).toEqual({
+      source: '${msg.data}',
+      extractPattern: 'md',
+    });
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'je1');
+    expect((node as any)?.data?.inputsValues?.source?.type).toBe('template');
+    expect((node as any)?.data?.inputsValues?.source?.content).toBe('${msg.data}');
+    expect((node as any)?.data?.inputsValues?.extractPattern?.type).toBe('constant');
+    expect((node as any)?.data?.inputsValues?.extractPattern?.content).toBe('md');
+    expect((node as any)?.data?.inputs?.properties?.source).toBeTruthy();
+    expect((node as any)?.data?.outputs?.properties?.extractedJson).toBeTruthy();
+  });
+
+  it('fromDSL：configuration 误含嵌套 inputsValues 时仍能拆出字段', () => {
+    const iv = mapDslToNodeInputsValues(
+      {
+        title: 'bad',
+        inputsValues: {
+          source: { type: 'template', content: '${data}' },
+          extractPattern: { type: 'constant', content: 'auto' },
+        },
+      } as Record<string, unknown>,
+      jsonExtractMappingSpec
+    );
+    expect(iv.source?.content).toBe('${data}');
+    expect(iv.extractPattern?.content).toBe('auto');
   });
 });
 

@@ -45,6 +45,12 @@ export enum WorkflowNodeType {
   /** RuleGo：执行本地命令 */
   Exec = 'exec',
   FileRead = 'x/fileRead',
+  /** 任务看板 */
+  TaskBoard = 'x/taskBoard',
+  /** 服务管理 */
+  ServiceManagement = 'x/serviceManagement',
+  /** JSON 提取与纠错 */
+  JsonExtract = 'x/jsonExtract',
   FileWrite = 'x/fileWrite',
   FileDelete = 'x/fileDelete',
   FileList = 'x/fileList',

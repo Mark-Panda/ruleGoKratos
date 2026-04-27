@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	defaultMaxIterations    = 32
-	defaultMaxToolCalls     = 64
+	defaultMaxIterations    = 100
+	defaultMaxToolCalls     = 200
 	defaultToolTimeoutSecs  = 5
 	defaultMaxSubAgentDepth = 2
 	// LLM HTTP 流式读取超时（OpenAI SDK Client.Timeout）；规划/长推理需显著大于旧版 60s。

@@ -43,6 +43,9 @@ import { CaseConditionNodeRegistry } from './case-condition';
 import { BreakNodeRegistry } from './break';
 import { BlockStartNodeRegistry } from './block-start';
 import { BlockEndNodeRegistry } from './block-end';
+import { TaskBoardNodeRegistry } from './task-board';
+import { ServiceManagementNodeRegistry } from './service-management';
+import { JsonExtractNodeRegistry } from './jsonExtract';
 export { WorkflowNodeType } from './constants';
 export { NODE_TYPE_NAMES, getNodeTypeName, getNodeDisplayName } from './node-type-names';
 
@@ -86,5 +89,8 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   CursorAcpNodeRegistry,
   FeishuWebhookNodeRegistry,
   CronNodeRegistry,
+  JsonExtractNodeRegistry,
+  TaskBoardNodeRegistry,
+  ServiceManagementNodeRegistry,
   FlowSubChainNodeRegistry,
 ];
