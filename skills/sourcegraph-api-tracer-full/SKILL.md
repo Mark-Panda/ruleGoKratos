@@ -1,6 +1,9 @@
 ---
 name: sourcegraph-api-tracer-full
-description: 用 Sourcegraph 追踪 HTTP 接口在前端/后端仓库中的定义、调用方与影响范围。Use when 用户问接口影响范围、接口被哪些服务调用、被哪些前端或后端服务调用、谁在调这个 API、某路径在哪个服务实现、路由/Handler 在哪里、需要批量用 Sourcegraph 查接口落点，或想只查后端/先给临时结果/跳过 Token 检查与预处理时；也可在用户显式使用 /sourcegraph-api-tracer-full 时调用。
+description: >
+  用 Sourcegraph 追踪 HTTP 接口在前端/后端仓库中的定义、调用方与影响范围。
+  TRIGGER when: user asks about API impact analysis, which services call an API, where a path is implemented, route/Handler location, or needs Sourcegraph batch API tracing
+  SKIP when: user needs document generation (use minimax-pdf), web search (use tavily), or general code questions
 category: devops
 ---
 

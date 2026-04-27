@@ -19,6 +19,8 @@ description: >
   "fill in this form", "reformat to match this template", or any task whose final output
   is a .docx file. Even if the user doesn't mention "docx" explicitly, if the task
   implies a printable/formal document, use this skill.
+  TRIGGER when: user wants to produce/modify/format a Word document, mentions .docx output, or asks to write reports/contracts/proposals
+  SKIP when: user needs PDF output (use minimax-pdf), spreadsheets (use minimax-xlsx), or PowerPoint (use pptx-generator)
 triggers:
   - Word
   - docx

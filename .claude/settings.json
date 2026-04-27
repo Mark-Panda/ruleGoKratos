@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(go vet *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Read(//Users/maxianfei/go/pkg/mod/github.com/cloudwego/eino@v0.8.9/adk/middlewares/skill/**)"
     ]
   }
 }

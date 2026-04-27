@@ -1,6 +1,11 @@
 ---
 name: pptx-generator
-description: "Generate, edit, and read PowerPoint presentations. Create from scratch with PptxGenJS (cover, TOC, content, section divider, summary slides), edit existing PPTX via XML workflows, or extract text with markitdown. Triggers: PPT, PPTX, PowerPoint, presentation, slide, deck, slides."
+description: >
+  Generate, edit, and read PowerPoint presentations. Create from scratch with PptxGenJS
+  (cover, TOC, content, section divider, summary slides), edit existing PPTX via XML workflows,
+  or extract text with markitdown.
+  TRIGGER when: user asks to create/edit PowerPoint presentation, mentions PPT/PPTX files, or needs slides/deck
+  SKIP when: user needs PDF (use minimax-pdf), Word document (use minimax-docx), or spreadsheet (use minimax-xlsx)
 license: MIT
 metadata:
   version: "1.0"

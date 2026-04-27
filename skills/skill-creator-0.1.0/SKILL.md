@@ -1,6 +1,11 @@
 ---
 name: skill-creator
-description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.
+description: >
+  Guide for creating effective skills. This skill should be used when users want to create a
+  new skill (or update an existing skill) that extends capabilities with specialized knowledge,
+  workflows, or tool integrations.
+  TRIGGER when: user wants to create/update a skill, extend agent capabilities, or build a custom workflow
+  SKIP when: user needs document generation (use minimax-pdf/minimax-docx/minimax-xlsx), web search (use tavily), or code tracing (use sourcegraph-api-tracer-full)
 license: Complete terms in LICENSE.txt
 ---
 

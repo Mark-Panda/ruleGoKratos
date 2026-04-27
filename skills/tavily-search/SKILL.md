@@ -1,6 +1,9 @@
 ---
 name: tavily
-description: AI-optimized web search via Tavily API. Returns concise, relevant results for AI agents.
+description: >
+  AI-optimized web search via Tavily API. Returns concise, relevant results for AI agents.
+  TRIGGER when: user asks to search the web, find current information, research a topic online, or look up recent news
+  SKIP when: user asks about local files, code search (use sourcegraph-api-tracer-full), or knowledge already in context
 homepage: https://tavily.com
 metadata: {"clawdbot":{"emoji":"🔍","requires":{"bins":["node"],"env":["TAVILY_API_KEY"]},"primaryEnv":"TAVILY_API_KEY"}}
 ---

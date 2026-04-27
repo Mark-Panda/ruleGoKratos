@@ -551,6 +551,8 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		}
 		msgs := uc.composeMessages(workCtx, &req, systemPrompt, req.History, req.Input, req.Attachments)
 		toolCallCount := 0
+		consecutiveRecoverableErrors := 0
+		const maxConsecutiveRecoverableErrors = 3
 		for i := 0; i < cfg.MaxIterations; i++ {
 			if err := workCtx.Err(); err != nil {
 				yield(nil, userFacingError("已取消执行"))
@@ -740,16 +742,39 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 					req.TraceSink.EmitToolResult(req.PlaygroundRunID, req.PlaygroundAgentID, call.Function.Name, out, toolErr == nil)
 				}
 				uc.harnessLogger.LogToolCallIO(requestID, call.Function.Name, time.Since(toolStart), argsStr, toolOutput, toolErr)
-				if toolErr != nil {
-					uc.harnessLogger.LogError(requestID, "tool_invoke", toolErr)
-					yield(nil, sanitizeExternalError("tool_invoke", toolErr))
-					return
-				}
-
 				toolCallID := call.ID
 				if toolCallID == "" {
 					toolCallID = uuid.NewString()
 				}
+				if toolErr != nil {
+					uc.harnessLogger.LogError(requestID, "tool_invoke", toolErr)
+					// 检查是否为可恢复错误（如技能名拼写错误）
+					if IsRecoverableToolError(toolErr) {
+						consecutiveRecoverableErrors++
+						// 连续多次可恢复错误后终止，防止无限循环
+						if consecutiveRecoverableErrors >= maxConsecutiveRecoverableErrors {
+							errMsg := fmt.Sprintf("连续 %d 次工具调用失败，已停止执行。请检查工具名称或参数后重试。", maxConsecutiveRecoverableErrors)
+							yield(nil, userFacingError(errMsg))
+							return
+						}
+						// 作为 ToolMessage 返回，让 LLM 自我纠正
+						recoverableMsg := schema.ToolMessage(
+							fmt.Sprintf("[Tool Error] %s (已连续失败 %d 次)", redactErrorText(toolErr.Error()), consecutiveRecoverableErrors),
+							toolCallID,
+							schema.WithToolName(call.Function.Name),
+						)
+						msgs = append(msgs, recoverableMsg)
+						log.Info("skill_recoverable_error", "tool", call.Function.Name, "consecutive", consecutiveRecoverableErrors, "error", toolErr.Error())
+						// 继续下一轮迭代
+						continue
+					}
+					// 不可恢复的错误（如超时、上下文取消）仍然终止
+					yield(nil, sanitizeExternalError("tool_invoke", toolErr))
+					return
+				}
+				// 工具调用成功，重置连续错误计数
+				consecutiveRecoverableErrors = 0
+
 				// 将工具输出回灌为 ToolMessage，供模型继续推理。
 				msgs = append(msgs, schema.ToolMessage(toolOutput, toolCallID, schema.WithToolName(call.Function.Name)))
 			}

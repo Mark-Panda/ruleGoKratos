@@ -12,6 +12,8 @@ description: >
   This skill uses a token-based design system: color, typography, and spacing are derived
   from the document type and flow through every page. The output is print-ready.
   Prefer this skill when appearance matters, not just when any PDF output is needed.
+  TRIGGER when: user asks to create/generate/fill a PDF, needs professional document formatting, or mentions PDF output
+  SKIP when: user needs Word/DOCX documents (use minimax-docx), spreadsheets (use minimax-xlsx), or PowerPoint (use pptx-generator)
 license: MIT
 metadata:
   version: "1.0"

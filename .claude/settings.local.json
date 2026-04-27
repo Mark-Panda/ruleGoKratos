@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(lark-cli task *)"
+      "Bash(lark-cli task *)",
+      "Read(//Users/maxianfei/go/pkg/mod/github.com/cloudwego/eino@v0.8.9/schema/**)",
+      "Read(//Users/maxianfei/learnProject/go/**)",
+      "Read(//Users/maxianfei/**)",
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(go run *)",
+      "Bash(go doc *)"
     ]
   }
 }
