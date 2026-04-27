@@ -1,11 +1,15 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	nethttp "net/http"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz"
+	"sync"
+	"time"
 
 	khttp "github.com/go-kratos/kratos/v2/transport/http"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -111,8 +115,46 @@ func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
 	w.Header().Set("X-Accel-Buffering", "no")
 
 	flusher, _ := w.(nethttp.Flusher)
+	requestCtx, cancel := context.WithCancel(ctx.Request().Context())
+	defer cancel()
+	var writeMu sync.Mutex
+	writeSSE := func(payload string) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		if _, err := io.WriteString(w, payload); err != nil {
+			return err
+		}
+		if flusher != nil {
+			flusher.Flush()
+		}
+		return nil
+	}
+	if err := writeSSE(": connected\n\n"); err != nil {
+		return err
+	}
 
-	gen := s.agent.StreamHarness(ctx, s.harnessRequestFromProto(&req))
+	heartbeatDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := writeSSE(": heartbeat\n\n"); err != nil {
+					cancel()
+					return
+				}
+			case <-requestCtx.Done():
+				return
+			case <-heartbeatDone:
+				return
+			}
+		}
+	}()
+	defer close(heartbeatDone)
+
+	var streamWriteErr error
+	gen := s.agent.StreamHarness(requestCtx, s.harnessRequestFromProto(&req))
 	gen(func(sm *biz.StreamMessage, err error) bool {
 		reply := &v1.ChatStreamReply{}
 		if err != nil {
@@ -127,16 +169,21 @@ func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
 			reply = &v1.ChatStreamReply{Done: true, Error: jerr.Error()}
 			line, _ = json.Marshal(reply)
 		}
-		_, _ = io.WriteString(w, "data: ")
-		_, _ = w.Write(line)
-		_, _ = io.WriteString(w, "\n\n")
-		if flusher != nil {
-			flusher.Flush()
+		if werr := writeSSE("data: " + string(line) + "\n\n"); werr != nil {
+			streamWriteErr = werr
+			cancel()
+			return false
 		}
 		if err != nil {
 			return false
 		}
 		return true
 	})
+	if streamWriteErr != nil {
+		return streamWriteErr
+	}
+	if cerr := requestCtx.Err(); cerr != nil && !errors.Is(cerr, context.Canceled) {
+		return cerr
+	}
 	return nil
 }

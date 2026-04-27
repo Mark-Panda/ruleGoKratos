@@ -71,7 +71,7 @@ npx playwright install chromium
   "SOURCEGRAPH_CONTEXT_GLOBAL": "1",
   "SOURCEGRAPH_STREAM_PATH": "search/stream",
   "SOURCEGRAPH_DISPLAY_LIMIT": 1500,
-  "WORK_DIR": "~/bizCompareWarehouse",
+  "WORK_DIR": "./.sourcegraph-api-tracer-workdir",
   "TRACE_LLM_API_KEY": "",
   "TRACE_LLM_BASE_URL": "https://api.openai.com",
   "TRACE_LLM_CHAT_PATH": "v1/chat/completions",
@@ -184,6 +184,8 @@ DELETE /orders/:id
    - **后端**：定位路由注册、Handler、调用链、文件清单
    - **前端**：定位 UI 入口、所属后台、触发方式、路由与权限速查
 4. 分析结果保存到 `WORK_DIR/docs/<接口slug>_<项目名>.md`
+
+> Docker/受限执行环境说明：`agent` 通常只能在当前 workspace 内工作。若 `WORK_DIR` 配到 `~/...` 这类 workspace 外路径，可能报“工作目录受限”。`trace_api.py` 会自动把 `WORK_DIR` 回退到 workspace 内的 `.sourcegraph-api-tracer-workdir`，建议也在 `config.json` 显式配置为 workspace 内路径以避免歧义。
 
 **Step 5 补充约束 — 搜索关键词传递规则（强制，禁止违反）：**
 

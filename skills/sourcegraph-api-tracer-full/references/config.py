@@ -76,7 +76,8 @@ def load_config() -> Dict[str, Any]:
         v = raw.get(key, default)
         return _str(v) if not isinstance(v, bool) else ("1" if v else "0")
 
-    work_dir = os.path.expanduser(_get("WORK_DIR", "~/bizCompareWarehouse"))
+    default_work_dir = os.path.join(_SCRIPT_DIR, ".sourcegraph-api-tracer-workdir")
+    work_dir = os.path.expanduser(_get("WORK_DIR", default_work_dir))
     raw_docs = _get("TRACE_DOCS_DIR", "")
     docs_dir = os.path.expanduser(raw_docs) if raw_docs else os.path.join(work_dir, "docs")
 

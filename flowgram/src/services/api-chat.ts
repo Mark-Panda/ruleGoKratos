@@ -24,6 +24,31 @@ export interface ChatStreamPayload {
   attachments?: ChatAttachmentPayload[];
 }
 
+function normalizeStreamError(err: unknown): Error {
+  const e = err as { name?: string; message?: string };
+  if (e?.name === 'AbortError') {
+    return err instanceof Error ? err : new Error('请求已取消');
+  }
+  const raw = String(e?.message ?? err ?? '').trim();
+  const lower = raw.toLowerCase();
+  const looksLikeChunkBroken =
+    lower.includes('err_incomplete_chunked_encoding') ||
+    lower.includes('incomplete chunked encoding') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('network error') ||
+    lower.includes('load failed') ||
+    lower.includes('network request failed') ||
+    lower.includes('terminated');
+  if (looksLikeChunkBroken) {
+    return new Error('流式连接中断（网络波动或服务端提前关闭连接），请重试');
+  }
+  if (!raw) {
+    return new Error('流式请求失败，请重试');
+  }
+  return err instanceof Error ? err : new Error(raw);
+}
+
 const MAX_ATTACHMENT_TEXT_RUNES = 120000;
 const MAX_ATTACHMENT_BASE64 = 350000;
 const MAX_MERGED_USER_BYTES = 480000;
@@ -224,84 +249,88 @@ export async function streamChat(
   onChunk: (content: string, done: boolean, error?: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const token =
-    typeof window !== 'undefined'
-      ? window.localStorage.getItem('AUTH_TOKEN') || window.localStorage.getItem('token')
-      : '';
-  const url = `${getApiOrigin()}/api/v1/chat/stream`;
-  const body: Record<string, unknown> = {
-    message: payload.message,
-    model: payload.model ?? '',
-    history: payload.history,
-    llmConfigId: payload.llmConfigId,
-    llmModelEntryId: payload.llmModelEntryId,
-  };
-  if (payload.managedAgentId != null && payload.managedAgentId > 0) {
-    body.managedAgentId = payload.managedAgentId;
-  }
-  if (payload.attachments?.length) {
-    // 始终带 mimeType 字段，避免 protojson/网关对「缺省 type」与 application/octet-stream 处理不一致
-    body.attachments = payload.attachments.map((a) => {
-      const row: Record<string, unknown> = {
-        filename: a.filename,
-        mimeType: a.mimeType ?? '',
-      };
-      if (a.text !== undefined && a.text !== '') row.text = a.text;
-      if (a.contentBase64) row.contentBase64 = a.contentBase64;
-      return row;
-    });
-  }
+  try {
+    const token =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('AUTH_TOKEN') || window.localStorage.getItem('token')
+        : '';
+    const url = `${getApiOrigin()}/api/v1/chat/stream`;
+    const body: Record<string, unknown> = {
+      message: payload.message,
+      model: payload.model ?? '',
+      history: payload.history,
+      llmConfigId: payload.llmConfigId,
+      llmModelEntryId: payload.llmModelEntryId,
+    };
+    if (payload.managedAgentId != null && payload.managedAgentId > 0) {
+      body.managedAgentId = payload.managedAgentId;
+    }
+    if (payload.attachments?.length) {
+      // 始终带 mimeType 字段，避免 protojson/网关对「缺省 type」与 application/octet-stream 处理不一致
+      body.attachments = payload.attachments.map((a) => {
+        const row: Record<string, unknown> = {
+          filename: a.filename,
+          mimeType: a.mimeType ?? '',
+        };
+        if (a.text !== undefined && a.text !== '') row.text = a.text;
+        if (a.contentBase64) row.contentBase64 = a.contentBase64;
+        return row;
+      });
+    }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Accept: 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-    signal,
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || `HTTP ${res.status}`);
-  }
-  const reader = res.body?.getReader();
-  if (!reader) {
-    throw new Error('响应不支持流式读取');
-  }
-  const decoder = new TextDecoder();
-  let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split('\n\n');
-    buffer = parts.pop() ?? '';
-    for (const block of parts) {
-      const line = block.trim();
-      if (!line.startsWith('data:')) continue;
-      const jsonStr = line.slice(5).trim();
-      if (!jsonStr) continue;
-      try {
-        const obj = JSON.parse(jsonStr) as { content?: string; done?: boolean; error?: string };
-        onChunk(obj.content ?? '', !!obj.done, obj.error);
-      } catch {
-        /* ignore malformed chunk */
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t || `HTTP ${res.status}`);
+    }
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error('响应不支持流式读取');
+    }
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() ?? '';
+      for (const block of parts) {
+        const line = block.trim();
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr) continue;
+        try {
+          const obj = JSON.parse(jsonStr) as { content?: string; done?: boolean; error?: string };
+          onChunk(obj.content ?? '', !!obj.done, obj.error);
+        } catch {
+          /* ignore malformed chunk */
+        }
       }
     }
-  }
-  if (buffer.trim()) {
-    const line = buffer.trim();
-    if (line.startsWith('data:')) {
-      const jsonStr = line.slice(5).trim();
-      try {
-        const obj = JSON.parse(jsonStr) as { content?: string; done?: boolean; error?: string };
-        onChunk(obj.content ?? '', !!obj.done, obj.error);
-      } catch {
-        /* ignore */
+    if (buffer.trim()) {
+      const line = buffer.trim();
+      if (line.startsWith('data:')) {
+        const jsonStr = line.slice(5).trim();
+        try {
+          const obj = JSON.parse(jsonStr) as { content?: string; done?: boolean; error?: string };
+          onChunk(obj.content ?? '', !!obj.done, obj.error);
+        } catch {
+          /* ignore */
+        }
       }
     }
+  } catch (err) {
+    throw normalizeStreamError(err);
   }
 }

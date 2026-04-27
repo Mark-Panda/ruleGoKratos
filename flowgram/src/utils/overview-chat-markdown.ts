@@ -1,6 +1,7 @@
 import hljs from 'highlight.js/lib/common';
 import { Marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
+import type { IOptions } from 'sanitize-html';
 
 function escapeHtml(raw: string): string {
   return raw
@@ -63,7 +64,7 @@ const allowedTags = Array.from(
   ])
 );
 
-const allowedAttributes: sanitizeHtml.IOptions['allowedAttributes'] = {
+const allowedAttributes: IOptions['allowedAttributes'] = {
   ...sanitizeHtml.defaults.allowedAttributes,
   a: ['href', 'name', 'target', 'rel'],
   img: ['src', 'alt', 'title'],

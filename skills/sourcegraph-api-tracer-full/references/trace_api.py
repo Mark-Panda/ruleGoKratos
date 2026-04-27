@@ -119,6 +119,43 @@ def _detect_default_branch(service_path: Path) -> Optional[str]:
     return branch or None
 
 
+def _is_subpath(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _find_workspace_root(start: Path) -> Optional[Path]:
+    """
+    从 start 向上查找 git workspace 根目录（含 .git 的目录）。
+    找不到则返回 None。
+    """
+    cur = start.resolve()
+    for p in [cur, *cur.parents]:
+        if (p / ".git").exists():
+            return p
+    return None
+
+
+def resolve_work_dir(configured_work_dir: str) -> Path:
+    """
+    解析可用于 Cursor agent 的工作目录。
+    在 Docker/受限环境中，若配置目录不在当前 workspace 内，则回退到 workspace 内部目录。
+    """
+    configured = Path(configured_work_dir).expanduser().resolve()
+    workspace_root = _find_workspace_root(SCRIPT_DIR)
+    if workspace_root and not _is_subpath(configured, workspace_root):
+        fallback = (workspace_root / ".sourcegraph-api-tracer-workdir").resolve()
+        log_warning(
+            "检测到 WORK_DIR 位于当前 workspace 外部，Cursor agent 可能报“工作目录受限”；"
+            f"已自动回退到: {fallback}"
+        )
+        return fallback
+    return configured
+
+
 def ensure_repo(work_dir: str, local_repo_dir: str, git_url: str, display_name: str) -> Optional[Path]:
     """若目录存在则校验 origin 并更新；否则 clone。成功时返回仓库路径。"""
     work = Path(work_dir)
@@ -184,18 +221,41 @@ def _api_slug(url: str, method: str) -> str:
     return (s or "api")[:80] + "_" + (method or "get").upper()
 
 
-def copy_generated_doc(service_path: Path, output_md: Path, expected_name: str) -> bool:
+def copy_generated_doc(service_path: Path, output_md: Path, expected_name: str,
+                       fallback_text: str = "") -> bool:
+    if output_md.is_file() and output_md.stat().st_size > 0:
+        log_success(f"文档已存在，跳过移动: {output_md}")
+        return True
+
     for src in [service_path / expected_name, service_path / "docs" / expected_name]:
         if src.is_file():
             try:
+                if src.resolve() == output_md.resolve():
+                    log_success(f"文档已在目标路径: {output_md}")
+                    return True
+                output_md.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(src), str(output_md))
                 log_success(f"已移动到: {output_md}")
                 return True
             except OSError as e:
                 log_error(f"移动失败: {e}")
                 return False
-    log_warning(f"未在仓库内找到生成的文件（{expected_name}），请手动移动")
-    return False
+
+    if fallback_text.strip():
+        try:
+            output_md.parent.mkdir(parents=True, exist_ok=True)
+            output_md.write_text(fallback_text.strip() + "\n", encoding="utf-8")
+            log_warning(f"未找到仓库内文档，已使用 agent stdout 兜底写入: {output_md}")
+            return True
+        except OSError as e:
+            log_error(f"兜底写入失败: {e}")
+            return False
+
+    if output_md.is_file():
+        log_warning(f"目标文件已存在但内容为空: {output_md}")
+    else:
+        log_warning(f"未在仓库内找到生成的文件（{expected_name}），且无 stdout 可兜底")
+    return output_md.is_file()
 
 
 def _build_agent_prompt(url: str, method: str, project_type: str,
@@ -245,10 +305,10 @@ def _build_agent_prompt(url: str, method: str, project_type: str,
 def run_agent_analysis(service_path: Path, project_name: str, url: str, method: str,
                        project_type: str, timeout_s: int, max_retries: int,
                        output_md_path: Optional[Path] = None,
-                       agent_model: str = "") -> bool:
+                       agent_model: str = "") -> tuple[bool, str]:
     """在仓库目录下执行 agent 分析，带超时与重试。"""
     if not service_path.is_dir():
-        return False
+        return False, ""
     prompt = _build_agent_prompt(url, method, project_type, output_md_path)
     agent_args = ["agent", "--print", "--trust"]
     # api_key = os.environ.get("CURSOR_API_KEY", "").strip()
@@ -257,19 +317,31 @@ def run_agent_analysis(service_path: Path, project_name: str, url: str, method: 
     if agent_model:
         agent_args.extend(["--model", agent_model])
     agent_args.append(prompt)
+    fallback_text = ""
 
     for attempt in range(max_retries + 1):
         if attempt > 0:
             log_warning(f"重试 {attempt}/{max_retries}...")
         try:
-            r = subprocess.run(agent_args, cwd=str(service_path), timeout=timeout_s)
+            r = subprocess.run(
+                agent_args,
+                cwd=str(service_path),
+                timeout=timeout_s,
+                capture_output=True,
+                text=True,
+            )
+            if r.stdout:
+                print(r.stdout, end="", flush=True)
+                fallback_text = r.stdout
+            if r.stderr:
+                print(r.stderr, end="", flush=True, file=sys.stderr)
             if r.returncode == 0:
                 log_success(f"分析完成: {project_name}")
-                return True
+                return True, fallback_text
             log_error(f"agent 退出码: {r.returncode}")
         except subprocess.TimeoutExpired:
             log_error(f"agent 超时（{timeout_s}s）")
-    return False
+    return False, fallback_text
 
 
 def main() -> int:
@@ -360,10 +432,16 @@ def main() -> int:
         return 0
 
     # ----- 4) 每个仓库：clone/更新 + agent 分析 -----
-    work_dir = cfg["WORK_DIR"]
+    work_dir_path = resolve_work_dir(cfg["WORK_DIR"])
+    work_dir = str(work_dir_path)
     agent_timeout = cfg["AGENT_TIMEOUT"]
     max_retries = cfg["MAX_RETRIES"]
-    docs_dir = Path(cfg.get("TRACE_DOCS_DIR", str(Path(work_dir) / "docs")))
+    trace_docs_dir = (cfg.get("TRACE_DOCS_DIR") or "").strip()
+    docs_dir = Path(trace_docs_dir) if trace_docs_dir else (work_dir_path / "docs")
+    workspace_root = _find_workspace_root(SCRIPT_DIR)
+    if workspace_root and not _is_subpath(docs_dir.expanduser().resolve(), workspace_root):
+        docs_dir = work_dir_path / "docs"
+        log_warning(f"检测到 TRACE_DOCS_DIR 位于 workspace 外部，已改为: {docs_dir}")
     docs_dir.mkdir(parents=True, exist_ok=True)
     log_info(f"生成文档将保存到: {docs_dir.resolve()}")
     agent_model = (cfg.get("AGENT_MODEL") or "").strip()
@@ -402,14 +480,14 @@ def main() -> int:
             continue
 
         log_info("启动 agent 分析...")
-        success = run_agent_analysis(
+        success, fallback_text = run_agent_analysis(
             service_path, project_name, url, method, ptype,
             agent_timeout, max_retries,
             output_md_path=output_md,
             agent_model=agent_model,
         )
         if success:
-            copy_generated_doc(service_path, output_md, output_md.name)
+            copy_generated_doc(service_path, output_md, output_md.name, fallback_text=fallback_text)
         else:
             log_error(f"{project_name} 分析失败")
         print(flush=True)

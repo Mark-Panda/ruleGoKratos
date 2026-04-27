@@ -452,7 +452,7 @@ export const ScheduledTaskSection: React.FC = () => {
           filter
           rules={[{ required: true, message: '请选择绑定规则链' }]}
           optionList={ruleChainOptions}
-          onChange={(val: string) => setSelectedRuleChainId(val)}
+          onChange={(val) => setSelectedRuleChainId(String(val ?? ''))}
         />
       );
     }
@@ -462,7 +462,7 @@ export const ScheduledTaskSection: React.FC = () => {
         label="绑定规则链"
         placeholder="请输入 ruleChainId"
         rules={[{ required: true, message: '请输入绑定规则链' }]}
-        onChange={(val: string) => setSelectedRuleChainId(val)}
+        onChange={(val) => setSelectedRuleChainId(String(val ?? ''))}
       />
     );
   };
