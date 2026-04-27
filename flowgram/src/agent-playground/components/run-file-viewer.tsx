@@ -141,7 +141,7 @@ export const RunFileViewer: React.FC<RunFileViewerProps> = ({ runId, filePath, f
       </div>
 
       {/* 内容区 */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         {loading && (
           <div
             style={{
@@ -164,17 +164,19 @@ export const RunFileViewer: React.FC<RunFileViewerProps> = ({ runId, filePath, f
             </Typography.Text>
           </div>
         ) : isPreview && (ext === 'html' || ext === 'htm') ? (
-          <iframe
-            srcDoc={content}
-            style={{
-              width: '100%',
-              height: '100%',
-              border: 'none',
-              background: '#fff',
-            }}
-            title="HTML Preview"
-            sandbox="allow-scripts allow-same-origin"
-          />
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <iframe
+              srcDoc={content}
+              style={{
+                width: '100%',
+                height: '100%',
+                border: 'none',
+                background: '#fff',
+              }}
+              title="HTML Preview"
+              sandbox="allow-scripts allow-same-origin"
+            />
+          </div>
         ) : (
           <pre
             style={{
