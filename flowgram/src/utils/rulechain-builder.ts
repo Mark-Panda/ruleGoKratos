@@ -2288,6 +2288,122 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           };
           break;
         }
+        case 'x/taskBoard': {
+          const cfg = n.configuration ?? {};
+          base.data = {
+            title: n.name ?? 'TaskBoard',
+            positionType: 'middle',
+            inputsValues: {
+              action: { type: 'constant', content: String(cfg.action ?? 'create') },
+              name: { type: 'template', content: String(cfg.name ?? '') },
+              priority: { type: 'constant', content: Number(cfg.priority ?? 0) },
+              taskType: { type: 'constant', content: Number(cfg.taskType ?? 0) },
+              handlerUserId: { type: 'template', content: String(cfg.handlerUserId ?? '') },
+              description: { type: 'template', content: String(cfg.description ?? '') },
+              taskId: { type: 'constant', content: Number(cfg.taskId ?? 0) },
+              status: { type: 'constant', content: Number(cfg.status ?? 0) },
+            },
+            inputs: {
+              type: 'object',
+              required: ['action'],
+              properties: {
+                action: {
+                  type: 'string',
+                  enum: ['create', 'get', 'update', 'delete'],
+                  default: { type: 'constant', content: 'create' } as any,
+                  extra: {
+                    label: '操作类型',
+                    formComponent: 'enum-select',
+                    options: [
+                      { label: '创建任务', value: 'create' },
+                      { label: '获取任务', value: 'get' },
+                      { label: '更新任务', value: 'update' },
+                      { label: '删除任务', value: 'delete' },
+                    ],
+                    description:
+                      'create: 创建任务 | get: 获取任务 | update: 更新任务 | delete: 删除任务',
+                  },
+                },
+                name: {
+                  type: 'string',
+                  extra: { label: '任务名称', formComponent: 'prompt-editor' },
+                },
+                priority: { type: 'number', extra: { label: '优先级' } },
+                taskType: { type: 'number', extra: { label: '任务类型' } },
+                handlerUserId: { type: 'string', extra: { label: '处理人用户ID' } },
+                description: { type: 'string', extra: { label: '任务描述' } },
+                taskId: { type: 'number', extra: { label: '任务ID' } },
+                status: { type: 'number', extra: { label: '状态' } },
+              },
+            },
+            outputs: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                task: { type: 'object' },
+                message: { type: 'string' },
+              },
+            },
+          };
+          break;
+        }
+        case 'x/serviceManagement': {
+          const cfg = n.configuration ?? {};
+          base.data = {
+            title: n.name ?? 'ServiceManagement',
+            positionType: 'middle',
+            inputsValues: {
+              action: { type: 'constant', content: String(cfg.action ?? 'create') },
+              name: { type: 'template', content: String(cfg.name ?? '') },
+              status: { type: 'constant', content: Number(cfg.status ?? 0) },
+              volcLogServiceId: { type: 'template', content: String(cfg.volcLogServiceId ?? '') },
+              gitRepoUrl: { type: 'template', content: String(cfg.gitRepoUrl ?? '') },
+              description: { type: 'template', content: String(cfg.description ?? '') },
+              serviceId: { type: 'constant', content: Number(cfg.serviceId ?? 0) },
+            },
+            inputs: {
+              type: 'object',
+              required: ['action'],
+              properties: {
+                action: {
+                  type: 'string',
+                  enum: ['create', 'get', 'update', 'delete'],
+                  default: { type: 'constant', content: 'create' } as any,
+                  extra: {
+                    label: '操作类型',
+                    formComponent: 'enum-select',
+                    options: [
+                      { label: '创建服务', value: 'create' },
+                      { label: '获取服务', value: 'get' },
+                      { label: '更新服务', value: 'update' },
+                      { label: '删除服务', value: 'delete' },
+                    ],
+                    description:
+                      'create: 创建服务 | get: 获取服务 | update: 更新服务 | delete: 删除服务',
+                  },
+                },
+                name: {
+                  type: 'string',
+                  extra: { label: '服务名称', formComponent: 'prompt-editor' },
+                },
+                status: { type: 'number', extra: { label: '服务状态' } },
+                volcLogServiceId: { type: 'string', extra: { label: '火山引擎日志服务ID' } },
+                gitRepoUrl: { type: 'string', extra: { label: 'Git仓库URL' } },
+                description: { type: 'string', extra: { label: '服务描述' } },
+                serviceId: { type: 'number', extra: { label: '服务ID' } },
+              },
+            },
+            outputs: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                service: { type: 'object' },
+                message: { type: 'string' },
+              },
+            },
+          };
+          break;
+        }
         default: {
           const cfg = n.configuration ?? {};
           const inputsValues = Object.keys(cfg).reduce((acc: any, k) => {
