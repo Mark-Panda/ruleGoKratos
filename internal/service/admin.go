@@ -820,6 +820,16 @@ func toLlmModelEntryProto(it dao.LLMModelEntry) *v1.LlmModelEntryItem {
 	}
 }
 
+func maskAPIKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:3] + "****" + key[len(key)-4:]
+}
+
 func toLlmConfigProto(c dao.LLMConfig, entries []dao.LLMModelEntry) *v1.LlmConfigItem {
 	createdAt := ""
 	updatedAt := ""
@@ -839,7 +849,7 @@ func toLlmConfigProto(c dao.LLMConfig, entries []dao.LLMModelEntry) *v1.LlmConfi
 		Provider:    c.Provider,
 		BaseUrl:     c.BaseURL,
 		Enabled:     c.Enabled,
-		ApiKey:      c.APIKey,
+		ApiKey:      maskAPIKey(c.APIKey),
 		Description: c.Description,
 		Models:      models,
 		CreatedAt:   createdAt,

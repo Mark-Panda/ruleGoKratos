@@ -371,7 +371,24 @@ metadata.attachments:
   </>
 );
 
+/** Agent 节点真正需要校验必填的字段 */
+const AGENT_REQUIRED_KEYS = new Set(['llmConfigId', 'llmModelEntryId']);
+
 export const agentHarnessFormMeta: FormMeta<FlowNodeJSON> = {
   ...defaultFormMeta,
   render: renderForm,
+  validate: {
+    title: ({ value }) => (value ? undefined : 'Title is required'),
+    'inputsValues.*': ({ value, name }) => {
+      const valuePropertyKey = name.replace(/^inputsValues\./, '');
+      if (!AGENT_REQUIRED_KEYS.has(valuePropertyKey)) return undefined;
+      // number 类型的 ID 字段：值为 0 视为未填写
+      const content = value?.content;
+      const isEmpty = content == null || content === '' || content === 0;
+      if (isEmpty) {
+        return `${valuePropertyKey} is required`;
+      }
+      return undefined;
+    },
+  },
 };

@@ -1190,8 +1190,8 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
                 },
                 {
                   title: 'API Key',
-                  width: 90,
-                  render: (_, r) => (r.apiKey ? '已配置' : '未配置'),
+                  width: 120,
+                  render: (_, r) => r.apiKey || '未配置',
                 },
                 {
                   title: '状态',
@@ -1259,7 +1259,9 @@ export const AgentSection: React.FC<{ view?: 'skills' | 'mcps' | 'models' }> = (
             value={llmConfigForm.apiKey}
             onChange={(v) => setLlmConfigForm({ ...llmConfigForm, apiKey: String(v) })}
             placeholder={
-              llmConfigEditing ? 'API Key（留空则不修改已保存的密钥）' : 'API Key（可选）'
+              llmConfigEditing
+                ? `当前: ${llmConfigEditing.apiKey || '未配置'}，留空则不修改`
+                : 'API Key（可选）'
             }
           />
           {llmConfigEditing && (

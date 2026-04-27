@@ -64,9 +64,6 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           required: [
             'llmConfigId',
             'llmModelEntryId',
-            'model',
-            'userPrompt',
-            'workspaceId',
             'systemPrompt',
             'enableSkillTool',
             'enableWorkspaceTools',
