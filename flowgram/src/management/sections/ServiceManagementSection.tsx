@@ -73,7 +73,7 @@ export const ServiceManagementSection: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchServices();
+    void fetchServices(1, pageSize);
   }, [filters]);
 
   // 打开新增/编辑弹窗（initValues + key 重挂载，保证编辑回显）
@@ -166,7 +166,7 @@ export const ServiceManagementSection: React.FC = () => {
         Toast.success('更新成功');
       }
       closeModal();
-      fetchServices(currentPage);
+      void fetchServices(currentPage, pageSize);
     } catch (e) {
       Toast.error(modalType === 'create' ? '创建失败' : '更新失败');
       console.error(e);
@@ -180,7 +180,10 @@ export const ServiceManagementSection: React.FC = () => {
     try {
       await deleteService(id);
       Toast.success('删除成功');
-      fetchServices(currentPage === 1 ? 1 : services.length === 1 ? currentPage - 1 : currentPage);
+      void fetchServices(
+        currentPage === 1 ? 1 : services.length === 1 ? currentPage - 1 : currentPage,
+        pageSize
+      );
     } catch (e) {
       Toast.error('删除失败');
       console.error(e);
@@ -281,8 +284,17 @@ export const ServiceManagementSection: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '24px', width: '100%' }}>
-      <Card>
+    <div
+      style={{
+        padding: '24px',
+        width: '100%',
+        boxSizing: 'border-box',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'auto',
+      }}
+    >
+      <Card style={{ minHeight: '100%' }}>
         <div
           style={{
             display: 'flex',
@@ -332,9 +344,13 @@ export const ServiceManagementSection: React.FC = () => {
             total,
             showSizeChanger: true,
             pageSizeOpts: [10, 20, 50, 100],
-            onPageChange: (page: number, size = pageSize) => {
+            onPageChange: (page: number) => {
+              void fetchServices(page, pageSize);
+            },
+            onPageSizeChange: (size: number) => {
               setPageSize(size);
-              void fetchServices(page, size);
+              setCurrentPage(1);
+              void fetchServices(1, size);
             },
           }}
         />

@@ -117,13 +117,22 @@ func (c *JsonExtractComponent) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 			payload = buildRepairReport(result)
 		}
 		if payload != nil {
-			jsonBytes, _ := json.Marshal(payload)
+			jsonBytes, err := json.Marshal(payload)
+			if err != nil {
+				msg.DataType = types.TEXT
+				msg.SetData("JSON提取结果序列化失败")
+				ctx.TellFailure(msg, err)
+				return
+			}
+			msg.DataType = types.JSON
 			msg.SetData(string(jsonBytes))
 		} else {
+			msg.DataType = types.JSON
 			msg.SetData(result.Result)
 		}
 		ctx.TellSuccess(msg)
 	} else {
+		msg.DataType = types.TEXT
 		msg.SetData(result.Error)
 		ctx.TellFailure(msg, errors.New(result.Error))
 	}

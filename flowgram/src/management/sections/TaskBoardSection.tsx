@@ -410,8 +410,17 @@ export const TaskBoardSection: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '24px', width: '100%', boxSizing: 'border-box' }}>
-      <Card>
+    <div
+      style={{
+        padding: '24px',
+        width: '100%',
+        boxSizing: 'border-box',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'auto',
+      }}
+    >
+      <Card style={{ minHeight: '100%' }}>
         <div
           style={{
             display: 'flex',
@@ -516,9 +525,13 @@ export const TaskBoardSection: React.FC = () => {
               total,
               showSizeChanger: true,
               pageSizeOpts: [10, 20, 50, 100],
-              onPageChange: (page: number, size = pageSize) => {
+              onPageChange: (page: number) => {
+                void fetchTasks(page, pageSize);
+              },
+              onPageSizeChange: (size: number) => {
                 setPageSize(size);
-                void fetchTasks(page, size);
+                setCurrentPage(1);
+                void fetchTasks(1, size);
               },
             }}
           />
