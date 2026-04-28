@@ -125,6 +125,16 @@ func (s *AdminService) ListSkillsByScope(_ context.Context, scope string) (*v1.L
 	return s.listSkillsFromRoot(root), nil
 }
 
+// isSkillDirectoryListedExt 与 flowgram skill-packages SKILL_FILE_EXTS 对齐，用于管理端列举可展示/可编辑的技能文件。
+func isSkillDirectoryListedExt(ext string) bool {
+	switch strings.ToLower(ext) {
+	case ".md", ".txt", ".yaml", ".yml", ".json", ".py", ".js", ".sh":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *AdminService) listSkillsFromRoot(root string) *v1.ListSkillsReply {
 	items := make([]*v1.SkillItem, 0, 64)
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -135,7 +145,8 @@ func (s *AdminService) listSkillsFromRoot(root string) *v1.ListSkillsReply {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(path))
-		if ext != ".md" && ext != ".txt" && ext != ".yaml" && ext != ".yml" && ext != ".json" {
+		// 与前端 skill-packages SKILL_FILE_EXTS 一致，便于 SKILL 文件树展示脚本等
+		if !isSkillDirectoryListedExt(ext) {
 			return nil
 		}
 		info, statErr := os.Stat(path)

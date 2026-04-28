@@ -20,7 +20,6 @@ import {
   RobotOne,
   SettingConfig,
   Terminal,
-  ViewGridCard,
 } from '@icon-park/react';
 
 import { WorkspacesSection } from './sections/WorkspacesSection';
@@ -229,7 +228,7 @@ export const AdminPanel: React.FC = () => {
       case 'task-board':
         return '任务看板';
       case 'service-management':
-        return '服务管理';
+        return '服务列表';
       case 'scheduled-tasks':
         return '定时任务';
       default:
@@ -348,26 +347,11 @@ export const AdminPanel: React.FC = () => {
               {
                 text: '工作流引擎',
                 itemKey: 'engine',
+                // 组件管理（已安装组件 / 组件规则）已藏起入口，路由与 renderPage 仍保留，可通过 URL 访问
                 items: [
                   { itemKey: 'workflow', text: '流程管理', icon: <ConnectionPoint {...subNavIconProps} /> },
                   { itemKey: 'workflow-run', text: '工作流执行', icon: <PlayCycle {...subNavIconProps} /> },
                   { itemKey: 'workflow-logs', text: '执行日志', icon: <Histogram {...subNavIconProps} /> },
-                  {
-                    text: '组件管理',
-                    itemKey: 'component',
-                    items: [
-                      {
-                        itemKey: 'component-installed',
-                        text: '已安装组件',
-                        icon: <ViewGridCard {...subNavIconProps} />,
-                      },
-                      {
-                        itemKey: 'component-rules',
-                        text: '组件规则',
-                        icon: <SettingConfig {...subNavIconProps} />,
-                      },
-                    ],
-                  },
                 ],
               },
               {
@@ -377,7 +361,7 @@ export const AdminPanel: React.FC = () => {
                   { itemKey: 'task-board', text: '任务看板', icon: <ListView {...subNavIconProps} /> },
                   {
                     itemKey: 'service-management',
-                    text: '服务管理',
+                    text: '服务列表',
                     icon: <SettingConfig {...subNavIconProps} />,
                   },
                 ],
@@ -403,7 +387,7 @@ export const AdminPanel: React.FC = () => {
               },
             ]}
             selectedKeys={[activeMenu]}
-            defaultOpenKeys={['engine', 'component', 'agent', 'admin-cli', 'business']}
+            defaultOpenKeys={['engine', 'agent', 'admin-cli', 'business']}
             onSelect={(data) => {
               const key = data.itemKey as MenuKey;
               if (

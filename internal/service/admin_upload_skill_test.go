@@ -158,6 +158,32 @@ func TestAdminServiceListSkillsByScope(t *testing.T) {
 	}
 }
 
+func TestAdminServiceListSkillsIncludesPyJsSh(t *testing.T) {
+	root := t.TempDir()
+	svc := &AdminService{skillRoot: root}
+	if err := os.MkdirAll(filepath.Join(root, "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	for _, p := range []struct {
+		rel, body string
+	}{
+		{"pkg/SKILL.md", "# x"},
+		{"pkg/helper.py", "x = 1"},
+		{"pkg/run.js", "export const a = 1"},
+	} {
+		if err := os.WriteFile(filepath.Join(root, p.rel), []byte(p.body), 0o644); err != nil {
+			t.Fatalf("write %s: %v", p.rel, err)
+		}
+	}
+	sys, err := svc.ListSkillsByScope(context.Background(), "system")
+	if err != nil {
+		t.Fatalf("ListSkillsByScope: %v", err)
+	}
+	if len(sys.GetItems()) != 3 {
+		t.Fatalf("want 3 items (md, py, js), got %#v", sys.GetItems())
+	}
+}
+
 func TestAdminServiceUploadSkillByScopeRejectsNonSystemScope(t *testing.T) {
 	svc := &AdminService{
 		skillRoot:         t.TempDir(),

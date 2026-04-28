@@ -303,7 +303,7 @@ export const ServiceManagementSection: React.FC = () => {
             marginBottom: '24px',
           }}
         >
-          <Typography.Title heading={3}>服务管理</Typography.Title>
+          <Typography.Title heading={3}>服务列表</Typography.Title>
           <Button icon={<IconPlus />} type="primary" onClick={() => openModal('create')}>
             新增服务
           </Button>
