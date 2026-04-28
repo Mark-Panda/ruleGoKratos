@@ -1948,6 +1948,18 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     type: 'constant',
                     content: String((cfg as any).extractPattern ?? 'auto'),
                   },
+                  parseMode: {
+                    type: 'constant',
+                    content: String((cfg as any).parseMode ?? 'auto'),
+                  },
+                  schemaPaths: {
+                    type: 'constant',
+                    content: String((cfg as any).schemaPaths ?? ''),
+                  },
+                  emitReport: {
+                    type: 'constant',
+                    content: Boolean((cfg as any).emitReport ?? false),
+                  },
                 },
             inputs: {
               type: 'object',
@@ -1967,6 +1979,31 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     label: '提取模式',
                     description:
                       'auto: 自动检测 JSON 代码块 | json: 仅提取标准 JSON | md: 仅提取 markdown 代码块',
+                  },
+                },
+                parseMode: {
+                  type: 'string',
+                  enum: ['strict', 'auto', 'aggressive'],
+                  extra: {
+                    label: '解析强度',
+                    description:
+                      'strict: 仅轻量解析 | auto: 默认修复与补全 | aggressive: 激进修复（NaN/Infinity/分号等）',
+                  },
+                },
+                schemaPaths: {
+                  type: 'string',
+                  extra: {
+                    label: 'Schema 路径约束',
+                    description:
+                      '逗号/分号/换行分隔，如 data[].name,data[].spaceName,data[].manager',
+                  },
+                },
+                emitReport: {
+                  type: 'boolean',
+                  extra: {
+                    label: '输出修复报告',
+                    description:
+                      '开启后输出 source_strategy、repair_strategies、score、schema_missing 等信息',
                   },
                 },
               },

@@ -409,6 +409,9 @@ export const jsonExtractMappingSpec: NodeMappingSpec = {
     return {
       source: pick(iv.source) ?? '',
       extractPattern: pick(iv.extractPattern) ?? 'auto',
+      parseMode: pick(iv.parseMode) ?? 'auto',
+      schemaPaths: pick(iv.schemaPaths) ?? '',
+      emitReport: pick(iv.emitReport) ?? false,
     } as Record<string, unknown>;
   },
   fields: [
@@ -418,6 +421,24 @@ export const jsonExtractMappingSpec: NodeMappingSpec = {
       dslKey: 'extractPattern',
       valueType: 'constant',
       defaultValue: 'auto',
+    },
+    {
+      inputKey: 'parseMode',
+      dslKey: 'parseMode',
+      valueType: 'constant',
+      defaultValue: 'auto',
+    },
+    {
+      inputKey: 'schemaPaths',
+      dslKey: 'schemaPaths',
+      valueType: 'constant',
+      defaultValue: '',
+    },
+    {
+      inputKey: 'emitReport',
+      dslKey: 'emitReport',
+      valueType: 'boolean',
+      defaultValue: false,
     },
   ],
 };
