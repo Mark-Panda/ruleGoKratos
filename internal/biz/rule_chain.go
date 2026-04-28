@@ -52,6 +52,21 @@ type RuleChainUsecase struct {
 
 const ruleChainSkillCreatorName = "skill-creator-0.1.0"
 
+// userIDContextKey 和 projectPathContextKey 与 auth middleware 保持一致
+const (
+	userIDContextKey      = "x-user-id"
+	projectPathContextKey = "x-project-path"
+)
+
+func extractUserIDFromContext(ctx context.Context) string {
+	if v := ctx.Value(userIDContextKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 func NewRuleChainUsecase(ruleChainRepo RuleChainRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config, skillAgent RuleChainSkillAgentRunner, config *conf.Bootstrap) *RuleChainUsecase {
 	return &RuleChainUsecase{
 		ruleChainRepo: ruleChainRepo,
@@ -283,7 +298,7 @@ func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.Ge
 			SkillAllowlist: []string{ruleChainSkillCreatorName},
 		},
 		ManagedAgentID: in.GetManagedAgentId(),
-		UserID:        "rule-chain",
+		UserID:        extractUserIDFromContext(ctx),
 		ProjectPath:   dirName,
 	})
 	if err != nil {

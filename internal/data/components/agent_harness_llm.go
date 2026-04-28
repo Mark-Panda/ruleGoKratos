@@ -163,8 +163,8 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		ManagedAgentID:  x.Config.ManagedAgentID,
 		LlmConfigID:     x.Config.LlmConfigID,
 		LlmModelEntryID: x.Config.LlmModelEntryID,
-		UserID:          "agent-harness-llm",
-		ProjectPath:     "",
+		UserID:          extractUserIDFromMsg(msg),
+		ProjectPath:     extractProjectPathFromMsg(msg),
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)
@@ -178,6 +178,20 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 }
 
 func (x *AgentHarnessLLM) Destroy() {}
+
+func extractUserIDFromMsg(msg types.RuleMsg) string {
+	if msg.Metadata == nil {
+		return ""
+	}
+	return msg.Metadata.GetValue("x-user-id")
+}
+
+func extractProjectPathFromMsg(msg types.RuleMsg) string {
+	if msg.Metadata == nil {
+		return ""
+	}
+	return msg.Metadata.GetValue("x-project-path")
+}
 
 type harnessAttachmentPayload struct {
 	Filename      string `json:"filename"`
