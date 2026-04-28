@@ -384,8 +384,8 @@ func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.Ge
 			SkillAllowlist: []string{ruleChainSkillCreatorName},
 		},
 		ManagedAgentID: in.GetManagedAgentId(),
-		UserID:        extractUserIDFromContext(ctx),
-		ProjectPath:   dirName,
+		UserID:         extractUserIDFromContext(ctx),
+		ProjectPath:    dirName,
 	})
 	if err != nil {
 		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, err.Error())
@@ -559,12 +559,13 @@ func (s *RuleChainUsecase) persistRuleChainSkillFailure(ctx context.Context, rul
 // RuleChainDBToRuleChain 将数据库中的规则链转换为RuleChain
 func (s *RuleChainUsecase) RuleChainDBToRuleChain(ruleChainDB *entity.RuleChain) (*types.RuleChain, error) {
 	var ruleChain types.RuleChain
+	displayDisabled := s.resolveRuleChainDisplayDisabled(ruleChainDB.RuleChainID, ruleChainDB.Disabled)
 	ruleChainInfo := types.RuleChainBaseInfo{
 		ID:        ruleChainDB.RuleChainID,
 		Name:      ruleChainDB.Name,
 		DebugMode: ruleChainDB.DebugMode,
 		Root:      ruleChainDB.Root,
-		Disabled:  ruleChainDB.Disabled,
+		Disabled:  displayDisabled,
 	}
 	if ruleChainDB.AdditionalInfo != nil {
 		additionalInfo := map[string]interface{}{}
@@ -583,6 +584,20 @@ func (s *RuleChainUsecase) RuleChainDBToRuleChain(ruleChainDB *entity.RuleChain)
 	}
 	ruleChain.RuleChain = ruleChainInfo
 	return &ruleChain, nil
+}
+
+// resolveRuleChainDisplayDisabled 返回用于前端展示的部署状态：
+// - 数据库标记 disabled=true 时始终视为下线；
+// - 数据库标记启用时，仍需确认引擎已加载，否则也视为下线（避免“假已部署”）。
+func (s *RuleChainUsecase) resolveRuleChainDisplayDisabled(chainID string, persistedDisabled bool) bool {
+	if persistedDisabled {
+		return true
+	}
+	if s == nil || s.ruleEngine == nil {
+		return true
+	}
+	_, loaded := s.ruleEngine.Get(chainID)
+	return !loaded
 }
 
 func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteRuleChainReq) (*v1.ExecuteRuleChainReply, error) {
@@ -1074,7 +1089,8 @@ func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.U
 			UserName:    "admin",
 			Name:        in.Name,
 			Root:        in.Root,
-			Disabled:    in.Disabled,
+			// 新建规则链默认下线，避免“未实际部署却显示已部署”。
+			Disabled:    true,
 			DebugMode:   in.DebugMode,
 			RuleVersion: 0,
 			CreatedAt:   &t,
@@ -1091,9 +1107,10 @@ func (s *RuleChainUsecase) UpdateRuleChainBaseInfo(ctx context.Context, in *v1.U
 		return nil, err
 	}
 	updateData := map[string]interface{}{
-		"name":       in.Name,
-		"root":       in.Root,
-		"disabled":   in.Disabled,
+		"name": in.Name,
+		"root": in.Root,
+		// 部署状态仅通过 DeployRuleChain 维护，基础信息保存不应隐式改变部署状态。
+		"disabled":   ruleChainInfo.Disabled,
 		"debug_mode": in.DebugMode,
 	}
 	// Update fields

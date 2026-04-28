@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { createElement } from 'react';
+
 import {
   ASTFactory,
   definePluginCreator,
@@ -11,8 +13,7 @@ import {
   WorkflowDocument,
 } from '@flowgram.ai/free-layout-editor';
 import { IJsonSchema, JsonSchemaUtils } from '@flowgram.ai/form-materials';
-
-import iconVariable from '../../assets/icon-variable.png';
+import { DataAll } from '@icon-park/react';
 import { VariablePanelLayer } from './variable-panel-layer';
 
 const fetchMockVariableFromRemote = async () => {
@@ -47,7 +48,11 @@ export const createVariablePanelPlugin = definePluginCreator<{ initialData?: IJs
           key: 'global',
           meta: {
             title: 'Global',
-            icon: iconVariable,
+            icon: createElement(DataAll, {
+              theme: 'outline',
+              size: 16,
+              strokeWidth: 3,
+            }),
           },
           type: JsonSchemaUtils.schemaToAST(opts.initialData),
         })
@@ -59,7 +64,11 @@ export const createVariablePanelPlugin = definePluginCreator<{ initialData?: IJs
             key: 'global',
             meta: {
               title: 'Global',
-              icon: iconVariable,
+              icon: createElement(DataAll, {
+                theme: 'outline',
+                size: 16,
+                strokeWidth: 3,
+              }),
             },
             type: JsonSchemaUtils.schemaToAST(v),
           })

@@ -6,16 +6,22 @@
 import React, { useEffect, useState } from 'react';
 
 import { Nav, Typography, Breadcrumb, Tabs, TabPane } from '@douyinfe/semi-ui';
+import { IconUser, IconChevronLeft, IconChevronRight } from '@douyinfe/semi-icons';
 import {
-  IconUser,
-  IconHome,
-  IconList,
-  IconChevronLeft,
-  IconChevronRight,
-  IconBranch,
-  IconDesktop,
-  IconSetting,
-} from '@douyinfe/semi-icons';
+  AlarmClock,
+  Api,
+  ApplicationOne,
+  CompassOne,
+  ConnectionPoint,
+  DataSheet,
+  Histogram,
+  ListView,
+  PlayCycle,
+  RobotOne,
+  SettingConfig,
+  Terminal,
+  ViewGridCard,
+} from '@icon-park/react';
 
 import { WorkspacesSection } from './sections/WorkspacesSection';
 import { WorkflowSection } from './sections/WorkflowSection';
@@ -32,6 +38,18 @@ import { CursorCliSection } from './sections/CursorCliSection';
 import { ComponentsSection } from './sections/ComponentsSection';
 import { AgentSection } from './sections/AgentSection';
 import { AgentPlaygroundPage } from '../agent-playground';
+
+const navIconProps = {
+  theme: 'outline' as const,
+  size: 16,
+  strokeWidth: 2.4,
+};
+
+const subNavIconProps = {
+  ...navIconProps,
+  size: 14,
+  strokeWidth: 2.2,
+};
 
 type MenuKey =
   | 'intro'
@@ -55,7 +73,8 @@ type MenuKey =
   | 'agent'
   | 'task-board'
   | 'service-management'
-  | 'scheduled-tasks';
+  | 'scheduled-tasks'
+  | 'business';
 
 /** 与路由对应的菜单页 itemKey（不含 Nav 分组占位 key） */
 const MENU_KEYS: MenuKey[] = [
@@ -196,7 +215,7 @@ export const AdminPanel: React.FC = () => {
       case 'agent-models':
         return '模型管理';
       case 'agent-playground':
-        return 'Agent Playground';
+        return 'Playground';
       case 'agent-profiles':
         return 'Agent 配置';
       case 'workspace-manager':
@@ -228,25 +247,17 @@ export const AdminPanel: React.FC = () => {
     if (
       activeMenu === 'agent-skills' ||
       activeMenu === 'agent-mcp' ||
-      activeMenu === 'agent-models'
-    )
-      return '模型与工具';
-    if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
-    if (activeMenu === 'intro') return '工作台';
-    if (
-      activeMenu === 'agent-playground' ||
+      activeMenu === 'agent-models' ||
       activeMenu === 'agent-profiles' ||
       activeMenu === 'workspace-manager'
     )
-      return '智能体';
+      return '模型与工具';
+    if (activeMenu === 'task-board' || activeMenu === 'service-management') return '业务管理';
+    if (activeMenu === 'component-installed' || activeMenu === 'component-rules') return '组件管理';
+    if (activeMenu === 'intro') return '工作台';
+    if (activeMenu === 'agent-playground') return '智能体';
     if (activeMenu === 'admin-lark-cli' || activeMenu === 'admin-cursor-cli') return 'CLI 配置';
-    if (
-      activeMenu === 'admin-terminal' ||
-      activeMenu === 'task-board' ||
-      activeMenu === 'service-management' ||
-      activeMenu === 'scheduled-tasks'
-    )
-      return '运维';
+    if (activeMenu === 'admin-terminal' || activeMenu === 'scheduled-tasks') return '运维';
     return '系统';
   };
 
@@ -318,57 +329,90 @@ export const AdminPanel: React.FC = () => {
             mode="vertical"
             isCollapsed={isCollapsed}
             items={[
-              { itemKey: 'intro', text: 'Code 助手', icon: <IconHome /> },
-              { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <IconUser /> },
-              { itemKey: 'agent-playground', text: 'Agent Playground', icon: <IconBranch /> },
-              { itemKey: 'workspace-manager', text: '工作区管理', icon: <IconList /> },
-              { itemKey: 'task-board', text: '任务看板', icon: <IconList /> },
-              { itemKey: 'service-management', text: '服务管理', icon: <IconSetting /> },
-              { itemKey: 'scheduled-tasks', text: '定时任务', icon: <IconList /> },
-              { itemKey: 'admin-terminal', text: '终端', icon: <IconDesktop /> },
+              { itemKey: 'intro', text: 'Code 助手', icon: <ApplicationOne {...navIconProps} /> },
+              {
+                itemKey: 'agent-playground',
+                text: 'Playground',
+                icon: <PlayCycle {...navIconProps} />,
+              },
+              { itemKey: 'scheduled-tasks', text: '定时任务', icon: <AlarmClock {...navIconProps} /> },
+              { itemKey: 'admin-terminal', text: '终端', icon: <Terminal {...navIconProps} /> },
               {
                 text: 'CLI 配置',
                 itemKey: 'admin-cli',
-                icon: <IconSetting />,
                 items: [
-                  { itemKey: 'admin-lark-cli', text: '飞书' },
-                  { itemKey: 'admin-cursor-cli', text: 'Cursor' },
+                  { itemKey: 'admin-lark-cli', text: '飞书', icon: <Api {...subNavIconProps} /> },
+                  { itemKey: 'admin-cursor-cli', text: 'Cursor', icon: <CompassOne {...subNavIconProps} /> },
                 ],
               },
               {
                 text: '工作流引擎',
                 itemKey: 'engine',
-                icon: <IconList />,
                 items: [
-                  { itemKey: 'workflow', text: '流程管理' },
-                  { itemKey: 'workflow-run', text: '工作流执行' },
-                  { itemKey: 'workflow-logs', text: '执行日志' },
+                  { itemKey: 'workflow', text: '流程管理', icon: <ConnectionPoint {...subNavIconProps} /> },
+                  { itemKey: 'workflow-run', text: '工作流执行', icon: <PlayCycle {...subNavIconProps} /> },
+                  { itemKey: 'workflow-logs', text: '执行日志', icon: <Histogram {...subNavIconProps} /> },
                   {
                     text: '组件管理',
                     itemKey: 'component',
                     items: [
-                      { itemKey: 'component-installed', text: '已安装组件' },
-                      { itemKey: 'component-rules', text: '组件规则' },
+                      {
+                        itemKey: 'component-installed',
+                        text: '已安装组件',
+                        icon: <ViewGridCard {...subNavIconProps} />,
+                      },
+                      {
+                        itemKey: 'component-rules',
+                        text: '组件规则',
+                        icon: <SettingConfig {...subNavIconProps} />,
+                      },
                     ],
+                  },
+                ],
+              },
+              {
+                text: '业务管理',
+                itemKey: 'business',
+                items: [
+                  { itemKey: 'task-board', text: '任务看板', icon: <ListView {...subNavIconProps} /> },
+                  {
+                    itemKey: 'service-management',
+                    text: '服务管理',
+                    icon: <SettingConfig {...subNavIconProps} />,
                   },
                 ],
               },
               {
                 text: '模型与工具',
                 itemKey: 'agent',
-                icon: <IconList />,
                 items: [
-                  { itemKey: 'agent-skills', text: 'SKILL 管理' },
-                  { itemKey: 'agent-models', text: '模型管理' },
-                  { itemKey: 'agent-mcp', text: 'MCP 配置' },
+                  { itemKey: 'agent-skills', text: 'SKILL 管理', icon: <DataSheet {...subNavIconProps} /> },
+                  {
+                    itemKey: 'agent-models',
+                    text: '模型管理',
+                    icon: <ApplicationOne {...subNavIconProps} />,
+                  },
+                  { itemKey: 'agent-mcp', text: 'MCP 配置', icon: <Api {...subNavIconProps} /> },
+                  { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <RobotOne {...subNavIconProps} /> },
+                  {
+                    itemKey: 'workspace-manager',
+                    text: '工作区管理',
+                    icon: <DataSheet {...subNavIconProps} />,
+                  },
                 ],
               },
             ]}
             selectedKeys={[activeMenu]}
-            defaultOpenKeys={['engine', 'component', 'agent', 'admin-cli']}
+            defaultOpenKeys={['engine', 'component', 'agent', 'admin-cli', 'business']}
             onSelect={(data) => {
               const key = data.itemKey as MenuKey;
-              if (key === 'engine' || key === 'component' || key === 'agent' || key === 'admin-cli')
+              if (
+                key === 'engine' ||
+                key === 'component' ||
+                key === 'agent' ||
+                key === 'admin-cli' ||
+                key === 'business'
+              )
                 return;
               openMenu(key);
             }}

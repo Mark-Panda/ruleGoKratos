@@ -19,6 +19,7 @@ import {
   Spin,
   Modal,
 } from '@douyinfe/semi-ui';
+import { DataAll, GraphicDesign, Histogram, SettingConfig } from '@icon-park/react';
 
 import { runLogChainDisplay, runLogTableRowKey } from '../utils/run-log-display';
 import { buildDocumentFromRuleChainJSON } from '../utils/rulechain-builder';
@@ -35,6 +36,13 @@ import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
 import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
 import { RuleChainSkillAction } from '../components/rule-chain-skill-action';
+import { RULE_CHAIN_DEPLOY_STATUS_EVENT } from '../constants/deploy-status-event';
+
+const menuIconProps = {
+  theme: 'outline' as const,
+  size: 14,
+  strokeWidth: 2.2,
+};
 
 export interface RuleDetailData {
   ruleChain: {
@@ -72,6 +80,7 @@ export const RuleDetail: React.FC<{
   const [root] = useState<boolean>(!!data?.ruleChain?.root);
   const [activeKey, setActiveKey] = useState<string>(initialTab ?? 'workflow');
   const [saving, setSaving] = useState<boolean>(false);
+  const [deployed, setDeployed] = useState<boolean>(() => !Boolean(data?.ruleChain?.disabled));
 
   const [configurationSnapshot, setConfigurationSnapshot] = useState<Record<string, unknown>>(
     () => {
@@ -112,10 +121,13 @@ export const RuleDetail: React.FC<{
   React.useEffect(() => {
     if (initialTab) setActiveKey(initialTab);
   }, [initialTab]);
+  React.useEffect(() => {
+    setDeployed(!Boolean(data?.ruleChain?.disabled));
+  }, [data?.ruleChain?.id, data?.ruleChain?.disabled]);
   const menuItems = useMemo(
     () => [
-      { itemKey: 'workflow', text: '工作流设置' },
-      { itemKey: 'design', text: '工作流设计' },
+      { itemKey: 'workflow', text: '工作流设置', icon: <SettingConfig {...menuIconProps} /> },
+      { itemKey: 'design', text: '工作流设计', icon: <GraphicDesign {...menuIconProps} /> },
     ],
     []
   );
@@ -174,6 +186,16 @@ export const RuleDetail: React.FC<{
     return x;
   };
 
+  const refreshDeployStatus = React.useCallback(async () => {
+    const id = String(data?.ruleChain?.id ?? '');
+    if (!id) return;
+    const latest = await getRuleDetail(id);
+    const latestRule = latest?.ruleChain;
+    if (!latestRule || typeof latestRule !== 'object') return;
+    setRuleBaseInfo(latestRule as any);
+    setDeployed(!Boolean((latestRule as any)?.disabled));
+  }, [data?.ruleChain?.id]);
+
   const fetchRuns = async (p?: number, s?: number) => {
     const current = typeof p === 'number' ? p : page;
     const pageSize = typeof s === 'number' ? s : size;
@@ -211,6 +233,31 @@ export const RuleDetail: React.FC<{
       fetchRuns(1, size);
     }
   }, [subKey]);
+
+  React.useEffect(() => {
+    const id = String(data?.ruleChain?.id ?? '');
+    if (!id) return;
+    const handler = (evt: Event) => {
+      const customEvt = evt as CustomEvent<{ id?: string; deployed?: boolean }>;
+      const eventId = String(customEvt?.detail?.id ?? '');
+      if (eventId !== id) return;
+      setDeployed(Boolean(customEvt?.detail?.deployed));
+    };
+    window.addEventListener(RULE_CHAIN_DEPLOY_STATUS_EVENT, handler as EventListener);
+    return () => {
+      window.removeEventListener(RULE_CHAIN_DEPLOY_STATUS_EVENT, handler as EventListener);
+    };
+  }, [data?.ruleChain?.id]);
+
+  React.useEffect(() => {
+    if (activeKey !== 'design') return;
+    refreshDeployStatus().catch(() => {});
+    const timer = window.setInterval(() => {
+      refreshDeployStatus().catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [activeKey, refreshDeployStatus]);
+
   return (
     <div
       style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#F7F8FA' }}
@@ -272,6 +319,33 @@ export const RuleDetail: React.FC<{
           >
             {name || data?.ruleChain?.id}
           </Typography.Title>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '2px 10px',
+              borderRadius: 999,
+              background: deployed ? 'rgba(82,196,26,0.10)' : 'rgba(245,34,45,0.10)',
+              border: deployed ? '1px solid rgba(82,196,26,0.35)' : '1px solid rgba(245,34,45,0.35)',
+            }}
+          >
+            <span
+              className="workflow-deploy-glow"
+              style={{
+                background: deployed ? '#52c41a' : '#ff4d4f',
+                boxShadow: deployed
+                  ? '0 0 8px rgba(82,196,26,0.95), 0 0 14px rgba(82,196,26,0.75)'
+                  : '0 0 8px rgba(255,77,79,0.95), 0 0 14px rgba(255,77,79,0.75)',
+              }}
+            />
+            <Typography.Text
+              size="small"
+              style={{ color: deployed ? '#389e0d' : '#cf1322', fontWeight: 600 }}
+            >
+              {deployed ? '已部署' : '未部署'}
+            </Typography.Text>
+          </div>
           <Tag size="small" color={root ? 'green' : 'grey'}>
             {root ? '根规则链' : '子规则链'}
           </Tag>
@@ -302,10 +376,14 @@ export const RuleDetail: React.FC<{
               <Nav
                 mode="vertical"
                 items={[
-                  { itemKey: 'basic', text: '基础信息' },
-                  { itemKey: 'vars', text: '变量' },
-                  { itemKey: 'logs', text: '运行日志' },
-                  { itemKey: 'integration', text: '工作流集成' },
+                  { itemKey: 'basic', text: '基础信息', icon: <SettingConfig {...menuIconProps} /> },
+                  { itemKey: 'vars', text: '变量', icon: <DataAll {...menuIconProps} /> },
+                  { itemKey: 'logs', text: '运行日志', icon: <Histogram {...menuIconProps} /> },
+                  {
+                    itemKey: 'integration',
+                    text: '工作流集成',
+                    icon: <GraphicDesign {...menuIconProps} />,
+                  },
                 ]}
                 selectedKeys={[subKey]}
                 onSelect={(d) => setSubKey(String(d.itemKey))}

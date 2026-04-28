@@ -5,8 +5,7 @@
 
 import { useClientContext } from '@flowgram.ai/free-layout-editor';
 import { Tooltip, Button } from '@douyinfe/semi-ui';
-
-import iconVariable from '../../assets/icon-variable.png';
+import { DataAll } from '@icon-park/react';
 
 export function VariablePanelToggle() {
   const { playground } = useClientContext();
@@ -18,7 +17,7 @@ export function VariablePanelToggle() {
         theme="light"
         type="tertiary"
         disabled={disabled}
-        icon={<img src={iconVariable} width={20} height={20} />}
+        icon={<DataAll theme="outline" size={20} strokeWidth={3} />}
         onClick={() => window.dispatchEvent(new Event('toggleVariablePanel'))}
       >
         变量

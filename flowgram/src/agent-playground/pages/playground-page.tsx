@@ -1,5 +1,5 @@
 /**
- * Agent Playground - 多智能体协作编排主页面
+ * Playground - 多智能体协作编排主页面
  */
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
@@ -1441,7 +1441,7 @@ export const AgentPlaygroundPage: React.FC = () => {
           </div>
           <div>
             <Text strong style={{ fontSize: 18, display: 'block', lineHeight: '24px' }}>
-              Agent Playground
+              Playground
             </Text>
             <Text type="tertiary" size="small">
               {ui.subtitle}

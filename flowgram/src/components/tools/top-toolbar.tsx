@@ -12,6 +12,7 @@ import { TestRunButton } from '../testrun/testrun-button';
 import { VariablePanelToggle } from './variable-panel-toggle';
 import { SaveButton } from './save-button';
 import { ExportImport } from './export-import';
+import { DeployToggle } from './deploy-toggle';
 
 // 用于标识顶部工具栏容器的ID
 const TOP_TOOLBAR_CONTAINER_ID = 'top-toolbar-portal-container';
@@ -38,6 +39,7 @@ export const TopToolbar: React.FC = () => {
     <Space spacing={12}>
       <VariablePanelToggle />
       <ExportImport disabled={disabled} />
+      <DeployToggle disabled={disabled} />
       <TestRunButton disabled={disabled} />
       <SaveButton disabled={disabled} />
     </Space>,

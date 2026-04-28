@@ -368,7 +368,14 @@ export const WorkflowSection: React.FC = () => {
                 </Col>
                 <Col
                   span={10}
-                  style={{ textAlign: 'left', display: 'flex', gap: 12, paddingLeft: 24 }}
+                  style={{
+                    textAlign: 'left',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingLeft: 24,
+                  }}
                 >
                   <Button
                     type="primary"
@@ -390,6 +397,14 @@ export const WorkflowSection: React.FC = () => {
                   >
                     重置
                   </Button>
+                  <Button
+                    icon={<IconPlus />}
+                    theme="solid"
+                    type="primary"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    新建工作流
+                  </Button>
                 </Col>
               </Row>
             </div>
@@ -407,18 +422,6 @@ export const WorkflowSection: React.FC = () => {
               minHeight: 0,
             }}
           >
-            {/* Toolbar */}
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <Button
-                icon={<IconPlus />}
-                theme="solid"
-                type="primary"
-                onClick={() => setShowCreateModal(true)}
-              >
-                新建工作流
-              </Button>
-            </div>
-
             {/* Table */}
             <Table
               dataSource={rules}

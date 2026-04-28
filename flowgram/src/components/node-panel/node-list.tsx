@@ -23,6 +23,7 @@ import {
   inferPanelCategoryKey,
   panelCategorySortKey,
 } from './panel-categories';
+import { renderNodePanelIcon } from './node-type-icons';
 
 const NodeWrap = styled.div`
   width: 100%;
@@ -186,13 +187,7 @@ export const NodeList: FC<NodeListProps> = (props) => {
               <Node
                 key={registry.type}
                 disabled={!(registry.canAdd?.(context) ?? true)}
-                icon={
-                  <img
-                    style={{ width: 10, height: 10, borderRadius: 4 }}
-                    src={registry.info?.icon}
-                    alt=""
-                  />
-                }
+                icon={renderNodePanelIcon(registry)}
                 label={getNodeTypeName(registry.type as string)}
                 onClick={(e) => handleClick(e, registry)}
               />

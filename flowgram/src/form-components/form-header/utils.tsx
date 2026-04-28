@@ -6,10 +6,17 @@
 import { type FlowNodeEntity } from '@flowgram.ai/free-layout-editor';
 
 import { FlowNodeRegistry } from '../../typings';
-import { Icon } from './styles';
+import { renderNodePanelIcon } from '../../components/node-panel/node-type-icons';
+import { IconWrap } from './styles';
 
 export const getIcon = (node: FlowNodeEntity) => {
-  const icon = node.getNodeRegistry<FlowNodeRegistry>().info?.icon;
-  if (!icon) return null;
-  return <Icon src={icon} />;
+  const registry = node.getNodeRegistry<FlowNodeRegistry>();
+  return (
+    <IconWrap>
+      {renderNodePanelIcon(registry, {
+        size: 18,
+        strokeWidth: 2.6,
+      })}
+    </IconWrap>
+  );
 };

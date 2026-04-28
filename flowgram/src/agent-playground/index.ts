@@ -1,5 +1,5 @@
 /**
- * Agent Playground 组件导出
+ * Playground 组件导出
  */
 
 export { AgentPlaygroundPage } from './pages/playground-page';

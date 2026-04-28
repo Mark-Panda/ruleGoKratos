@@ -28,11 +28,13 @@ export const Title = styled.div`
   width: 0;
 `;
 
-export const Icon = styled.img`
+export const IconWrap = styled.div`
   width: 24px;
   height: 24px;
-  scale: 0.8;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 export const Operators = styled.div`

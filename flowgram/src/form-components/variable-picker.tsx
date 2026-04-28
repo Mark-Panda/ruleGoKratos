@@ -2,8 +2,7 @@ import { useState } from 'react';
 
 import { useVariableTree } from '@flowgram.ai/form-materials';
 import { Button, Modal, Tree } from '@douyinfe/semi-ui';
-
-import iconVariable from '../assets/icon-variable.png';
+import { DataAll } from '@icon-park/react';
 
 interface VariablePickerProps {
   disabled?: boolean;
@@ -33,7 +32,7 @@ ${'${' + normalize(key) + '}'}
         size={size || 'small'}
         type="tertiary"
         theme="light"
-        icon={<img src={iconVariable} width={16} height={16} />}
+        icon={<DataAll theme="outline" size={16} strokeWidth={3} />}
         disabled={disabled}
         onClick={() => setOpen(true)}
       />
