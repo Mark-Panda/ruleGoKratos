@@ -2,9 +2,9 @@ package biz
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
+	"hash/fnv"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -32,11 +32,11 @@ func DefaultContextConfig() ContextConfig {
 // ContextManager 上下文管理器
 // 负责滑动窗口、消息摘要、记忆注入
 type ContextManager struct {
-	config      ContextConfig
-	memoryStore MemoryStore
+	config        ContextConfig
+	memoryStore   MemoryStore
 	chatModelFunc func(ctx context.Context) (model.ToolCallingChatModel, error)
-	chatModel   interface{} // 直接设置的模型实例，优先级高于 chatModelFunc
-	log         *log.Helper
+	chatModel     interface{} // 直接设置的模型实例，优先级高于 chatModelFunc
+	log           *log.Helper
 }
 
 // NewContextManager 创建上下文管理器
@@ -83,7 +83,7 @@ func (cm *ContextManager) BuildMessages(
 	effectiveSystemPrompt := systemPrompt
 	// 兜底：若 userID 为空，生成临时标识以启用会话内记忆
 	if userID == "" {
-		userID = generateTempUserID()
+		userID = generateTempUserID(projectPath)
 	}
 	if cm.config.MemoryEnabled && userID != "" {
 		if memCtx := cm.getUserContext(ctx, userID, projectPath); memCtx != "" {
@@ -215,9 +215,13 @@ func callModelGenerate(ctx context.Context, model interface{}, prompt string) (*
 
 	// 尝试 type assertion 处理不同接口
 	switch m := model.(type) {
-	case interface{ Generate(context.Context, []*schema.Message, ...interface{}) (*schema.Message, error) }:
+	case interface {
+		Generate(context.Context, []*schema.Message, ...interface{}) (*schema.Message, error)
+	}:
 		return m.Generate(ctx, msgs)
-	case interface{ Generate(context.Context, []*schema.Message) (*schema.Message, error) }:
+	case interface {
+		Generate(context.Context, []*schema.Message) (*schema.Message, error)
+	}:
 		return m.Generate(ctx, msgs)
 	}
 
@@ -317,20 +321,22 @@ func (cm *ContextManager) SaveSessionSummary(ctx context.Context, userID, projec
 	if cm.memoryStore == nil || !cm.config.MemoryEnabled {
 		return nil
 	}
-
-	store, ok := cm.memoryStore.(*FileMemoryStore)
-	if !ok {
-		return nil
-	}
-
-	if projectPath != "" {
-		if err := store.AddSessionSummary(ctx, projectPath, summary); err != nil {
-			cm.log.Warnf("save session summary failed: %v", err)
-			return err
+	var firstErr error
+	if userID != "" {
+		if err := cm.memoryStore.AddUserFeedback(ctx, userID, summary, "session_summary"); err != nil {
+			cm.log.Warnf("save user session summary failed: %v", err)
+			firstErr = err
 		}
 	}
-
-	return nil
+	if projectPath != "" {
+		if err := cm.memoryStore.AddSessionSummary(ctx, projectPath, summary); err != nil {
+			cm.log.Warnf("save session summary failed: %v", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
 }
 
 // RecordUserPreference 记录用户偏好
@@ -338,13 +344,7 @@ func (cm *ContextManager) RecordUserPreference(ctx context.Context, userID, pref
 	if cm.memoryStore == nil || !cm.config.MemoryEnabled {
 		return nil
 	}
-
-	store, ok := cm.memoryStore.(*FileMemoryStore)
-	if !ok {
-		return nil
-	}
-
-	return store.AddUserPreference(ctx, userID, preference, source)
+	return cm.memoryStore.AddUserPreference(ctx, userID, preference, source)
 }
 
 // RecordProjectFact 记录项目事实
@@ -352,13 +352,7 @@ func (cm *ContextManager) RecordProjectFact(ctx context.Context, projectPath, fa
 	if cm.memoryStore == nil || !cm.config.MemoryEnabled {
 		return nil
 	}
-
-	store, ok := cm.memoryStore.(*FileMemoryStore)
-	if !ok {
-		return nil
-	}
-
-	return store.AddProjectFact(ctx, projectPath, fact, source)
+	return cm.memoryStore.AddProjectFact(ctx, projectPath, fact, source)
 }
 
 // RecordDecision 记录项目决策
@@ -366,17 +360,16 @@ func (cm *ContextManager) RecordDecision(ctx context.Context, projectPath, decis
 	if cm.memoryStore == nil || !cm.config.MemoryEnabled {
 		return nil
 	}
-
-	store, ok := cm.memoryStore.(*FileMemoryStore)
-	if !ok {
-		return nil
-	}
-
-	return store.AddDecision(ctx, projectPath, decision)
+	return cm.memoryStore.AddDecision(ctx, projectPath, decision)
 }
 
-func generateTempUserID() string {
-	b := make([]byte, 8)
-	_, _ = rand.Read(b)
-	return "temp_" + hex.EncodeToString(b)
+func generateTempUserID(projectPath string) string {
+	clean := strings.TrimSpace(projectPath)
+	if clean == "" {
+		return "temp_default"
+	}
+	clean = filepath.Clean(clean)
+	hasher := fnv.New64a()
+	_, _ = hasher.Write([]byte(clean))
+	return fmt.Sprintf("temp_%x", hasher.Sum64())
 }

@@ -47,12 +47,21 @@ func grpcAuthMiddleware() middleware.Middleware {
 	return func(next middleware.Handler) middleware.Handler {
 		return func(ctx context.Context, in interface{}) (interface{}, error) {
 			if md, ok := metadata.FromIncomingContext(ctx); ok {
-				if userID := md.Get("x-user-id"); len(userID) > 0 && userID[0] != "" {
-					ctx = context.WithValue(ctx, userIDKey, userID[0])
+				var userID, projectPath, sessionID string
+				if values := md.Get(userIDHeaderKey); len(values) > 0 {
+					userID = values[0]
 				}
-				if projectPath := md.Get("x-project-path"); len(projectPath) > 0 && projectPath[0] != "" {
-					ctx = context.WithValue(ctx, projectPathKey, projectPath[0])
+				if values := md.Get(projectPathHeaderKey); len(values) > 0 {
+					projectPath = values[0]
 				}
+				if values := md.Get(sessionIDHeaderKey); len(values) > 0 {
+					sessionID = values[0]
+				}
+				userID, projectPath, sessionID = resolveIdentityWithFallback(userID, projectPath, sessionID)
+				ctx = setIdentityContextValues(ctx, userID, projectPath, sessionID)
+			} else {
+				userID, projectPath, sessionID := resolveIdentityWithFallback("", "", "")
+				ctx = setIdentityContextValues(ctx, userID, projectPath, sessionID)
 			}
 			return next(ctx, in)
 		}

@@ -9,6 +9,49 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 )
 
+type stubMemoryStore struct {
+	summaryCalls      int
+	userFeedbackCalls int
+}
+
+func (s *stubMemoryStore) GetUserMemory(ctx interface{}, userID string) (*UserMemory, error) {
+	return &UserMemory{UserID: userID}, nil
+}
+
+func (s *stubMemoryStore) SaveUserMemory(ctx interface{}, userID string, mem *UserMemory) error {
+	return nil
+}
+
+func (s *stubMemoryStore) GetProjectMemory(ctx interface{}, projectPath string) (*ProjectMemory, error) {
+	return &ProjectMemory{ProjectPath: projectPath}, nil
+}
+
+func (s *stubMemoryStore) SaveProjectMemory(ctx interface{}, projectPath string, mem *ProjectMemory) error {
+	return nil
+}
+
+func (s *stubMemoryStore) AddUserPreference(ctx interface{}, userID, content, source string) error {
+	return nil
+}
+
+func (s *stubMemoryStore) AddUserFeedback(ctx interface{}, userID, content, source string) error {
+	s.userFeedbackCalls++
+	return nil
+}
+
+func (s *stubMemoryStore) AddProjectFact(ctx interface{}, projectPath, content, source string) error {
+	return nil
+}
+
+func (s *stubMemoryStore) AddDecision(ctx interface{}, projectPath, content string) error {
+	return nil
+}
+
+func (s *stubMemoryStore) AddSessionSummary(ctx interface{}, projectPath, summary string) error {
+	s.summaryCalls++
+	return nil
+}
+
 func newTestContextManager() *ContextManager {
 	logger := log.NewHelper(log.NewStdLogger(io.Discard))
 	return NewContextManager(ContextConfig{
@@ -78,10 +121,10 @@ func TestContextManager_ShouldSummarize(t *testing.T) {
 		historyLen int
 		want       bool
 	}{
-		{3, false},  // below threshold
-		{5, false},  // equal to threshold
-		{6, true},   // above threshold
-		{10, true},  // above threshold
+		{3, false}, // below threshold
+		{5, false}, // equal to threshold
+		{6, true},  // above threshold
+		{10, true}, // above threshold
 	}
 
 	for _, tt := range tests {
@@ -200,5 +243,39 @@ func TestContextManager_ProcessHistory_FallbackOnError(t *testing.T) {
 	// 所以 recent 应该是 MaxHistoryMessages = 2 条
 	if len(recent) != 2 {
 		t.Fatalf("expected 2 recent messages (MaxHistoryMessages), got %d", len(recent))
+	}
+}
+
+func TestGenerateTempUserIDStableByProjectPath(t *testing.T) {
+	id1 := generateTempUserID("/workspace/demo")
+	id2 := generateTempUserID("/workspace/demo")
+	id3 := generateTempUserID("/workspace/other")
+	if id1 != id2 {
+		t.Fatalf("expected stable temp user id for same project path, got %q vs %q", id1, id2)
+	}
+	if id1 == id3 {
+		t.Fatalf("expected different temp user ids for different project paths, got %q", id1)
+	}
+	if generateTempUserID("") != "temp_default" {
+		t.Fatalf("expected empty project path to use temp_default")
+	}
+}
+
+func TestContextManagerSaveSessionSummaryUsesMemoryStoreInterface(t *testing.T) {
+	stub := &stubMemoryStore{}
+	logger := log.NewHelper(log.NewStdLogger(io.Discard))
+	cm := NewContextManager(ContextConfig{
+		MaxHistoryMessages: 10,
+		SummaryThreshold:   5,
+		MemoryEnabled:      true,
+	}, stub, nil, logger)
+	if err := cm.SaveSessionSummary(context.Background(), "u1", "/workspace/demo", "summary"); err != nil {
+		t.Fatalf("SaveSessionSummary failed: %v", err)
+	}
+	if stub.summaryCalls != 1 {
+		t.Fatalf("expected AddSessionSummary called once, got %d", stub.summaryCalls)
+	}
+	if stub.userFeedbackCalls != 1 {
+		t.Fatalf("expected AddUserFeedback called once, got %d", stub.userFeedbackCalls)
 	}
 }

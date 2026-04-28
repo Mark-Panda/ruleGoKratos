@@ -2,16 +2,16 @@
 server:
   http:
     # HTTP 服务监听地址（对外 REST 接口）
-    addr: ${SERVER_HTTP_ADDR}
+    addr: 0.0.0.0:8000
     # HTTP 请求超时时间（超过后请求会被服务端取消）
     # 运维建议：生产 15s~120s；压测/离线任务可按链路特性提高
-    timeout: 10000s
+    timeout: 60s
   grpc:
     # gRPC 服务监听地址（对内/对外 RPC 接口）
-    addr: ${SERVER_GRPC_ADDR}
+    addr: 0.0.0.0:9000
     # gRPC 请求超时时间
     # 运维建议：生产 1s~30s，避免设置过大导致慢请求堆积
-    timeout: 1s
+    timeout: 5s
 
 # 数据存储相关配置（缓存与数据库）
 data:
@@ -26,110 +26,108 @@ data:
     write_timeout: 0.2s
   postgres:
     # PostgreSQL 主机地址
-    host: ${DATA_POSTGRES_HOST}
+    host: 127.0.0.1
     # PostgreSQL 端口
-    port: ${DATA_POSTGRES_PORT}
+    port: 5432
     # PostgreSQL 用户名
-    user: ${DATA_POSTGRES_USER}
+    user: postgres
     # PostgreSQL 密码
-    password: ${DATA_POSTGRES_PASSWORD}
+    password: postgres
     # PostgreSQL 数据库名
-    dbname: ${DATA_POSTGRES_DBNAME}
+    dbname: rulego
     # PostgreSQL SSL 模式（如 disable/require）
     # 运维建议：生产优先 require/verify-*，本地开发可用 disable
-    sslmode: ${DATA_POSTGRES_SSLMODE}
+    sslmode: disable
     # PostgreSQL 时区配置
     # 运维建议：统一使用 UTC，减少跨服务时区歧义
-    timezone: ${DATA_POSTGRES_TIMEZONE}
+    timezone: UTC
 
 # 大模型配置（用于 AI 能力）
 ai:
   doubao:
     # 豆包模型名称
     # 运维建议：生产使用稳定版本模型；灰度新模型后再全量
-    model: ${AI_DOUBAO_MODEL}
+    model: doubao-pro-32k
     # 豆包 API 密钥
-    api_key: ${AI_DOUBAO_API_KEY}
+    api_key: your-doubao-api-key
     # 豆包 API 基础地址
-    api_base_url: ${AI_DOUBAO_BASE_URL}
+    api_base_url: https://ark.cn-beijing.volces.com/api/v3
   openai:
     # OpenAI 模型名称
     # 运维建议：优先固定具体模型版本，避免自动升级引入行为漂移
-    model: ${AI_OPENAI_MODEL}
+    model: gpt-4o-mini
     # OpenAI API 密钥
-    api_key: ${AI_OPENAI_API_KEY}
+    api_key: your-openai-api-key
     # OpenAI API 基础地址
-    api_base_url: ${AI_OPENAI_BASE_URL}
+    api_base_url: https://api.openai.com/v1
 
 # Agent 运行时行为配置
 agent:
   # Agent 默认系统提示词（未被请求内 systemPrompt 覆盖时生效）
-  system_prompt: ${AGENT_SYSTEM_PROMPT:You are an AI agent harness. Use tools when needed and answer clearly.}
+  system_prompt: You are an AI agent harness. Use tools when needed and answer clearly.
   # 管理端 RunTerminal 单条命令超时（lark-cli 扫码/授权等长任务可调大，如 600s）
   # 运维建议：生产默认 60s~300s；交互式授权流程可临时提高
-  terminal_exec_timeout: ${AGENT_TERMINAL_EXEC_TIMEOUT:300s}
+  terminal_exec_timeout: 300s
   # 飞书 lark-cli 配置文件；空则使用运行用户 $HOME/.lark-cli/config.json
-  lark_cli_config_path: ${LARK_CLI_CONFIG_PATH:}
+  lark_cli_config_path: ""
   # Agent 内置读/写文件、bash 的根目录（字符串可用环境变量覆盖）
   # 运维建议：生产指向受限目录并配套最小权限挂载，避免越权读写
-  workspace_root: ${AGENT_WORKSPACE_ROOT:agent_workspace}
+  workspace_root: agent_workspace
   context:
     # 是否启用 memory 注入与写回（false 时仅保留基础对话，不做记忆读写）
-    # 注意：bool 字段不要使用环境变量占位（会被解析成字符串，导致 proto 反序列化失败）
     memory_enabled: true
     # 触发摘要的历史消息条数阈值（超过后会总结早期消息）
-    summary_threshold: ${AGENT_CONTEXT_SUMMARY_THRESHOLD:15}
+    summary_threshold: 15
     # 摘要模式下保留的最近历史消息条数
-    max_history_messages: ${AGENT_CONTEXT_MAX_HISTORY_MESSAGES:20}
+    max_history_messages: 20
   memory:
     # 记忆文件存储目录；空值时默认使用 ~/.claude/memory
     # 运维建议：生产请挂载持久卷并设置独立目录
-    dir: ${AGENT_MEMORY_DIR:}
+    dir: ""
     # 记忆条目 TTL（天）；<=0 关闭过期清理，建议生产设置 30~180
-    entry_ttl_days: ${AGENT_MEMORY_ENTRY_TTL_DAYS:90}
+    entry_ttl_days: 90
     # 用户偏好记忆条目上限（实际生效值会再受 max_user_preferences_limit 限制）
     # 建议范围：20~300（越大召回内容越多，内存与 IO 开销越高）
-    user_preferences_limit: ${AGENT_MEMORY_USER_PREFERENCES_LIMIT:100}
+    user_preferences_limit: 100
     # 用户反馈记忆条目上限（实际生效值会再受 max_user_feedback_limit 限制）
     # 建议范围：20~300
-    user_feedback_limit: ${AGENT_MEMORY_USER_FEEDBACK_LIMIT:100}
+    user_feedback_limit: 100
     # 项目事实记忆条目上限（实际生效值会再受 max_project_facts_limit 限制）
     # 建议范围：50~500（中大型项目可适当提高）
-    project_facts_limit: ${AGENT_MEMORY_PROJECT_FACTS_LIMIT:120}
+    project_facts_limit: 120
     # 项目决策记忆条目上限（实际生效值会再受 max_project_decisions_limit 限制）
     # 建议范围：30~300
-    project_decisions_limit: ${AGENT_MEMORY_PROJECT_DECISIONS_LIMIT:120}
+    project_decisions_limit: 120
     # 项目会话摘要条目上限（实际生效值会再受 max_project_summaries_limit 限制）
     # 建议范围：10~100（过大容易引入历史噪声）
-    project_summaries_limit: ${AGENT_MEMORY_PROJECT_SUMMARIES_LIMIT:20}
+    project_summaries_limit: 20
     # 用户偏好可配置最大上限（防止误配过大）
     # 运维建议：作为“硬保护阈值”，通常设置为常规 limit 的 3~10 倍
-    max_user_preferences_limit: ${AGENT_MEMORY_MAX_USER_PREFERENCES_LIMIT:1000}
+    max_user_preferences_limit: 1000
     # 用户反馈可配置最大上限（防止误配过大）
     # 运维建议：与 max_user_preferences_limit 同级
-    max_user_feedback_limit: ${AGENT_MEMORY_MAX_USER_FEEDBACK_LIMIT:1000}
+    max_user_feedback_limit: 1000
     # 项目事实可配置最大上限（防止误配过大）
     # 运维建议：在磁盘容量与召回收益之间折中，避免无界增长
-    max_project_facts_limit: ${AGENT_MEMORY_MAX_PROJECT_FACTS_LIMIT:2000}
+    max_project_facts_limit: 2000
     # 项目决策可配置最大上限（防止误配过大）
     # 运维建议：保持与事实上限同级或略低
-    max_project_decisions_limit: ${AGENT_MEMORY_MAX_PROJECT_DECISIONS_LIMIT:2000}
+    max_project_decisions_limit: 2000
     # 项目摘要可配置最大上限（防止误配过大）
     # 运维建议：一般不超过 500，避免 prompt 注入时上下文膨胀
-    max_project_summaries_limit: ${AGENT_MEMORY_MAX_PROJECT_SUMMARIES_LIMIT:500}
+    max_project_summaries_limit: 500
   skill:
     # Agent 创建技能目录；运行时固定按 /app/skills、该目录、/workflow/skills 的顺序扫描服务技能
-    dir: ${AGENT_SKILL_DIR:/agent/skills}
+    dir: /agent/skills
     # 额外技能目录（逗号分隔）；用于补充扫描路径
-    dirs: ${AGENT_SKILL_DIRS:}
+    dirs: /app/skills,/workflow/skills
     # 技能命名空间前缀（用于隔离技能集合）
-    namespace: ${AGENT_SKILL_NAMESPACE:}
+    namespace: ""
     # 技能白名单（逗号分隔）；限制可用技能范围
-    allowlist: ${AGENT_SKILL_ALLOWLIST:}
+    allowlist: ""
     # 是否开启技能目录热加载（true 时自动扫描并更新技能）
     # 运维建议：生产可开启但需配合 scan_interval_ms，防止频繁扫描抖动
-    # 勿用环境变量占位 bool：展开后为 YAML 字符串 "true"/"false"，proto 无法解析
     hot_reload: true
     # 热加载扫描间隔（毫秒）
     # 运维建议：生产 1000~10000；开发环境可降到 300~1000 提升调试体验
-    scan_interval_ms: ${AGENT_SKILL_SCAN_INTERVAL_MS:1000}
+    scan_interval_ms: 1000

@@ -205,13 +205,43 @@ func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
 	// 初始化 ContextManager（默认配置，使用 simpleSummarize）
 	contextConfig := DefaultContextConfig()
 	// 尝试从配置中读取上下文管理配置
-	if config != nil && config.Agent != nil {
-		// 可以通过 config.Agent 添加更多配置项
+	if config != nil && config.Agent != nil && config.Agent.Context != nil {
+		contextConfig.MemoryEnabled = config.Agent.Context.GetMemoryEnabled()
+		if config.Agent.Context.GetSummaryThreshold() > 0 {
+			contextConfig.SummaryThreshold = int(config.Agent.Context.GetSummaryThreshold())
+		}
+		if config.Agent.Context.GetMaxHistoryMessages() > 0 {
+			contextConfig.MaxHistoryMessages = int(config.Agent.Context.GetMaxHistoryMessages())
+		}
 	}
 
 	var memoryStore MemoryStore
+	memoryLimits := DefaultMemoryLimits()
+	memoryLimitCaps := DefaultMemoryLimitCaps()
+	memoryRoot := ""
+	memoryEntryTTLDays := defaultMemoryEntryTTLDays
+	if config != nil && config.Agent != nil && config.Agent.Memory != nil {
+		memoryRoot = strings.TrimSpace(config.Agent.Memory.GetDir())
+		if ttl := int(config.Agent.Memory.GetEntryTtlDays()); ttl != 0 {
+			memoryEntryTTLDays = ttl
+		}
+		memoryLimitCaps = normalizeMemoryLimitCaps(MemoryLimitCaps{
+			MaxUserPreferencesLimit:  int(config.Agent.Memory.GetMaxUserPreferencesLimit()),
+			MaxUserFeedbackLimit:     int(config.Agent.Memory.GetMaxUserFeedbackLimit()),
+			MaxProjectFactsLimit:     int(config.Agent.Memory.GetMaxProjectFactsLimit()),
+			MaxProjectDecisionsLimit: int(config.Agent.Memory.GetMaxProjectDecisionsLimit()),
+			MaxProjectSummariesLimit: int(config.Agent.Memory.GetMaxProjectSummariesLimit()),
+		})
+		memoryLimits = normalizeMemoryLimits(MemoryLimits{
+			UserPreferencesLimit:  int(config.Agent.Memory.GetUserPreferencesLimit()),
+			UserFeedbackLimit:     int(config.Agent.Memory.GetUserFeedbackLimit()),
+			ProjectFactsLimit:     int(config.Agent.Memory.GetProjectFactsLimit()),
+			ProjectDecisionsLimit: int(config.Agent.Memory.GetProjectDecisionsLimit()),
+			ProjectSummariesLimit: int(config.Agent.Memory.GetProjectSummariesLimit()),
+		}, memoryLimitCaps)
+	}
 	if contextConfig.MemoryEnabled {
-		if memStore, err := NewFileMemoryStore(""); err == nil {
+		if memStore, err := NewFileMemoryStoreWithLimitsAndCapsAndTTL(memoryRoot, memoryLimits, memoryLimitCaps, memoryEntryTTLDays); err == nil {
 			memoryStore = memStore
 		} else {
 			helper.Warnf("初始化 MemoryStore 失败: %v，使用无记忆模式", err)
@@ -503,6 +533,36 @@ func (uc *AgentUsecase) sanitizeConfig() HarnessConfig {
 	return cfg
 }
 
+func (uc *AgentUsecase) persistSessionMemory(ctx context.Context, req HarnessRequest, output string) {
+	if uc.contextManager == nil {
+		return
+	}
+	if req.SubAgentDepth > 0 {
+		return
+	}
+	projectPath := strings.TrimSpace(req.ProjectPath)
+	if projectPath == "" {
+		return
+	}
+	userID := strings.TrimSpace(req.UserID)
+	input := strings.TrimSpace(req.Input)
+	out := strings.TrimSpace(output)
+	if out == "" {
+		return
+	}
+	// 仅保留精简摘要，避免记忆文件无限膨胀。
+	if len(input) > 240 {
+		input = input[:240] + "..."
+	}
+	if len(out) > 600 {
+		out = out[:600] + "..."
+	}
+	summary := fmt.Sprintf("用户问题：%s\n助手结论：%s", input, out)
+	if err := uc.contextManager.SaveSessionSummary(ctx, userID, projectPath, summary); err != nil {
+		uc.log.Warnf("persist session memory failed: %v", err)
+	}
+}
+
 func (uc *AgentUsecase) ExecuteStream(ctx context.Context, modelName string, history []HistoryMessage, userMessage string) StreamGenerator {
 	// 对上层暴露的统一流式入口。
 	req := HarnessRequest{
@@ -744,6 +804,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 
 			if len(resp.ToolCalls) == 0 {
 				uc.harnessLogger.LogHarnessOutput(requestID, assistantAcc.String())
+				uc.persistSessionMemory(workCtx, req, assistantAcc.String())
 				if !yield(&StreamMessage{Done: true}, nil) {
 					return
 				}

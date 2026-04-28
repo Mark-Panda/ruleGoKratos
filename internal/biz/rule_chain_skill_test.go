@@ -1,10 +1,13 @@
 package biz
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/rulego/rulego/api/types"
 )
 
 func TestResolveRuleChainSkillStatus(t *testing.T) {
@@ -279,6 +282,72 @@ func TestBuildRuleChainSyncExecutePayloadIncludesMetadata(t *testing.T) {
 	data, _ := payload["data"].(map[string]interface{})
 	if meta["tenant"] != "cn" || data["question"] != "天气" {
 		t.Fatalf("unexpected payload: %#v", payload)
+	}
+}
+
+func TestInjectIdentityMetadataFromContextFillsMissingValues(t *testing.T) {
+	ctx := context.WithValue(context.Background(), userIDContextKey, "u-123")
+	ctx = context.WithValue(ctx, projectPathContextKey, "/workspace/demo")
+
+	got := injectIdentityMetadataFromContext(ctx, nil)
+	if got == nil {
+		t.Fatal("expected metadata created")
+	}
+	if got.GetValue(userIDContextKey) != "u-123" {
+		t.Fatalf("expected x-user-id injected, got %q", got.GetValue(userIDContextKey))
+	}
+	if got.GetValue(projectPathContextKey) != "/workspace/demo" {
+		t.Fatalf("expected x-project-path injected, got %q", got.GetValue(projectPathContextKey))
+	}
+}
+
+func TestInjectIdentityMetadataFromContextKeepsExplicitMetadata(t *testing.T) {
+	ctx := context.WithValue(context.Background(), userIDContextKey, "ctx-user")
+	ctx = context.WithValue(ctx, projectPathContextKey, "/ctx/project")
+
+	metadata := types.NewMetadata()
+	metadata.PutValue(userIDContextKey, "request-user")
+	metadata.PutValue(projectPathContextKey, "/request/project")
+
+	got := injectIdentityMetadataFromContext(ctx, metadata)
+	if got.GetValue(userIDContextKey) != "request-user" {
+		t.Fatalf("expected request x-user-id to win, got %q", got.GetValue(userIDContextKey))
+	}
+	if got.GetValue(projectPathContextKey) != "/request/project" {
+		t.Fatalf("expected request x-project-path to win, got %q", got.GetValue(projectPathContextKey))
+	}
+}
+
+func TestEnsureIdentityMetadataDefaultsGeneratesWhenMissing(t *testing.T) {
+	got := ensureIdentityMetadataDefaults(nil)
+	if got == nil {
+		t.Fatal("expected metadata created")
+	}
+	if got.GetValue(userIDContextKey) == "" {
+		t.Fatalf("expected fallback %s injected", userIDContextKey)
+	}
+	if got.GetValue(projectPathContextKey) == "" {
+		t.Fatalf("expected fallback %s injected", projectPathContextKey)
+	}
+	if got.GetValue(sessionIDContextKey) == "" {
+		t.Fatalf("expected fallback %s injected", sessionIDContextKey)
+	}
+}
+
+func TestEnsureIdentityMetadataDefaultsKeepsExplicitValues(t *testing.T) {
+	metadata := types.NewMetadata()
+	metadata.PutValue(userIDContextKey, "request-user")
+	metadata.PutValue(projectPathContextKey, "/request/project")
+
+	got := ensureIdentityMetadataDefaults(metadata)
+	if got.GetValue(userIDContextKey) != "request-user" {
+		t.Fatalf("expected request x-user-id to win, got %q", got.GetValue(userIDContextKey))
+	}
+	if got.GetValue(projectPathContextKey) != "/request/project" {
+		t.Fatalf("expected request x-project-path to win, got %q", got.GetValue(projectPathContextKey))
+	}
+	if got.GetValue(sessionIDContextKey) == "" {
+		t.Fatalf("expected x-session-id backfilled")
 	}
 }
 

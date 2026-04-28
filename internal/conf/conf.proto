@@ -70,6 +70,27 @@ message Agent {
   google.protobuf.Duration terminal_exec_timeout = 4;
   // 飞书 lark-cli 配置文件路径；空则使用 $HOME/.lark-cli/config.json（可用 ~ 前缀）
   string lark_cli_config_path = 5;
+  message Memory {
+    // 记忆文件存储目录；空则默认 ~/.claude/memory
+    string dir = 11;
+    // 记忆条目 TTL（天）；<=0 表示不启用 TTL 清理
+    int32 entry_ttl_days = 12;
+    int32 user_preferences_limit = 1;
+    int32 user_feedback_limit = 2;
+    int32 project_facts_limit = 3;
+    int32 project_decisions_limit = 4;
+    int32 project_summaries_limit = 5;
+    int32 max_user_preferences_limit = 6;
+    int32 max_user_feedback_limit = 7;
+    int32 max_project_facts_limit = 8;
+    int32 max_project_decisions_limit = 9;
+    int32 max_project_summaries_limit = 10;
+  }
+  message Context {
+    bool memory_enabled = 1;
+    int32 summary_threshold = 2;
+    int32 max_history_messages = 3;
+  }
   message Skill {
     string dir              = 1;
     string dirs             = 2;
@@ -79,4 +100,6 @@ message Agent {
     int32 scan_interval_ms  = 6;
   }
   Skill skill = 2;
+  Memory memory = 6;
+  Context context = 7;
 }

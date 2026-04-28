@@ -20,6 +20,7 @@ services:
       - ./flowData/code_workspace:/app/code_workspace
       # 自动使用宿主机 SSH（免手动同步 overlay）；只读挂载更安全
       - ${HOME}/.ssh:/root/.ssh:ro
+      - ./flowData/memory:/app/memory
     environment:
       # HTTP / gRPC 监听地址（容器内需 0.0.0.0；宿主机映射见 ports）
       - SERVER_HTTP_ADDR=0.0.0.0:8000
@@ -54,6 +55,7 @@ services:
       - CURSOR_API_KEY=
       # Tavily 搜索等工具用的 API Key（按需填写，勿提交敏感值到仓库）
       - TAVILY_API_KEY=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
+      - AGENT_MEMORY_DIR=/app/memory
     depends_on:
       postgres-db:
         condition: service_healthy

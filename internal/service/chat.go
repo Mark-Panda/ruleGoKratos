@@ -8,10 +8,12 @@ import (
 	nethttp "net/http"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz"
+	"strings"
 	"sync"
 	"time"
 
 	khttp "github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -33,9 +35,20 @@ const (
 	projectPathKey  contextKey = "x-project-path"
 )
 
+const (
+	userIDHeaderKey      = "x-user-id"
+	projectPathHeaderKey = "x-project-path"
+	sessionIDHeaderKey   = "x-session-id"
+)
+
 // extractUserIDFromContext 从 context 中提取 user_id
 func extractUserIDFromContext(ctx context.Context) string {
 	if v := ctx.Value(userIDKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	if v := ctx.Value(userIDHeaderKey); v != nil {
 		if s, ok := v.(string); ok {
 			return s
 		}
@@ -50,7 +63,40 @@ func extractProjectPathFromContext(ctx context.Context) string {
 			return s
 		}
 	}
+	if v := ctx.Value(projectPathHeaderKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
 	return ""
+}
+
+func extractSessionIDFromContext(ctx context.Context) string {
+	if v := ctx.Value(sessionIDHeaderKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func resolveIdentityWithSessionFallback(userID, projectPath, sessionID string) (resolvedUserID, resolvedProjectPath, resolvedSessionID string) {
+	userID = strings.TrimSpace(userID)
+	projectPath = strings.TrimSpace(projectPath)
+	sessionID = strings.TrimSpace(sessionID)
+	if userID == "" {
+		if sessionID == "" {
+			sessionID = "session_" + uuid.NewString()
+		}
+		userID = sessionID
+	}
+	if sessionID == "" {
+		sessionID = userID
+	}
+	if projectPath == "" {
+		projectPath = "session/" + strings.ReplaceAll(sessionID, "/", "_")
+	}
+	return userID, projectPath, sessionID
 }
 
 func protoHistoryToHarness(in []*v1.ChatMessage) []biz.HistoryMessage {
@@ -148,9 +194,33 @@ func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
+	baseCtx := ctx.Request().Context()
+	incomingUserID := extractUserIDFromContext(baseCtx)
+	incomingProjectPath := extractProjectPathFromContext(baseCtx)
+	incomingSessionID := extractSessionIDFromContext(baseCtx)
+	if incomingSessionID == "" {
+		incomingSessionID = ctx.Request().Header.Get(sessionIDHeaderKey)
+	}
+	resolvedUserID, resolvedProjectPath, resolvedSessionID := resolveIdentityWithSessionFallback(
+		incomingUserID,
+		incomingProjectPath,
+		incomingSessionID,
+	)
+	if resolvedUserID != "" {
+		w.Header().Set(userIDHeaderKey, resolvedUserID)
+	}
+	if resolvedProjectPath != "" {
+		w.Header().Set(projectPathHeaderKey, resolvedProjectPath)
+	}
+	if resolvedSessionID != "" {
+		w.Header().Set(sessionIDHeaderKey, resolvedSessionID)
+	}
+	requestCtx := context.WithValue(baseCtx, userIDHeaderKey, resolvedUserID)
+	requestCtx = context.WithValue(requestCtx, projectPathHeaderKey, resolvedProjectPath)
+	requestCtx = context.WithValue(requestCtx, sessionIDHeaderKey, resolvedSessionID)
 
 	flusher, _ := w.(nethttp.Flusher)
-	requestCtx, cancel := context.WithCancel(ctx.Request().Context())
+	requestCtx, cancel := context.WithCancel(requestCtx)
 	defer cancel()
 	var writeMu sync.Mutex
 	writeSSE := func(payload string) error {

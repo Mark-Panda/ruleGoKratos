@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/uuid"
 	"github.com/rulego/rulego"
 	"github.com/rulego/rulego/api/types"
 	"github.com/rulego/rulego/builtin/processor"
@@ -56,6 +57,7 @@ const ruleChainSkillCreatorName = "skill-creator-0.1.0"
 const (
 	userIDContextKey      = "x-user-id"
 	projectPathContextKey = "x-project-path"
+	sessionIDContextKey   = "x-session-id"
 )
 
 func extractUserIDFromContext(ctx context.Context) string {
@@ -65,6 +67,90 @@ func extractUserIDFromContext(ctx context.Context) string {
 		}
 	}
 	return ""
+}
+
+func extractProjectPathFromContext(ctx context.Context) string {
+	if v := ctx.Value(projectPathContextKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// injectIdentityMetadataFromContext 将上下文身份信息注入 RuleMsg.Metadata。
+// 仅在 metadata 未显式携带时补全，避免覆盖调用方透传值。
+func injectIdentityMetadataFromContext(ctx context.Context, metadata *types.Metadata) *types.Metadata {
+	userID := extractUserIDFromContext(ctx)
+	projectPath := extractProjectPathFromContext(ctx)
+	if userID == "" && projectPath == "" {
+		return metadata
+	}
+	if metadata == nil {
+		metadata = types.NewMetadata()
+	}
+	if userID != "" && metadata.GetValue(userIDContextKey) == "" {
+		metadata.PutValue(userIDContextKey, userID)
+	}
+	if projectPath != "" && metadata.GetValue(projectPathContextKey) == "" {
+		metadata.PutValue(projectPathContextKey, projectPath)
+	}
+	return metadata
+}
+
+// ensureIdentityMetadataDefaults 在 metadata 缺失身份字段时做兜底，避免无 header 场景下身份全空。
+func ensureIdentityMetadataDefaults(metadata *types.Metadata) *types.Metadata {
+	if metadata == nil {
+		metadata = types.NewMetadata()
+	}
+	userID := strings.TrimSpace(metadata.GetValue(userIDContextKey))
+	projectPath := strings.TrimSpace(metadata.GetValue(projectPathContextKey))
+	sessionID := strings.TrimSpace(metadata.GetValue(sessionIDContextKey))
+
+	if userID == "" {
+		if sessionID == "" {
+			sessionID = "session_" + uuid.NewString()
+		}
+		userID = sessionID
+	}
+	if sessionID == "" {
+		sessionID = userID
+	}
+	if projectPath == "" {
+		projectPath = "session/" + sanitizeIdentityMetadataSegment(sessionID)
+	}
+	if metadata.GetValue(userIDContextKey) == "" {
+		metadata.PutValue(userIDContextKey, userID)
+	}
+	if metadata.GetValue(projectPathContextKey) == "" {
+		metadata.PutValue(projectPathContextKey, projectPath)
+	}
+	if metadata.GetValue(sessionIDContextKey) == "" {
+		metadata.PutValue(sessionIDContextKey, sessionID)
+	}
+	return metadata
+}
+
+func sanitizeIdentityMetadataSegment(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "unknown"
+	}
+	const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+	var b strings.Builder
+	b.Grow(len(v))
+	for _, r := range v {
+		if strings.ContainsRune(allowed, r) {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+	out := strings.Trim(b.String(), "._")
+	if out == "" {
+		return "unknown"
+	}
+	return out
 }
 
 func NewRuleChainUsecase(ruleChainRepo RuleChainRepo, runLogRepo RunLogRepo, logger log.Logger, ruleEngine *rulego.RuleGo, ruleConfig *types.Config, skillAgent RuleChainSkillAgentRunner, config *conf.Bootstrap) *RuleChainUsecase {
@@ -513,6 +599,8 @@ func (s *RuleChainUsecase) ExecuteRuleChain(ctx context.Context, in *v1.ExecuteR
 	if err != nil {
 		return nil, err
 	}
+	metadata = injectIdentityMetadataFromContext(ctx, metadata)
+	metadata = ensureIdentityMetadataDefaults(metadata)
 	msg := types.RuleMsg{
 		Id:       in.MsgId,
 		Data:     types.NewSharedData(string(data)),
@@ -583,6 +671,8 @@ func (s *RuleChainUsecase) ExecuteRuleChainSync(ctx context.Context, in *v1.Exec
 	if err != nil {
 		return nil, err
 	}
+	metadata = injectIdentityMetadataFromContext(ctx, metadata)
+	metadata = ensureIdentityMetadataDefaults(metadata)
 	msg := types.RuleMsg{
 		Id:       in.MsgId,
 		Data:     types.NewSharedData(string(data)),
