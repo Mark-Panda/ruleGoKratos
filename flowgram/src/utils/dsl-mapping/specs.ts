@@ -527,6 +527,19 @@ export const cursorCliMappingSpec: NodeMappingSpec = {
   transformIn: transformCursorCliConfigIn,
 };
 
+export const cursorCliAuthMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/cursorCliAuth',
+  fields: [
+    { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
+    { inputKey: 'workspacePath', dslKey: 'workspacePath', valueType: 'template', defaultValue: '$HOME' },
+    { inputKey: 'worktree', dslKey: 'worktree', valueType: 'boolean', defaultValue: false },
+    { inputKey: 'force', dslKey: 'force', valueType: 'boolean', defaultValue: true },
+    { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
+    { inputKey: 'timeoutMs', dslKey: 'timeoutMs', valueType: 'number', defaultValue: 15000 },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
+  ],
+};
+
 /**
  * x/cursorAcp：以 stdio 启动 agent acp（JSON-RPC 每行一条）。
  * 用户任务/说明：写在 stdinLines 中对应 RPC（如 session/prompt）的 JSON 行内，无单独 prompt 键。
@@ -595,6 +608,17 @@ export const feishuWebhookMappingSpec: NodeMappingSpec = {
   transformIn: transformFeishuWebhookConfigIn,
 };
 
+export const feishuCliAuthMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/feishuCliAuth',
+  fields: [
+    { inputKey: 'cliPath', dslKey: 'cliPath', valueType: 'constant', defaultValue: 'lark-cli' },
+    { inputKey: 'args', dslKey: 'args', valueType: 'json', defaultValue: ['auth', 'status'] },
+    { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
+    { inputKey: 'timeoutMs', dslKey: 'timeoutMs', valueType: 'number', defaultValue: 15000 },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
+  ],
+};
+
 export const cursorAcpMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorAcp',
   fields: [
@@ -645,8 +669,10 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   jsFilter: jsFilterMappingSpec,
   luaTransform: luaTransformMappingSpec,
   'x/cursorCli': cursorCliMappingSpec,
+  'x/cursorCliAuth': cursorCliAuthMappingSpec,
   'x/cursorAcp': cursorAcpMappingSpec,
   'x/feishuWebhook': feishuWebhookMappingSpec,
+  'x/feishuCliAuth': feishuCliAuthMappingSpec,
 };
 
 export function getNodeMappingSpec(nodeType: string): NodeMappingSpec | undefined {

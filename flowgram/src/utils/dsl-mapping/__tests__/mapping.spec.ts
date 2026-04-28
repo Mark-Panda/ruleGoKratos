@@ -6,7 +6,9 @@ import {
   aiAgentHarnessMappingSpec,
   cursorAcpMappingSpec,
   cursorCliMappingSpec,
+  cursorCliAuthMappingSpec,
   feishuWebhookMappingSpec,
+  feishuCliAuthMappingSpec,
   dbClientMappingSpec,
   flowMappingSpec,
   jsFilterMappingSpec,
@@ -904,6 +906,38 @@ describe('remaining node specs round-trip', () => {
     expect(cursorIv.model?.content).toBe('gpt-5.2');
     expect(cursorIv.replaceData?.content).toBe(false);
 
+    const cursorAuthCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            agentPath: { content: 'agent' },
+            workspacePath: { content: '/repo/root' },
+            worktree: { content: true },
+            force: { content: false },
+            workDir: { content: '/tmp/wd' },
+            timeoutMs: { content: 12000 },
+            replaceData: { content: true },
+          },
+        },
+      },
+      cursorCliAuthMappingSpec
+    );
+    expect(cursorAuthCfg).toMatchObject({
+      agentPath: 'agent',
+      workspacePath: '/repo/root',
+      worktree: true,
+      force: false,
+      workDir: '/tmp/wd',
+      timeoutMs: 12000,
+      replaceData: true,
+    });
+    const cursorAuthIv = mapDslToNodeInputsValues(
+      cursorAuthCfg as Record<string, unknown>,
+      cursorCliAuthMappingSpec
+    );
+    expect(cursorAuthIv.workspacePath?.content).toBe('/repo/root');
+    expect(cursorAuthIv.force?.content).toBe(false);
+
     const legacyIv = mapDslToNodeInputsValues(
       {
         cursorPath: '/legacy/bin/cursor',
@@ -998,6 +1032,34 @@ describe('remaining node specs round-trip', () => {
     expect(fwIv.interactivePreset?.content).toBe('notice_card');
     expect(fwIv.timeoutMs?.content).toBe(8000);
     expect(fwIv.replaceData?.content).toBe(true);
+
+    const fsAuthCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            cliPath: { content: 'lark-cli' },
+            args: { content: ['auth', 'status'] },
+            workDir: { content: '/app' },
+            timeoutMs: { content: 9000 },
+            replaceData: { content: false },
+          },
+        },
+      },
+      feishuCliAuthMappingSpec
+    );
+    expect(fsAuthCfg).toMatchObject({
+      cliPath: 'lark-cli',
+      args: ['auth', 'status'],
+      workDir: '/app',
+      timeoutMs: 9000,
+      replaceData: false,
+    });
+    const fsAuthIv = mapDslToNodeInputsValues(
+      fsAuthCfg as Record<string, unknown>,
+      feishuCliAuthMappingSpec
+    );
+    expect(fsAuthIv.cliPath?.content).toBe('lark-cli');
+    expect(fsAuthIv.timeoutMs?.content).toBe(9000);
 
     const fwLegacyIv = mapDslToNodeInputsValues(
       {
@@ -1509,6 +1571,59 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     expect((node as any)?.data?.inputsValues?.timeoutMs?.content).toBe(60000);
   });
 
+  it('x/cursorCliAuth：文档→RuleChain→文档 round-trip 保持 configuration', () => {
+    const chainId = 'chain-cursor-auth-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'CursorAuthRT',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'cca',
+            type: 'x/cursorCliAuth',
+            meta: { position: { x: 220, y: 0 } },
+            data: {
+              title: 'Auth',
+              positionType: 'middle',
+              inputsValues: {
+                agentPath: { type: 'constant', content: 'agent' },
+                workspacePath: { type: 'template', content: '/repo/auth' },
+                worktree: { type: 'constant', content: true },
+                force: { type: 'constant', content: false },
+                workDir: { type: 'template', content: '/tmp/wd' },
+                timeoutMs: { type: 'constant', content: 16000 },
+                replaceData: { type: 'constant', content: true },
+              },
+              inputs: { type: 'object', properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'cca', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'cca');
+    expect(meta?.type).toBe('x/cursorCliAuth');
+    expect(meta.configuration).toMatchObject({
+      agentPath: 'agent',
+      workspacePath: '/repo/auth',
+      worktree: true,
+      force: false,
+      workDir: '/tmp/wd',
+      timeoutMs: 16000,
+      replaceData: true,
+    });
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'cca');
+    expect((node as any)?.data?.inputsValues?.workspacePath?.content).toBe('/repo/auth');
+    expect((node as any)?.data?.inputsValues?.worktree?.content).toBe(true);
+    expect((node as any)?.data?.inputsValues?.force?.content).toBe(false);
+  });
+
   it('x/feishuWebhook：文档→RuleChain→文档 round-trip 保持 configuration', () => {
     const chainId = 'chain-fs-rt';
     const doc = {
@@ -1574,6 +1689,55 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     expect((node as any)?.data?.inputsValues?.text?.content).toBe('ping ${msg.type}');
     expect((node as any)?.data?.inputsValues?.interactivePreset?.content).toBe('card_json');
     expect((node as any)?.data?.inputsValues?.timeoutMs?.content).toBe(12000);
+    expect((node as any)?.data?.inputsValues?.replaceData?.content).toBe(false);
+  });
+
+  it('x/feishuCliAuth：文档→RuleChain→文档 round-trip 保持 configuration', () => {
+    const chainId = 'chain-feishu-auth-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'FeishuAuthRT',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'fca',
+            type: 'x/feishuCliAuth',
+            meta: { position: { x: 220, y: 0 } },
+            data: {
+              title: 'Auth',
+              positionType: 'middle',
+              inputsValues: {
+                cliPath: { type: 'constant', content: 'lark-cli' },
+                args: { type: 'constant', content: ['auth', 'status'] },
+                workDir: { type: 'template', content: '/app' },
+                timeoutMs: { type: 'constant', content: 8000 },
+                replaceData: { type: 'constant', content: false },
+              },
+              inputs: { type: 'object', properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'fca', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'fca');
+    expect(meta?.type).toBe('x/feishuCliAuth');
+    expect(meta.configuration).toMatchObject({
+      cliPath: 'lark-cli',
+      args: ['auth', 'status'],
+      workDir: '/app',
+      timeoutMs: 8000,
+      replaceData: false,
+    });
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'fca');
+    expect((node as any)?.data?.inputsValues?.cliPath?.content).toBe('lark-cli');
+    expect((node as any)?.data?.inputsValues?.args?.content).toEqual(['auth', 'status']);
     expect((node as any)?.data?.inputsValues?.replaceData?.content).toBe(false);
   });
 

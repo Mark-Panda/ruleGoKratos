@@ -34,8 +34,10 @@ export enum WorkflowNodeType {
   OpenSearchSearch = 'opensearch/search',
   VolcTlsSearchLogs = 'volcTls/searchLogs',
   CursorCli = 'x/cursorCli',
+  CursorCliAuth = 'x/cursorCliAuth',
   CursorAcp = 'x/cursorAcp',
   FeishuWebhook = 'x/feishuWebhook',
+  FeishuCliAuth = 'x/feishuCliAuth',
   Yapi = 'transform/yapi',
 
   /** RuleGo：包容分支（多分支同时命中） */

@@ -450,6 +450,12 @@ function buildRuleChainMetaNodes(
       base.configuration = mapNodeToDslConfig(n, specCursorCli) as Record<string, any>;
       break;
     }
+    case 'x/cursorCliAuth': {
+      const specCursorCliAuth = getNodeMappingSpec('x/cursorCliAuth');
+      if (!specCursorCliAuth) break;
+      base.configuration = mapNodeToDslConfig(n, specCursorCliAuth) as Record<string, any>;
+      break;
+    }
     case 'x/cursorAcp': {
       const specAcp = getNodeMappingSpec('x/cursorAcp');
       if (!specAcp) break;
@@ -460,6 +466,12 @@ function buildRuleChainMetaNodes(
       const specFs = getNodeMappingSpec('x/feishuWebhook');
       if (!specFs) break;
       base.configuration = mapNodeToDslConfig(n, specFs) as Record<string, any>;
+      break;
+    }
+    case 'x/feishuCliAuth': {
+      const specFsAuth = getNodeMappingSpec('x/feishuCliAuth');
+      if (!specFsAuth) break;
+      base.configuration = mapNodeToDslConfig(n, specFsAuth) as Record<string, any>;
       break;
     }
     case 'transform/multiNodeOutput': {
@@ -1047,6 +1059,51 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           } as any;
           break;
         }
+        case 'x/cursorCliAuth': {
+          const cfg = n.configuration ?? {};
+          const specCcAuth = getNodeMappingSpec('x/cursorCliAuth');
+          const ivMapCcAuth = specCcAuth
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specCcAuth)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'Cursor CLI 授权检查',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['agentPath', 'workspacePath', 'timeoutMs'],
+              properties: {
+                agentPath: { type: 'string', extra: { label: 'agent 可执行文件' } },
+                workspacePath: {
+                  type: 'string',
+                  extra: { label: '工作区路径（--workspace）', formComponent: 'prompt-editor' },
+                },
+                worktree: { type: 'boolean', extra: { label: 'Git Worktree（--worktree）' } },
+                force: { type: 'boolean', extra: { label: '强制允许命令（--force）' } },
+                workDir: {
+                  type: 'string',
+                  extra: { label: '进程工作目录（cwd）', formComponent: 'prompt-editor' },
+                },
+                timeoutMs: { type: 'number', extra: { label: '超时(毫秒)' } },
+                replaceData: { type: 'boolean', extra: { label: '用状态 JSON 替换消息体' } },
+              },
+            },
+            inputsValues: specCcAuth
+              ? inputsValuesMapToFlowData(ivMapCcAuth, specCcAuth)
+              : {
+                  agentPath: { type: 'constant', content: String((cfg as any).agentPath ?? 'agent') },
+                  workspacePath: {
+                    type: 'template',
+                    content: String((cfg as any).workspacePath ?? '$HOME'),
+                  },
+                  worktree: { type: 'constant', content: !!(cfg as any).worktree },
+                  force: { type: 'constant', content: (cfg as any).force !== false },
+                  workDir: { type: 'template', content: String((cfg as any).workDir ?? '') },
+                  timeoutMs: { type: 'constant', content: Number((cfg as any).timeoutMs ?? 15000) },
+                  replaceData: { type: 'constant', content: (cfg as any).replaceData !== false },
+                },
+          } as any;
+          break;
+        }
         case 'x/cursorAcp': {
           const cfg = n.configuration ?? {};
           const specAcp = getNodeMappingSpec('x/cursorAcp');
@@ -1344,6 +1401,50 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     type: 'constant',
                     content: (cfg as any).replaceData === true,
                   },
+                },
+          } as any;
+          break;
+        }
+        case 'x/feishuCliAuth': {
+          const cfg = n.configuration ?? {};
+          const specFsAuth = getNodeMappingSpec('x/feishuCliAuth');
+          const ivMapFsAuth = specFsAuth
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specFsAuth)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '飞书 CLI 授权检查',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['cliPath', 'timeoutMs'],
+              properties: {
+                cliPath: { type: 'string', extra: { label: 'CLI 可执行文件' } },
+                args: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  extra: { label: '命令参数', formComponent: 'array-editor' },
+                },
+                workDir: {
+                  type: 'string',
+                  extra: { label: '进程工作目录（cwd）', formComponent: 'prompt-editor' },
+                },
+                timeoutMs: { type: 'number', extra: { label: '超时(毫秒)' } },
+                replaceData: { type: 'boolean', extra: { label: '用状态 JSON 替换消息体' } },
+              },
+            },
+            inputsValues: specFsAuth
+              ? inputsValuesMapToFlowData(ivMapFsAuth, specFsAuth)
+              : {
+                  cliPath: { type: 'constant', content: String((cfg as any).cliPath ?? 'lark-cli') },
+                  args: {
+                    type: 'constant',
+                    content: Array.isArray((cfg as any).args)
+                      ? (cfg as any).args
+                      : ['auth', 'status'],
+                  },
+                  workDir: { type: 'template', content: String((cfg as any).workDir ?? '') },
+                  timeoutMs: { type: 'constant', content: Number((cfg as any).timeoutMs ?? 15000) },
+                  replaceData: { type: 'constant', content: (cfg as any).replaceData !== false },
                 },
           } as any;
           break;

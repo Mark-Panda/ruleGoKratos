@@ -33,6 +33,7 @@ import { FeishuWebhookNodeRegistry } from './feishuWebhook';
 import { ExecNodeRegistry } from './exec';
 import { DBClientNodeRegistry } from './dbClient';
 import { CursorCliNodeRegistry } from './cursorCli';
+import { CursorCliAuthNodeRegistry } from './cursorCliAuth';
 import { CursorAcpNodeRegistry } from './cursorAcp';
 import { CronNodeRegistry } from './cron';
 import { CommentNodeRegistry } from './comment';
@@ -46,6 +47,7 @@ import { BlockEndNodeRegistry } from './block-end';
 import { TaskBoardNodeRegistry } from './task-board';
 import { ServiceManagementNodeRegistry } from './service-management';
 import { JsonExtractNodeRegistry } from './jsonExtract';
+import { FeishuCliAuthNodeRegistry } from './feishuCliAuth';
 export { WorkflowNodeType } from './constants';
 export { NODE_TYPE_NAMES, getNodeTypeName, getNodeDisplayName } from './node-type-names';
 
@@ -86,8 +88,10 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   OpenSearchSearchNodeRegistry,
   VolcTlsSearchLogsNodeRegistry,
   CursorCliNodeRegistry,
+  CursorCliAuthNodeRegistry,
   CursorAcpNodeRegistry,
   FeishuWebhookNodeRegistry,
+  FeishuCliAuthNodeRegistry,
   CronNodeRegistry,
   JsonExtractNodeRegistry,
   TaskBoardNodeRegistry,

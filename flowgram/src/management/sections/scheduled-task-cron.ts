@@ -155,15 +155,18 @@ export function buildScheduleConfigFromFormValues(values: ScheduledTaskFormValue
 
 export function buildScheduledTaskPayload(values: ScheduledTaskFormValues): ScheduledTaskPayloadLike {
   const config = buildScheduleConfigFromFormValues(values);
-  return {
+  const payload: ScheduledTaskPayloadLike = {
     name: String(values.name ?? '').trim(),
     description: String(values.description ?? ''),
     ruleChainId: String(values.ruleChainId ?? '').trim(),
     scheduleType: config.type,
     scheduleConfig: JSON.stringify(config),
     cronExpr: buildCronExpr(config),
-    payloadTemplate: typeof values.payloadTemplate === 'string' ? values.payloadTemplate : '',
   };
+  if (typeof values.payloadTemplate === 'string') {
+    payload.payloadTemplate = values.payloadTemplate;
+  }
+  return payload;
 }
 
 export function parseScheduleConfig(scheduleConfig: string): Record<string, unknown> {

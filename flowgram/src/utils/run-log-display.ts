@@ -167,7 +167,7 @@ export function summarizeRuleMsgLike(v: unknown, max = 160): string {
     if (trimmed) {
       const parsed = tryParseJson(trimmed);
       if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-        body = summarizeJsonObject(parsed as Record<string, unknown>, max);
+        body = truncateText(jsonCompact(parsed), max);
       } else {
         body = truncateText(trimmed, max);
       }
