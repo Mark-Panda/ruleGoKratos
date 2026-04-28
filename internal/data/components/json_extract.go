@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/rulego/rulego"
@@ -108,7 +110,9 @@ func (c *JsonExtractComponent) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 
 	result := parseJsonWithFixesWithOptions(inputText, "", opts)
 	if result.Success {
-		payload := result.ExtractedJson
+		normalized := normalizeTopLevelArrayToStringKeyMap(result.ExtractedJson)
+		result.ExtractedJson = normalized
+		payload := normalized
 		if c.Config.EmitReport {
 			payload = buildRepairReport(result)
 		}
@@ -140,6 +144,7 @@ type Result struct {
 	CandidateScore   int
 	SchemaMatched    int
 	SchemaMissing    []string
+	TruncatedTailDropped bool
 }
 
 func parseJsonWithFixes(text, mode string) Result {
@@ -194,16 +199,44 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 	}
 
 	appendCandidate(trimText)
+	appendCandidateWithStrategy(extractFromFirstJSONStart(trimText), "first_json_start")
+	embeddedTexts := extractEmbeddedTextCandidatesFromJSON(trimText, 8)
+	for _, embedded := range embeddedTexts {
+		appendCandidateWithStrategy(embedded, "embedded_text_field")
+		appendCandidateWithStrategy(extractFromFirstJSONStart(embedded), "embedded_first_json_start")
+		if opts.ExtractMode == "md" || opts.ExtractMode == "auto" {
+			appendCandidateWithStrategy(extractJsonFromMarkdown(embedded), "embedded_markdown_fence")
+		}
+		if opts.ExtractMode == "json" || opts.ExtractMode == "auto" {
+			fragments := extractBalancedJSONFragments(embedded, 12)
+			for _, f := range fragments {
+				appendCandidateWithStrategy(f, "embedded_balanced_fragment")
+			}
+			appendCandidateWithStrategy(extractJsonFromTaggedBlock(embedded), "embedded_tagged_block")
+			appendCandidateWithStrategy(extractJsonFromAssignment(embedded), "embedded_assignment_rhs")
+		}
+	}
+	mdExtracted := ""
 	if opts.ExtractMode == "md" || opts.ExtractMode == "auto" {
-		appendCandidateWithStrategy(extractJsonFromMarkdown(trimText), "markdown_fence")
+		mdExtracted = extractJsonFromMarkdown(trimText)
+		appendCandidateWithStrategy(mdExtracted, "markdown_fence")
 	}
 	if opts.ExtractMode == "json" || opts.ExtractMode == "auto" {
-		fragments := extractBalancedJSONFragments(trimText, 4)
+		fragments := extractBalancedJSONFragments(trimText, 20)
 		for _, f := range fragments {
 			appendCandidateWithStrategy(f, "balanced_fragment")
 		}
 		appendCandidateWithStrategy(extractJsonFromTaggedBlock(trimText), "tagged_block")
 		appendCandidateWithStrategy(extractJsonFromAssignment(trimText), "assignment_rhs")
+	}
+	// 防止 extractMode=md 但文本实际无 markdown code fence 时漏提取。
+	if opts.ExtractMode == "md" && strings.TrimSpace(mdExtracted) == "" {
+		fragments := extractBalancedJSONFragments(trimText, 20)
+		for _, f := range fragments {
+			appendCandidateWithStrategy(f, "fallback_balanced_fragment")
+		}
+		appendCandidateWithStrategy(extractJsonFromTaggedBlock(trimText), "fallback_tagged_block")
+		appendCandidateWithStrategy(extractJsonFromAssignment(trimText), "fallback_assignment_rhs")
 	}
 
 	// 2. 对每个候选应用解析与修复策略。
@@ -218,6 +251,7 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 	for _, c := range candidates {
 		var variants []string
 		var variantStrategy []string
+		var variantTailDropped []bool
 		if opts.RepairMode == "strict" {
 			variants = []string{
 				c.value,
@@ -227,15 +261,21 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 				"none",
 				"unwrap_json_string",
 			}
+			variantTailDropped = []bool{
+				false,
+				false,
+			}
 		} else {
+			completeOnly, completeOnlyDropped := completeJsonWithMeta(c.value)
+			completeAfterFix, completeAfterFixDropped := completeJsonWithMeta(fixJsonFormat(c.value))
 			variants = []string{
 				c.value,
 				unwrapJSONStringCandidate(c.value),
 				fixJsonFormat(c.value),
-				completeJson(c.value),
-				completeJson(fixJsonFormat(c.value)),
+				completeOnly,
+				completeAfterFix,
 				unwrapJSONStringCandidate(fixJsonFormat(c.value)),
-				fixJsonFormat(completeJson(c.value)),
+				fixJsonFormat(completeOnly),
 			}
 			variantStrategy = []string{
 				"none",
@@ -245,6 +285,15 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 				"fix_then_complete",
 				"fix_then_unwrap",
 				"complete_then_fix",
+			}
+			variantTailDropped = []bool{
+				false,
+				false,
+				false,
+				completeOnlyDropped,
+				completeAfterFixDropped,
+				false,
+				completeOnlyDropped,
 			}
 		}
 		if allowAggressive {
@@ -256,6 +305,11 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 				if strings.TrimSpace(v) != "" {
 					variants = append(variants, v)
 					variantStrategy = append(variantStrategy, "aggressive_normalize("+variantStrategy[i]+")")
+					if i < len(variantTailDropped) {
+						variantTailDropped = append(variantTailDropped, variantTailDropped[i])
+					} else {
+						variantTailDropped = append(variantTailDropped, false)
+					}
 				}
 			}
 		}
@@ -273,6 +327,10 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 					if idx < len(variantStrategy) && variantStrategy[idx] != "none" {
 						repairs = append(repairs, variantStrategy[idx])
 					}
+					tailDropped := idx < len(variantTailDropped) && variantTailDropped[idx]
+					if tailDropped {
+						repairs = append(repairs, "truncated_tail_dropped")
+					}
 					enriched, schemaMatched, schemaMissing, schemaChanged := applySchemaCompletion(parsed, compiledSchemas)
 					if schemaChanged {
 						repairs = append(repairs, "schema_complete")
@@ -287,6 +345,7 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 						CandidateScore:   score,
 						SchemaMatched:    schemaMatched,
 						SchemaMissing:    schemaMissing,
+						TruncatedTailDropped: tailDropped,
 					})
 				default:
 					if !hasPrimitiveFallback {
@@ -571,6 +630,9 @@ func scoreParsedCandidate(parsed interface{}, source string, repairs []string, s
 		score += 25
 	}
 	score += minInt(countJSONNodes(parsed), 80)
+	if hasTopLevelDataArray(parsed) {
+		score += 18
+	}
 	score += schemaMatched * 25
 	score -= schemaMissing * 20
 	switch source {
@@ -584,9 +646,24 @@ func scoreParsedCandidate(parsed interface{}, source string, repairs []string, s
 		score += 5
 	case "assignment_rhs":
 		score += 4
+	case "first_json_start", "embedded_first_json_start":
+		score += 7
 	}
 	score -= len(repairs) * 2
 	return score
+}
+
+func hasTopLevelDataArray(v interface{}) bool {
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	data, ok := m["data"]
+	if !ok {
+		return false
+	}
+	_, ok = data.([]interface{})
+	return ok
 }
 
 func countJSONNodes(v interface{}) int {
@@ -656,6 +733,119 @@ func normalizeCommonText(text string) string {
 	return replacer.Replace(text)
 }
 
+func extractFromFirstJSONStart(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	firstObj := strings.IndexByte(text, '{')
+	firstArr := strings.IndexByte(text, '[')
+	start := -1
+	switch {
+	case firstObj >= 0 && firstArr >= 0:
+		if firstObj < firstArr {
+			start = firstObj
+		} else {
+			start = firstArr
+		}
+	case firstObj >= 0:
+		start = firstObj
+	case firstArr >= 0:
+		start = firstArr
+	default:
+		return ""
+	}
+	if start < 0 || start >= len(text) {
+		return ""
+	}
+	return strings.TrimSpace(text[start:])
+}
+
+// extractEmbeddedTextCandidatesFromJSON 用于处理 source 指向对象时的场景（如 ${msg.data}），
+// 自动从 JSON 容器中抽取可能包含目标结构化内容的文本字段。
+func extractEmbeddedTextCandidatesFromJSON(text string, max int) []string {
+	if strings.TrimSpace(text) == "" || max <= 0 {
+		return nil
+	}
+	var parsed interface{}
+	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		return nil
+	}
+
+	type textCandidate struct {
+		value string
+		score int
+	}
+	candidates := make([]textCandidate, 0, 8)
+	seen := make(map[string]struct{}, 16)
+
+	scoreText := func(s string) int {
+		score := 0
+		if strings.Contains(s, "```") {
+			score += 120
+		}
+		if strings.Contains(s, `{"`) || strings.Contains(s, `["`) {
+			score += 45
+		}
+		if strings.Contains(s, "{") || strings.Contains(s, "[") {
+			score += 30
+		}
+		if strings.Contains(strings.ToLower(s), "json") {
+			score += 15
+		}
+		score += minInt(len(s)/64, 80)
+		return score
+	}
+
+	var walk func(v interface{}, depth int)
+	walk = func(v interface{}, depth int) {
+		if depth > 8 || len(candidates) >= max*3 {
+			return
+		}
+		switch t := v.(type) {
+		case map[string]interface{}:
+			for _, child := range t {
+				walk(child, depth+1)
+			}
+		case []interface{}:
+			for _, child := range t {
+				walk(child, depth+1)
+			}
+		case string:
+			s := strings.TrimSpace(t)
+			if len(s) < 8 {
+				return
+			}
+			if _, ok := seen[s]; ok {
+				return
+			}
+			seen[s] = struct{}{}
+			candidates = append(candidates, textCandidate{
+				value: s,
+				score: scoreText(s),
+			})
+		}
+	}
+	walk(parsed, 0)
+	if len(candidates) == 0 {
+		return nil
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].score == candidates[j].score {
+			return len(candidates[i].value) > len(candidates[j].value)
+		}
+		return candidates[i].score > candidates[j].score
+	})
+	if len(candidates) > max {
+		candidates = candidates[:max]
+	}
+	out := make([]string, 0, len(candidates))
+	for _, c := range candidates {
+		out = append(out, c.value)
+	}
+	return out
+}
+
 func extractJsonFromMarkdown(text string) string {
 	re := regexp.MustCompile("(?s)```(?:json)?\\s*([\\s\\S]*?)```")
 	matches := re.FindStringSubmatch(text)
@@ -702,7 +892,7 @@ func extractBalancedJSONFragments(text string, maxFragments int) []string {
 	if maxFragments <= 0 {
 		maxFragments = 1
 	}
-	out := make([]string, 0, maxFragments)
+	all := make([]string, 0, maxFragments*2)
 	seen := make(map[string]struct{}, maxFragments)
 	for i := 0; i < len(text); i++ {
 		ch := text[i]
@@ -718,13 +908,19 @@ func extractBalancedJSONFragments(text string, maxFragments int) []string {
 				continue
 			}
 			seen[frag] = struct{}{}
-			out = append(out, frag)
-			if len(out) >= maxFragments {
-				break
-			}
+			all = append(all, frag)
 		}
 	}
-	return out
+	if len(all) <= maxFragments {
+		return all
+	}
+	sort.SliceStable(all, func(i, j int) bool {
+		if len(all[i]) == len(all[j]) {
+			return i < j
+		}
+		return len(all[i]) > len(all[j])
+	})
+	return all[:maxFragments]
 }
 
 func cutBalancedJSONFragment(text string) (string, bool) {
@@ -834,12 +1030,17 @@ func aggressiveNormalize(jsonStr string) string {
 }
 
 func completeJson(jsonStr string) string {
+	out, _ := completeJsonWithMeta(jsonStr)
+	return out
+}
+
+func completeJsonWithMeta(jsonStr string) (string, bool) {
 	s := strings.TrimSpace(jsonStr)
 	if s == "" {
-		return s
+		return s, false
 	}
 	if !strings.HasPrefix(s, "{") && !strings.HasPrefix(s, "[") {
-		return s
+		return s, false
 	}
 
 	buf := make([]byte, 0, len(s)+8)
@@ -905,7 +1106,44 @@ func completeJson(jsonStr string) string {
 		out += string(stack[len(stack)-1])
 		stack = stack[:len(stack)-1]
 	}
-	return out
+	return healCompletedJSONTail(out)
+}
+
+// healCompletedJSONTail 在 completeJson 的基础上，修复因截断导致的尾部悬空片段。
+// 典型场景：...,"name":"study-statistics", "   -> 可能被补成 ...,""
+// 该函数仅在原结果非合法 JSON 时启用启发式修复，避免影响正常结果。
+func healCompletedJSONTail(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" || isValidJSON(s) {
+		return s, false
+	}
+	candidates := []string{
+		// 移除尾部空 key（由截断补全导致）
+		regexp.MustCompile(`,\s*""\s*([}\]])`).ReplaceAllString(s, `$1`),
+		// 移除尾部未完成 key（有 key 无冒号）
+		regexp.MustCompile(`,\s*"[^"]*"\s*([}\]])`).ReplaceAllString(s, `$1`),
+		// 移除尾部未完成 key:value（有冒号无值）
+		regexp.MustCompile(`,\s*"[^"]*"\s*:\s*([}\]])`).ReplaceAllString(s, `$1`),
+		// 移除闭合符前多余逗号
+		regexp.MustCompile(`,\s*([}\]])`).ReplaceAllString(s, `$1`),
+	}
+	for _, c := range candidates {
+		c = strings.TrimSpace(c)
+		if c != "" && isValidJSON(c) {
+			return c, c != s
+		}
+	}
+	// 尝试串联修复一次，覆盖多重尾部噪声场景。
+	chained := s
+	chained = regexp.MustCompile(`,\s*""\s*([}\]])`).ReplaceAllString(chained, `$1`)
+	chained = regexp.MustCompile(`,\s*"[^"]*"\s*([}\]])`).ReplaceAllString(chained, `$1`)
+	chained = regexp.MustCompile(`,\s*"[^"]*"\s*:\s*([}\]])`).ReplaceAllString(chained, `$1`)
+	chained = regexp.MustCompile(`,\s*([}\]])`).ReplaceAllString(chained, `$1`)
+	chained = strings.TrimSpace(chained)
+	if chained != "" && isValidJSON(chained) {
+		return chained, chained != s
+	}
+	return s, false
 }
 
 func isValidJSON(s string) bool {
@@ -926,6 +1164,22 @@ func buildRepairReport(result Result) interface{} {
 		"score":             result.CandidateScore,
 		"schema_matched":    result.SchemaMatched,
 		"schema_missing":    result.SchemaMissing,
+		"truncated_tail_dropped": result.TruncatedTailDropped,
 		"data":              result.ExtractedJson,
 	}
+}
+
+// normalizeTopLevelArrayToStringKeyMap 将顶层 JSON 数组转为字符串 key 对象：
+// [a,b] => {"0":a,"1":b}
+// 仅转换顶层，避免破坏对象内字段的数组语义（如 data[]）。
+func normalizeTopLevelArrayToStringKeyMap(v interface{}) interface{} {
+	arr, ok := v.([]interface{})
+	if !ok {
+		return v
+	}
+	out := make(map[string]interface{}, len(arr))
+	for i, item := range arr {
+		out[strconv.Itoa(i)] = item
+	}
+	return out
 }

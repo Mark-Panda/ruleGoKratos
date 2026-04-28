@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { FC, useState } from 'react';
+import { FC, MouseEvent, useState } from 'react';
 
 import classNames from 'classnames';
-import { Tag } from '@douyinfe/semi-ui';
-import { IconSmallTriangleDown } from '@douyinfe/semi-icons';
+import { Tag, Toast } from '@douyinfe/semi-ui';
+import { IconCopy, IconSmallTriangleDown } from '@douyinfe/semi-icons';
 
 import { DataStructureViewer } from '../viewer';
 
@@ -31,6 +31,23 @@ export const NodeStatusGroup: FC<NodeStatusGroupProps> = ({
   const hasContent = isObjectHasContent(data);
   const [isExpanded, setIsExpanded] = useState(true);
 
+  const handleCopyGroupData = async (event: MouseEvent) => {
+    event.stopPropagation();
+    if (!hasContent) {
+      return;
+    }
+    try {
+      const text =
+        typeof data === 'string'
+          ? data
+          : JSON.stringify(data, null, 2) ?? String(data ?? '');
+      await navigator.clipboard.writeText(text);
+      Toast.success({ content: `已复制${title}`, duration: 2 });
+    } catch {
+      Toast.warning({ content: '复制失败，请手动复制', duration: 3 });
+    }
+  };
+
   if (optional && !hasContent) {
     return null;
   }
@@ -49,6 +66,12 @@ export const NodeStatusGroup: FC<NodeStatusGroupProps> = ({
           />
         )}
         <span>{title}:</span>
+        {hasContent ? (
+          <span className={styles['node-status-group-copy']} onClick={handleCopyGroupData}>
+            <IconCopy className={styles['node-status-group-copy-icon']} />
+            复制
+          </span>
+        ) : null}
         {!hasContent && (
           <Tag size="small" className={styles['node-status-group-tag']}>
             null
