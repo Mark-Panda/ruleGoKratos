@@ -163,6 +163,8 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		ManagedAgentID:  x.Config.ManagedAgentID,
 		LlmConfigID:     x.Config.LlmConfigID,
 		LlmModelEntryID: x.Config.LlmModelEntryID,
+		UserID:          "agent-harness-llm",
+		ProjectPath:     "",
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)

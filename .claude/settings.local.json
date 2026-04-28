@@ -9,7 +9,8 @@
       "Bash(go build *)",
       "Bash(go test *)",
       "Bash(go run *)",
-      "Bash(go doc *)"
+      "Bash(go doc *)",
+      "Bash(grep -E \"\\\\.proto$|chat\")"
     ]
   }
 }

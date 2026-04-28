@@ -283,6 +283,8 @@ func (s *RuleChainUsecase) GenerateRuleChainSkill(ctx context.Context, in *v1.Ge
 			SkillAllowlist: []string{ruleChainSkillCreatorName},
 		},
 		ManagedAgentID: in.GetManagedAgentId(),
+		UserID:        "rule-chain",
+		ProjectPath:   dirName,
 	})
 	if err != nil {
 		_ = s.persistRuleChainSkillFailure(ctx, ruleChainDB, ruleChain, existingMeta, dirName, entryFile, currentSignature, err.Error())

@@ -384,7 +384,10 @@ func TestRunSubAgentToolBatchShouldAggregate(t *testing.T) {
 
 func TestBuildMessagesShouldUseDefaultSystemPrompt(t *testing.T) {
 	uc := newTestAgentUsecase()
-	msgs := uc.buildMessages(nil, "hello")
+	msgs, err := uc.buildMessages(nil, "hello")
+	if err != nil {
+		t.Fatalf("buildMessages failed: %v", err)
+	}
 	if len(msgs) == 0 || msgs[0].Content != defaultSystemPrompt {
 		t.Fatalf("expected default system prompt, got: %#v", msgs)
 	}
@@ -422,7 +425,10 @@ func TestBuildMessagesShouldUseConfiguredSystemPrompt(t *testing.T) {
 			SystemPrompt: "custom system prompt",
 		},
 	}
-	msgs := uc.buildMessages(nil, "hello")
+	msgs, err := uc.buildMessages(nil, "hello")
+	if err != nil {
+		t.Fatalf("buildMessages failed: %v", err)
+	}
 	if len(msgs) == 0 || msgs[0].Content != "custom system prompt" {
 		t.Fatalf("expected configured system prompt, got: %#v", msgs)
 	}
@@ -430,11 +436,14 @@ func TestBuildMessagesShouldUseConfiguredSystemPrompt(t *testing.T) {
 
 func TestComposeMessagesShouldEmbedAttachmentsIntoLastUserMessage(t *testing.T) {
 	uc := newTestAgentUsecase()
-	msgs := uc.composeMessages(context.Background(), &HarnessRequest{}, "", nil, "看这个文件", []HarnessAttachment{{
+	msgs, err := uc.composeMessages(context.Background(), &HarnessRequest{}, "", nil, "看这个文件", []HarnessAttachment{{
 		Filename:      "spec.pdf",
 		MimeType:      "application/pdf",
 		ContentBase64: base64.StdEncoding.EncodeToString([]byte("pdf")),
 	}})
+	if err != nil {
+		t.Fatalf("composeMessages failed: %v", err)
+	}
 
 	if len(msgs) < 2 {
 		t.Fatalf("expected system and user messages, got %#v", msgs)

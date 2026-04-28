@@ -17,6 +17,7 @@ func NewHTTPServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
+			AuthMiddleware(),
 		),
 		http.Filter(corsFilter),
 	}

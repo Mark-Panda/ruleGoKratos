@@ -36,14 +36,17 @@ func RunAgentHarness(
 	}
 
 	msg := buildCollaborationUserMessage(def, userInput)
+	sessionDir := filepath.Join("playground", "run_"+sanitizePlaygroundRunIDForPath(runID))
 	req := biz.HarnessRequest{
 		ManagedAgentID:      def.ManagedAgentID,
 		Input:               msg,
 		History:             history,
-		WorkspaceSessionDir: filepath.Join("playground", "run_"+sanitizePlaygroundRunIDForPath(runID)),
+		WorkspaceSessionDir: sessionDir,
 		PlaygroundRunID:     runID,
 		PlaygroundAgentID:   def.ID,
 		TraceSink:           traceForwarder{t: trace},
+		UserID:              "playground",
+		ProjectPath:         sessionDir,
 	}
 	if schemeCfg != nil {
 		req.ConfigOverride = harnessConfigFromScheme(schemeCfg)

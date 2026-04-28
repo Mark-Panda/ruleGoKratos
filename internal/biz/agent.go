@@ -102,6 +102,11 @@ type HarnessRequest struct {
 	// WorkspaceSessionDir 相对于配置的 workspace 根的子路径；非空时本轮 Harness 内 read/write/shell 工具仅在该目录下操作（运行前会 MkdirAll）。
 	WorkspaceSessionDir string
 
+	// UserID 用于上下文记忆管理（可从 HTTP header X-User-ID 或 auth context 获取）
+	UserID string
+	// ProjectPath 用于项目级记忆（可从 HTTP header X-Project-Path 或 workspace 配置获取）
+	ProjectPath string
+
 	// Playground 协作：将 Harness 内工具调用写入 Trace（可选）。
 	PlaygroundRunID   string
 	PlaygroundAgentID string
@@ -173,6 +178,7 @@ type AgentUsecase struct {
 	managedAgentLoader ManagedAgentLoader
 	mcpConfigAdmin     McpConfigAdmin
 	chatModelFunc      func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error)
+	contextManager     *ContextManager
 }
 
 func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
@@ -195,7 +201,24 @@ func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
 		helper.Errorf("初始化FileSkillExecutor失败: %v", err)
 		fileExecutor = &FileSkillExecutor{}
 	}
-	return &AgentUsecase{
+
+	// 初始化 ContextManager（默认配置，使用 simpleSummarize）
+	contextConfig := DefaultContextConfig()
+	// 尝试从配置中读取上下文管理配置
+	if config != nil && config.Agent != nil {
+		// 可以通过 config.Agent 添加更多配置项
+	}
+
+	var memoryStore MemoryStore
+	if contextConfig.MemoryEnabled {
+		if memStore, err := NewFileMemoryStore(""); err == nil {
+			memoryStore = memStore
+		} else {
+			helper.Warnf("初始化 MemoryStore 失败: %v，使用无记忆模式", err)
+		}
+	}
+
+	uc := &AgentUsecase{
 		log:           helper,
 		config:        config,
 		harnessLogger: NewHarnessLogger(helper),
@@ -208,6 +231,11 @@ func NewAgentUsecase(logger log.Logger, config *conf.Bootstrap) *AgentUsecase {
 		skillExecutor:   fileExecutor,
 		mcpToolProvider: &NoopMcpToolProvider{},
 	}
+
+	// 初始化 ContextManager，chatModelFunc 延迟设置
+	uc.contextManager = NewContextManager(contextConfig, memoryStore, nil, helper)
+
+	return uc
 }
 
 func (uc *AgentUsecase) SetSkillExecutor(executor SkillExecutor) {
@@ -228,6 +256,21 @@ func (uc *AgentUsecase) SetHarnessConfig(cfg HarnessConfig) {
 
 func (uc *AgentUsecase) SetManagedLLMResolver(r ManagedLLMResolver) {
 	uc.managedLLM = r
+}
+
+func (uc *AgentUsecase) SetContextManager(cm *ContextManager) {
+	uc.contextManager = cm
+}
+
+func (uc *AgentUsecase) ContextManager() *ContextManager {
+	return uc.contextManager
+}
+
+// SetContextChatModelFunc 设置 ContextManager 用于摘要的 chatModelFunc
+func (uc *AgentUsecase) SetContextChatModelFunc(fn func(ctx context.Context) (model.ToolCallingChatModel, error)) {
+	if uc.contextManager != nil {
+		uc.contextManager.SetChatModelFunc(fn)
+	}
 }
 
 func (uc *AgentUsecase) ResolveManagedLLM(ctx context.Context, configID int64, entryID int64) (modelName string, apiKey string, baseURL string, err error) {
@@ -269,12 +312,12 @@ func (uc *AgentUsecase) newChatModel(ctx context.Context, req HarnessRequest) (m
 	return nil, errors.New("请在流程节点中选择模型管理中的 LLM 配置与模型（已不再使用环境变量 AI 密钥）")
 }
 
-func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) []*schema.Message {
+func (uc *AgentUsecase) buildMessages(history []HistoryMessage, userMessage string) ([]*schema.Message, error) {
 	req := &HarnessRequest{History: history}
 	return uc.composeMessages(context.Background(), req, uc.getSystemPrompt(), history, userMessage, nil)
 }
 
-func (uc *AgentUsecase) composeMessages(ctx context.Context, req *HarnessRequest, systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) []*schema.Message {
+func (uc *AgentUsecase) composeMessages(ctx context.Context, req *HarnessRequest, systemPrompt string, history []HistoryMessage, userText string, attachments []HarnessAttachment) ([]*schema.Message, error) {
 	if strings.TrimSpace(systemPrompt) == "" {
 		systemPrompt = uc.getSystemPrompt()
 	}
@@ -296,6 +339,27 @@ func (uc *AgentUsecase) composeMessages(ctx context.Context, req *HarnessRequest
 			}
 		}
 	}
+
+	// 如果配置了 ContextManager，使用它来构建消息（支持滑动窗口、摘要、记忆）
+	if uc.contextManager != nil {
+		var userID, projectPath string
+		if req != nil {
+			userID = req.UserID
+			projectPath = req.ProjectPath
+		}
+		// 从 context manager 构建消息
+		return uc.contextManager.BuildMessages(
+			ctx,
+			history,
+			userText,
+			systemPrompt,
+			userID,
+			projectPath,
+			attachments,
+		)
+	}
+
+	// 降级：使用原有的直接构建方式
 	msgs := make([]*schema.Message, 0, len(history)+2)
 	msgs = append(msgs, schema.SystemMessage(systemPrompt))
 	for _, item := range history {
@@ -308,7 +372,7 @@ func (uc *AgentUsecase) composeMessages(ctx context.Context, req *HarnessRequest
 	}
 	parts := buildHarnessInputPartsWithOptions(userText, attachments, uc.harnessMultimodalOptions(req))
 	msgs = append(msgs, lastUserMessageFromParts(parts))
-	return msgs
+	return msgs, nil
 }
 
 func (uc *AgentUsecase) harnessMultimodalOptions(req *HarnessRequest) HarnessMultimodalOptions {
@@ -549,7 +613,15 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 				systemPrompt = uc.getSystemPrompt()
 			}
 		}
-		msgs := uc.composeMessages(workCtx, &req, systemPrompt, req.History, req.Input, req.Attachments)
+		// 将当前模型传给 ContextManager 用于摘要
+		if uc.contextManager != nil {
+			uc.contextManager.SetChatModel(einoModel)
+		}
+		msgs, err := uc.composeMessages(workCtx, &req, systemPrompt, req.History, req.Input, req.Attachments)
+		if err != nil {
+			yield(nil, fmt.Errorf("构建消息失败: %w", err))
+			return
+		}
 		toolCallCount := 0
 		consecutiveRecoverableErrors := 0
 		const maxConsecutiveRecoverableErrors = 3

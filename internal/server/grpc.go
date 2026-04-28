@@ -1,13 +1,17 @@
 package server
 
 import (
+	"context"
+
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/conf"
 	"ruleGoKratos/internal/service"
 
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/recovery"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 // NewGRPCServer new a gRPC server.
@@ -15,6 +19,7 @@ func NewGRPCServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),
+			grpcAuthMiddleware(),
 		),
 	}
 	if c.Grpc.Network != "" {
@@ -36,4 +41,20 @@ func NewGRPCServer(c *conf.Server, rules *service.RuleGoService, runLogs *servic
 	v1.RegisterServiceManagementServiceServer(srv, taskService)
 	v1.RegisterScheduledTaskServiceServer(srv, scheduledTasks)
 	return srv
+}
+
+func grpcAuthMiddleware() middleware.Middleware {
+	return func(next middleware.Handler) middleware.Handler {
+		return func(ctx context.Context, in interface{}) (interface{}, error) {
+			if md, ok := metadata.FromIncomingContext(ctx); ok {
+				if userID := md.Get("x-user-id"); len(userID) > 0 && userID[0] != "" {
+					ctx = context.WithValue(ctx, userIDKey, userID[0])
+				}
+				if projectPath := md.Get("x-project-path"); len(projectPath) > 0 && projectPath[0] != "" {
+					ctx = context.WithValue(ctx, projectPathKey, projectPath[0])
+				}
+			}
+			return next(ctx, in)
+		}
+	}
 }

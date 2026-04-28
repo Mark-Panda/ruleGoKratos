@@ -25,6 +25,34 @@ func NewChatService(agent *biz.AgentUsecase) *ChatService {
 	return &ChatService{agent: agent}
 }
 
+// contextKey 用于从 context 提取值的 key 类型
+type contextKey string
+
+const (
+	userIDKey       contextKey = "x-user-id"
+	projectPathKey  contextKey = "x-project-path"
+)
+
+// extractUserIDFromContext 从 context 中提取 user_id
+func extractUserIDFromContext(ctx context.Context) string {
+	if v := ctx.Value(userIDKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// extractProjectPathFromContext 从 context 中提取 project_path
+func extractProjectPathFromContext(ctx context.Context) string {
+	if v := ctx.Value(projectPathKey); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 func protoHistoryToHarness(in []*v1.ChatMessage) []biz.HistoryMessage {
 	if len(in) == 0 {
 		return nil
@@ -42,7 +70,7 @@ func protoHistoryToHarness(in []*v1.ChatMessage) []biz.HistoryMessage {
 	return out
 }
 
-func (s *ChatService) harnessRequestFromProto(req *v1.ChatStreamReq) biz.HarnessRequest {
+func (s *ChatService) harnessRequestFromProto(ctx context.Context, req *v1.ChatStreamReq) biz.HarnessRequest {
 	atts := make([]biz.HarnessAttachment, 0, len(req.GetAttachments()))
 	for _, a := range req.GetAttachments() {
 		if a == nil {
@@ -55,6 +83,11 @@ func (s *ChatService) harnessRequestFromProto(req *v1.ChatStreamReq) biz.Harness
 			ContentBase64: a.GetContentBase64(),
 		})
 	}
+
+	// 从 context 中提取 user_id 和 project_path（通常由 auth middleware 设置）
+	userID := extractUserIDFromContext(ctx)
+	projectPath := extractProjectPathFromContext(ctx)
+
 	return biz.HarnessRequest{
 		Model:            req.GetModel(),
 		History:          protoHistoryToHarness(req.GetHistory()),
@@ -64,6 +97,8 @@ func (s *ChatService) harnessRequestFromProto(req *v1.ChatStreamReq) biz.Harness
 		LlmModelEntryID:  req.GetLlmModelEntryId(),
 		ManagedAgentID:   req.GetManagedAgentId(),
 		ToolOptions:      nil,
+		UserID:           userID,
+		ProjectPath:      projectPath,
 	}
 }
 
@@ -71,7 +106,7 @@ func (s *ChatService) harnessRequestFromProto(req *v1.ChatStreamReq) biz.Harness
 func (s *ChatService) ChatStream(req *v1.ChatStreamReq, stream v1.Chat_ChatStreamServer) error {
 	ctx := stream.Context()
 	enrichReqFromMessageImageURLs(ctx, req)
-	gen := s.agent.StreamHarness(ctx, s.harnessRequestFromProto(req))
+	gen := s.agent.StreamHarness(ctx, s.harnessRequestFromProto(ctx, req))
 	gen(func(sm *biz.StreamMessage, err error) bool {
 		if err != nil {
 			_ = stream.Send(&v1.ChatStreamReply{
@@ -154,7 +189,7 @@ func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
 	defer close(heartbeatDone)
 
 	var streamWriteErr error
-	gen := s.agent.StreamHarness(requestCtx, s.harnessRequestFromProto(&req))
+	gen := s.agent.StreamHarness(requestCtx, s.harnessRequestFromProto(requestCtx, &req))
 	gen(func(sm *biz.StreamMessage, err error) bool {
 		reply := &v1.ChatStreamReply{}
 		if err != nil {
