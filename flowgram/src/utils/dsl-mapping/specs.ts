@@ -391,7 +391,7 @@ export const fileListMappingSpec: NodeMappingSpec = {
   ],
 };
 
-/** 兼容历史：configuration 曾误写入整份 node.data，仅含嵌套 inputsValues 时拆出 source / extractPattern。 */
+/** 兼容历史：configuration 曾误写入整份 node.data，仅含嵌套 inputsValues 时拆出 source。 */
 export const jsonExtractMappingSpec: NodeMappingSpec = {
   nodeType: 'x/jsonExtract',
   transformIn: (cfg) => {
@@ -408,38 +408,10 @@ export const jsonExtractMappingSpec: NodeMappingSpec = {
     };
     return {
       source: pick(iv.source) ?? '',
-      extractPattern: pick(iv.extractPattern) ?? 'auto',
-      parseMode: pick(iv.parseMode) ?? 'auto',
-      schemaPaths: pick(iv.schemaPaths) ?? '',
-      emitReport: pick(iv.emitReport) ?? false,
     } as Record<string, unknown>;
   },
   fields: [
     { inputKey: 'source', dslKey: 'source', valueType: 'template', defaultValue: '' },
-    {
-      inputKey: 'extractPattern',
-      dslKey: 'extractPattern',
-      valueType: 'constant',
-      defaultValue: 'auto',
-    },
-    {
-      inputKey: 'parseMode',
-      dslKey: 'parseMode',
-      valueType: 'constant',
-      defaultValue: 'auto',
-    },
-    {
-      inputKey: 'schemaPaths',
-      dslKey: 'schemaPaths',
-      valueType: 'constant',
-      defaultValue: '',
-    },
-    {
-      inputKey: 'emitReport',
-      dslKey: 'emitReport',
-      valueType: 'boolean',
-      defaultValue: false,
-    },
   ],
 };
 

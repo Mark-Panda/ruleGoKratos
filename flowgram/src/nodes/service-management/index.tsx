@@ -13,9 +13,8 @@ import { serviceStatusOptions, ServiceStatus } from '../../services/api-service'
 let index = 0;
 const SERVICE_STATUS_VALUES = serviceStatusOptions.map((o) => o.value);
 const SERVICE_ACTION_OPTIONS = [
-  { label: '创建服务', value: 'create' },
+  { label: '保存服务（按名称）', value: 'save' },
   { label: '获取服务', value: 'get' },
-  { label: '更新服务', value: 'update' },
   { label: '删除服务', value: 'delete' },
 ];
 
@@ -49,7 +48,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
         title: `ServiceManagement_${++index}`,
         positionType: 'middle',
         inputsValues: {
-          action: { type: 'constant', content: 'create' },
+          action: { type: 'constant', content: 'save' },
           name: { type: 'template', content: '' },
           status: { type: 'constant', content: ServiceStatus.STOPPED },
           volcLogServiceId: { type: 'template', content: '' },
@@ -63,13 +62,14 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
           properties: {
             action: {
               type: 'string',
-              enum: ['create', 'get', 'update', 'delete'],
-              default: { type: 'constant', content: 'create' } as any,
+              enum: ['save', 'get', 'delete'],
+              default: { type: 'constant', content: 'save' } as any,
               extra: {
                 label: '操作类型',
                 formComponent: 'enum-select',
                 options: SERVICE_ACTION_OPTIONS,
-                description: 'create: 创建服务 | get: 获取服务 | update: 更新服务 | delete: 删除服务',
+                description:
+                  'save: 按名称保存（存在更新，不存在新建） | get: 获取服务 | delete: 删除服务',
               },
             },
             name: {
@@ -77,7 +77,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '服务名称',
                 formComponent: 'prompt-editor',
-                description: '服务名称（create/update 时必填）',
+                description: '服务名称（save 时必填）',
               },
             },
             status: {
@@ -119,7 +119,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
               type: 'number',
               extra: {
                 label: '服务ID',
-                description: '服务ID（create 时由数据库自动创建；get/update/delete 时必填）',
+                description: '服务ID（get/delete 时必填）',
               },
             },
           },

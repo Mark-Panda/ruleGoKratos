@@ -24,18 +24,18 @@ func init() {
 type ServiceManagementComponent struct {
 	Config ServiceManagementConfiguration
 
-	actionTpl            el.Template
-	nameTpl              el.Template
-	statusTpl            el.Template
-	volcLogServiceIDTpl   el.Template
-	gitRepoURLTpl         el.Template
-	descriptionTpl       el.Template
-	serviceIDTpl         el.Template
-	hasVar                bool
+	actionTpl           el.Template
+	nameTpl             el.Template
+	statusTpl           el.Template
+	volcLogServiceIDTpl el.Template
+	gitRepoURLTpl       el.Template
+	descriptionTpl      el.Template
+	serviceIDTpl        el.Template
+	hasVar              bool
 }
 
 type ServiceManagementConfiguration struct {
-	// 操作类型: create, get, update, delete
+	// 操作类型: save, get, delete
 	Action string `json:"action"`
 	// 服务名称
 	Name string `json:"name"`
@@ -81,7 +81,7 @@ func (c *ServiceManagementComponent) Init(_ types.Config, configuration types.Co
 		&c.statusTpl:           strconv.Itoa(c.Config.Status),
 		&c.volcLogServiceIDTpl: c.Config.VolcLogServiceID,
 		&c.gitRepoURLTpl:       c.Config.GitRepoURL,
-		&c.descriptionTpl:       c.Config.Description,
+		&c.descriptionTpl:      c.Config.Description,
 		&c.serviceIDTpl:        strconv.FormatInt(c.Config.ServiceID, 10),
 	}
 
@@ -107,7 +107,11 @@ func (c *ServiceManagementComponent) OnMsg(ctx types.RuleContext, msg types.Rule
 
 	action := strings.TrimSpace(c.actionTpl.ExecuteAsString(evn))
 	if action == "" {
-		action = "create"
+		action = "save"
+	}
+	// 兼容历史流程中的 create/update 配置，统一降级为 save。
+	if action == "create" || action == "update" {
+		action = "save"
 	}
 
 	serviceUsecase := globalServiceUsecase
@@ -120,12 +124,10 @@ func (c *ServiceManagementComponent) OnMsg(ctx types.RuleContext, msg types.Rule
 	var err error
 
 	switch action {
-	case "create":
-		result, err = c.doCreate(ctx, evn, serviceUsecase)
+	case "save":
+		result, err = c.doSave(ctx, evn, serviceUsecase)
 	case "get":
 		result, err = c.doGet(ctx, evn, serviceUsecase)
-	case "update":
-		result, err = c.doUpdate(ctx, evn, serviceUsecase)
 	case "delete":
 		result, err = c.doDelete(ctx, evn, serviceUsecase)
 	default:
@@ -142,7 +144,7 @@ func (c *ServiceManagementComponent) OnMsg(ctx types.RuleContext, msg types.Rule
 	ctx.TellSuccess(msg)
 }
 
-func (c *ServiceManagementComponent) doCreate(ctx types.RuleContext, evn map[string]interface{}, usecase *biz.ServiceManagementUsecase) (interface{}, error) {
+func (c *ServiceManagementComponent) doSave(ctx types.RuleContext, evn map[string]interface{}, usecase *biz.ServiceManagementUsecase) (interface{}, error) {
 	name := strings.TrimSpace(c.nameTpl.ExecuteAsString(evn))
 	if name == "" {
 		return nil, errors.New("服务名称不能为空")
@@ -158,7 +160,7 @@ func (c *ServiceManagementComponent) doCreate(ctx types.RuleContext, evn map[str
 	gitRepoURL := strings.TrimSpace(c.gitRepoURLTpl.ExecuteAsString(evn))
 	description := strings.TrimSpace(c.descriptionTpl.ExecuteAsString(evn))
 
-	service, err := usecase.CreateService(context.Background(), name, status, volcLogServiceID, gitRepoURL, description)
+	service, err := usecase.SaveServiceByName(context.Background(), name, status, volcLogServiceID, gitRepoURL, description)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +174,7 @@ func (c *ServiceManagementComponent) doCreate(ctx types.RuleContext, evn map[str
 			"volc_log_service_id": service.VolcLogServiceID,
 			"git_repo_url":        service.GitRepoURL,
 			"description":         service.Description,
-			"created_at":         service.CreatedAt.Format("2006-01-02 15:04:05"),
+			"created_at":          service.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
 }
@@ -205,65 +207,7 @@ func (c *ServiceManagementComponent) doGet(ctx types.RuleContext, evn map[string
 			"volc_log_service_id": service.VolcLogServiceID,
 			"git_repo_url":        service.GitRepoURL,
 			"description":         service.Description,
-			"created_at":         service.CreatedAt.Format("2006-01-02 15:04:05"),
-			"updated_at":         service.UpdatedAt.Format("2006-01-02 15:04:05"),
-		},
-	}, nil
-}
-
-func (c *ServiceManagementComponent) doUpdate(ctx types.RuleContext, evn map[string]interface{}, usecase *biz.ServiceManagementUsecase) (interface{}, error) {
-	serviceIDStr := c.serviceIDTpl.ExecuteAsString(evn)
-	serviceID, _ := strconv.ParseInt(strings.TrimSpace(serviceIDStr), 10, 64)
-	if serviceID <= 0 {
-		serviceID = c.Config.ServiceID
-	}
-
-	if serviceID <= 0 {
-		return nil, errors.New("服务ID不能为空")
-	}
-
-	var (
-		name             *string
-		status           *int32
-		volcLogServiceID *string
-		gitRepoURL       *string
-		description      *string
-	)
-
-	if n := strings.TrimSpace(c.nameTpl.ExecuteAsString(evn)); n != "" {
-		name = &n
-	}
-
-	statusStr := c.statusTpl.ExecuteAsString(evn)
-	if s, err := strconv.Atoi(strings.TrimSpace(statusStr)); err == nil && s > 0 {
-		st := int32(s)
-		status = &st
-	}
-
-	if v := strings.TrimSpace(c.volcLogServiceIDTpl.ExecuteAsString(evn)); v != "" {
-		volcLogServiceID = &v
-	}
-	if g := strings.TrimSpace(c.gitRepoURLTpl.ExecuteAsString(evn)); g != "" {
-		gitRepoURL = &g
-	}
-	if d := strings.TrimSpace(c.descriptionTpl.ExecuteAsString(evn)); d != "" {
-		description = &d
-	}
-
-	service, err := usecase.UpdateService(context.Background(), serviceID, name, status, volcLogServiceID, gitRepoURL, description)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string]interface{}{
-		"success": true,
-		"service": map[string]interface{}{
-			"id":                  service.ID,
-			"name":                service.Name,
-			"status":              service.Status,
-			"volc_log_service_id": service.VolcLogServiceID,
-			"git_repo_url":        service.GitRepoURL,
-			"description":         service.Description,
+			"created_at":          service.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updated_at":          service.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
@@ -297,5 +241,5 @@ func SetServiceUsecase(u *biz.ServiceManagementUsecase) {
 	globalServiceUsecase = u
 }
 
-func (c *ServiceManagementComponent) Destroy() {}
+func (c *ServiceManagementComponent) Destroy()     {}
 func (c *ServiceManagementComponent) Close() error { return nil }

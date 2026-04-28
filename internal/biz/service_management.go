@@ -11,6 +11,7 @@ import (
 type ServiceManagementRepo interface {
 	Create(ctx context.Context, service *entity.ServiceManagement) error
 	GetByID(ctx context.Context, id int64) (*entity.ServiceManagement, error)
+	GetByName(ctx context.Context, name string) (*entity.ServiceManagement, error)
 	List(ctx context.Context, status int32, page, pageSize int32) ([]*entity.ServiceManagement, int64, error)
 	Update(ctx context.Context, service *entity.ServiceManagement) error
 	Delete(ctx context.Context, id int64) error
@@ -41,6 +42,42 @@ func (uc *ServiceManagementUsecase) CreateService(ctx context.Context, name stri
 		service.Status = entity.ServiceStatusStopped
 	}
 	if err := uc.repo.Create(ctx, service); err != nil {
+		return nil, err
+	}
+	return service, nil
+}
+
+// SaveServiceByName 按服务名称保存（存在更新，不存在新建）
+func (uc *ServiceManagementUsecase) SaveServiceByName(ctx context.Context, name string, status int32, volcLogServiceID, gitRepoURL, description string) (*entity.ServiceManagement, error) {
+	service, err := uc.repo.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if status == 0 {
+		status = entity.ServiceStatusStopped
+	}
+	now := time.Now()
+	if service == nil {
+		service = &entity.ServiceManagement{
+			Name:             name,
+			Status:           status,
+			VolcLogServiceID: volcLogServiceID,
+			GitRepoURL:       gitRepoURL,
+			Description:      description,
+			CreatedAt:        now,
+			UpdatedAt:        now,
+		}
+		if err := uc.repo.Create(ctx, service); err != nil {
+			return nil, err
+		}
+		return service, nil
+	}
+	service.Status = status
+	service.VolcLogServiceID = volcLogServiceID
+	service.GitRepoURL = gitRepoURL
+	service.Description = description
+	service.UpdatedAt = now
+	if err := uc.repo.Update(ctx, service); err != nil {
 		return nil, err
 	}
 	return service, nil

@@ -94,6 +94,8 @@ export interface CreateServiceParams {
   description: string;
 }
 
+export type SaveServiceParams = CreateServiceParams;
+
 export interface UpdateServiceParams {
   name?: string;
   status?: ServiceStatus;
@@ -115,12 +117,16 @@ export const getService = async (id: number): Promise<{ item: ServiceItem }> => 
   return { item: normalizeServiceFromApi(s) };
 };
 
-// 创建服务（CreateServiceReply.service）
-export const createService = async (params: CreateServiceParams): Promise<{ item: ServiceItem }> => {
+// 按名称保存服务（CreateServiceReply.service；同名更新，不存在新建）
+export const saveServiceByName = async (params: SaveServiceParams): Promise<{ item: ServiceItem }> => {
   const raw = await requestJSON<Record<string, unknown>>('/services', { method: 'POST', body: params });
   const s = (raw.service ?? raw.item) as Record<string, unknown> | undefined;
   return { item: normalizeServiceFromApi(s) };
 };
+
+// 兼容旧调用
+export const createService = async (params: CreateServiceParams): Promise<{ item: ServiceItem }> =>
+  saveServiceByName(params);
 
 // 更新服务（UpdateServiceReply.service）
 export const updateService = async (

@@ -1,278 +1,9 @@
 package data
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 )
-
-func TestParseJsonWithFixes_ExtractFromThinkWrappedText(t *testing.T) {
-	input := `<think> 用户想法 </think>
-我来帮你处理，先分析...
-{"data":[{"name":"channel-platform-server","spaceName":"teacherschool","manager":"张一明","language":"Node","framework":"koa2"}]}`
-
-	got := parseJsonWithFixes(input, "auto")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	data, ok := obj["data"].([]interface{})
-	if !ok || len(data) != 1 {
-		t.Fatalf("expected data array with one item, got data=%#v obj=%#v", obj["data"], obj)
-	}
-}
-
-func TestParseJsonWithFixes_ExtractFromMarkdownFence(t *testing.T) {
-	input := "说明文字\n```json\n{\"ok\":true,\"value\":1}\n```\n后续文字"
-	got := parseJsonWithFixes(input, "md")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if v, ok := obj["ok"].(bool); !ok || !v {
-		t.Fatalf("expected ok=true, got: %#v", obj["ok"])
-	}
-}
-
-func TestExtractFirstValidJSONFragment_Array(t *testing.T) {
-	input := "prefix <think>xxx</think> [1,2,{\"a\":\"b\"}] suffix"
-	fragments := extractBalancedJSONFragments(input, 2)
-	if len(fragments) == 0 {
-		t.Fatal("expected non-empty extracted fragments")
-	}
-	if fragments[0] != `[1,2,{"a":"b"}]` {
-		t.Fatalf("unexpected fragment: %s", fragments[0])
-	}
-}
-
-func TestParseJsonWithFixes_PythonLiteralsAndComments(t *testing.T) {
-	input := `{
-  // line comment
-  "ok": True,
-  "err": None,
-  /* block comment */
-  "items": [1,2,3,],
-}`
-	got := parseJsonWithFixes(input, "auto")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if v, ok := obj["ok"].(bool); !ok || !v {
-		t.Fatalf("expected ok=true, got: %#v", obj["ok"])
-	}
-	if obj["err"] != nil {
-		t.Fatalf("expected err=nil, got: %#v", obj["err"])
-	}
-}
-
-func TestParseJsonWithFixes_CompleteTruncatedJSON(t *testing.T) {
-	input := `{"data":[{"name":"a","lang":"Go"}, {"name":"b","lang":"Node"}`
-	got := parseJsonWithFixes(input, "auto")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	items, ok := obj["data"].([]interface{})
-	if !ok || len(items) != 2 {
-		t.Fatalf("expected data with 2 items, got: %#v", obj["data"])
-	}
-}
-
-func TestParseJsonWithFixes_DoubleEncodedJSONString(t *testing.T) {
-	input := `"{\"data\":[{\"name\":\"svc-a\",\"framework\":\"kratos\"}]}"` // LLM 常见的 JSON 字符串包裹
-	got := parseJsonWithFixes(input, "auto")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if _, ok := obj["data"].([]interface{}); !ok {
-		t.Fatalf("expected data array, got: %#v", obj["data"])
-	}
-}
-
-func TestParseJsonWithFixes_TaggedBlock(t *testing.T) {
-	input := `<result>{"ok":true,"count":2}</result>`
-	got := parseJsonWithFixes(input, "auto")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	if got.SourceStrategy != "tagged_block" && got.SourceStrategy != "direct" && got.SourceStrategy != "balanced_fragment" {
-		t.Fatalf("unexpected source strategy: %s", got.SourceStrategy)
-	}
-}
-
-func TestParseJsonWithFixes_AssignmentAndSemicolon(t *testing.T) {
-	input := `const result = {"name":"demo","n":1};`
-	got := parseJsonWithFixes(input, "aggressive")
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if obj["name"] != "demo" {
-		t.Fatalf("unexpected name: %#v", obj["name"])
-	}
-}
-
-func TestBuildRepairReport(t *testing.T) {
-	r := Result{
-		Success:          true,
-		SourceStrategy:   "balanced_fragment",
-		RepairStrategies: []string{"fix_json_format"},
-		ExtractedJson:    map[string]interface{}{"ok": true},
-	}
-	report, ok := buildRepairReport(r).(map[string]interface{})
-	if !ok {
-		t.Fatal("expected report map")
-	}
-	if report["source_strategy"] != "balanced_fragment" {
-		t.Fatalf("unexpected source strategy: %#v", report["source_strategy"])
-	}
-}
-
-func TestParseJsonWithFixesWithOptions_SchemaCompletion(t *testing.T) {
-	input := `{"data":[{"name":"svc-a"}]}`
-	got := parseJsonWithFixesWithOptions(input, "auto", ParseOptions{
-		SchemaPaths: []string{
-			"data[].name",
-			"data[].spaceName",
-			"data[].manager",
-		},
-	})
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	data, ok := obj["data"].([]interface{})
-	if !ok || len(data) != 1 {
-		t.Fatalf("expected data with one item, got: %#v", obj["data"])
-	}
-	item, ok := data[0].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected map item, got: %#v", data[0])
-	}
-	if _, exists := item["spaceName"]; !exists {
-		t.Fatalf("expected spaceName completed, got: %#v", item)
-	}
-	if _, exists := item["manager"]; !exists {
-		t.Fatalf("expected manager completed, got: %#v", item)
-	}
-}
-
-func TestParseJsonWithFixesWithOptions_SchemaScorePrefersMatchingCandidate(t *testing.T) {
-	input := `前文 {"x":1} 后文 {"data":[{"name":"svc-a","spaceName":"ns"}]}`
-	got := parseJsonWithFixesWithOptions(input, "auto", ParseOptions{
-		SchemaPaths: []string{"data[].name", "data[].spaceName"},
-	})
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if _, ok := obj["data"].([]interface{}); !ok {
-		t.Fatalf("expected candidate with data selected, got: %#v", obj)
-	}
-}
-
-func TestParseSchemaPathList(t *testing.T) {
-	raw := "data[].name, data[].spaceName;\nmeta.total\n data[].name "
-	got := parseSchemaPathList(raw)
-	if len(got) != 3 {
-		t.Fatalf("expected 3 unique paths, got %d: %#v", len(got), got)
-	}
-}
-
-func TestParseJsonWithFixesWithOptions_StrictStillExtractsFragment(t *testing.T) {
-	input := `前缀说明文本 {"data":[{"name":"svc-a","spaceName":"teacherschool"}]} 后缀`
-	got := parseJsonWithFixesWithOptions(input, "", ParseOptions{
-		ExtractMode: "json",
-		RepairMode:  "strict",
-	})
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if _, ok := obj["data"].([]interface{}); !ok {
-		t.Fatalf("expected data array, got: %#v", obj["data"])
-	}
-}
-
-func TestNormalizeModesLegacyCompatibility(t *testing.T) {
-	em, rm := normalizeModes("strict", "", "")
-	if em != "auto" || rm != "strict" {
-		t.Fatalf("unexpected legacy strict modes: extract=%s repair=%s", em, rm)
-	}
-
-	em, rm = normalizeModes("md", "", "")
-	if em != "md" || rm != "auto" {
-		t.Fatalf("unexpected legacy md modes: extract=%s repair=%s", em, rm)
-	}
-}
-
-func TestParseJsonWithFixesWithOptions_MdModeFallbackWithoutFence(t *testing.T) {
-	input := `<think>一些说明文字</think>
-请输出如下结果：
-{"data":[{"name":"teacher-ee","spaceName":"teacherschool","manager":"王刚","language":"Go","framework":"kratos"}]}`
-	got := parseJsonWithFixesWithOptions(input, "", ParseOptions{
-		ExtractMode: "md",
-		RepairMode:  "auto",
-		SchemaPaths: []string{"data[].name", "data[].spaceName"},
-	})
-	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
-	}
-	obj, ok := got.ExtractedJson.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
-	}
-	if _, ok := obj["data"].([]interface{}); !ok {
-		t.Fatalf("expected data array, got: %#v", obj["data"])
-	}
-}
-
-func TestExtractBalancedJSONFragments_PrefersLargerFragments(t *testing.T) {
-	input := strings.Join([]string{
-		"prefix",
-		`{"a":1}`,
-		`{"b":2}`,
-		`{"c":3}`,
-		`{"d":4}`,
-		`{"data":[{"name":"svc-a","spaceName":"ns-a"},{"name":"svc-b","spaceName":"ns-b"}]}`,
-	}, " ")
-	fragments := extractBalancedJSONFragments(input, 3)
-	if len(fragments) == 0 {
-		t.Fatal("expected non-empty fragments")
-	}
-	if !strings.Contains(fragments[0], `"data":[`) {
-		t.Fatalf("expected largest data fragment selected first, got: %s", fragments[0])
-	}
-}
 
 func TestNormalizeTopLevelArrayToStringKeyMap(t *testing.T) {
 	in := []interface{}{
@@ -295,16 +26,11 @@ func TestNormalizeTopLevelArrayToStringKeyMap(t *testing.T) {
 	}
 }
 
-func TestParseJsonWithFixes_CompleteTruncatedTailDanglingKey(t *testing.T) {
-	input := `{"data":[
-{"name":"teacher-ee","spaceName":"teacherschool"},
-{"name":"study-statistics", "`
-
-	got := parseJsonWithFixesWithOptions(input, "auto", ParseOptions{
-		ExtractMode: "json",
-		RepairMode:  "auto",
-		SchemaPaths: []string{"data[].name"},
-	})
+func TestParseJsonWithFixes_StrictExtractFromWrappedText(t *testing.T) {
+	input := `前缀说明
+{"data":[{"name":"svc-alpha","spaceName":"ns-alpha"}]}
+后缀`
+	got := parseJsonWithFixes(input, "")
 	if !got.Success {
 		t.Fatalf("expected success, got error: %s", got.Error)
 	}
@@ -312,104 +38,245 @@ func TestParseJsonWithFixes_CompleteTruncatedTailDanglingKey(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
 	}
-	data, ok := obj["data"].([]interface{})
-	if !ok || len(data) != 2 {
-		t.Fatalf("expected data with 2 items, got: %#v", obj["data"])
+	if _, ok := obj["data"].([]interface{}); !ok {
+		t.Fatalf("expected data array, got: %#v", obj["data"])
 	}
-	last, ok := data[1].(map[string]interface{})
+}
+
+func TestParseJsonWithFixes_StrictExtractFromMarkdownFence(t *testing.T) {
+	input := "说明文字\n```json\n{\"ok\":true,\"value\":1}\n```\n后续文字"
+	got := parseJsonWithFixes(input, "md")
+	if !got.Success {
+		t.Fatalf("expected success, got error: %s", got.Error)
+	}
+	obj, ok := got.ExtractedJson.(map[string]interface{})
 	if !ok {
-		t.Fatalf("expected second item object, got: %#v", data[1])
+		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
 	}
-	if last["name"] != "study-statistics" {
-		t.Fatalf("expected second item name preserved, got: %#v", last["name"])
+	if v, ok := obj["ok"].(bool); !ok || !v {
+		t.Fatalf("expected ok=true, got: %#v", obj["ok"])
 	}
-	if !got.TruncatedTailDropped {
-		t.Fatalf("expected truncated tail dropped marker, got: %#v", got.TruncatedTailDropped)
+}
+
+func TestParseJsonWithFixes_StrictUnwrapJSONString(t *testing.T) {
+	input := `"{\"data\":[{\"name\":\"svc-a\",\"framework\":\"kratos\"}]}"`
+	got := parseJsonWithFixes(input, "aggressive")
+	if !got.Success {
+		t.Fatalf("expected success, got error: %s", got.Error)
 	}
-	found := false
-	for _, s := range got.RepairStrategies {
-		if s == "truncated_tail_dropped" {
-			found = true
+	obj, ok := got.ExtractedJson.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
+	}
+	if _, ok := obj["data"].([]interface{}); !ok {
+		t.Fatalf("expected data array, got: %#v", obj["data"])
+	}
+}
+
+func TestParseJsonWithFixes_RepairOnlyInputStillRecovered(t *testing.T) {
+	input := `{'name':'demo','n':1,}`
+	got := parseJsonWithFixes(input, "aggressive")
+	if !got.Success {
+		t.Fatalf("expected recovered success, got error: %s", got.Error)
+	}
+	if len(got.RepairStrategies) == 0 {
+		t.Fatalf("expected non-empty repair strategies, got: %#v", got.RepairStrategies)
+	}
+}
+
+func TestParseJsonWithFixes_StrictExtractFromEmbeddedMarkdownJSON(t *testing.T) {
+	outer := "{\"payload\":\"说明\\n```json\\n{\\\"data\\\":[{\\\"name\\\":\\\"svc-alpha\\\",\\\"spaceName\\\":\\\"ns-alpha\\\"}]}\\n```\",\"type\":\"trace\"}"
+	got := parseJsonWithFixes(outer, "")
+	if !got.Success {
+		t.Fatalf("expected success, got error: %s", got.Error)
+	}
+	obj, ok := got.ExtractedJson.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
+	}
+	if _, ok := obj["data"].([]interface{}); !ok {
+		t.Fatalf("expected embedded data array selected, got: %#v", obj)
+	}
+}
+
+func TestParseJsonWithFixes_PrimitiveFallback(t *testing.T) {
+	got := parseJsonWithFixes("123", "")
+	if !got.Success {
+		t.Fatalf("expected primitive fallback success, got error: %s", got.Error)
+	}
+	v, ok := got.ExtractedJson.(float64)
+	if !ok || v != 123 {
+		t.Fatalf("expected primitive number 123, got: %#v", got.ExtractedJson)
+	}
+	if len(got.RepairStrategies) == 0 || got.RepairStrategies[0] != "primitive_fallback" {
+		t.Fatalf("expected primitive_fallback strategy, got: %#v", got.RepairStrategies)
+	}
+}
+
+func TestExtractBalancedJSONFragments_PrefersLongestAndDeduplicates(t *testing.T) {
+	input := strings.Join([]string{
+		"prefix",
+		`{"a":1}`,
+		`{"a":1}`,
+		`{"data":[{"name":"svc-a"},{"name":"svc-b"}]}`,
+		"suffix",
+	}, " ")
+	frags := extractBalancedJSONFragments(input, 2)
+	if len(frags) != 2 {
+		t.Fatalf("expected 2 fragments, got: %#v", frags)
+	}
+	if !strings.Contains(frags[0], `"data":[`) {
+		t.Fatalf("expected longest fragment first, got: %#v", frags)
+	}
+	if frags[0] == frags[1] {
+		t.Fatalf("expected deduplicated fragments, got: %#v", frags)
+	}
+}
+
+func TestCutBalancedJSONFragment_HandlesEscapedQuotes(t *testing.T) {
+	frag, ok := cutBalancedJSONFragment(`{"text":"a\"b","arr":[1,2]} trailing`)
+	if !ok {
+		t.Fatal("expected balanced fragment found")
+	}
+	if frag != `{"text":"a\"b","arr":[1,2]}` {
+		t.Fatalf("unexpected fragment: %s", frag)
+	}
+}
+
+func TestCutBalancedJSONFragment_DetectsInvalidCloseOrder(t *testing.T) {
+	_, ok := cutBalancedJSONFragment(`{"a":[1,2}`)
+	if ok {
+		t.Fatal("expected invalid close order to fail")
+	}
+}
+
+func TestExtractEmbeddedTextCandidatesFromJSON_SelectsUsefulTexts(t *testing.T) {
+	text := "{\"meta\":\"ok\",\"payload\":\"```json\\n{\\\"ok\\\":true}\\n```\",\"nested\":{\"line\":\"prefix {\\\"a\\\":1} suffix\"},\"tiny\":\"x\"}"
+	candidates := extractEmbeddedTextCandidatesFromJSON(text, 3)
+	if len(candidates) == 0 {
+		t.Fatal("expected non-empty embedded candidates")
+	}
+	foundMarkdown := false
+	for _, c := range candidates {
+		if strings.Contains(c, "```json") {
+			foundMarkdown = true
 			break
 		}
 	}
-	if !found {
-		t.Fatalf("expected repair strategy includes truncated_tail_dropped, got: %#v", got.RepairStrategies)
+	if !foundMarkdown {
+		t.Fatalf("expected markdown candidate included, got: %#v", candidates)
 	}
 }
 
-func TestBuildRepairReportIncludesTruncatedTailDropped(t *testing.T) {
-	r := Result{
+func TestExtractJsonHelpers_MarkdownTaggedAssignment(t *testing.T) {
+	md := extractJsonFromMarkdown("a\n```json\n{\"ok\":true}\n```\nb")
+	if md != `{"ok":true}` {
+		t.Fatalf("unexpected markdown extraction: %q", md)
+	}
+
+	tagged := extractJsonFromTaggedBlock(`<result>{"count":2}</result>`)
+	if tagged != `{"count":2}` {
+		t.Fatalf("unexpected tagged extraction: %q", tagged)
+	}
+
+	assign := extractJsonFromAssignment(`const result = {"name":"demo","n":1};`)
+	if assign != `{"name":"demo","n":1}` {
+		t.Fatalf("unexpected assignment extraction: %q", assign)
+	}
+}
+
+func TestSelectBestResult_TieBreakers(t *testing.T) {
+	r1 := Result{CandidateScore: 200, SchemaMissing: []string{"a", "b"}, RepairStrategies: []string{"x"}}
+	r2 := Result{CandidateScore: 200, SchemaMissing: []string{"a"}, RepairStrategies: []string{"x", "y"}}
+	best := selectBestResult([]Result{r1, r2})
+	if len(best.SchemaMissing) != 1 {
+		t.Fatalf("expected fewer schema missing preferred, got: %#v", best)
+	}
+
+	r3 := Result{CandidateScore: 180, SchemaMissing: []string{"a"}, RepairStrategies: []string{"x", "y"}}
+	r4 := Result{CandidateScore: 180, SchemaMissing: []string{"a"}, RepairStrategies: []string{"x"}}
+	best2 := selectBestResult([]Result{r3, r4})
+	if len(best2.RepairStrategies) != 1 {
+		t.Fatalf("expected fewer repairs preferred, got: %#v", best2)
+	}
+}
+
+func TestApplySchemaCompletion_ComplexNestedPaths(t *testing.T) {
+	parsed := map[string]interface{}{
+		"data": []interface{}{
+			map[string]interface{}{"name": "svc-a"},
+		},
+	}
+	compiled := compileSchemaPaths([]string{"data[].name", "data[].spaceName", "meta.total"})
+	out, matched, missing, changed := applySchemaCompletion(parsed, compiled)
+	if !changed {
+		t.Fatalf("expected schema completion changed output, got out=%#v", out)
+	}
+	if matched != 1 {
+		t.Fatalf("expected 1 matched schema, got %d", matched)
+	}
+	if len(missing) != 2 {
+		t.Fatalf("expected 2 missing schemas, got %#v", missing)
+	}
+	obj := out.(map[string]interface{})
+	meta, ok := obj["meta"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected meta object created, got: %#v", obj["meta"])
+	}
+	if _, exists := meta["total"]; !exists {
+		t.Fatalf("expected meta.total created, got: %#v", meta)
+	}
+	rows := obj["data"].([]interface{})
+	first := rows[0].(map[string]interface{})
+	if _, exists := first["spaceName"]; !exists {
+		t.Fatalf("expected spaceName ensured, got: %#v", first)
+	}
+}
+
+func TestBuildRepairReport_ContainsCoreFields(t *testing.T) {
+	report := buildRepairReport(Result{
 		Success:              true,
 		SourceStrategy:       "balanced_fragment",
-		RepairStrategies:     []string{"complete_json", "truncated_tail_dropped"},
-		TruncatedTailDropped: true,
-		ExtractedJson:        map[string]interface{}{"ok": true},
-	}
-	report, ok := buildRepairReport(r).(map[string]interface{})
+		RepairStrategies:     []string{"unwrap_json_string"},
+		CandidateScore:       123,
+		TruncatedTailDropped: false,
+		ExtractedJson: map[string]interface{}{
+			"ok": true,
+		},
+	})
+	m, ok := report.(map[string]interface{})
 	if !ok {
-		t.Fatal("expected report map")
+		t.Fatalf("expected report map, got: %#v", report)
 	}
-	flag, ok := report["truncated_tail_dropped"].(bool)
-	if !ok || !flag {
-		t.Fatalf("expected truncated_tail_dropped=true, got: %#v", report["truncated_tail_dropped"])
+	if m["source_strategy"] != "balanced_fragment" {
+		t.Fatalf("unexpected source strategy: %#v", m["source_strategy"])
+	}
+	if m["score"] != 123 {
+		t.Fatalf("unexpected score: %#v", m["score"])
 	}
 }
 
-func TestParseJsonWithFixes_LargeFeishuBackendListTruncatedTail(t *testing.T) {
-	input := "成功从飞书多维表格中提取了所有后端应用的信息，共 **128个** 后端服务：\n```json\n" + `{
+func TestParseJsonWithFixes_TruncatedLargeListStillExtractsCoreData(t *testing.T) {
+	input := "已从示例数据源提取后端应用信息，共 **128个** 服务：\n```json\n" + `{
   "data": [
-    {"name":"teacher-ee","spaceName":"teacherschool","manager":"王刚","language":"Go","framework":"kratos"},
-    {"name":"teacher-openapi-hunan","spaceName":"teacherschool","manager":"王刚","language":"Go","framework":"echo"},
-    {"name":"pressuremock","spaceName":"teacherschool","manager":"","language":"","framework":""},
-    {"name":"channel-core","spaceName":"teacherschool","manager":"张一明","language":"Go","framework":"kratos"},
-    {"name":"volc-cloud-monitor-exporter","spaceName":"ops","manager":"张乾","language":"","framework":""},
-    {"name":"achievement","spaceName":"7to12","manager":"李保川","language":"Go","framework":"kratos"},
-    {"name":"achievement-admin","spaceName":"7to12","manager":"李保川","language":"Go","framework":"kratos"},
-    {"name":"activity","spaceName":"7to12","manager":"徐斌","language":"Go","framework":"kratos"},
-    {"name":"activity-consumer","spaceName":"7to12","manager":"闫鹏","language":"Go","framework":"kratos"},
-    {"name":"ai-models-dkt","spaceName":"7to12","manager":"郭权威","language":"Go","framework":"kratos"},
-    {"name":"backend-config","spaceName":"7to12","manager":"罗飞","language":"Go","framework":"kratos"},
-    {"name":"comment","spaceName":"7to12","manager":"罗烽","language":"Go","framework":"gin"},
-    {"name":"course-ai","spaceName":"7to12","manager":"郭权威","language":"Go","framework":"kratos"},
-    {"name":"data-center-consumer","spaceName":"7to12","manager":"罗飞","language":"Go","framework":"gin"},
-    {"name":"data-inspector-api","spaceName":"7to12","manager":"罗飞","language":"Go","framework":"kratos"},
-    {"name":"data-inspector-slave","spaceName":"7to12","manager":"罗飞","language":"Go","framework":"kratos"},
-    {"name":"desk-consumer","spaceName":"7to12","manager":"徐斌","language":"Go","framework":"gin"},
-    {"name":"deskship","spaceName":"7to12","manager":"徐斌","language":"Go","framework":"gin"},
-    {"name":"event-trigger-clear","spaceName":"7to12","manager":"徐斌","language":"Go","framework":"kratos"},
-    {"name":"event-trigger-event","spaceName":"7to12","manager":"徐斌","language":"Go","framework":"kratos"},
-    {"name":"event-trigger-trigger","spaceName":"7to12","manager":"徐斌","language":"Go","framework":"kratos"},
-    {"name":"friend","spaceName":"7to12","manager":"刘阳（研发）","language":"Go","framework":"kratos"},
-    {"name":"friend-consumer","spaceName":"7to12","manager":"刘阳（研发）","language":"Go","framework":"kratos"},
-    {"name":"study-room","spaceName":"7to12","manager":"刘阳（研发）","language":"Go","framework":"kratos"},
-    {"name":"study-room-cron","spaceName":"7to12","manager":"刘阳（研发）","language":"Go","framework":"kratos"},
-    {"name":"study-search","spaceName":"7to12","manager":"李宝卫","language":"Go","framework":"gin"},
-    {"name":"study-search-consumer","spaceName":"7to12","manager":"李宝卫","language":"Go","framework":"gin"},
-    {"name":"study-statistics","spaceName":"7to12","manager":"` + "\n```"
+    {"name":"svc-alpha","spaceName":"ns-alpha","manager":"owner-a","language":"Go","framework":"kratos"},
+    {"name":"svc-beta-consumer","spaceName":"ns-beta","manager":"owner-b","language":"Go","framework":"gin"},
+    {"name":"svc-gamma","spaceName":"ns-beta","manager":"` + "\n```"
 
-	got := parseJsonWithFixesWithOptions(input, "auto", ParseOptions{
-		ExtractMode: "md",
-		RepairMode:  "auto",
-		SchemaPaths: []string{"data[].name", "data[].spaceName"},
-	})
+	got := parseJsonWithFixes(input, "")
 	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
+		t.Fatalf("expected success for truncated large list, got error: %s", got.Error)
 	}
 	obj, ok := got.ExtractedJson.(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected object json, got: %#v", got.ExtractedJson)
 	}
-	data, ok := obj["data"].([]interface{})
-	if !ok {
-		t.Fatalf("expected data array, got: %#v", obj["data"])
+	rows, ok := obj["data"].([]interface{})
+	if !ok || len(rows) < 2 {
+		t.Fatalf("expected at least 2 rows, got: %#v", obj["data"])
 	}
-	if len(data) < 20 {
-		t.Fatalf("expected many parsed rows retained, got len=%d", len(data))
-	}
-
-	names := make(map[string]bool, len(data))
-	for _, row := range data {
+	names := make(map[string]bool, len(rows))
+	for _, row := range rows {
 		m, ok := row.(map[string]interface{})
 		if !ok {
 			continue
@@ -418,62 +285,18 @@ func TestParseJsonWithFixes_LargeFeishuBackendListTruncatedTail(t *testing.T) {
 			names[n] = true
 		}
 	}
-	if !names["teacher-ee"] {
-		t.Fatalf("expected teacher-ee present, names=%#v", names)
+	if !names["svc-alpha"] || !names["svc-beta-consumer"] {
+		t.Fatalf("expected core rows retained, got names: %#v", names)
 	}
-	if !names["study-search-consumer"] {
-		t.Fatalf("expected study-search-consumer present, names=%#v", names)
-	}
-	if !names["study-statistics"] {
-		t.Fatalf("expected truncated row study-statistics repaired and kept, names=%#v", names)
-	}
-	// 末条记录的 manager 在输入中被截断，修复后会成为空字符串（字符串闭合补全）。
-	var last map[string]interface{}
-	for i := len(data) - 1; i >= 0; i-- {
-		row, ok := data[i].(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if row["name"] == "study-statistics" {
-			last = row
-			break
-		}
-	}
-	if last == nil {
-		t.Fatal("expected to find repaired study-statistics row")
-	}
-	if _, exists := last["manager"]; !exists {
-		t.Fatalf("expected manager key exists after completion, row=%#v", last)
-	}
-	if last["manager"] != "" {
-		t.Fatalf("expected manager empty string for repaired tail row, row=%#v", last)
-	}
-	t.Logf("parsed rows kept: %d", len(data))
 }
 
-func TestParseJsonWithFixes_WrappedMessageDataField(t *testing.T) {
-	inner := `我需要先检查飞书CLI工具是否可用。
-成功从飞书多维表格中提取后端服务：
-` + "```json\n" + `{
-  "data": [
-    {"name":"teacher-ee","spaceName":"teacherschool","manager":"王刚","language":"Go","framework":"kratos"},
-    {"name":"study-ai-agent-demo-consumer","spaceName":"7to12","manager":"刘阳（研发）","language":"Go","framework":"kratos"},
-    {"name":"study-statistics","spaceName":"7to12","`
-	outer := `{"data":{"data":` + strconv.Quote(inner) + `},"type":"111"}`
+func TestParseJsonWithFixes_WrappedMessageDataFieldComplexScene(t *testing.T) {
+	innerJSON := `{"data":[{"name":"svc-alpha","spaceName":"ns-alpha"},{"name":"svc-delta-consumer","spaceName":"ns-beta"}]}`
+	outer := `{"data":{"data":"` + strings.ReplaceAll(strings.ReplaceAll(innerJSON, `\`, `\\`), `"`, `\"`) + `"},"type":"111"}`
 
-	got := parseJsonWithFixesWithOptions(outer, "auto", ParseOptions{
-		ExtractMode: "auto",
-		RepairMode:  "aggressive",
-		SchemaPaths: []string{
-			"data[].name",
-			"data[].spaceName",
-			"data[].manager",
-			"data[].language",
-			"data[].framework",
-		},
-	})
+	got := parseJsonWithFixes(outer, "")
 	if !got.Success {
-		t.Fatalf("expected success, got error: %s", got.Error)
+		t.Fatalf("expected success for wrapped complex scene, got error: %s", got.Error)
 	}
 	obj, ok := got.ExtractedJson.(map[string]interface{})
 	if !ok {
@@ -481,13 +304,101 @@ func TestParseJsonWithFixes_WrappedMessageDataField(t *testing.T) {
 	}
 	rows, ok := obj["data"].([]interface{})
 	if !ok || len(rows) < 2 {
-		t.Fatalf("expected parsed data array from embedded field, got: %#v", obj["data"])
+		t.Fatalf("expected parsed embedded data array, got: %#v", obj)
 	}
-	first, ok := rows[0].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected first row map, got: %#v", rows[0])
+}
+
+func TestParseJsonWithFixes_TableDrivenComplexRegression(t *testing.T) {
+	type rowAssertion struct {
+		minRows int
+		names   []string
 	}
-	if first["name"] != "teacher-ee" {
-		t.Fatalf("expected first row teacher-ee, got: %#v", first["name"])
+	type testCase struct {
+		name             string
+		input            string
+		expectSuccess    bool
+		expectStrategyIn string
+		rowAssert        *rowAssertion
+	}
+
+	innerJSON := `{"data":[{"name":"svc-alpha","spaceName":"ns-alpha"},{"name":"svc-delta-consumer","spaceName":"ns-beta"}]}`
+	wrapped := `{"data":{"data":"` + strings.ReplaceAll(strings.ReplaceAll(innerJSON, `\`, `\\`), `"`, `\"`) + `"},"type":"111"}`
+
+	tests := []testCase{
+		{
+			name: "process_text_with_truncated_tail",
+			input: "先检查CLI工具是否可用。\n" +
+				"确认可用后查看record-list命令。\n" +
+				"```json\n" +
+				`{"data":[{"name":"svc-alpha","spaceName":"ns-alpha"},{"name":"svc-beta-consumer","spaceName":"ns-beta"},{"name":"svc-gamma","spaceName":"ns-beta","manager":"` +
+				"\n```",
+			expectSuccess: true,
+			rowAssert: &rowAssertion{
+				minRows: 2,
+				names:   []string{"svc-alpha", "svc-beta-consumer"},
+			},
+		},
+		{
+			name:             "wrapped_data_field_json_string",
+			input:            wrapped,
+			expectSuccess:    true,
+			expectStrategyIn: "embedded",
+			rowAssert: &rowAssertion{
+				minRows: 2,
+				names:   []string{"svc-alpha", "svc-delta-consumer"},
+			},
+		},
+		{
+			name:          "repair_only_json_still_recovers",
+			input:         `const result = {'name':'demo','n':1,};`,
+			expectSuccess: true,
+		},
+		{
+			name:          "non_json_text_should_fail",
+			input:         "这是纯说明文本，没有任何结构化数据。",
+			expectSuccess: false,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseJsonWithFixes(tc.input, "")
+			if tc.expectSuccess != got.Success {
+				t.Fatalf("unexpected success=%v, error=%s result=%#v", got.Success, got.Error, got.ExtractedJson)
+			}
+			if !tc.expectSuccess {
+				return
+			}
+			if tc.expectStrategyIn != "" && !strings.Contains(got.SourceStrategy, tc.expectStrategyIn) {
+				t.Fatalf("expected source strategy containing %q, got: %s", tc.expectStrategyIn, got.SourceStrategy)
+			}
+			if tc.rowAssert == nil {
+				return
+			}
+			obj, ok := got.ExtractedJson.(map[string]interface{})
+			if !ok {
+				t.Fatalf("expected object json for row assertion, got: %#v", got.ExtractedJson)
+			}
+			rows, ok := obj["data"].([]interface{})
+			if !ok || len(rows) < tc.rowAssert.minRows {
+				t.Fatalf("expected rows >= %d, got: %#v", tc.rowAssert.minRows, obj["data"])
+			}
+			names := make(map[string]bool, len(rows))
+			for _, row := range rows {
+				m, ok := row.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				if n, ok := m["name"].(string); ok {
+					names[n] = true
+				}
+			}
+			for _, name := range tc.rowAssert.names {
+				if !names[name] {
+					t.Fatalf("expected name %q in parsed data, got names=%#v", name, names)
+				}
+			}
+		})
 	}
 }

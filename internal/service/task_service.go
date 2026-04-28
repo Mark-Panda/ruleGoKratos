@@ -78,11 +78,11 @@ func (s *TaskBoardService) ListTasks(ctx context.Context, req *v1.ListTasksReq) 
 // UpdateTask 更新任务
 func (s *TaskBoardService) UpdateTask(ctx context.Context, req *v1.UpdateTaskReq) (*v1.UpdateTaskReply, error) {
 	var (
-		name           *string
-		priority       *int32
-		status         *int32
-		handlerUserID  *string
-		description    *string
+		name          *string
+		priority      *int32
+		status        *int32
+		handlerUserID *string
+		description   *string
 	)
 	if req.Name != "" {
 		name = &req.Name
@@ -123,7 +123,8 @@ func (s *TaskBoardService) DeleteTask(ctx context.Context, req *v1.DeleteTaskReq
 
 // CreateService 创建服务
 func (s *TaskBoardService) CreateService(ctx context.Context, req *v1.CreateServiceReq) (*v1.CreateServiceReply, error) {
-	service, err := s.serviceUsecase.CreateService(ctx, req.Name, int32(req.Status), req.VolcLogServiceId, req.GitRepoUrl, req.Description)
+	// 创建接口兼容按名称保存语义：同名即更新，不存在则新建。
+	service, err := s.serviceUsecase.SaveServiceByName(ctx, req.Name, int32(req.Status), req.VolcLogServiceId, req.GitRepoUrl, req.Description)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +159,7 @@ func (s *TaskBoardService) ListServices(ctx context.Context, req *v1.ListService
 	}
 	return &v1.ListServicesReply{
 		Services: pbServices,
-		Total: total,
+		Total:    total,
 	}, nil
 }
 
@@ -214,15 +215,15 @@ func convertTaskToPB(task *entity.TaskBoard) *v1.TaskBoard {
 		return nil
 	}
 	pbTask := &v1.TaskBoard{
-		Id:          task.ID,
-		Name:        task.Name,
-		Priority:    task.Priority,
-		Status:      v1.TaskStatus(task.Status),
-		Type:        v1.TaskType(task.Type),
-		CreatedAt:   timestamppb.New(task.CreatedAt),
-		UpdatedAt:   timestamppb.New(task.UpdatedAt),
+		Id:            task.ID,
+		Name:          task.Name,
+		Priority:      task.Priority,
+		Status:        v1.TaskStatus(task.Status),
+		Type:          v1.TaskType(task.Type),
+		CreatedAt:     timestamppb.New(task.CreatedAt),
+		UpdatedAt:     timestamppb.New(task.UpdatedAt),
 		HandlerUserId: task.HandlerUserID,
-		Description: task.Description,
+		Description:   task.Description,
 	}
 	if task.DeletedAt != nil {
 		pbTask.DeletedAt = timestamppb.New(*task.DeletedAt)
@@ -236,14 +237,14 @@ func convertServiceToPB(service *entity.ServiceManagement) *v1.ServiceManagement
 		return nil
 	}
 	pbService := &v1.ServiceManagement{
-		Id:              service.ID,
-		Name:            service.Name,
-		Status:          v1.ServiceStatus(service.Status),
+		Id:               service.ID,
+		Name:             service.Name,
+		Status:           v1.ServiceStatus(service.Status),
 		VolcLogServiceId: service.VolcLogServiceID,
-		GitRepoUrl:      service.GitRepoURL,
-		CreatedAt:       timestamppb.New(service.CreatedAt),
-		UpdatedAt:       timestamppb.New(service.UpdatedAt),
-		Description:     service.Description,
+		GitRepoUrl:       service.GitRepoURL,
+		CreatedAt:        timestamppb.New(service.CreatedAt),
+		UpdatedAt:        timestamppb.New(service.UpdatedAt),
+		Description:      service.Description,
 	}
 	if service.DeletedAt != nil {
 		pbService.DeletedAt = timestamppb.New(*service.DeletedAt)

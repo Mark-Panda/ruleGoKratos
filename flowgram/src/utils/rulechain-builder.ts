@@ -1944,22 +1944,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               ? inputsValuesMapToFlowData(ivMapJe, specJe)
               : {
                   source: { type: 'template', content: String((cfg as any).source ?? '') },
-                  extractPattern: {
-                    type: 'constant',
-                    content: String((cfg as any).extractPattern ?? 'auto'),
-                  },
-                  parseMode: {
-                    type: 'constant',
-                    content: String((cfg as any).parseMode ?? 'auto'),
-                  },
-                  schemaPaths: {
-                    type: 'constant',
-                    content: String((cfg as any).schemaPaths ?? ''),
-                  },
-                  emitReport: {
-                    type: 'constant',
-                    content: Boolean((cfg as any).emitReport ?? false),
-                  },
                 },
             inputs: {
               type: 'object',
@@ -1971,39 +1955,6 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                     label: '输入文本',
                     formComponent: 'prompt-editor',
                     description: '包含 JSON 的文本内容，通常来自 Agent 输出的 markdown 代码块',
-                  },
-                },
-                extractPattern: {
-                  type: 'string',
-                  extra: {
-                    label: '提取模式',
-                    description:
-                      'auto: 自动检测 JSON 代码块 | json: 仅提取标准 JSON | md: 仅提取 markdown 代码块',
-                  },
-                },
-                parseMode: {
-                  type: 'string',
-                  enum: ['strict', 'auto', 'aggressive'],
-                  extra: {
-                    label: '解析强度',
-                    description:
-                      'strict: 仅轻量解析 | auto: 默认修复与补全 | aggressive: 激进修复（NaN/Infinity/分号等）',
-                  },
-                },
-                schemaPaths: {
-                  type: 'string',
-                  extra: {
-                    label: 'Schema 路径约束',
-                    description:
-                      '逗号/分号/换行分隔，如 data[].name,data[].spaceName,data[].manager',
-                  },
-                },
-                emitReport: {
-                  type: 'boolean',
-                  extra: {
-                    label: '输出修复报告',
-                    description:
-                      '开启后输出 source_strategy、repair_strategies、score、schema_missing 等信息',
                   },
                 },
               },
@@ -2331,7 +2282,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             title: n.name ?? 'TaskBoard',
             positionType: 'middle',
             inputsValues: {
-              action: { type: 'constant', content: String(cfg.action ?? 'create') },
+              action: { type: 'constant', content: String(cfg.action ?? 'save') },
               name: { type: 'template', content: String(cfg.name ?? '') },
               priority: { type: 'constant', content: Number(cfg.priority ?? 0) },
               taskType: { type: 'constant', content: Number(cfg.taskType ?? 0) },
@@ -2390,7 +2341,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             title: n.name ?? 'ServiceManagement',
             positionType: 'middle',
             inputsValues: {
-              action: { type: 'constant', content: String(cfg.action ?? 'create') },
+              action: { type: 'constant', content: String(cfg.action ?? 'save') },
               name: { type: 'template', content: String(cfg.name ?? '') },
               status: { type: 'constant', content: Number(cfg.status ?? 0) },
               volcLogServiceId: { type: 'template', content: String(cfg.volcLogServiceId ?? '') },

@@ -10,8 +10,7 @@ export const JsonExtractNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.JsonExtract,
   info: {
     icon: iconCode,
-    description:
-      '从文本中提取 JSON 并做格式纠错与补全。支持 markdown/标签/片段提取、结构补全与 schema 补齐；可选输出 repair report。',
+    description: '从文本中提取 JSON（固定最严格模式，自动走完整提取链路）',
   },
   meta: {
     defaultPorts: [
@@ -22,7 +21,7 @@ export const JsonExtractNodeRegistry: FlowNodeRegistry = {
     ],
     size: {
       width: 360,
-      height: 380,
+      height: 260,
     },
     defaultExpanded: false,
     expandable: true,
@@ -36,10 +35,6 @@ export const JsonExtractNodeRegistry: FlowNodeRegistry = {
         positionType: 'middle',
         inputsValues: {
           source: { type: 'template', content: '' },
-          extractPattern: { type: 'constant', content: 'auto' },
-          parseMode: { type: 'constant', content: 'auto' },
-          schemaPaths: { type: 'constant', content: '' },
-          emitReport: { type: 'constant', content: false },
         },
         inputs: {
           type: 'object',
@@ -50,37 +45,7 @@ export const JsonExtractNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '输入文本',
                 formComponent: 'prompt-editor',
-                description: '包含 JSON 的文本内容，通常来自 Agent 输出的 markdown 代码块',
-              },
-            },
-            extractPattern: {
-              type: 'string',
-              extra: {
-                label: '提取模式',
-                description: 'auto: 自动检测 JSON 代码块 | json: 仅提取标准 JSON | md: 仅提取 markdown 代码块',
-              },
-            },
-            parseMode: {
-              type: 'string',
-              enum: ['strict', 'auto', 'aggressive'],
-              extra: {
-                label: '解析强度',
-                description: 'strict: 仅轻量解析 | auto: 默认修复与补全 | aggressive: 激进修复（NaN/Infinity/分号等）',
-              },
-            },
-            schemaPaths: {
-              type: 'string',
-              extra: {
-                label: 'Schema 路径约束',
-                description:
-                  '逗号/分号/换行分隔，如 data[].name,data[].spaceName,data[].manager。用于评分优选与缺失字段补齐。',
-              },
-            },
-            emitReport: {
-              type: 'boolean',
-              extra: {
-                label: '输出修复报告',
-                description: '开启后输出 source_strategy、repair_strategies、schema_missing 等诊断信息。',
+                description: '包含 JSON 的文本内容，组件将以固定最严格模式自动提取。',
               },
             },
           },

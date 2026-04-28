@@ -20,7 +20,7 @@ import { IconPlus, IconEdit, IconDelete, IconInfoCircle } from '@douyinfe/semi-i
 import {
   listServices,
   getService,
-  createService,
+  saveServiceByName,
   updateService,
   deleteService,
   ServiceItem,
@@ -159,8 +159,8 @@ export const ServiceManagementSection: React.FC = () => {
     setSubmitting(true);
     try {
       if (modalType === 'create') {
-        await createService(body as CreateServiceParams);
-        Toast.success('创建成功');
+        await saveServiceByName(body as CreateServiceParams);
+        Toast.success('保存成功');
       } else if (modalType === 'edit' && editingService) {
         await updateService(editingService.id, body as UpdateServiceParams);
         Toast.success('更新成功');
@@ -168,7 +168,7 @@ export const ServiceManagementSection: React.FC = () => {
       closeModal();
       void fetchServices(currentPage, pageSize);
     } catch (e) {
-      Toast.error(modalType === 'create' ? '创建失败' : '更新失败');
+      Toast.error(modalType === 'create' ? '保存失败' : '更新失败');
       console.error(e);
     } finally {
       setSubmitting(false);

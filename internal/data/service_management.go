@@ -49,6 +49,21 @@ func (r *serviceManagementRepo) GetByID(ctx context.Context, id int64) (*entity.
 	return &res, nil
 }
 
+// GetByName 根据名称获取服务
+func (r *serviceManagementRepo) GetByName(ctx context.Context, name string) (*entity.ServiceManagement, error) {
+	s := dao.NewServiceManagement()
+	service, err := s.GetByName(ctx, name)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	res := entity.ServiceManagement{}
+	_ = copier.Copy(&res, service)
+	return &res, nil
+}
+
 // List 查询服务列表
 func (r *serviceManagementRepo) List(ctx context.Context, status int32, page, pageSize int32) ([]*entity.ServiceManagement, int64, error) {
 	s := dao.NewServiceManagement()
@@ -67,12 +82,12 @@ func (r *serviceManagementRepo) List(ctx context.Context, status int32, page, pa
 // Update 更新服务
 func (r *serviceManagementRepo) Update(ctx context.Context, service *entity.ServiceManagement) error {
 	data := map[string]interface{}{
-		"name":               service.Name,
-		"status":             service.Status,
+		"name":                service.Name,
+		"status":              service.Status,
 		"volc_log_service_id": service.VolcLogServiceID,
-		"git_repo_url":       service.GitRepoURL,
-		"description":        service.Description,
-		"updated_at":         service.UpdatedAt,
+		"git_repo_url":        service.GitRepoURL,
+		"description":         service.Description,
+		"updated_at":          service.UpdatedAt,
 	}
 	s := dao.NewServiceManagement()
 	return s.Update(ctx, service.ID, data)

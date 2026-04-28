@@ -22,18 +22,12 @@ func init() {
 type JsonExtractComponent struct {
 	Config JsonExtractConfiguration
 
-	sourceTpl         el.Template
-	extractPatternTpl el.Template
-	schemaPathsTpl    el.Template
-	hasVar            bool
+	sourceTpl el.Template
+	hasVar    bool
 }
 
 type JsonExtractConfiguration struct {
-	Source         string `json:"source"`
-	ExtractPattern string `json:"extractPattern"`
-	ParseMode      string `json:"parseMode"`  // strict | auto | aggressive
-	EmitReport     bool   `json:"emitReport"` // true 时输出提取与修复报告
-	SchemaPaths    string `json:"schemaPaths"` // 逗号/分号/换行分隔，如 data[].name,data[].spaceName
+	Source string `json:"source"`
 }
 
 func (c *JsonExtractComponent) New() types.Node {
@@ -47,7 +41,7 @@ func (c *JsonExtractComponent) Type() string {
 func (c *JsonExtractComponent) Def() types.ComponentForm {
 	return types.ComponentForm{
 		Label: "JSON提取与纠错",
-		Desc:  "从文本中提取 JSON 并做格式纠错与补全",
+		Desc:  "从文本中提取 JSON（固定最严格模式）",
 	}
 }
 
@@ -56,21 +50,13 @@ func (c *JsonExtractComponent) Init(_ types.Config, configuration types.Configur
 		return err
 	}
 
-	tpls := map[*el.Template]string{
-		&c.sourceTpl:         c.Config.Source,
-		&c.extractPatternTpl: c.Config.ExtractPattern,
-		&c.schemaPathsTpl:    c.Config.SchemaPaths,
+	t, err := el.NewTemplate(c.Config.Source)
+	if err != nil {
+		return err
 	}
-
-	for tpl, s := range tpls {
-		t, err := el.NewTemplate(s)
-		if err != nil {
-			return err
-		}
-		*tpl = t
-		if t.HasVar() {
-			c.hasVar = true
-		}
+	c.sourceTpl = t
+	if t.HasVar() {
+		c.hasVar = true
 	}
 
 	return nil
@@ -93,43 +79,19 @@ func (c *JsonExtractComponent) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		return
 	}
 
-	extractMode := strings.TrimSpace(c.extractPatternTpl.ExecuteAsString(evn))
-	if extractMode == "" {
-		extractMode = strings.TrimSpace(c.Config.ExtractPattern)
-	}
-	repairMode := strings.TrimSpace(c.Config.ParseMode)
-	if repairMode == "" {
-		repairMode = "auto"
-	}
-	schemaRaw := strings.TrimSpace(c.schemaPathsTpl.ExecuteAsString(evn))
-	opts := ParseOptions{
-		SchemaPaths: parseSchemaPathList(schemaRaw),
-		ExtractMode: extractMode,
-		RepairMode:  repairMode,
-	}
-
-	result := parseJsonWithFixesWithOptions(inputText, "", opts)
+	result := parseJsonWithFixesWithOptions(inputText, "", ParseOptions{})
 	if result.Success {
 		normalized := normalizeTopLevelArrayToStringKeyMap(result.ExtractedJson)
 		result.ExtractedJson = normalized
-		payload := normalized
-		if c.Config.EmitReport {
-			payload = buildRepairReport(result)
+		jsonBytes, err := json.Marshal(normalized)
+		if err != nil {
+			msg.DataType = types.TEXT
+			msg.SetData("JSON提取结果序列化失败")
+			ctx.TellFailure(msg, err)
+			return
 		}
-		if payload != nil {
-			jsonBytes, err := json.Marshal(payload)
-			if err != nil {
-				msg.DataType = types.TEXT
-				msg.SetData("JSON提取结果序列化失败")
-				ctx.TellFailure(msg, err)
-				return
-			}
-			msg.DataType = types.JSON
-			msg.SetData(string(jsonBytes))
-		} else {
-			msg.DataType = types.JSON
-			msg.SetData(result.Result)
-		}
+		msg.DataType = types.JSON
+		msg.SetData(string(jsonBytes))
 		ctx.TellSuccess(msg)
 	} else {
 		msg.DataType = types.TEXT
@@ -160,21 +122,16 @@ func parseJsonWithFixes(text, mode string) Result {
 	return parseJsonWithFixesWithOptions(text, mode, ParseOptions{})
 }
 
-type ParseOptions struct {
-	SchemaPaths  []string
-	ExtractMode  string // auto | json | md
-	RepairMode   string // strict | auto | aggressive
-}
+type ParseOptions struct{}
 
 func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result {
+	_ = mode
+	_ = opts
 	trimText := strings.TrimSpace(text)
 	if trimText == "" {
 		return Result{Success: false, Error: "输入文本不能为空"}
 	}
 	trimText = normalizeCommonText(trimText)
-	opts.ExtractMode, opts.RepairMode = normalizeModes(mode, opts.ExtractMode, opts.RepairMode)
-	allowAggressive := opts.RepairMode == "aggressive"
-	compiledSchemas := compileSchemaPaths(opts.SchemaPaths)
 
 	// 1. 组织候选 JSON 文本（优先直接文本，其次 markdown 代码块与混杂文本片段提取）。
 	type candidate struct {
@@ -213,40 +170,21 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 	for _, embedded := range embeddedTexts {
 		appendCandidateWithStrategy(embedded, "embedded_text_field")
 		appendCandidateWithStrategy(extractFromFirstJSONStart(embedded), "embedded_first_json_start")
-		if opts.ExtractMode == "md" || opts.ExtractMode == "auto" {
-			appendCandidateWithStrategy(extractJsonFromMarkdown(embedded), "embedded_markdown_fence")
-		}
-		if opts.ExtractMode == "json" || opts.ExtractMode == "auto" {
-			fragments := extractBalancedJSONFragments(embedded, 12)
-			for _, f := range fragments {
-				appendCandidateWithStrategy(f, "embedded_balanced_fragment")
-			}
-			appendCandidateWithStrategy(extractJsonFromTaggedBlock(embedded), "embedded_tagged_block")
-			appendCandidateWithStrategy(extractJsonFromAssignment(embedded), "embedded_assignment_rhs")
-		}
-	}
-	mdExtracted := ""
-	if opts.ExtractMode == "md" || opts.ExtractMode == "auto" {
-		mdExtracted = extractJsonFromMarkdown(trimText)
-		appendCandidateWithStrategy(mdExtracted, "markdown_fence")
-	}
-	if opts.ExtractMode == "json" || opts.ExtractMode == "auto" {
-		fragments := extractBalancedJSONFragments(trimText, 20)
+		appendCandidateWithStrategy(extractJsonFromMarkdown(embedded), "embedded_markdown_fence")
+		fragments := extractBalancedJSONFragments(embedded, 12)
 		for _, f := range fragments {
-			appendCandidateWithStrategy(f, "balanced_fragment")
+			appendCandidateWithStrategy(f, "embedded_balanced_fragment")
 		}
-		appendCandidateWithStrategy(extractJsonFromTaggedBlock(trimText), "tagged_block")
-		appendCandidateWithStrategy(extractJsonFromAssignment(trimText), "assignment_rhs")
+		appendCandidateWithStrategy(extractJsonFromTaggedBlock(embedded), "embedded_tagged_block")
+		appendCandidateWithStrategy(extractJsonFromAssignment(embedded), "embedded_assignment_rhs")
 	}
-	// 防止 extractMode=md 但文本实际无 markdown code fence 时漏提取。
-	if opts.ExtractMode == "md" && strings.TrimSpace(mdExtracted) == "" {
-		fragments := extractBalancedJSONFragments(trimText, 20)
-		for _, f := range fragments {
-			appendCandidateWithStrategy(f, "fallback_balanced_fragment")
-		}
-		appendCandidateWithStrategy(extractJsonFromTaggedBlock(trimText), "fallback_tagged_block")
-		appendCandidateWithStrategy(extractJsonFromAssignment(trimText), "fallback_assignment_rhs")
+	appendCandidateWithStrategy(extractJsonFromMarkdown(trimText), "markdown_fence")
+	fragments := extractBalancedJSONFragments(trimText, 20)
+	for _, f := range fragments {
+		appendCandidateWithStrategy(f, "balanced_fragment")
 	}
+	appendCandidateWithStrategy(extractJsonFromTaggedBlock(trimText), "tagged_block")
+	appendCandidateWithStrategy(extractJsonFromAssignment(trimText), "assignment_rhs")
 
 	// 2. 对每个候选应用解析与修复策略。
 	tryParse := func(v string) (interface{}, bool) {
@@ -258,68 +196,49 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 	}
 	successes := make([]Result, 0, 8)
 	for _, c := range candidates {
-		var variants []string
-		var variantStrategy []string
-		var variantTailDropped []bool
-		if opts.RepairMode == "strict" {
-			variants = []string{
-				c.value,
-				unwrapJSONStringCandidate(c.value),
-			}
-			variantStrategy = []string{
-				"none",
-				"unwrap_json_string",
-			}
-			variantTailDropped = []bool{
-				false,
-				false,
-			}
-		} else {
-			completeOnly, completeOnlyDropped := completeJsonWithMeta(c.value)
-			completeAfterFix, completeAfterFixDropped := completeJsonWithMeta(fixJsonFormat(c.value))
-			variants = []string{
-				c.value,
-				unwrapJSONStringCandidate(c.value),
-				fixJsonFormat(c.value),
-				completeOnly,
-				completeAfterFix,
-				unwrapJSONStringCandidate(fixJsonFormat(c.value)),
-				fixJsonFormat(completeOnly),
-			}
-			variantStrategy = []string{
-				"none",
-				"unwrap_json_string",
-				"fix_json_format",
-				"complete_json",
-				"fix_then_complete",
-				"fix_then_unwrap",
-				"complete_then_fix",
-			}
-			variantTailDropped = []bool{
-				false,
-				false,
-				false,
-				completeOnlyDropped,
-				completeAfterFixDropped,
-				false,
-				completeOnlyDropped,
-			}
+		completeOnly, completeOnlyDropped := completeJsonWithMeta(c.value)
+		completeAfterFix, completeAfterFixDropped := completeJsonWithMeta(fixJsonFormat(c.value))
+		variants := []string{
+			c.value,
+			unwrapJSONStringCandidate(c.value),
+			fixJsonFormat(c.value),
+			completeOnly,
+			completeAfterFix,
+			unwrapJSONStringCandidate(fixJsonFormat(c.value)),
+			fixJsonFormat(completeOnly),
 		}
-		if allowAggressive {
-			aggressive := make([]string, 0, len(variants))
-			for _, v := range variants {
-				aggressive = append(aggressive, aggressiveNormalize(v))
+		variantStrategy := []string{
+			"none",
+			"unwrap_json_string",
+			"fix_json_format",
+			"complete_json",
+			"fix_then_complete",
+			"fix_then_unwrap",
+			"complete_then_fix",
+		}
+		variantTailDropped := []bool{
+			false,
+			false,
+			false,
+			completeOnlyDropped,
+			completeAfterFixDropped,
+			false,
+			completeOnlyDropped,
+		}
+		aggressive := make([]string, 0, len(variants))
+		for _, v := range variants {
+			aggressive = append(aggressive, aggressiveNormalize(v))
+		}
+		for i, v := range aggressive {
+			if strings.TrimSpace(v) == "" {
+				continue
 			}
-			for i, v := range aggressive {
-				if strings.TrimSpace(v) != "" {
-					variants = append(variants, v)
-					variantStrategy = append(variantStrategy, "aggressive_normalize("+variantStrategy[i]+")")
-					if i < len(variantTailDropped) {
-						variantTailDropped = append(variantTailDropped, variantTailDropped[i])
-					} else {
-						variantTailDropped = append(variantTailDropped, false)
-					}
-				}
+			variants = append(variants, v)
+			variantStrategy = append(variantStrategy, "aggressive_normalize("+variantStrategy[i]+")")
+			if i < len(variantTailDropped) {
+				variantTailDropped = append(variantTailDropped, variantTailDropped[i])
+			} else {
+				variantTailDropped = append(variantTailDropped, false)
 			}
 		}
 		var primitiveFallback interface{}
@@ -340,20 +259,14 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 					if tailDropped {
 						repairs = append(repairs, "truncated_tail_dropped")
 					}
-					enriched, schemaMatched, schemaMissing, schemaChanged := applySchemaCompletion(parsed, compiledSchemas)
-					if schemaChanged {
-						repairs = append(repairs, "schema_complete")
-					}
-					score := scoreParsedCandidate(enriched, c.strategy, repairs, schemaMatched, len(schemaMissing))
+					score := scoreParsedCandidate(parsed, c.strategy, repairs)
 					successes = append(successes, Result{
 						Success:          true,
-						Result:           formatJSON(enriched),
-						ExtractedJson:    enriched,
+						Result:           formatJSON(parsed),
+						ExtractedJson:    parsed,
 						SourceStrategy:   c.strategy,
 						RepairStrategies: repairs,
 						CandidateScore:   score,
-						SchemaMatched:    schemaMatched,
-						SchemaMissing:    schemaMissing,
 						TruncatedTailDropped: tailDropped,
 					})
 				default:
@@ -371,8 +284,7 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 				ExtractedJson:    primitiveFallback,
 				SourceStrategy:   c.strategy,
 				RepairStrategies: []string{"primitive_fallback"},
-				CandidateScore:   scoreParsedCandidate(primitiveFallback, c.strategy, []string{"primitive_fallback"}, 0, len(compiledSchemas)),
-				SchemaMissing:    append([]string(nil), opts.SchemaPaths...),
+				CandidateScore:   scoreParsedCandidate(primitiveFallback, c.strategy, []string{"primitive_fallback"}),
 			})
 		}
 	}
@@ -381,63 +293,6 @@ func parseJsonWithFixesWithOptions(text, mode string, opts ParseOptions) Result 
 	}
 
 	return Result{Success: false, Error: "无法解析 JSON，请检查输入格式是否正确"}
-}
-
-func normalizeParseMode(mode string) string {
-	mode = strings.ToLower(strings.TrimSpace(mode))
-	switch mode {
-	case "", "auto", "md":
-		return "auto"
-	case "strict":
-		return "strict"
-	case "aggressive":
-		return "aggressive"
-	default:
-		return "auto"
-	}
-}
-
-func normalizeExtractMode(mode string) string {
-	mode = strings.ToLower(strings.TrimSpace(mode))
-	switch mode {
-	case "", "auto":
-		return "auto"
-	case "json":
-		return "json"
-	case "md":
-		return "md"
-	default:
-		return "auto"
-	}
-}
-
-// normalizeModes 兼容历史：parseJsonWithFixes(text, mode) 传单参数时，mode 可能是修复模式或提取模式。
-func normalizeModes(legacyMode string, extractMode string, repairMode string) (string, string) {
-	em := normalizeExtractMode(extractMode)
-	rm := normalizeParseMode(repairMode)
-
-	legacy := strings.ToLower(strings.TrimSpace(legacyMode))
-	if legacy == "" {
-		return em, rm
-	}
-	// 旧调用：mode 既可能是 strict/auto/aggressive，也可能是 md/json/auto
-	switch legacy {
-	case "strict", "aggressive":
-		return em, legacy
-	case "md", "json":
-		return legacy, rm
-	case "auto":
-		// auto 对两者都可作为默认值；仅在未显式配置时覆盖
-		if strings.TrimSpace(extractMode) == "" {
-			em = "auto"
-		}
-		if strings.TrimSpace(repairMode) == "" {
-			rm = "auto"
-		}
-		return em, rm
-	default:
-		return em, rm
-	}
 }
 
 type schemaSegment struct {
@@ -628,7 +483,7 @@ func schemaRawList(paths []compiledSchemaPath) []string {
 	return out
 }
 
-func scoreParsedCandidate(parsed interface{}, source string, repairs []string, schemaMatched int, schemaMissing int) int {
+func scoreParsedCandidate(parsed interface{}, source string, repairs []string) int {
 	score := 0
 	switch parsed.(type) {
 	case map[string]interface{}:
@@ -642,8 +497,6 @@ func scoreParsedCandidate(parsed interface{}, source string, repairs []string, s
 	if hasTopLevelDataArray(parsed) {
 		score += 18
 	}
-	score += schemaMatched * 25
-	score -= schemaMissing * 20
 	switch source {
 	case "direct":
 		score += 8

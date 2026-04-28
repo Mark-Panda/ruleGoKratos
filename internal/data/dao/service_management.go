@@ -7,7 +7,7 @@ import (
 
 type ServiceManagement struct {
 	ID               int64      `gorm:"primaryKey;column:id;comment:服务ID"`
-	Name             string     `gorm:"column:name;size:255;not null;comment:服务名称"`
+	Name             string     `gorm:"column:name;size:255;not null;uniqueIndex:uk_name;comment:服务名称"`
 	Status           int32      `gorm:"column:status;default:2;comment:服务状态 1:运行中 2:停止"`
 	VolcLogServiceID string     `gorm:"column:volc_log_service_id;size:128;comment:火山云日志服务ID"`
 	GitRepoURL       string     `gorm:"column:git_repo_url;size:512;comment:git仓库地址"`
@@ -34,6 +34,16 @@ func (s *ServiceManagement) Create(ctx context.Context) error {
 func (s *ServiceManagement) GetByID(ctx context.Context, id int64) (*ServiceManagement, error) {
 	var service ServiceManagement
 	err := db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&service).Error
+	if err != nil {
+		return nil, err
+	}
+	return &service, nil
+}
+
+// GetByName 根据名称获取服务
+func (s *ServiceManagement) GetByName(ctx context.Context, name string) (*ServiceManagement, error) {
+	var service ServiceManagement
+	err := db.WithContext(ctx).Where("name = ? AND deleted_at IS NULL", name).First(&service).Error
 	if err != nil {
 		return nil, err
 	}

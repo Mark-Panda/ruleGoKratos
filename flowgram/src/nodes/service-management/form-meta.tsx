@@ -10,20 +10,20 @@ import { defaultFormMeta } from '../default-form-meta';
 import { FlowNodeJSON } from '../../typings';
 import { FormContent, FormHeader, FormInputs, OutputsPeek } from '../../form-components';
 
-type ServiceAction = 'create' | 'get' | 'update' | 'delete';
+type ServiceAction = 'save' | 'get' | 'delete';
 
 function parseServiceAction(raw: unknown): ServiceAction {
-  if (raw === 'create' || raw === 'get' || raw === 'update' || raw === 'delete') {
+  if (raw === 'save' || raw === 'get' || raw === 'delete') {
     return raw;
   }
-  return 'create';
+  return 'save';
 }
 
 function isServicePropertyVisible(action: ServiceAction, key: string): boolean {
   if (key === 'action') return true;
-  if (key === 'serviceId') return action !== 'create';
+  if (key === 'serviceId') return action === 'get' || action === 'delete';
   if (['name', 'status', 'volcLogServiceId', 'gitRepoUrl', 'description'].includes(key)) {
-    return action === 'create' || action === 'update';
+    return action === 'save';
   }
   return true;
 }

@@ -1716,20 +1716,12 @@ describe('x/jsonExtract spec', () => {
               positionType: 'middle',
               inputsValues: {
                 source: { type: 'template', content: '${msg.data}' },
-                extractPattern: { type: 'constant', content: 'md' },
-                parseMode: { type: 'constant', content: 'aggressive' },
-                schemaPaths: { type: 'constant', content: 'data[].name,data[].spaceName' },
-                emitReport: { type: 'constant', content: true },
               },
               inputs: {
                 type: 'object',
                 required: ['source'],
                 properties: {
                   source: { type: 'string' },
-                  extractPattern: { type: 'string' },
-                  parseMode: { type: 'string' },
-                  schemaPaths: { type: 'string' },
-                  emitReport: { type: 'boolean' },
                 },
               },
             },
@@ -1744,20 +1736,12 @@ describe('x/jsonExtract spec', () => {
         data: {
           inputsValues: {
             source: { content: '${msg.data}' },
-            extractPattern: { content: 'md' },
-            parseMode: { content: 'aggressive' },
-            schemaPaths: { content: 'data[].name,data[].spaceName' },
-            emitReport: { content: true },
           },
         },
       },
       jsonExtractMappingSpec
     );
     expect(cfg.source).toBe('${msg.data}');
-    expect(cfg.extractPattern).toBe('md');
-    expect(cfg.parseMode).toBe('aggressive');
-    expect(cfg.schemaPaths).toBe('data[].name,data[].spaceName');
-    expect(cfg.emitReport).toBe(true);
 
     const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
     const parsed = JSON.parse(json) as any;
@@ -1765,26 +1749,12 @@ describe('x/jsonExtract spec', () => {
     expect(meta?.type).toBe('x/jsonExtract');
     expect(meta.configuration).toEqual({
       source: '${msg.data}',
-      extractPattern: 'md',
-      parseMode: 'aggressive',
-      schemaPaths: 'data[].name,data[].spaceName',
-      emitReport: true,
     });
 
     const back = buildDocumentFromRuleChainJSON(parsed);
     const node = back.nodes.find((n: any) => n.id === 'je1');
     expect((node as any)?.data?.inputsValues?.source?.type).toBe('template');
     expect((node as any)?.data?.inputsValues?.source?.content).toBe('${msg.data}');
-    expect((node as any)?.data?.inputsValues?.extractPattern?.type).toBe('constant');
-    expect((node as any)?.data?.inputsValues?.extractPattern?.content).toBe('md');
-    expect((node as any)?.data?.inputsValues?.parseMode?.type).toBe('constant');
-    expect((node as any)?.data?.inputsValues?.parseMode?.content).toBe('aggressive');
-    expect((node as any)?.data?.inputsValues?.schemaPaths?.type).toBe('constant');
-    expect((node as any)?.data?.inputsValues?.schemaPaths?.content).toBe(
-      'data[].name,data[].spaceName'
-    );
-    expect((node as any)?.data?.inputsValues?.emitReport?.type).toBe('constant');
-    expect((node as any)?.data?.inputsValues?.emitReport?.content).toBe(true);
     expect((node as any)?.data?.inputs?.properties?.source).toBeTruthy();
     expect((node as any)?.data?.outputs?.properties?.extractedJson).toBeTruthy();
   });
@@ -1795,19 +1765,11 @@ describe('x/jsonExtract spec', () => {
         title: 'bad',
         inputsValues: {
           source: { type: 'template', content: '${data}' },
-          extractPattern: { type: 'constant', content: 'auto' },
-          parseMode: { type: 'constant', content: 'strict' },
-          schemaPaths: { type: 'constant', content: 'data[].name' },
-          emitReport: { type: 'constant', content: false },
         },
       } as Record<string, unknown>,
       jsonExtractMappingSpec
     );
     expect(iv.source?.content).toBe('${data}');
-    expect(iv.extractPattern?.content).toBe('auto');
-    expect(iv.parseMode?.content).toBe('strict');
-    expect(iv.schemaPaths?.content).toBe('data[].name');
-    expect(iv.emitReport?.content).toBe(false);
   });
 });
 

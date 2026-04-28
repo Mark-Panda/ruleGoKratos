@@ -9,6 +9,7 @@ CREATE TABLE `service_management` (
   `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
   `description` text COMMENT '服务描述',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_name` (`name`),
   KEY `idx_deleted_at` (`deleted_at`),
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='服务管理表';
