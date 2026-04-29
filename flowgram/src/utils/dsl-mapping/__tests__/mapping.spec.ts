@@ -405,6 +405,43 @@ describe('ai/agentHarness spec round-trip', () => {
     expect(iv.skillAllowlist?.content).toEqual(['a', 'b']);
     expect(iv.mcpAllowlist).toBeUndefined();
   });
+
+  it('toDSL: gitWorktreeMode=true 正确写出到 DSL', () => {
+    const node = {
+      data: {
+        inputsValues: {
+          userPrompt: { content: 'task' },
+          gitWorktreeMode: { content: true },
+        },
+      },
+    };
+    const cfg = mapNodeToDslConfig(node, aiAgentHarnessMappingSpec);
+    expect(cfg.gitWorktreeMode).toBe(true);
+  });
+
+  it('toDSL: gitWorktreeMode 缺省时使用 false 默认值', () => {
+    const node = { data: { inputsValues: { userPrompt: { content: 'hi' } } } };
+    const cfg = mapNodeToDslConfig(node, aiAgentHarnessMappingSpec);
+    expect(cfg.gitWorktreeMode).toBe(false);
+  });
+
+  it('fromDSL: gitWorktreeMode round-trip', () => {
+    const cfg = mapNodeToDslConfig(
+      { data: { inputsValues: { gitWorktreeMode: { content: true } } } },
+      aiAgentHarnessMappingSpec
+    );
+    expect(cfg.gitWorktreeMode).toBe(true);
+    const iv = mapDslToNodeInputsValues(cfg as Record<string, unknown>, aiAgentHarnessMappingSpec);
+    expect(iv.gitWorktreeMode?.content).toBe(true);
+  });
+
+  it('fromDSL: gitWorktreeMode 旧 DSL 无该字段时回填 false', () => {
+    const iv = mapDslToNodeInputsValues(
+      { userPrompt: 'legacy' } as Record<string, unknown>,
+      aiAgentHarnessMappingSpec
+    );
+    expect(iv.gitWorktreeMode?.content).toBe(false);
+  });
 });
 
 describe('restApiCall spec URL / query', () => {

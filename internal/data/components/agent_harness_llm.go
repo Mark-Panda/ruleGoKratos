@@ -56,6 +56,9 @@ type AgentHarnessLLMConfig struct {
 	MaxIterations        int  `json:"maxIterations"`
 	MaxToolCalls         int  `json:"maxToolCalls"`
 	ToolTimeoutSecs      int  `json:"toolTimeoutSecs"`
+	// GitWorktreeMode 启用后，运行时会在系统提示词中注入强制约束：
+	// 模型对 git 仓库的所有修改性操作必须通过 git worktree 创建隔离工作树，禁止直接在主分支上操作。
+	GitWorktreeMode bool `json:"gitWorktreeMode"`
 }
 
 func (x *AgentHarnessLLM) Type() string {
@@ -172,6 +175,7 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		UserID:          extractUserIDFromMsg(msg),
 		ProjectPath:     extractProjectPathFromMsg(msg),
 		WorkspaceRoot:   workspaceRoot,
+		GitWorktreeMode: x.Config.GitWorktreeMode,
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)
@@ -399,3 +403,4 @@ func buildWorkspacePromptForComponent(workspaceID string) string {
 		repos,
 	)
 }
+

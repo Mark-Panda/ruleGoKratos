@@ -110,6 +110,12 @@ export const aiAgentHarnessMappingSpec: NodeMappingSpec = {
       valueType: 'number',
       defaultValue: 0,
     },
+    {
+      inputKey: 'gitWorktreeMode',
+      dslKey: 'gitWorktreeMode',
+      valueType: 'boolean',
+      defaultValue: false,
+    },
   ],
   transformIn: transformAgentHarnessConfigIn,
 };

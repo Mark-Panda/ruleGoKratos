@@ -58,6 +58,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
           maxIterations: { type: 'constant', content: 0 },
           maxToolCalls: { type: 'constant', content: 0 },
           toolTimeoutSecs: { type: 'constant', content: 0 },
+          gitWorktreeMode: { type: 'constant', content: false },
         },
         inputs: {
           type: 'object',
@@ -72,6 +73,7 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             'maxIterations',
             'maxToolCalls',
             'toolTimeoutSecs',
+            'gitWorktreeMode',
           ],
           properties: {
             llmConfigId: {
@@ -153,6 +155,14 @@ export const AgentHarnessNodeRegistry: FlowNodeRegistry = {
             toolTimeoutSecs: {
               type: 'number',
               extra: { label: '单次工具超时(秒)', description: '0 表示使用服务默认' },
+            },
+            gitWorktreeMode: {
+              type: 'boolean',
+              extra: {
+                label: '启用 Git Worktree 模式',
+                description:
+                  '启用后，模型在操作 git 仓库时必须通过 git worktree 创建隔离工作树，禁止直接在仓库主分支上执行修改性操作',
+              },
             },
           },
         },

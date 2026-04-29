@@ -1540,6 +1540,7 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               'maxIterations',
               'maxToolCalls',
               'toolTimeoutSecs',
+              'gitWorktreeMode',
             ],
             properties: {
               model: {
@@ -1599,6 +1600,14 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 extra: {
                   label: '单次工具超时(秒)',
                   description: '0 表示使用服务默认',
+                },
+              },
+              gitWorktreeMode: {
+                type: 'boolean',
+                extra: {
+                  label: '启用 Git Worktree 模式',
+                  description:
+                    '启用后，模型在操作 git 仓库时必须通过 git worktree 创建隔离工作树，禁止直接在仓库主分支上执行修改性操作',
                 },
               },
             },

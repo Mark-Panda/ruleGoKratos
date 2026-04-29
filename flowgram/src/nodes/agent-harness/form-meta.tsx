@@ -62,6 +62,7 @@ const AGENT_FORM_KEYS_NO_ALLOWLIST: readonly string[] = [
   'workspaceId',
   'enableSkillTool',
   'enableSubAgentTool',
+  'gitWorktreeMode',
   'maxIterations',
   'maxToolCalls',
   'toolTimeoutSecs',

@@ -104,6 +104,10 @@ type HarnessRequest struct {
 	// WorkspaceRoot 为本轮 Harness 工具执行根目录（绝对路径）覆盖值；为空时回退到配置项 agent.workspace_root。
 	WorkspaceRoot string
 
+	// GitWorktreeMode 启用后，运行时会在系统提示词中注入强制约束：禁止直接在主分支操作，须通过 git worktree 创建隔离工作树。
+	// 子 Agent（run_sub_agent）通过 childReq := parentReq 拷贝自动继承此约束。
+	GitWorktreeMode bool
+
 	// UserID 用于上下文记忆管理（可从 HTTP header X-User-ID 或 auth context 获取）
 	UserID string
 	// ProjectPath 用于项目级记忆（可从 HTTP header X-Project-Path 或 workspace 配置获取）
@@ -590,6 +594,14 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			return
 		}
 		req = enriched
+		if req.GitWorktreeMode {
+			gitWorktreePrompt := buildGitWorktreeModeConstraintPrompt()
+			if strings.TrimSpace(req.SystemPrompt) == "" {
+				req.SystemPrompt = gitWorktreePrompt
+			} else {
+				req.SystemPrompt = req.SystemPrompt + "\n\n" + gitWorktreePrompt
+			}
+		}
 		start := time.Now()
 		var assistantAcc strings.Builder
 		logModel := req.Model
@@ -1532,4 +1544,16 @@ func (uc *AgentUsecase) BuildSaveMcpConfigTool() (*HarnessTool, error) {
 			return fmt.Sprintf(`{"ok":true,"id":%d,"action":%q}`, outID, action), nil
 		},
 	}, nil
+}
+
+// buildGitWorktreeModeConstraintPrompt 返回 Git Worktree 模式的强制约束提示词。
+// 在 executeHarness 中于 enrichHarnessWithManagedAgent 之后注入，确保即使 ManagedAgent
+// 覆盖了节点层 SystemPrompt，该安全约束仍会附加在末尾。
+func buildGitWorktreeModeConstraintPrompt() string {
+	return "【Git Worktree 模式（强制）】\n" +
+		"此 Agent 已启用 Git Worktree 模式，所有对 git 仓库的操作必须遵守以下约束：\n" +
+		"1. 禁止在任何仓库主分支（或已 checkout 的工作分支）上直接执行修改性 git 操作（git checkout -b、git commit、git merge、git push 等）；\n" +
+		"2. 需要对仓库进行修改时，必须先通过 `git worktree add <路径> <分支或新分支名>` 创建独立的 worktree，在该 worktree 目录中完成所有开发、测试与提交；\n" +
+		"3. 完成工作后，可通过 `git worktree remove <路径>` 清理 worktree；\n" +
+		"4. 严禁绕过此约束直接切换或修改主仓库的 HEAD、index 或工作区文件。"
 }
