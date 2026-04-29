@@ -365,20 +365,33 @@ export const WorkflowExecuteSection: React.FC = () => {
       style={{
         flex: 1,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
+        alignItems: 'stretch',
         background: '#F7F8FA',
         overflow: 'hidden',
         padding: 16,
         minHeight: 0,
+        minWidth: 0,
+        gap: 16,
       }}
     >
-      <div style={{ background: '#fff', padding: 24, borderRadius: 2, marginBottom: 16 }}>
+      <div
+        style={{
+          flex: '2 1 0%',
+          minWidth: 0,
+          minHeight: 0,
+          overflowY: 'auto',
+          background: '#fff',
+          padding: 24,
+          borderRadius: 2,
+        }}
+      >
         <Typography.Title heading={6} style={{ margin: '0 0 8px' }}>
           工作流执行
         </Typography.Title>
         <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 16 }}>
           仅列出根规则链且未禁用（disabled=false）。参数来自规则链 configuration.flowgram.io
-          中配置的「请求元数据」「请求体」参数说明；提交后走异步接口，下方日志每秒刷新一次直至检测到结束时间。
+          中配置的「请求元数据」「请求体」参数说明；提交后走异步接口，右侧日志每秒刷新一次直至检测到结束时间。
         </Typography.Paragraph>
 
         <Spin spinning={loadingList || detailLoading}>
@@ -486,14 +499,15 @@ export const WorkflowExecuteSection: React.FC = () => {
 
       <div
         style={{
-          flex: 1,
+          flex: '3 1 0%',
+          minWidth: 0,
+          minHeight: 0,
+          overflowY: 'auto',
           background: '#fff',
           padding: 16,
           borderRadius: 2,
           display: 'flex',
           flexDirection: 'column',
-          minHeight: 0,
-          overflow: 'hidden',
         }}
       >
         <Typography.Title heading={6} style={{ margin: '0 0 12px', flexShrink: 0 }}>
@@ -544,7 +558,7 @@ export const WorkflowExecuteSection: React.FC = () => {
         ) : null}
 
         {logBundle ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div
               style={{
                 flexShrink: 0,
@@ -574,12 +588,12 @@ export const WorkflowExecuteSection: React.FC = () => {
               </Typography.Text>
             </div>
 
-            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <div style={{ width: '100%', overflowX: 'auto' }}>
               <Table
                 size="small"
                 dataSource={tableRows}
                 rowKey="_rowKey"
-                scroll={{ y: 360, x: 1320 }}
+                scroll={{ x: 1320 }}
                 pagination={false}
                 columns={logColumns}
                 expandedRowRender={(record?: Record<string, unknown>) => {
