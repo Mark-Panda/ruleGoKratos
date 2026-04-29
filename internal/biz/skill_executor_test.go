@@ -72,7 +72,14 @@ func TestDefaultSkillDirsUsesServiceRootsInPriorityOrder(t *testing.T) {
 	t.Setenv("WORKFLOW_SKILL_DIR", "/custom/workflow")
 
 	got := defaultSkillDirs("/custom/agent", "/ignored/extra")
-	want := []string{"/custom/app", "/custom/agent", "/custom/workflow"}
+	want := []string{
+		"/custom/app",
+		"/custom/agent",
+		"/custom/workflow",
+		"/root/.agents/skills",
+		"/root/.claude/skills",
+		"/root/.cursor/skills",
+	}
 	if len(got) != len(want) {
 		t.Fatalf("expected %v, got %v", want, got)
 	}

@@ -117,7 +117,7 @@ agent:
     # 运维建议：一般不超过 500，避免 prompt 注入时上下文膨胀
     max_project_summaries_limit: 500
   skill:
-    # Agent 创建技能目录；运行时固定按 /app/skills、该目录、/workflow/skills 的顺序扫描服务技能
+    # Agent 技能目录；默认还在其后追加 /root/.agents/skills、/root/.claude/skills、/root/.cursor/skills（同名以服务路径为先）
     dir: /agent/skills
     # 额外技能目录（逗号分隔）；用于补充扫描路径
     dirs: /app/skills,/workflow/skills

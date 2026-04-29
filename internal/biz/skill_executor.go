@@ -37,9 +37,17 @@ type FileSkillExecutorOptions struct {
 	ScanIntervalMSSet bool
 }
 
-// defaultSkillDirs 组装服务内允许的技能目录，顺序即同名技能优先级：系统 > Agent > 工作流。
+// defaultHomeToolSkillRoots 容器/根用户下常见工具链技能目录（排在服务三类目录之后，同名以服务内为准）。
+var defaultHomeToolSkillRoots = []string{
+	"/root/.agents/skills",
+	"/root/.claude/skills",
+	"/root/.cursor/skills",
+}
+
+// defaultSkillDirs 组装服务内允许的技能目录，顺序即同名技能优先级：
+// 系统 > Agent > 工作流 > ~/.agents/skills > ~/.claude/skills > ~/.cursor/skills（后三项默认路径见 defaultHomeToolSkillRoots）。
 func defaultSkillDirs(dir string, dirsCSV string) []string {
-	dirs := make([]string, 0, 3)
+	dirs := make([]string, 0, 3+len(defaultHomeToolSkillRoots))
 	appendIfNeeded := func(raw string) {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
@@ -71,10 +79,13 @@ func defaultSkillDirs(dir string, dirsCSV string) []string {
 	if workflowDir == "" {
 		workflowDir = "/workflow/skills"
 	}
-	_ = dirsCSV // 历史额外目录不再参与服务 SKILL 扫描，避免越过三类固定目录边界。
+	_ = dirsCSV // 历史额外目录不再参与服务 SKILL 扫描；默认路径见本函数与前缀常量。
 	appendIfNeeded(appDir)
 	appendIfNeeded(agentDir)
 	appendIfNeeded(workflowDir)
+	for _, root := range defaultHomeToolSkillRoots {
+		appendIfNeeded(root)
+	}
 	return dirs
 }
 
