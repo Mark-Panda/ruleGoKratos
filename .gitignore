@@ -49,3 +49,5 @@ deploy/docker-cursor-overlay/.cursor/*
 code_workspace/
 mcp
 flowData/
+skills/shadow-gateway-route-feasibility
+skills/sourcegraph-api-tracer-full
