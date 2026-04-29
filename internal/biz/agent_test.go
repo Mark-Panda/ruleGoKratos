@@ -136,6 +136,38 @@ func TestWorkspaceToolsUseSessionRootFromContext(t *testing.T) {
 	}
 }
 
+func TestExecuteHarnessShouldResolveSessionDirFromCurrentWorkspaceRoot(t *testing.T) {
+	configRoot := t.TempDir()
+	overrideRoot := t.TempDir()
+	uc := newTestAgentUsecase()
+	uc.config = &conf.Bootstrap{Agent: &conf.Agent{WorkspaceRoot: configRoot}}
+	var gotWorkspaceRoot string
+	uc.chatModelFunc = func(ctx context.Context, req HarnessRequest) (model.ToolCallingChatModel, error) {
+		root, err := uc.effectiveWorkspaceRoot(ctx)
+		if err != nil {
+			t.Fatalf("effectiveWorkspaceRoot failed: %v", err)
+		}
+		gotWorkspaceRoot = root
+		return &fakeStaticToolCallingModel{output: "ok"}, nil
+	}
+	req := HarnessRequest{
+		Input:               "ping",
+		WorkspaceSessionDir: "playground/run_case",
+	}
+	ctx := withHarnessWorkspaceRoot(context.Background(), overrideRoot)
+	gen := uc.StreamHarness(ctx, req)
+	gen(func(msg *StreamMessage, err error) bool {
+		return err == nil
+	})
+	wantRoot := filepath.Join(overrideRoot, "playground", "run_case")
+	if filepath.Clean(gotWorkspaceRoot) != filepath.Clean(wantRoot) {
+		t.Fatalf("workspace root mismatch: got=%s want=%s", gotWorkspaceRoot, wantRoot)
+	}
+	if st, err := os.Stat(wantRoot); err != nil || !st.IsDir() {
+		t.Fatalf("expected session dir created at %s, err=%v", wantRoot, err)
+	}
+}
+
 func TestWorkspaceWriteAllowsAgentSkillAbsolutePath(t *testing.T) {
 	workspaceRoot := t.TempDir()
 	agentRoot := t.TempDir()

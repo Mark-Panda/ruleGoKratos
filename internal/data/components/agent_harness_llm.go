@@ -127,12 +127,18 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	modelName := x.modelTpl.Execute(env)
 	systemPrompt := x.systemTpl.Execute(env)
 	userPrompt := x.userTpl.Execute(env)
-	if wp := buildWorkspacePromptForComponent(strings.TrimSpace(x.Config.WorkspaceID)); wp != "" {
+	workspaceID := strings.TrimSpace(x.Config.WorkspaceID)
+	if wp := buildWorkspacePromptForComponent(workspaceID); wp != "" {
 		if strings.TrimSpace(systemPrompt) == "" {
 			systemPrompt = wp
 		} else {
 			systemPrompt = systemPrompt + "\n\n" + wp
 		}
+	}
+	workspaceRoot := resolveWorkspaceRootForComponent(workspaceID)
+	if workspaceID != "" && workspaceRoot == "" {
+		ctx.TellFailure(msg, fmt.Errorf("agentHarness: 工作区 %s 不可用，请先执行“工作区刷新”并确认仓库已同步", workspaceID))
+		return
 	}
 
 	toolOpts := &biz.HarnessToolOptions{
@@ -165,6 +171,7 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		LlmModelEntryID: x.Config.LlmModelEntryID,
 		UserID:          extractUserIDFromMsg(msg),
 		ProjectPath:     extractProjectPathFromMsg(msg),
+		WorkspaceRoot:   workspaceRoot,
 	}
 
 	out, err := ruleGoAgentUsecase.ExecuteHarnessSync(ctx.GetContext(), req)
@@ -283,7 +290,22 @@ func decodeHarnessAttachments(raw interface{}) []biz.HarnessAttachment {
 	return out
 }
 
-func buildWorkspacePromptForComponent(workspaceID string) string {
+type componentWorkspaceRepoItem struct {
+	URL string `json:"url"`
+	Dir string `json:"dir"`
+}
+
+type componentWorkspaceMeta struct {
+	Name         string                       `json:"name"`
+	RootDir      string                       `json:"rootDir"`
+	Repositories []componentWorkspaceRepoItem `json:"repositories"`
+}
+
+type componentWorkspaceFile struct {
+	Meta componentWorkspaceMeta `json:"ruleGoWorkspace"`
+}
+
+func resolveWorkspaceConfigPathForComponent(workspaceID string) string {
 	if workspaceID == "" {
 		return ""
 	}
@@ -292,46 +314,68 @@ func buildWorkspacePromptForComponent(workspaceID string) string {
 		filepath.Join("/app/code_workspace", filename),
 		filepath.Join("code_workspace", filename),
 	}
-	var cfgPath string
 	for _, p := range candidates {
 		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			cfgPath = p
-			break
+			return p
 		}
 	}
+	return ""
+}
+
+func readWorkspaceMetaForComponent(workspaceID string) (*componentWorkspaceMeta, error) {
+	cfgPath := resolveWorkspaceConfigPathForComponent(workspaceID)
 	if cfgPath == "" {
-		return ""
-	}
-	type repoItem struct {
-		URL string `json:"url"`
-		Dir string `json:"dir"`
-	}
-	type meta struct {
-		Name         string     `json:"name"`
-		RootDir      string     `json:"rootDir"`
-		Repositories []repoItem `json:"repositories"`
-	}
-	type ws struct {
-		Meta meta `json:"ruleGoWorkspace"`
+		return nil, os.ErrNotExist
 	}
 	b, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return ""
+		return nil, err
 	}
-	var parsed ws
+	var parsed componentWorkspaceFile
 	if err := json.Unmarshal(b, &parsed); err != nil {
+		return nil, err
+	}
+	return &parsed.Meta, nil
+}
+
+func resolveWorkspaceRootForComponent(workspaceID string) string {
+	meta, err := readWorkspaceMetaForComponent(workspaceID)
+	if err != nil {
 		return ""
 	}
-	name := strings.TrimSpace(parsed.Meta.Name)
-	if name == "" {
-		name = workspaceID
-	}
-	root := strings.TrimSpace(parsed.Meta.RootDir)
+	root := strings.TrimSpace(meta.RootDir)
 	if root == "" {
 		root = filepath.Join("/app/code_workspace", workspaceID)
 	}
-	lines := make([]string, 0, len(parsed.Meta.Repositories))
-	for _, repo := range parsed.Meta.Repositories {
+	if !filepath.IsAbs(root) {
+		if abs, absErr := filepath.Abs(root); absErr == nil {
+			root = abs
+		}
+	}
+	if st, statErr := os.Stat(root); statErr != nil || !st.IsDir() {
+		return ""
+	}
+	return root
+}
+
+func buildWorkspacePromptForComponent(workspaceID string) string {
+	if workspaceID == "" {
+		return ""
+	}
+	meta, err := readWorkspaceMetaForComponent(workspaceID)
+	if err != nil {
+		return ""
+	}
+	name := strings.TrimSpace(meta.Name)
+	if name == "" {
+		name = workspaceID
+	}
+	root := strings.TrimSpace(meta.RootDir)
+	if root == "" {
+		root = filepath.Join("/app/code_workspace", workspaceID)
+	}
+	lines := make([]string, 0, len(meta.Repositories))
+	for _, repo := range meta.Repositories {
 		url := strings.TrimSpace(repo.URL)
 		if url == "" {
 			continue

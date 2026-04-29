@@ -101,6 +101,8 @@ type HarnessRequest struct {
 
 	// WorkspaceSessionDir 相对于配置的 workspace 根的子路径；非空时本轮 Harness 内 read/write/shell 工具仅在该目录下操作（运行前会 MkdirAll）。
 	WorkspaceSessionDir string
+	// WorkspaceRoot 为本轮 Harness 工具执行根目录（绝对路径）覆盖值；为空时回退到配置项 agent.workspace_root。
+	WorkspaceRoot string
 
 	// UserID 用于上下文记忆管理（可从 HTTP header X-User-ID 或 auth context 获取）
 	UserID string
@@ -608,10 +610,34 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 		cfg := uc.effectiveHarnessConfig(req.ConfigOverride)
 
 		workCtx := ctx
+		if root := strings.TrimSpace(req.WorkspaceRoot); root != "" {
+			workspaceRoot := filepath.Clean(root)
+			if !filepath.IsAbs(workspaceRoot) {
+				absRoot, absErr := filepath.Abs(workspaceRoot)
+				if absErr != nil {
+					uc.harnessLogger.LogError(requestID, "workspace_root", absErr)
+					yield(nil, sanitizeExternalError("workspace_root", absErr))
+					return
+				}
+				workspaceRoot = absRoot
+			}
+			if st, statErr := os.Stat(workspaceRoot); statErr != nil || !st.IsDir() {
+				if statErr != nil {
+					uc.harnessLogger.LogError(requestID, "workspace_root", statErr)
+					yield(nil, sanitizeExternalError("workspace_root", statErr))
+					return
+				}
+				err := fmt.Errorf("workspace root 不是目录: %s", workspaceRoot)
+				uc.harnessLogger.LogError(requestID, "workspace_root", err)
+				yield(nil, sanitizeExternalError("workspace_root", err))
+				return
+			}
+			workCtx = withHarnessWorkspaceRoot(workCtx, workspaceRoot)
+		}
 		if sub := strings.TrimSpace(req.WorkspaceSessionDir); sub != "" {
 			sub = sanitizePlaygroundWorkspaceSessionDir(sub)
 			if sub != "" {
-				baseRoot, err := uc.ResolveAgentWorkspaceRoot()
+				baseRoot, err := uc.effectiveWorkspaceRoot(workCtx)
 				if err != nil {
 					uc.harnessLogger.LogError(requestID, "workspace_root", err)
 					yield(nil, sanitizeExternalError("workspace_root", err))
@@ -631,7 +657,7 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 					yield(nil, sanitizeExternalError("workspace_mkdir", err))
 					return
 				}
-				workCtx = withHarnessWorkspaceRoot(ctx, sessionRoot)
+				workCtx = withHarnessWorkspaceRoot(workCtx, sessionRoot)
 			}
 		}
 		workCtx = withHarnessSubAgentContext(workCtx, req, cfg)

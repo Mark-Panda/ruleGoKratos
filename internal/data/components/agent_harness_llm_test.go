@@ -1,6 +1,8 @@
 package data
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -51,5 +53,35 @@ func TestAgentHarnessShouldNotExposeMcpNodeConfigFields(t *testing.T) {
 	nodeType := reflect.TypeOf(AgentHarnessLLM{})
 	if _, ok := nodeType.FieldByName("mcpAllow"); ok {
 		t.Fatal("AgentHarnessLLM must not keep node-level MCP allowlist state")
+	}
+}
+
+func TestResolveWorkspaceRootForComponentShouldReadWorkspaceRootDir(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(wd)
+	})
+	workspaceID := "ws-test"
+	root := filepath.Join(tmp, "actual-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir root failed: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmp, "code_workspace"), 0o755); err != nil {
+		t.Fatalf("mkdir code_workspace failed: %v", err)
+	}
+	content := `{"ruleGoWorkspace":{"name":"demo","rootDir":"` + root + `","repositories":[]}}`
+	if err := os.WriteFile(filepath.Join(tmp, "code_workspace", workspaceID+".code-workspace"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write workspace config failed: %v", err)
+	}
+	got := resolveWorkspaceRootForComponent(workspaceID)
+	if filepath.Clean(got) != filepath.Clean(root) {
+		t.Fatalf("workspace root mismatch: got=%s want=%s", got, root)
 	}
 }
