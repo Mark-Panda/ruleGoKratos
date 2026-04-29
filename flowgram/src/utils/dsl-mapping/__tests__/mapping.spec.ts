@@ -9,6 +9,7 @@ import {
   cursorCliAuthMappingSpec,
   feishuWebhookMappingSpec,
   feishuCliAuthMappingSpec,
+  workspaceSyncMappingSpec,
   dbClientMappingSpec,
   flowMappingSpec,
   jsFilterMappingSpec,
@@ -1061,6 +1062,28 @@ describe('remaining node specs round-trip', () => {
     expect(fsAuthIv.cliPath?.content).toBe('lark-cli');
     expect(fsAuthIv.timeoutMs?.content).toBe(9000);
 
+    const wsSyncCfg = mapNodeToDslConfig(
+      {
+        data: {
+          inputsValues: {
+            workspaceId: { content: 'ws-uuid-1' },
+            replaceData: { content: false },
+          },
+        },
+      },
+      workspaceSyncMappingSpec
+    );
+    expect(wsSyncCfg).toMatchObject({
+      workspaceId: 'ws-uuid-1',
+      replaceData: false,
+    });
+    const wsSyncIv = mapDslToNodeInputsValues(
+      wsSyncCfg as Record<string, unknown>,
+      workspaceSyncMappingSpec
+    );
+    expect(wsSyncIv.workspaceId?.content).toBe('ws-uuid-1');
+    expect(wsSyncIv.replaceData?.content).toBe(false);
+
     const fwLegacyIv = mapDslToNodeInputsValues(
       {
         webhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/legacy',
@@ -1739,6 +1762,48 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     expect((node as any)?.data?.inputsValues?.cliPath?.content).toBe('lark-cli');
     expect((node as any)?.data?.inputsValues?.args?.content).toEqual(['auth', 'status']);
     expect((node as any)?.data?.inputsValues?.replaceData?.content).toBe(false);
+  });
+
+  it('x/workspaceSync：文档→RuleChain→文档 round-trip 保持 configuration', () => {
+    const chainId = 'chain-ws-sync-rt';
+    const doc = {
+      toJSON: () => ({
+        id: chainId,
+        name: 'WsSyncRT',
+        nodes: [
+          { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
+          {
+            id: 'ws',
+            type: 'x/workspaceSync',
+            meta: { position: { x: 220, y: 0 } },
+            data: {
+              title: 'Sync',
+              positionType: 'middle',
+              inputsValues: {
+                workspaceId: { type: 'constant', content: 'abc-123-workspace' },
+                replaceData: { type: 'constant', content: true },
+              },
+              inputs: { type: 'object', properties: {} },
+            },
+          },
+        ],
+        edges: [{ sourceNodeID: 'st', targetNodeID: 'ws', sourcePortID: 'Success' }],
+      }),
+    } as any;
+
+    const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
+    const parsed = JSON.parse(json) as any;
+    const meta = parsed.metadata.nodes.find((n: any) => n.id === 'ws');
+    expect(meta?.type).toBe('x/workspaceSync');
+    expect(meta.configuration).toMatchObject({
+      workspaceId: 'abc-123-workspace',
+      replaceData: true,
+    });
+
+    const back = buildDocumentFromRuleChainJSON(parsed);
+    const node = back.nodes.find((n: any) => n.id === 'ws');
+    expect((node as any)?.data?.inputsValues?.workspaceId?.content).toBe('abc-123-workspace');
+    expect((node as any)?.data?.inputsValues?.replaceData?.content).toBe(true);
   });
 
   it('x/feishuWebhook post：文档→RuleChain→文档 round-trip', () => {

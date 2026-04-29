@@ -48,6 +48,7 @@ import { TaskBoardNodeRegistry } from './task-board';
 import { ServiceManagementNodeRegistry } from './service-management';
 import { JsonExtractNodeRegistry } from './jsonExtract';
 import { FeishuCliAuthNodeRegistry } from './feishuCliAuth';
+import { WorkspaceSyncNodeRegistry } from './workspace-sync';
 export { WorkflowNodeType } from './constants';
 export { NODE_TYPE_NAMES, getNodeTypeName, getNodeDisplayName } from './node-type-names';
 
@@ -94,6 +95,7 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   FeishuCliAuthNodeRegistry,
   CronNodeRegistry,
   JsonExtractNodeRegistry,
+  WorkspaceSyncNodeRegistry,
   TaskBoardNodeRegistry,
   ServiceManagementNodeRegistry,
   FlowSubChainNodeRegistry,

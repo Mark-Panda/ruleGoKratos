@@ -155,17 +155,18 @@ func (s *AdminService) UpdateWorkspace(ctx context.Context, req *v1.UpdateWorksp
 	return &v1.UpdateWorkspaceReply{Item: workspaceToProto(*item)}, nil
 }
 
-func (s *AdminService) SyncWorkspace(ctx context.Context, req *v1.SyncWorkspaceRequest) (*v1.SyncWorkspaceReply, error) {
-	id, err := normalizeWorkspaceID(req.GetId())
+// RunWorkspaceRepoSync 与工作区管理中「同步仓库」及 SyncWorkspace RPC 行为一致：对磁盘上的 git 仓库执行 pull/clone，并更新 .code-workspace 的 updatedAt。
+func RunWorkspaceRepoSync(ctx context.Context, workspaceID string) error {
+	id, err := normalizeWorkspaceID(workspaceID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	item, err := loadWorkspaceDTO(id)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := syncWorkspaceRepos(ctx, id, item.Repositories); err != nil {
-		return nil, err
+		return err
 	}
 	updatedAt := time.Now().UTC().Format(time.RFC3339)
 	payload := &normalizedWorkspacePayload{
@@ -174,7 +175,15 @@ func (s *AdminService) SyncWorkspace(ctx context.Context, req *v1.SyncWorkspaceR
 		Description:  item.Description,
 		Repositories: item.Repositories,
 	}
-	if err := writeWorkspaceFile(payload, item.CreatedAt, updatedAt); err != nil {
+	return writeWorkspaceFile(payload, item.CreatedAt, updatedAt)
+}
+
+func (s *AdminService) SyncWorkspace(ctx context.Context, req *v1.SyncWorkspaceRequest) (*v1.SyncWorkspaceReply, error) {
+	if err := RunWorkspaceRepoSync(ctx, req.GetId()); err != nil {
+		return nil, err
+	}
+	id, err := normalizeWorkspaceID(req.GetId())
+	if err != nil {
 		return nil, err
 	}
 	newItem, err := loadWorkspaceDTO(id)

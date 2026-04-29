@@ -474,6 +474,12 @@ function buildRuleChainMetaNodes(
       base.configuration = mapNodeToDslConfig(n, specFsAuth) as Record<string, any>;
       break;
     }
+    case 'x/workspaceSync': {
+      const specWs = getNodeMappingSpec('x/workspaceSync');
+      if (!specWs) break;
+      base.configuration = mapNodeToDslConfig(n, specWs) as Record<string, any>;
+      break;
+    }
     case 'transform/multiNodeOutput': {
       const specMulti = getNodeMappingSpec('transform/multiNodeOutput');
       if (!specMulti) break;
@@ -1444,6 +1450,35 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   },
                   workDir: { type: 'template', content: String((cfg as any).workDir ?? '') },
                   timeoutMs: { type: 'constant', content: Number((cfg as any).timeoutMs ?? 15000) },
+                  replaceData: { type: 'constant', content: (cfg as any).replaceData !== false },
+                },
+          } as any;
+          break;
+        }
+        case 'x/workspaceSync': {
+          const cfg = n.configuration ?? {};
+          const specWs = getNodeMappingSpec('x/workspaceSync');
+          const ivMapWs = specWs
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specWs)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? '工作区刷新',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['workspaceId'],
+              properties: {
+                workspaceId: { type: 'string', extra: { label: '工作区 ID' } },
+                replaceData: { type: 'boolean', extra: { label: '用结果 JSON 替换消息体' } },
+              },
+            },
+            inputsValues: specWs
+              ? inputsValuesMapToFlowData(ivMapWs, specWs)
+              : {
+                  workspaceId: {
+                    type: 'constant',
+                    content: String((cfg as any).workspaceId ?? ''),
+                  },
                   replaceData: { type: 'constant', content: (cfg as any).replaceData !== false },
                 },
           } as any;

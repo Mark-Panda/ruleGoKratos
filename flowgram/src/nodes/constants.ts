@@ -53,6 +53,8 @@ export enum WorkflowNodeType {
   ServiceManagement = 'x/serviceManagement',
   /** JSON 提取与纠错 */
   JsonExtract = 'x/jsonExtract',
+  /** 工作区仓库同步（与「工作区管理」同步仓库一致） */
+  WorkspaceSync = 'x/workspaceSync',
   FileWrite = 'x/fileWrite',
   FileDelete = 'x/fileDelete',
   FileList = 'x/fileList',

@@ -619,6 +619,14 @@ export const feishuCliAuthMappingSpec: NodeMappingSpec = {
   ],
 };
 
+export const workspaceSyncMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/workspaceSync',
+  fields: [
+    { inputKey: 'workspaceId', dslKey: 'workspaceId', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'replaceData', dslKey: 'replaceData', valueType: 'boolean', defaultValue: true },
+  ],
+};
+
 export const cursorAcpMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorAcp',
   fields: [
@@ -673,6 +681,7 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'x/cursorAcp': cursorAcpMappingSpec,
   'x/feishuWebhook': feishuWebhookMappingSpec,
   'x/feishuCliAuth': feishuCliAuthMappingSpec,
+  'x/workspaceSync': workspaceSyncMappingSpec,
 };
 
 export function getNodeMappingSpec(nodeType: string): NodeMappingSpec | undefined {
