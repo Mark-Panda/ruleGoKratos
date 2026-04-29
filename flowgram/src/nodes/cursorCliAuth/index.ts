@@ -19,7 +19,7 @@ export const CursorCliAuthNodeRegistry: FlowNodeRegistry = {
       '执行 agent status 判断 Cursor CLI 是否已登录；已登录走 Success，未登录走 Failure。可配置 workspacePath / worktree / force。',
   },
   meta: {
-    panelCategory: 'integration-x',
+    panelCategory: 'service-calls',
     defaultPorts: [
       { type: 'input', location: 'left' },
       { type: 'input', location: 'top', portID: 'input_top' },

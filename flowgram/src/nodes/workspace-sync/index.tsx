@@ -19,7 +19,7 @@ export const WorkspaceSyncNodeRegistry: FlowNodeRegistry = {
       '同步「工作区管理」中指定工作区的全部 Git 仓库（与后台「同步仓库」一致），成功走 Success，失败走 Failure。',
   },
   meta: {
-    panelCategory: 'integration-x',
+    panelCategory: 'project-mgmt',
     defaultPorts: [
       { type: 'input', location: 'left' },
       { type: 'input', location: 'top', portID: 'input_top' },

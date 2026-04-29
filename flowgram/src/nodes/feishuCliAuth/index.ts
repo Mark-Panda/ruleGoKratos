@@ -19,7 +19,7 @@ export const FeishuCliAuthNodeRegistry: FlowNodeRegistry = {
       '执行 lark-cli auth status 判断飞书 CLI 是否已授权；已授权走 Success，未授权走 Failure。',
   },
   meta: {
-    panelCategory: 'integration-x',
+    panelCategory: 'service-calls',
     defaultPorts: [
       { type: 'input', location: 'left' },
       { type: 'input', location: 'top', portID: 'input_top' },
