@@ -40,7 +40,6 @@ import {
 import { getRuleList } from '../../services/api-rules';
 import { requestJSON } from '../../services/http';
 import { fetchRunLogs } from '../../services/test-run-http';
-import { runLogChainDisplay } from '../../utils/run-log-display';
 import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
 import { FlowDocumentJSON } from '../../typings';
 import { Editor } from '../../editor';
@@ -97,28 +96,28 @@ const KANBAN_COLUMNS: {
     status: TaskStatus.PENDING,
     title: '待处理',
     dot: '#86909c',
-    columnBg: 'rgba(134, 144, 156, 0.08)',
+    columnBg: 'rgba(134, 144, 156, 0.1)',
     tagTone: 'grey',
   },
   {
     status: TaskStatus.PROCESSING,
     title: '处理中',
     dot: '#165dff',
-    columnBg: 'rgba(22, 93, 255, 0.06)',
+    columnBg: 'rgba(22, 93, 255, 0.08)',
     tagTone: 'blue',
   },
   {
     status: TaskStatus.COMPLETED,
     title: '已完成',
     dot: '#00b578',
-    columnBg: 'rgba(0, 181, 120, 0.06)',
+    columnBg: 'rgba(0, 181, 120, 0.08)',
     tagTone: 'green',
   },
   {
     status: TaskStatus.FAILED,
     title: '失败',
     dot: '#f53f3f',
-    columnBg: 'rgba(245, 63, 63, 0.06)',
+    columnBg: 'rgba(245, 63, 63, 0.08)',
     tagTone: 'red',
   },
 ];
@@ -150,6 +149,7 @@ export const TaskBoardSection: React.FC = () => {
 
   // 规则链列表（用于下拉选择）
   const [ruleChainOptions, setRuleChainOptions] = useState<{ label: string; value: string }[]>([]);
+  const [ruleChainNameMap, setRuleChainNameMap] = useState<Record<string, string>>({});
   const [ruleChainLoading, setRuleChainLoading] = useState(false);
 
   // 子任务列表弹窗
@@ -189,7 +189,12 @@ export const TaskBoardSection: React.FC = () => {
       ],
       ['优先级', detailTask.priority],
       ['处理人', detailTask.handler_user_id || '—'],
-      ['关联规则链', detailTask.rule_chain_id || '—'],
+      [
+        '关联规则链',
+        detailTask.rule_chain_id
+          ? `${ruleChainNameMap[detailTask.rule_chain_id] || detailTask.rule_chain_id}（${detailTask.rule_chain_id}）`
+          : '—',
+      ],
       ['最近执行ID', detailTask.last_run_id || '—'],
       ['父任务ID', detailTask.parent_id ?? '—'],
       ['创建时间', detailTask.created_at || '—'],
@@ -197,7 +202,7 @@ export const TaskBoardSection: React.FC = () => {
       ['描述', detailTask.description || '—'],
     ];
     return rows;
-  }, [detailTask]);
+  }, [detailTask, ruleChainNameMap]);
 
   // 获取任务列表（表格分页 / 看板大批量）
   const fetchTasks = async (page = 1, size = pageSize) => {
@@ -228,17 +233,19 @@ export const TaskBoardSection: React.FC = () => {
     try {
       const res = await getRuleList({ page: 1, size: 500, disabled: false, root: true });
       const list = Array.isArray(res.items) ? res.items : [];
-      setRuleChainOptions(
-        list
-          .map((raw: any) => {
-            const chain = raw?.ruleChain ?? raw;
-            const id = String(chain?.id ?? '').trim();
-            if (!id) return null;
-            const name = String(chain?.name ?? '').trim();
-            return { label: name ? `${name}（${id}）` : id, value: id };
-          })
-          .filter((item): item is { label: string; value: string } => item !== null)
-      );
+      const nameMap: Record<string, string> = {};
+      const options = list
+        .map((raw: any) => {
+          const chain = raw?.ruleChain ?? raw;
+          const id = String(chain?.id ?? '').trim();
+          if (!id) return null;
+          const name = String(chain?.name ?? '').trim();
+          if (name) nameMap[id] = name;
+          return { label: name ? `${name}（${id}）` : id, value: id };
+        })
+        .filter((item): item is { label: string; value: string } => item !== null);
+      setRuleChainOptions(options);
+      setRuleChainNameMap(nameMap);
     } catch (e) {
       console.error('获取规则链列表失败', e);
     } finally {
@@ -264,6 +271,15 @@ export const TaskBoardSection: React.FC = () => {
     void fetchRuleChains();
   }, []);
 
+  // 看板模式每5分钟自动刷新（按当前筛选条件）
+  useEffect(() => {
+    if (viewMode !== 'kanban') return;
+    const interval = setInterval(() => {
+      void fetchTasks(1, pageSize);
+    }, 300000);
+    return () => clearInterval(interval);
+  }, [viewMode, filters, pageSize]);
+
   const tasksByStatus = useMemo(() => {
     const m = new Map<TaskStatus, TaskItem[]>();
     for (const s of [
@@ -280,6 +296,15 @@ export const TaskBoardSection: React.FC = () => {
     }
     return m;
   }, [tasks]);
+
+  // 计算各列任务数，用于自适应列宽
+  const maxTaskCount = useMemo(() => {
+    let max = 0;
+    tasksByStatus.forEach((list) => {
+      if (list.length > max) max = list.length;
+    });
+    return max;
+  }, [tasksByStatus]);
 
   // 是否为只读状态（处理中/已完成/失败时仅描述可编辑）
   const isReadonlyStatus = (status: TaskStatus): boolean =>
@@ -383,7 +408,7 @@ export const TaskBoardSection: React.FC = () => {
     setSubmitting(true);
     try {
       if (modalType === 'create') {
-        await createTask(payload as CreateTaskParams);
+        await createTask(payload as unknown as CreateTaskParams);
         Toast.success('创建成功');
       } else if (modalType === 'edit' && editingTask) {
         await updateTask(editingTask.id, {
@@ -606,10 +631,14 @@ export const TaskBoardSection: React.FC = () => {
       width: 120,
     },
     {
-      title: '规则链ID',
+      title: '规则链',
       dataIndex: 'rule_chain_id',
-      width: 120,
-      render: (val: string) => val ? <Typography.Text size="small" type="tertiary">{val}</Typography.Text> : '—',
+      width: 180,
+      render: (val: string) => val ? (
+        <Typography.Text size="small" type="tertiary" ellipsis={{ showTooltip: true }}>
+          {ruleChainNameMap[val] || val}
+        </Typography.Text>
+      ) : '—',
     },
     {
       title: '父任务ID',
@@ -630,13 +659,14 @@ export const TaskBoardSection: React.FC = () => {
     {
       title: '描述',
       dataIndex: 'description',
+      width: 150,
       ellipsis: true,
     },
     {
       title: '操作',
-      width: 240,
+      width: 320,
       render: (_value: unknown, record: TaskItem) => (
-        <Space>
+        <Space spacing={4}>
           {record.status === TaskStatus.PENDING && record.rule_chain_id && (
             <Popconfirm
               title="执行规则链"
@@ -673,7 +703,7 @@ export const TaskBoardSection: React.FC = () => {
               type="secondary"
               onClick={() => void handleCreateChildTask(record)}
             >
-              创建子任务
+              子任务
             </Button>
           )}
           {record.rule_chain_id && record.status !== TaskStatus.PENDING && (
@@ -683,12 +713,12 @@ export const TaskBoardSection: React.FC = () => {
               loading={runLogViewerLoading}
               onClick={() => void handleViewRunLog(record)}
             >
-              查看日志
+              日志
             </Button>
           )}
           <Popconfirm
             title="确认删除"
-            content="确定要删除这个任务吗？删除后不可恢复。"
+            content="确定删除该任务？"
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"
@@ -848,38 +878,58 @@ export const TaskBoardSection: React.FC = () => {
             >
               {KANBAN_COLUMNS.map((col) => {
                 const list = tasksByStatus.get(col.status) ?? [];
-                const statusOpt = taskStatusOptions.find((o) => o.value === col.status);
+                const colFlex = maxTaskCount > 0 && list.length / maxTaskCount > 0.3
+                  ? '1.5 1 300px'
+                  : maxTaskCount > 0 && list.length / maxTaskCount > 0.1
+                  ? '1.2 1 260px'
+                  : '1 1 240px';
                 return (
                   <div
                     key={col.status}
                     style={{
-                      flex: '1 1 240px',
+                      flex: colFlex,
                       minWidth: 240,
-                      maxWidth: 360,
+                      maxWidth: 400,
                       background: col.columnBg,
-                      borderRadius: 10,
-                      padding: '10px 10px 12px',
-                      border: '1px solid rgba(28,31,35,0.06)',
+                      borderRadius: 12,
+                      padding: '14px 14px 16px',
+                      border: '1px solid rgba(28,31,35,0.08)',
+                      boxShadow: '0 2px 8px rgba(28,31,35,0.04)',
                     }}
                   >
+                    {/* 列头部 */}
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: 10,
+                        marginBottom: 14,
                         padding: '0 4px',
                       }}
                     >
-                      <Typography.Text strong style={{ fontSize: 14 }}>
-                        <span style={{ color: col.dot, marginRight: 8 }}>●</span>
-                        {col.title}
-                      </Typography.Text>
-                      <Typography.Text type="tertiary" size="small">
-                        共 {list.length} 个
-                      </Typography.Text>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: col.dot, fontSize: 18 }}>●</span>
+                        <Typography.Text strong style={{ fontSize: 15 }}>
+                          {col.title}
+                        </Typography.Text>
+                      </div>
+                      <div
+                        style={{
+                          background: col.dot,
+                          color: '#fff',
+                          borderRadius: 10,
+                          padding: '2px 10px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          minWidth: 28,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {list.length}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* 卡片列表 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {list.map((task) => {
                         const typeOpt = taskTypeOptions.find((o) => o.value === task.type);
                         const pl = priorityLabel(task.priority);
@@ -889,26 +939,30 @@ export const TaskBoardSection: React.FC = () => {
                             style={{
                               background: '#fff',
                               borderRadius: 8,
-                              padding: '12px 12px 10px',
-                              boxShadow: '0 1px 2px rgba(28,31,35,0.06)',
-                              border: '1px solid rgba(28,31,35,0.06)',
+                              border: '1px solid rgba(28,31,35,0.08)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              padding: '12px 14px',
+                            }}
+                            onClick={() => void openDetail(task)}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(28,31,35,0.12)';
+                              e.currentTarget.style.borderColor = 'rgba(28,31,35,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.boxShadow = 'none';
+                              e.currentTarget.style.borderColor = 'rgba(28,31,35,0.08)';
                             }}
                           >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 8,
-                                marginBottom: 10,
-                              }}
-                            >
+                            {/* 任务名称行 */}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                               <span
                                 style={{
-                                  width: 6,
-                                  height: 6,
+                                  width: 8,
+                                  height: 8,
                                   borderRadius: '50%',
                                   background: col.dot,
-                                  marginTop: 6,
+                                  marginTop: 5,
                                   flexShrink: 0,
                                 }}
                               />
@@ -916,81 +970,62 @@ export const TaskBoardSection: React.FC = () => {
                                 strong
                                 style={{
                                   fontSize: 14,
-                                  lineHeight: 1.45,
+                                  lineHeight: 1.5,
                                   wordBreak: 'break-word',
+                                  flex: 1,
                                 }}
                               >
                                 {task.name}
                               </Typography.Text>
                             </div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                marginBottom: 10,
-                                color: 'var(--semi-color-text-2)',
-                                fontSize: 12,
-                              }}
-                            >
-                              <IconUser style={{ opacity: 0.65 }} />
-                              <span>处理人</span>
-                              <Typography.Text size="small">
-                                {task.handler_user_id?.trim() ? task.handler_user_id : '—'}
+                            {/* 标签行 */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                              {typeOpt && (
+                                <Tag size="small" color={taskTypeTagColor(task.type)}>
+                                  {typeOpt.label}
+                                </Tag>
+                              )}
+                              {pl ? (
+                                <Tag size="small" color={pl === 'P0' ? 'red' : 'orange'}>
+                                  {pl}
+                                </Tag>
+                              ) : null}
+                              {task.parent_id && (
+                                <Tag size="small" color="blue">子任务</Tag>
+                              )}
+                              {task.rule_chain_id && (
+                                <Tag
+                                  size="small"
+                                  color="violet"
+                                  style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >
+                                  {ruleChainNameMap[task.rule_chain_id] || task.rule_chain_id}
+                                </Tag>
+                              )}
+                            </div>
+                            {/* 底部信息栏 */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--semi-color-text-2)', fontSize: 12 }}>
+                                <IconUser style={{ opacity: 0.6 }} />
+                                <Typography.Text size="small" type="tertiary">
+                                  {task.handler_user_id?.trim() || '—'}
+                                </Typography.Text>
+                              </div>
+                              <Typography.Text type="tertiary" size="small">
+                                {relativeDurationCn(task.created_at)}
                               </Typography.Text>
                             </div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                flexWrap: 'wrap',
-                                gap: 8,
-                              }}
-                            >
-                              <Space spacing={8}>
-                                <Tag size="small" color={col.tagTone}>
-                                  {statusOpt?.label ?? col.title}
-                                </Tag>
-                                <Typography.Text type="tertiary" size="small">
-                                  {relativeDurationCn(task.created_at)}
-                                </Typography.Text>
-                              </Space>
-                              <Space spacing={4}>
-                                {typeOpt && (
-                                  <Tag size="small" color={taskTypeTagColor(task.type)}>
-                                    {typeOpt.label}
-                                  </Tag>
-                                )}
-                                {pl ? (
-                                  <Tag size="small" color={pl === 'P0' ? 'red' : 'orange'}>
-                                    {pl}
-                                  </Tag>
-                                ) : null}
-                              </Space>
-                            </div>
-                            {task.rule_chain_id && (
-                              <div style={{ marginBottom: 6 }}>
-                                <Typography.Text type="tertiary" size="small">
-                                  规则链: {task.rule_chain_id}
-                                </Typography.Text>
-                              </div>
-                            )}
-                            {task.parent_id && (
-                              <div style={{ marginBottom: 6 }}>
-                                <Tag size="small" color="blue">子任务</Tag>
-                              </div>
-                            )}
+                            {/* 操作按钮（点击不冒泡） */}
                             <div
                               style={{
                                 marginTop: 10,
                                 paddingTop: 8,
                                 borderTop: '1px solid rgba(28,31,35,0.06)',
                                 display: 'flex',
-                                justifyContent: 'flex-end',
                                 gap: 4,
                                 flexWrap: 'wrap',
                               }}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {task.status === TaskStatus.PENDING && task.rule_chain_id && (
                                 <Popconfirm
@@ -1006,18 +1041,10 @@ export const TaskBoardSection: React.FC = () => {
                                 </Popconfirm>
                               )}
                               <Button
-                                icon={<IconInfoCircle />}
-                                size="small"
-                                theme="borderless"
-                                onClick={() => void openDetail(task)}
-                              >
-                                详情
-                              </Button>
-                              <Button
                                 icon={<IconEdit />}
                                 size="small"
                                 theme="borderless"
-                                onClick={() => openModal('edit', task)}
+                                onClick={(e) => { e.stopPropagation(); openModal('edit', task); }}
                               >
                                 编辑
                               </Button>
@@ -1026,9 +1053,9 @@ export const TaskBoardSection: React.FC = () => {
                                   size="small"
                                   theme="borderless"
                                   type="secondary"
-                                  onClick={() => void handleCreateChildTask(task)}
+                                  onClick={(e) => { e.stopPropagation(); void handleCreateChildTask(task); }}
                                 >
-                                  创建子任务
+                                  子任务
                                 </Button>
                               )}
                               {task.rule_chain_id && task.status !== TaskStatus.PENDING && (
@@ -1036,9 +1063,9 @@ export const TaskBoardSection: React.FC = () => {
                                   size="small"
                                   theme="borderless"
                                   loading={runLogViewerLoading}
-                                  onClick={() => void handleViewRunLog(task)}
+                                  onClick={(e) => { e.stopPropagation(); void handleViewRunLog(task); }}
                                 >
-                                  查看日志
+                                  日志
                                 </Button>
                               )}
                               <Popconfirm
@@ -1046,7 +1073,7 @@ export const TaskBoardSection: React.FC = () => {
                                 content="确定删除该任务？"
                                 okText="确定"
                                 cancelText="取消"
-                                onConfirm={() => handleDelete(task.id)}
+                                onConfirm={(e) => { e?.stopPropagation(); handleDelete(task.id); }}
                               >
                                 <Button icon={<IconDelete />} size="small" theme="borderless" type="danger">
                                   删除
@@ -1144,12 +1171,12 @@ export const TaskBoardSection: React.FC = () => {
               extraText="不选择则不关联规则链"
             />
           ) : modalType === 'edit' ? (
-            <Form.Input
-              label="关联规则链"
-              value={editingTask?.rule_chain_id ?? '—'}
-              disabled
-              style={{ width: '100%' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Typography.Text type="tertiary" style={{ width: 100, textAlign: 'right' }}>
+                关联规则链
+              </Typography.Text>
+              <Typography.Text>{editingTask?.rule_chain_id || '—'}</Typography.Text>
+            </div>
           ) : (
             <Form.Select
               field="rule_chain_id"
