@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz/playground/agentpool"
 	"ruleGoKratos/internal/conf"
 	"ruleGoKratos/internal/data/dao"
@@ -21,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "ruleGoKratos/api/rulego/v1"
 	"github.com/go-kratos/kratos/v2/log"
 	"google.golang.org/protobuf/types/known/structpb"
 	"gorm.io/gorm"
@@ -63,6 +63,7 @@ func NewAdminService(logger log.Logger, config *conf.Bootstrap, poolSvc *agentpo
 	if workflowRoot == "" {
 		workflowRoot = "/workflow/skills"
 	}
+
 	return &AdminService{
 		log:               helper,
 		config:            config,
@@ -1120,3 +1121,121 @@ func parseHeadersToStruct(raw string) *structpb.Struct {
 	}
 	return st
 }
+
+// GetLlmTokenStats 获取LLM Token使用统计
+func (s *AdminService) GetLlmTokenStats(ctx context.Context, req *v1.GetLlmTokenStatsRequest) (*v1.GetLlmTokenStatsReply, error) {
+	s.log.Infof("GetLlmTokenStats called: configId=%d, modelEntryId=%d, startDate='%s', endDate='%s', groupBy='%s'",
+		req.ConfigId, req.ModelEntryId, req.StartDate, req.EndDate, req.GroupBy)
+
+	usage := dao.NewLLMTokenUsage()
+
+	var items []*v1.TokenStatItem
+	var totalPrompt, totalCompletion, totalTokens, totalRequests int64
+
+	if req.GroupBy == "model" {
+		stats, err := usage.GetStatsByModel(ctx, req.ConfigId, req.StartDate, req.EndDate)
+		if err != nil {
+			s.log.Errorf("GetStatsByModel failed: %v", err)
+			return nil, err
+		}
+		s.log.Infof("GetStatsByModel returned %d items", len(stats))
+		items = make([]*v1.TokenStatItem, len(stats))
+		for i, item := range stats {
+			items[i] = &v1.TokenStatItem{
+				Period:          item.Period,
+				PromptTokens:    item.PromptTokens,
+				CompletionTokens: item.CompletionTokens,
+				TotalTokens:     item.TotalTokens,
+				RequestCount:    item.RequestCount,
+			}
+			totalPrompt += item.PromptTokens
+			totalCompletion += item.CompletionTokens
+			totalTokens += item.TotalTokens
+			totalRequests += item.RequestCount
+		}
+	} else {
+		stats, err := usage.GetDailyStats(ctx, req.ConfigId, req.ModelEntryId, req.StartDate, req.EndDate)
+		if err != nil {
+			s.log.Errorf("GetDailyStats failed: %v", err)
+			return nil, err
+		}
+		s.log.Infof("GetDailyStats returned %d items", len(stats))
+		items = make([]*v1.TokenStatItem, len(stats))
+		for i, item := range stats {
+			items[i] = &v1.TokenStatItem{
+				Period:          item.Period,
+				PromptTokens:    item.PromptTokens,
+				CompletionTokens: item.CompletionTokens,
+				TotalTokens:     item.TotalTokens,
+				RequestCount:    item.RequestCount,
+			}
+			totalPrompt += item.PromptTokens
+			totalCompletion += item.CompletionTokens
+			totalTokens += item.TotalTokens
+			totalRequests += item.RequestCount
+		}
+	}
+
+	reply := &v1.GetLlmTokenStatsReply{
+		Items:               items,
+		TotalPromptTokens:   totalPrompt,
+		TotalCompletionTokens: totalCompletion,
+		TotalTokens:         totalTokens,
+		TotalRequests:       totalRequests,
+	}
+
+	s.log.Infof("GetLlmTokenStats returning: items=%d, totalPrompt=%d, totalCompletion=%d, totalTokens=%d, totalRequests=%d",
+		len(items), totalPrompt, totalCompletion, totalTokens, totalRequests)
+
+	return reply, nil
+}
+
+// ListLlmTokenUsage 获取LLM Token使用明细
+func (s *AdminService) ListLlmTokenUsage(ctx context.Context, req *v1.ListLlmTokenUsageRequest) (*v1.ListLlmTokenUsageReply, error) {
+	s.log.Infof("ListLlmTokenUsage called: configId=%d, modelEntryId=%d, startDate=%s, endDate=%s, page=%d, pageSize=%d",
+		req.ConfigId, req.ModelEntryId, req.StartDate, req.EndDate, req.Page, req.PageSize)
+
+	usage := dao.NewLLMTokenUsage()
+
+	if req.PageSize == 0 {
+		req.PageSize = 20
+	}
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	offset := (int(req.Page) - 1) * int(req.PageSize)
+
+	list, total, err := usage.ListUsage(ctx, req.ConfigId, req.ModelEntryId, req.StartDate, req.EndDate, int(req.PageSize), offset)
+	if err != nil {
+		s.log.Errorf("ListLlmTokenUsage query failed: %v", err)
+		return nil, err
+	}
+
+	s.log.Infof("ListLlmTokenUsage query returned %d items, total=%d", len(list), total)
+
+	reply := &v1.ListLlmTokenUsageReply{
+		Items: make([]*v1.LlmTokenUsageItem, len(list)),
+		Total: total,
+	}
+
+	for i, item := range list {
+		reply.Items[i] = &v1.LlmTokenUsageItem{
+			Id:              item.ID,
+			ConfigId:        item.ConfigID,
+			ModelEntryId:    item.ModelEntryID,
+			SessionId:       item.SessionID,
+			RequestId:       item.RequestID,
+			PromptTokens:    item.PromptTokens,
+			CompletionTokens: item.CompletionTokens,
+			TotalTokens:     item.TotalTokens,
+			ModelName:       item.ModelName,
+			ActionType:      item.ActionType,
+			UserId:          item.UserID,
+			ProjectPath:     item.ProjectPath,
+			CreatedAt:       item.CreatedAt.Format(time.RFC3339),
+		}
+	}
+
+	return reply, nil
+}
+

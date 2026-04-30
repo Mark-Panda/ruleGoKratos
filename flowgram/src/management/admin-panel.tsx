@@ -5,8 +5,6 @@
 
 import React, { useEffect, useState } from 'react';
 
-import { Nav, Typography, Breadcrumb, Tabs, TabPane } from '@douyinfe/semi-ui';
-import { IconUser, IconChevronLeft, IconChevronRight } from '@douyinfe/semi-icons';
 import {
   AlarmClock,
   Api,
@@ -21,6 +19,8 @@ import {
   SettingConfig,
   Terminal,
 } from '@icon-park/react';
+import { Nav, Typography, Breadcrumb, Tabs, TabPane } from '@douyinfe/semi-ui';
+import { IconUser, IconChevronLeft, IconChevronRight } from '@douyinfe/semi-icons';
 
 import { WorkspacesSection } from './sections/WorkspacesSection';
 import { WorkflowSection } from './sections/WorkflowSection';
@@ -32,6 +32,7 @@ import { ServiceManagementSection } from './sections/ServiceManagementSection';
 import { ScheduledTaskSection } from './sections/ScheduledTaskSection';
 import { OverviewChatSection } from './sections/OverviewChatSection';
 import { ManagedAgentsSection } from './sections/ManagedAgentsSection';
+import { LlmTokenStatsSection } from './sections/LlmTokenStatsSection';
 import { LarkCliSection } from './sections/LarkCliSection';
 import { CursorCliSection } from './sections/CursorCliSection';
 import { ComponentsSection } from './sections/ComponentsSection';
@@ -73,6 +74,7 @@ type MenuKey =
   | 'task-board'
   | 'service-management'
   | 'scheduled-tasks'
+  | 'llm-token-stats'
   | 'business';
 
 /** 与路由对应的菜单页 itemKey（不含 Nav 分组占位 key） */
@@ -95,6 +97,7 @@ const MENU_KEYS: MenuKey[] = [
   'task-board',
   'service-management',
   'scheduled-tasks',
+  'llm-token-stats',
 ];
 
 function getMenuFromHash(h: string): MenuKey {
@@ -115,6 +118,7 @@ function getMenuFromHash(h: string): MenuKey {
   if (h.startsWith('#/task-board')) return 'task-board';
   if (h.startsWith('#/service-management')) return 'service-management';
   if (h.startsWith('#/scheduled-tasks')) return 'scheduled-tasks';
+  if (h.startsWith('#/llm-token-stats')) return 'llm-token-stats';
   return 'workflow';
 }
 
@@ -137,6 +141,7 @@ function setHashForMenu(key: MenuKey) {
   else if (key === 'task-board') window.location.hash = '#/task-board';
   else if (key === 'service-management') window.location.hash = '#/service-management';
   else if (key === 'scheduled-tasks') window.location.hash = '#/scheduled-tasks';
+  else if (key === 'llm-token-stats') window.location.hash = '#/llm-token-stats';
 }
 
 export const AdminPanel: React.FC = () => {
@@ -190,6 +195,7 @@ export const AdminPanel: React.FC = () => {
     if (key === 'task-board') return <TaskBoardSection />;
     if (key === 'service-management') return <ServiceManagementSection />;
     if (key === 'scheduled-tasks') return <ScheduledTaskSection />;
+    if (key === 'llm-token-stats') return <LlmTokenStatsSection />;
     return <ComponentsSection view="installed" />;
   };
 
@@ -231,6 +237,8 @@ export const AdminPanel: React.FC = () => {
         return '服务列表';
       case 'scheduled-tasks':
         return '定时任务';
+      case 'llm-token-stats':
+        return 'Token 统计';
       default:
         return 'Code 助手';
     }
@@ -248,7 +256,8 @@ export const AdminPanel: React.FC = () => {
       activeMenu === 'agent-mcp' ||
       activeMenu === 'agent-models' ||
       activeMenu === 'agent-profiles' ||
-      activeMenu === 'workspace-manager'
+      activeMenu === 'workspace-manager' ||
+      activeMenu === 'llm-token-stats'
     )
       return '模型与工具';
     if (activeMenu === 'task-board' || activeMenu === 'service-management') return '业务管理';
@@ -317,7 +326,7 @@ export const AdminPanel: React.FC = () => {
               heading={5}
               style={{ margin: 0, color: '#1C2029', whiteSpace: 'nowrap' }}
             >
-              Flowgram
+              BaBo Flow
             </Typography.Title>
           )}
         </div>
@@ -334,14 +343,22 @@ export const AdminPanel: React.FC = () => {
                 text: 'Playground',
                 icon: <PlayCycle {...navIconProps} />,
               },
-              { itemKey: 'scheduled-tasks', text: '定时任务', icon: <AlarmClock {...navIconProps} /> },
+              {
+                itemKey: 'scheduled-tasks',
+                text: '定时任务',
+                icon: <AlarmClock {...navIconProps} />,
+              },
               { itemKey: 'admin-terminal', text: '终端', icon: <Terminal {...navIconProps} /> },
               {
                 text: 'CLI 配置',
                 itemKey: 'admin-cli',
                 items: [
                   { itemKey: 'admin-lark-cli', text: '飞书', icon: <Api {...subNavIconProps} /> },
-                  { itemKey: 'admin-cursor-cli', text: 'Cursor', icon: <CompassOne {...subNavIconProps} /> },
+                  {
+                    itemKey: 'admin-cursor-cli',
+                    text: 'Cursor',
+                    icon: <CompassOne {...subNavIconProps} />,
+                  },
                 ],
               },
               {
@@ -349,16 +366,32 @@ export const AdminPanel: React.FC = () => {
                 itemKey: 'engine',
                 // 组件管理（已安装组件 / 组件规则）已藏起入口，路由与 renderPage 仍保留，可通过 URL 访问
                 items: [
-                  { itemKey: 'workflow', text: '流程管理', icon: <ConnectionPoint {...subNavIconProps} /> },
-                  { itemKey: 'workflow-run', text: '工作流执行', icon: <PlayCycle {...subNavIconProps} /> },
-                  { itemKey: 'workflow-logs', text: '执行日志', icon: <Histogram {...subNavIconProps} /> },
+                  {
+                    itemKey: 'workflow',
+                    text: '流程管理',
+                    icon: <ConnectionPoint {...subNavIconProps} />,
+                  },
+                  {
+                    itemKey: 'workflow-run',
+                    text: '工作流执行',
+                    icon: <PlayCycle {...subNavIconProps} />,
+                  },
+                  {
+                    itemKey: 'workflow-logs',
+                    text: '执行日志',
+                    icon: <Histogram {...subNavIconProps} />,
+                  },
                 ],
               },
               {
                 text: '业务管理',
                 itemKey: 'business',
                 items: [
-                  { itemKey: 'task-board', text: '任务看板', icon: <ListView {...subNavIconProps} /> },
+                  {
+                    itemKey: 'task-board',
+                    text: '任务看板',
+                    icon: <ListView {...subNavIconProps} />,
+                  },
                   {
                     itemKey: 'service-management',
                     text: '服务列表',
@@ -370,18 +403,31 @@ export const AdminPanel: React.FC = () => {
                 text: '模型与工具',
                 itemKey: 'agent',
                 items: [
-                  { itemKey: 'agent-skills', text: 'SKILL 管理', icon: <DataSheet {...subNavIconProps} /> },
+                  {
+                    itemKey: 'agent-skills',
+                    text: 'SKILL 管理',
+                    icon: <DataSheet {...subNavIconProps} />,
+                  },
                   {
                     itemKey: 'agent-models',
                     text: '模型管理',
                     icon: <ApplicationOne {...subNavIconProps} />,
                   },
                   { itemKey: 'agent-mcp', text: 'MCP 配置', icon: <Api {...subNavIconProps} /> },
-                  { itemKey: 'agent-profiles', text: 'Agent 配置', icon: <RobotOne {...subNavIconProps} /> },
+                  {
+                    itemKey: 'agent-profiles',
+                    text: 'Agent 配置',
+                    icon: <RobotOne {...subNavIconProps} />,
+                  },
                   {
                     itemKey: 'workspace-manager',
                     text: '工作区管理',
                     icon: <DataSheet {...subNavIconProps} />,
+                  },
+                  {
+                    itemKey: 'llm-token-stats',
+                    text: 'Token 统计',
+                    icon: <Histogram {...subNavIconProps} />,
                   },
                 ],
               },
@@ -455,7 +501,7 @@ export const AdminPanel: React.FC = () => {
           </Breadcrumb>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <Typography.Text strong>Flowgram Team</Typography.Text>
+            {/* <Typography.Text strong>BaBo Flow</Typography.Text> */}
             <div style={{ height: 16, width: 1, background: '#E5E6EB' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <IconUser />
@@ -520,7 +566,9 @@ export const AdminPanel: React.FC = () => {
                     padding: 0,
                   }}
                 >
-                  <div style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex' }}>
+                  <div
+                    style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex' }}
+                  >
                     {renderPage(tabKey)}
                   </div>
                 </div>

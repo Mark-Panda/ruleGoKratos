@@ -29,7 +29,7 @@ export default defineConfig({
     },
   },
   html: {
-    title: 'demo-free-layout',
+    title: 'BaBo Flow',
   },
   tools: {
     rspack: {

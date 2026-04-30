@@ -172,6 +172,79 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.DeleteLlmModelEntryReply'
+    /api/v1/admin/llm-token/stats:
+        get:
+            tags:
+                - Admin
+            description: LLM Token 使用统计
+            operationId: Admin_GetLlmTokenStats
+            parameters:
+                - name: configId
+                  in: query
+                  schema:
+                    type: string
+                - name: modelEntryId
+                  in: query
+                  schema:
+                    type: string
+                - name: startDate
+                  in: query
+                  schema:
+                    type: string
+                - name: endDate
+                  in: query
+                  schema:
+                    type: string
+                - name: groupBy
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.GetLlmTokenStatsReply'
+    /api/v1/admin/llm-token/usage:
+        get:
+            tags:
+                - Admin
+            operationId: Admin_ListLlmTokenUsage
+            parameters:
+                - name: configId
+                  in: query
+                  schema:
+                    type: string
+                - name: modelEntryId
+                  in: query
+                  schema:
+                    type: string
+                - name: startDate
+                  in: query
+                  schema:
+                    type: string
+                - name: endDate
+                  in: query
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListLlmTokenUsageReply'
     /api/v1/admin/managed-agents:
         get:
             tags:
@@ -2488,6 +2561,21 @@ components:
                     type: integer
                     description: 当前生效的 RunTerminal 超时（秒），来自 configs agent.terminal_exec_timeout
                     format: int32
+        rulego.v1.GetLlmTokenStatsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.TokenStatItem'
+                totalPromptTokens:
+                    type: string
+                totalCompletionTokens:
+                    type: string
+                totalTokens:
+                    type: string
+                totalRequests:
+                    type: string
         rulego.v1.GetManagedAgentReply:
             type: object
             properties:
@@ -2581,6 +2669,15 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/rulego.v1.LlmConfigItem'
+        rulego.v1.ListLlmTokenUsageReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.LlmTokenUsageItem'
+                total:
+                    type: string
         rulego.v1.ListManagedAgentsReply:
             type: object
             properties:
@@ -2739,6 +2836,35 @@ components:
                 createdAt:
                     type: string
                 updatedAt:
+                    type: string
+        rulego.v1.LlmTokenUsageItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                configId:
+                    type: string
+                modelEntryId:
+                    type: string
+                sessionId:
+                    type: string
+                requestId:
+                    type: string
+                promptTokens:
+                    type: string
+                completionTokens:
+                    type: string
+                totalTokens:
+                    type: string
+                modelName:
+                    type: string
+                actionType:
+                    type: string
+                userId:
+                    type: string
+                projectPath:
+                    type: string
+                createdAt:
                     type: string
         rulego.v1.ManagedAgentItem:
             type: object
@@ -3040,6 +3166,19 @@ components:
             type: object
             properties:
                 id:
+                    type: string
+        rulego.v1.TokenStatItem:
+            type: object
+            properties:
+                period:
+                    type: string
+                promptTokens:
+                    type: string
+                completionTokens:
+                    type: string
+                totalTokens:
+                    type: string
+                requestCount:
                     type: string
         rulego.v1.UpdateComponentUseRuleReply:
             type: object

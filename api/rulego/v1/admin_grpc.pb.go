@@ -48,6 +48,8 @@ const (
 	Admin_UpdateManagedAgent_FullMethodName  = "/rulego.v1.Admin/UpdateManagedAgent"
 	Admin_DeleteManagedAgent_FullMethodName  = "/rulego.v1.Admin/DeleteManagedAgent"
 	Admin_ListSkillPackages_FullMethodName   = "/rulego.v1.Admin/ListSkillPackages"
+	Admin_GetLlmTokenStats_FullMethodName    = "/rulego.v1.Admin/GetLlmTokenStats"
+	Admin_ListLlmTokenUsage_FullMethodName   = "/rulego.v1.Admin/ListLlmTokenUsage"
 )
 
 // AdminClient is the client API for Admin service.
@@ -89,6 +91,9 @@ type AdminClient interface {
 	UpdateManagedAgent(ctx context.Context, in *UpdateManagedAgentRequest, opts ...grpc.CallOption) (*UpdateManagedAgentReply, error)
 	DeleteManagedAgent(ctx context.Context, in *DeleteManagedAgentRequest, opts ...grpc.CallOption) (*DeleteManagedAgentReply, error)
 	ListSkillPackages(ctx context.Context, in *ListSkillPackagesRequest, opts ...grpc.CallOption) (*ListSkillPackagesReply, error)
+	// LLM Token 使用统计
+	GetLlmTokenStats(ctx context.Context, in *GetLlmTokenStatsRequest, opts ...grpc.CallOption) (*GetLlmTokenStatsReply, error)
+	ListLlmTokenUsage(ctx context.Context, in *ListLlmTokenUsageRequest, opts ...grpc.CallOption) (*ListLlmTokenUsageReply, error)
 }
 
 type adminClient struct {
@@ -389,6 +394,26 @@ func (c *adminClient) ListSkillPackages(ctx context.Context, in *ListSkillPackag
 	return out, nil
 }
 
+func (c *adminClient) GetLlmTokenStats(ctx context.Context, in *GetLlmTokenStatsRequest, opts ...grpc.CallOption) (*GetLlmTokenStatsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLlmTokenStatsReply)
+	err := c.cc.Invoke(ctx, Admin_GetLlmTokenStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminClient) ListLlmTokenUsage(ctx context.Context, in *ListLlmTokenUsageRequest, opts ...grpc.CallOption) (*ListLlmTokenUsageReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListLlmTokenUsageReply)
+	err := c.cc.Invoke(ctx, Admin_ListLlmTokenUsage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServer is the server API for Admin service.
 // All implementations must embed UnimplementedAdminServer
 // for forward compatibility.
@@ -428,6 +453,9 @@ type AdminServer interface {
 	UpdateManagedAgent(context.Context, *UpdateManagedAgentRequest) (*UpdateManagedAgentReply, error)
 	DeleteManagedAgent(context.Context, *DeleteManagedAgentRequest) (*DeleteManagedAgentReply, error)
 	ListSkillPackages(context.Context, *ListSkillPackagesRequest) (*ListSkillPackagesReply, error)
+	// LLM Token 使用统计
+	GetLlmTokenStats(context.Context, *GetLlmTokenStatsRequest) (*GetLlmTokenStatsReply, error)
+	ListLlmTokenUsage(context.Context, *ListLlmTokenUsageRequest) (*ListLlmTokenUsageReply, error)
 	mustEmbedUnimplementedAdminServer()
 }
 
@@ -524,6 +552,12 @@ func (UnimplementedAdminServer) DeleteManagedAgent(context.Context, *DeleteManag
 }
 func (UnimplementedAdminServer) ListSkillPackages(context.Context, *ListSkillPackagesRequest) (*ListSkillPackagesReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSkillPackages not implemented")
+}
+func (UnimplementedAdminServer) GetLlmTokenStats(context.Context, *GetLlmTokenStatsRequest) (*GetLlmTokenStatsReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLlmTokenStats not implemented")
+}
+func (UnimplementedAdminServer) ListLlmTokenUsage(context.Context, *ListLlmTokenUsageRequest) (*ListLlmTokenUsageReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListLlmTokenUsage not implemented")
 }
 func (UnimplementedAdminServer) mustEmbedUnimplementedAdminServer() {}
 func (UnimplementedAdminServer) testEmbeddedByValue()               {}
@@ -1068,6 +1102,42 @@ func _Admin_ListSkillPackages_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Admin_GetLlmTokenStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLlmTokenStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).GetLlmTokenStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_GetLlmTokenStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).GetLlmTokenStats(ctx, req.(*GetLlmTokenStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Admin_ListLlmTokenUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListLlmTokenUsageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).ListLlmTokenUsage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Admin_ListLlmTokenUsage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).ListLlmTokenUsage(ctx, req.(*ListLlmTokenUsageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Admin_ServiceDesc is the grpc.ServiceDesc for Admin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1190,6 +1260,14 @@ var Admin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSkillPackages",
 			Handler:    _Admin_ListSkillPackages_Handler,
+		},
+		{
+			MethodName: "GetLlmTokenStats",
+			Handler:    _Admin_GetLlmTokenStats_Handler,
+		},
+		{
+			MethodName: "ListLlmTokenUsage",
+			Handler:    _Admin_ListLlmTokenUsage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -3779,6 +3779,511 @@ func (*DeleteLlmModelEntryReply) Descriptor() ([]byte, []int) {
 	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{63}
 }
 
+// LLM Token 统计
+type GetLlmTokenStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ConfigId      int64                  `protobuf:"varint,1,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	ModelEntryId  int64                  `protobuf:"varint,2,opt,name=model_entry_id,json=modelEntryId,proto3" json:"model_entry_id,omitempty"`
+	StartDate     string                 `protobuf:"bytes,3,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       string                 `protobuf:"bytes,4,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	GroupBy       string                 `protobuf:"bytes,5,opt,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"` // day | model
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLlmTokenStatsRequest) Reset() {
+	*x = GetLlmTokenStatsRequest{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLlmTokenStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLlmTokenStatsRequest) ProtoMessage() {}
+
+func (x *GetLlmTokenStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLlmTokenStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetLlmTokenStatsRequest) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *GetLlmTokenStatsRequest) GetConfigId() int64 {
+	if x != nil {
+		return x.ConfigId
+	}
+	return 0
+}
+
+func (x *GetLlmTokenStatsRequest) GetModelEntryId() int64 {
+	if x != nil {
+		return x.ModelEntryId
+	}
+	return 0
+}
+
+func (x *GetLlmTokenStatsRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *GetLlmTokenStatsRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *GetLlmTokenStatsRequest) GetGroupBy() string {
+	if x != nil {
+		return x.GroupBy
+	}
+	return ""
+}
+
+type TokenStatItem struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Period           string                 `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
+	PromptTokens     int64                  `protobuf:"varint,2,opt,name=prompt_tokens,json=promptTokens,proto3" json:"prompt_tokens,omitempty"`
+	CompletionTokens int64                  `protobuf:"varint,3,opt,name=completion_tokens,json=completionTokens,proto3" json:"completion_tokens,omitempty"`
+	TotalTokens      int64                  `protobuf:"varint,4,opt,name=total_tokens,json=totalTokens,proto3" json:"total_tokens,omitempty"`
+	RequestCount     int64                  `protobuf:"varint,5,opt,name=request_count,json=requestCount,proto3" json:"request_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *TokenStatItem) Reset() {
+	*x = TokenStatItem{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TokenStatItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TokenStatItem) ProtoMessage() {}
+
+func (x *TokenStatItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TokenStatItem.ProtoReflect.Descriptor instead.
+func (*TokenStatItem) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *TokenStatItem) GetPeriod() string {
+	if x != nil {
+		return x.Period
+	}
+	return ""
+}
+
+func (x *TokenStatItem) GetPromptTokens() int64 {
+	if x != nil {
+		return x.PromptTokens
+	}
+	return 0
+}
+
+func (x *TokenStatItem) GetCompletionTokens() int64 {
+	if x != nil {
+		return x.CompletionTokens
+	}
+	return 0
+}
+
+func (x *TokenStatItem) GetTotalTokens() int64 {
+	if x != nil {
+		return x.TotalTokens
+	}
+	return 0
+}
+
+func (x *TokenStatItem) GetRequestCount() int64 {
+	if x != nil {
+		return x.RequestCount
+	}
+	return 0
+}
+
+type GetLlmTokenStatsReply struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Items                 []*TokenStatItem       `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	TotalPromptTokens     int64                  `protobuf:"varint,2,opt,name=total_prompt_tokens,json=totalPromptTokens,proto3" json:"total_prompt_tokens,omitempty"`
+	TotalCompletionTokens int64                  `protobuf:"varint,3,opt,name=total_completion_tokens,json=totalCompletionTokens,proto3" json:"total_completion_tokens,omitempty"`
+	TotalTokens           int64                  `protobuf:"varint,4,opt,name=total_tokens,json=totalTokens,proto3" json:"total_tokens,omitempty"`
+	TotalRequests         int64                  `protobuf:"varint,5,opt,name=total_requests,json=totalRequests,proto3" json:"total_requests,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GetLlmTokenStatsReply) Reset() {
+	*x = GetLlmTokenStatsReply{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLlmTokenStatsReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLlmTokenStatsReply) ProtoMessage() {}
+
+func (x *GetLlmTokenStatsReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLlmTokenStatsReply.ProtoReflect.Descriptor instead.
+func (*GetLlmTokenStatsReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *GetLlmTokenStatsReply) GetItems() []*TokenStatItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *GetLlmTokenStatsReply) GetTotalPromptTokens() int64 {
+	if x != nil {
+		return x.TotalPromptTokens
+	}
+	return 0
+}
+
+func (x *GetLlmTokenStatsReply) GetTotalCompletionTokens() int64 {
+	if x != nil {
+		return x.TotalCompletionTokens
+	}
+	return 0
+}
+
+func (x *GetLlmTokenStatsReply) GetTotalTokens() int64 {
+	if x != nil {
+		return x.TotalTokens
+	}
+	return 0
+}
+
+func (x *GetLlmTokenStatsReply) GetTotalRequests() int64 {
+	if x != nil {
+		return x.TotalRequests
+	}
+	return 0
+}
+
+type ListLlmTokenUsageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ConfigId      int64                  `protobuf:"varint,1,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	ModelEntryId  int64                  `protobuf:"varint,2,opt,name=model_entry_id,json=modelEntryId,proto3" json:"model_entry_id,omitempty"`
+	StartDate     string                 `protobuf:"bytes,3,opt,name=start_date,json=startDate,proto3" json:"start_date,omitempty"`
+	EndDate       string                 `protobuf:"bytes,4,opt,name=end_date,json=endDate,proto3" json:"end_date,omitempty"`
+	Page          int32                  `protobuf:"varint,5,opt,name=page,proto3" json:"page,omitempty"`
+	PageSize      int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListLlmTokenUsageRequest) Reset() {
+	*x = ListLlmTokenUsageRequest{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListLlmTokenUsageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListLlmTokenUsageRequest) ProtoMessage() {}
+
+func (x *ListLlmTokenUsageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListLlmTokenUsageRequest.ProtoReflect.Descriptor instead.
+func (*ListLlmTokenUsageRequest) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *ListLlmTokenUsageRequest) GetConfigId() int64 {
+	if x != nil {
+		return x.ConfigId
+	}
+	return 0
+}
+
+func (x *ListLlmTokenUsageRequest) GetModelEntryId() int64 {
+	if x != nil {
+		return x.ModelEntryId
+	}
+	return 0
+}
+
+func (x *ListLlmTokenUsageRequest) GetStartDate() string {
+	if x != nil {
+		return x.StartDate
+	}
+	return ""
+}
+
+func (x *ListLlmTokenUsageRequest) GetEndDate() string {
+	if x != nil {
+		return x.EndDate
+	}
+	return ""
+}
+
+func (x *ListLlmTokenUsageRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListLlmTokenUsageRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type LlmTokenUsageItem struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ConfigId         int64                  `protobuf:"varint,2,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	ModelEntryId     int64                  `protobuf:"varint,3,opt,name=model_entry_id,json=modelEntryId,proto3" json:"model_entry_id,omitempty"`
+	SessionId        string                 `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	RequestId        string                 `protobuf:"bytes,5,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	PromptTokens     int64                  `protobuf:"varint,6,opt,name=prompt_tokens,json=promptTokens,proto3" json:"prompt_tokens,omitempty"`
+	CompletionTokens int64                  `protobuf:"varint,7,opt,name=completion_tokens,json=completionTokens,proto3" json:"completion_tokens,omitempty"`
+	TotalTokens      int64                  `protobuf:"varint,8,opt,name=total_tokens,json=totalTokens,proto3" json:"total_tokens,omitempty"`
+	ModelName        string                 `protobuf:"bytes,9,opt,name=model_name,json=modelName,proto3" json:"model_name,omitempty"`
+	ActionType       string                 `protobuf:"bytes,10,opt,name=action_type,json=actionType,proto3" json:"action_type,omitempty"`
+	UserId           string                 `protobuf:"bytes,11,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ProjectPath      string                 `protobuf:"bytes,12,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	CreatedAt        string                 `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *LlmTokenUsageItem) Reset() {
+	*x = LlmTokenUsageItem{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LlmTokenUsageItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LlmTokenUsageItem) ProtoMessage() {}
+
+func (x *LlmTokenUsageItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LlmTokenUsageItem.ProtoReflect.Descriptor instead.
+func (*LlmTokenUsageItem) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *LlmTokenUsageItem) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *LlmTokenUsageItem) GetConfigId() int64 {
+	if x != nil {
+		return x.ConfigId
+	}
+	return 0
+}
+
+func (x *LlmTokenUsageItem) GetModelEntryId() int64 {
+	if x != nil {
+		return x.ModelEntryId
+	}
+	return 0
+}
+
+func (x *LlmTokenUsageItem) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *LlmTokenUsageItem) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *LlmTokenUsageItem) GetPromptTokens() int64 {
+	if x != nil {
+		return x.PromptTokens
+	}
+	return 0
+}
+
+func (x *LlmTokenUsageItem) GetCompletionTokens() int64 {
+	if x != nil {
+		return x.CompletionTokens
+	}
+	return 0
+}
+
+func (x *LlmTokenUsageItem) GetTotalTokens() int64 {
+	if x != nil {
+		return x.TotalTokens
+	}
+	return 0
+}
+
+func (x *LlmTokenUsageItem) GetModelName() string {
+	if x != nil {
+		return x.ModelName
+	}
+	return ""
+}
+
+func (x *LlmTokenUsageItem) GetActionType() string {
+	if x != nil {
+		return x.ActionType
+	}
+	return ""
+}
+
+func (x *LlmTokenUsageItem) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *LlmTokenUsageItem) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *LlmTokenUsageItem) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type ListLlmTokenUsageReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*LlmTokenUsageItem   `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListLlmTokenUsageReply) Reset() {
+	*x = ListLlmTokenUsageReply{}
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListLlmTokenUsageReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListLlmTokenUsageReply) ProtoMessage() {}
+
+func (x *ListLlmTokenUsageReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_admin_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListLlmTokenUsageReply.ProtoReflect.Descriptor instead.
+func (*ListLlmTokenUsageReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_admin_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *ListLlmTokenUsageReply) GetItems() []*LlmTokenUsageItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *ListLlmTokenUsageReply) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 var File_api_rulego_v1_admin_proto protoreflect.FileDescriptor
 
 const file_api_rulego_v1_admin_proto_rawDesc = "" +
@@ -4058,7 +4563,57 @@ const file_api_rulego_v1_admin_proto_rawDesc = "" +
 	"\x18UpdateLlmModelEntryReply\",\n" +
 	"\x1aDeleteLlmModelEntryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"\x1a\n" +
-	"\x18DeleteLlmModelEntryReply2\xe6\x1c\n" +
+	"\x18DeleteLlmModelEntryReply\"\xb1\x01\n" +
+	"\x17GetLlmTokenStatsRequest\x12\x1b\n" +
+	"\tconfig_id\x18\x01 \x01(\x03R\bconfigId\x12$\n" +
+	"\x0emodel_entry_id\x18\x02 \x01(\x03R\fmodelEntryId\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x04 \x01(\tR\aendDate\x12\x19\n" +
+	"\bgroup_by\x18\x05 \x01(\tR\agroupBy\"\xc1\x01\n" +
+	"\rTokenStatItem\x12\x16\n" +
+	"\x06period\x18\x01 \x01(\tR\x06period\x12#\n" +
+	"\rprompt_tokens\x18\x02 \x01(\x03R\fpromptTokens\x12+\n" +
+	"\x11completion_tokens\x18\x03 \x01(\x03R\x10completionTokens\x12!\n" +
+	"\ftotal_tokens\x18\x04 \x01(\x03R\vtotalTokens\x12#\n" +
+	"\rrequest_count\x18\x05 \x01(\x03R\frequestCount\"\xf9\x01\n" +
+	"\x15GetLlmTokenStatsReply\x12.\n" +
+	"\x05items\x18\x01 \x03(\v2\x18.rulego.v1.TokenStatItemR\x05items\x12.\n" +
+	"\x13total_prompt_tokens\x18\x02 \x01(\x03R\x11totalPromptTokens\x126\n" +
+	"\x17total_completion_tokens\x18\x03 \x01(\x03R\x15totalCompletionTokens\x12!\n" +
+	"\ftotal_tokens\x18\x04 \x01(\x03R\vtotalTokens\x12%\n" +
+	"\x0etotal_requests\x18\x05 \x01(\x03R\rtotalRequests\"\xc8\x01\n" +
+	"\x18ListLlmTokenUsageRequest\x12\x1b\n" +
+	"\tconfig_id\x18\x01 \x01(\x03R\bconfigId\x12$\n" +
+	"\x0emodel_entry_id\x18\x02 \x01(\x03R\fmodelEntryId\x12\x1d\n" +
+	"\n" +
+	"start_date\x18\x03 \x01(\tR\tstartDate\x12\x19\n" +
+	"\bend_date\x18\x04 \x01(\tR\aendDate\x12\x12\n" +
+	"\x04page\x18\x05 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\"\xb4\x03\n" +
+	"\x11LlmTokenUsageItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
+	"\tconfig_id\x18\x02 \x01(\x03R\bconfigId\x12$\n" +
+	"\x0emodel_entry_id\x18\x03 \x01(\x03R\fmodelEntryId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x04 \x01(\tR\tsessionId\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x05 \x01(\tR\trequestId\x12#\n" +
+	"\rprompt_tokens\x18\x06 \x01(\x03R\fpromptTokens\x12+\n" +
+	"\x11completion_tokens\x18\a \x01(\x03R\x10completionTokens\x12!\n" +
+	"\ftotal_tokens\x18\b \x01(\x03R\vtotalTokens\x12\x1d\n" +
+	"\n" +
+	"model_name\x18\t \x01(\tR\tmodelName\x12\x1f\n" +
+	"\vaction_type\x18\n" +
+	" \x01(\tR\n" +
+	"actionType\x12\x17\n" +
+	"\auser_id\x18\v \x01(\tR\x06userId\x12!\n" +
+	"\fproject_path\x18\f \x01(\tR\vprojectPath\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\r \x01(\tR\tcreatedAt\"b\n" +
+	"\x16ListLlmTokenUsageReply\x122\n" +
+	"\x05items\x18\x01 \x03(\v2\x1c.rulego.v1.LlmTokenUsageItemR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total2\xec\x1e\n" +
 	"\x05Admin\x12d\n" +
 	"\n" +
 	"ListSkills\x12\x1c.rulego.v1.ListSkillsRequest\x1a\x1a.rulego.v1.ListSkillsReply\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/admin/skills\x12q\n" +
@@ -4089,7 +4644,9 @@ const file_api_rulego_v1_admin_proto_rawDesc = "" +
 	"\x12CreateManagedAgent\x12$.rulego.v1.CreateManagedAgentRequest\x1a\".rulego.v1.CreateManagedAgentReply\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/api/v1/admin/managed-agents\x12\x8c\x01\n" +
 	"\x12UpdateManagedAgent\x12$.rulego.v1.UpdateManagedAgentRequest\x1a\".rulego.v1.UpdateManagedAgentReply\",\x82\xd3\xe4\x93\x02&:\x01*\x1a!/api/v1/admin/managed-agents/{id}\x12\x89\x01\n" +
 	"\x12DeleteManagedAgent\x12$.rulego.v1.DeleteManagedAgentRequest\x1a\".rulego.v1.DeleteManagedAgentReply\")\x82\xd3\xe4\x93\x02#*!/api/v1/admin/managed-agents/{id}\x12\x81\x01\n" +
-	"\x11ListSkillPackages\x12#.rulego.v1.ListSkillPackagesRequest\x1a!.rulego.v1.ListSkillPackagesReply\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/v1/admin/skill-packagesB\x1fZ\x1druleGoKratos/api/rulego/v1;v1b\x06proto3"
+	"\x11ListSkillPackages\x12#.rulego.v1.ListSkillPackagesRequest\x1a!.rulego.v1.ListSkillPackagesReply\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/v1/admin/skill-packages\x12\x7f\n" +
+	"\x10GetLlmTokenStats\x12\".rulego.v1.GetLlmTokenStatsRequest\x1a .rulego.v1.GetLlmTokenStatsReply\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/admin/llm-token/stats\x12\x82\x01\n" +
+	"\x11ListLlmTokenUsage\x12#.rulego.v1.ListLlmTokenUsageRequest\x1a!.rulego.v1.ListLlmTokenUsageReply\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/admin/llm-token/usageB\x1fZ\x1druleGoKratos/api/rulego/v1;v1b\x06proto3"
 
 var (
 	file_api_rulego_v1_admin_proto_rawDescOnce sync.Once
@@ -4103,7 +4660,7 @@ func file_api_rulego_v1_admin_proto_rawDescGZIP() []byte {
 	return file_api_rulego_v1_admin_proto_rawDescData
 }
 
-var file_api_rulego_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 64)
+var file_api_rulego_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
 var file_api_rulego_v1_admin_proto_goTypes = []any{
 	(*ListSkillsRequest)(nil),          // 0: rulego.v1.ListSkillsRequest
 	(*SkillItem)(nil),                  // 1: rulego.v1.SkillItem
@@ -4169,14 +4726,20 @@ var file_api_rulego_v1_admin_proto_goTypes = []any{
 	(*UpdateLlmModelEntryReply)(nil),   // 61: rulego.v1.UpdateLlmModelEntryReply
 	(*DeleteLlmModelEntryRequest)(nil), // 62: rulego.v1.DeleteLlmModelEntryRequest
 	(*DeleteLlmModelEntryReply)(nil),   // 63: rulego.v1.DeleteLlmModelEntryReply
-	(*structpb.Struct)(nil),            // 64: google.protobuf.Struct
+	(*GetLlmTokenStatsRequest)(nil),    // 64: rulego.v1.GetLlmTokenStatsRequest
+	(*TokenStatItem)(nil),              // 65: rulego.v1.TokenStatItem
+	(*GetLlmTokenStatsReply)(nil),      // 66: rulego.v1.GetLlmTokenStatsReply
+	(*ListLlmTokenUsageRequest)(nil),   // 67: rulego.v1.ListLlmTokenUsageRequest
+	(*LlmTokenUsageItem)(nil),          // 68: rulego.v1.LlmTokenUsageItem
+	(*ListLlmTokenUsageReply)(nil),     // 69: rulego.v1.ListLlmTokenUsageReply
+	(*structpb.Struct)(nil),            // 70: google.protobuf.Struct
 }
 var file_api_rulego_v1_admin_proto_depIdxs = []int32{
 	1,  // 0: rulego.v1.ListSkillsReply.items:type_name -> rulego.v1.SkillItem
-	64, // 1: rulego.v1.McpConfigItem.headers:type_name -> google.protobuf.Struct
+	70, // 1: rulego.v1.McpConfigItem.headers:type_name -> google.protobuf.Struct
 	6,  // 2: rulego.v1.ListMcpConfigsReply.items:type_name -> rulego.v1.McpConfigItem
-	64, // 3: rulego.v1.CreateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
-	64, // 4: rulego.v1.UpdateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
+	70, // 3: rulego.v1.CreateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
+	70, // 4: rulego.v1.UpdateMcpConfigRequest.headers:type_name -> google.protobuf.Struct
 	22, // 5: rulego.v1.WorkspaceItem.repositories:type_name -> rulego.v1.WorkspaceRepoItem
 	23, // 6: rulego.v1.ListWorkspacesReply.items:type_name -> rulego.v1.WorkspaceItem
 	23, // 7: rulego.v1.GetWorkspaceReply.item:type_name -> rulego.v1.WorkspaceItem
@@ -4191,69 +4754,75 @@ var file_api_rulego_v1_admin_proto_depIdxs = []int32{
 	50, // 16: rulego.v1.LlmConfigItem.models:type_name -> rulego.v1.LlmModelEntryItem
 	51, // 17: rulego.v1.ListLlmConfigsReply.items:type_name -> rulego.v1.LlmConfigItem
 	53, // 18: rulego.v1.CreateLlmConfigRequest.models:type_name -> rulego.v1.LlmModelEntryDraft
-	0,  // 19: rulego.v1.Admin.ListSkills:input_type -> rulego.v1.ListSkillsRequest
-	3,  // 20: rulego.v1.Admin.UploadSkill:input_type -> rulego.v1.UploadSkillRequest
-	5,  // 21: rulego.v1.Admin.ListMcpConfigs:input_type -> rulego.v1.ListMcpConfigsRequest
-	8,  // 22: rulego.v1.Admin.CreateMcpConfig:input_type -> rulego.v1.CreateMcpConfigRequest
-	9,  // 23: rulego.v1.Admin.UpdateMcpConfig:input_type -> rulego.v1.UpdateMcpConfigRequest
-	11, // 24: rulego.v1.Admin.DeleteMcpConfig:input_type -> rulego.v1.DeleteMcpConfigRequest
-	13, // 25: rulego.v1.Admin.TestMcpConfig:input_type -> rulego.v1.TestMcpConfigRequest
-	49, // 26: rulego.v1.Admin.ListLlmConfigs:input_type -> rulego.v1.ListLlmConfigsRequest
-	54, // 27: rulego.v1.Admin.CreateLlmConfig:input_type -> rulego.v1.CreateLlmConfigRequest
-	55, // 28: rulego.v1.Admin.UpdateLlmConfig:input_type -> rulego.v1.UpdateLlmConfigRequest
-	57, // 29: rulego.v1.Admin.DeleteLlmConfig:input_type -> rulego.v1.DeleteLlmConfigRequest
-	59, // 30: rulego.v1.Admin.CreateLlmModelEntry:input_type -> rulego.v1.CreateLlmModelEntryRequest
-	60, // 31: rulego.v1.Admin.UpdateLlmModelEntry:input_type -> rulego.v1.UpdateLlmModelEntryRequest
-	62, // 32: rulego.v1.Admin.DeleteLlmModelEntry:input_type -> rulego.v1.DeleteLlmModelEntryRequest
-	15, // 33: rulego.v1.Admin.RunTerminal:input_type -> rulego.v1.RunTerminalRequest
-	17, // 34: rulego.v1.Admin.GetLarkCliConfig:input_type -> rulego.v1.GetLarkCliConfigRequest
-	19, // 35: rulego.v1.Admin.SaveLarkCliConfig:input_type -> rulego.v1.SaveLarkCliConfigRequest
-	21, // 36: rulego.v1.Admin.ListWorkspaces:input_type -> rulego.v1.ListWorkspacesRequest
-	25, // 37: rulego.v1.Admin.GetWorkspace:input_type -> rulego.v1.GetWorkspaceRequest
-	27, // 38: rulego.v1.Admin.CreateWorkspace:input_type -> rulego.v1.CreateWorkspaceRequest
-	29, // 39: rulego.v1.Admin.UpdateWorkspace:input_type -> rulego.v1.UpdateWorkspaceRequest
-	31, // 40: rulego.v1.Admin.SyncWorkspace:input_type -> rulego.v1.SyncWorkspaceRequest
-	33, // 41: rulego.v1.Admin.DeleteWorkspace:input_type -> rulego.v1.DeleteWorkspaceRequest
-	35, // 42: rulego.v1.Admin.ListManagedAgents:input_type -> rulego.v1.ListManagedAgentsRequest
-	38, // 43: rulego.v1.Admin.GetManagedAgent:input_type -> rulego.v1.GetManagedAgentRequest
-	40, // 44: rulego.v1.Admin.CreateManagedAgent:input_type -> rulego.v1.CreateManagedAgentRequest
-	42, // 45: rulego.v1.Admin.UpdateManagedAgent:input_type -> rulego.v1.UpdateManagedAgentRequest
-	44, // 46: rulego.v1.Admin.DeleteManagedAgent:input_type -> rulego.v1.DeleteManagedAgentRequest
-	46, // 47: rulego.v1.Admin.ListSkillPackages:input_type -> rulego.v1.ListSkillPackagesRequest
-	2,  // 48: rulego.v1.Admin.ListSkills:output_type -> rulego.v1.ListSkillsReply
-	4,  // 49: rulego.v1.Admin.UploadSkill:output_type -> rulego.v1.UploadSkillReply
-	7,  // 50: rulego.v1.Admin.ListMcpConfigs:output_type -> rulego.v1.ListMcpConfigsReply
-	6,  // 51: rulego.v1.Admin.CreateMcpConfig:output_type -> rulego.v1.McpConfigItem
-	10, // 52: rulego.v1.Admin.UpdateMcpConfig:output_type -> rulego.v1.UpdateMcpConfigReply
-	12, // 53: rulego.v1.Admin.DeleteMcpConfig:output_type -> rulego.v1.DeleteMcpConfigReply
-	14, // 54: rulego.v1.Admin.TestMcpConfig:output_type -> rulego.v1.TestMcpConfigReply
-	52, // 55: rulego.v1.Admin.ListLlmConfigs:output_type -> rulego.v1.ListLlmConfigsReply
-	51, // 56: rulego.v1.Admin.CreateLlmConfig:output_type -> rulego.v1.LlmConfigItem
-	56, // 57: rulego.v1.Admin.UpdateLlmConfig:output_type -> rulego.v1.UpdateLlmConfigReply
-	58, // 58: rulego.v1.Admin.DeleteLlmConfig:output_type -> rulego.v1.DeleteLlmConfigReply
-	50, // 59: rulego.v1.Admin.CreateLlmModelEntry:output_type -> rulego.v1.LlmModelEntryItem
-	61, // 60: rulego.v1.Admin.UpdateLlmModelEntry:output_type -> rulego.v1.UpdateLlmModelEntryReply
-	63, // 61: rulego.v1.Admin.DeleteLlmModelEntry:output_type -> rulego.v1.DeleteLlmModelEntryReply
-	16, // 62: rulego.v1.Admin.RunTerminal:output_type -> rulego.v1.RunTerminalReply
-	18, // 63: rulego.v1.Admin.GetLarkCliConfig:output_type -> rulego.v1.GetLarkCliConfigReply
-	20, // 64: rulego.v1.Admin.SaveLarkCliConfig:output_type -> rulego.v1.SaveLarkCliConfigReply
-	24, // 65: rulego.v1.Admin.ListWorkspaces:output_type -> rulego.v1.ListWorkspacesReply
-	26, // 66: rulego.v1.Admin.GetWorkspace:output_type -> rulego.v1.GetWorkspaceReply
-	28, // 67: rulego.v1.Admin.CreateWorkspace:output_type -> rulego.v1.CreateWorkspaceReply
-	30, // 68: rulego.v1.Admin.UpdateWorkspace:output_type -> rulego.v1.UpdateWorkspaceReply
-	32, // 69: rulego.v1.Admin.SyncWorkspace:output_type -> rulego.v1.SyncWorkspaceReply
-	34, // 70: rulego.v1.Admin.DeleteWorkspace:output_type -> rulego.v1.DeleteWorkspaceReply
-	37, // 71: rulego.v1.Admin.ListManagedAgents:output_type -> rulego.v1.ListManagedAgentsReply
-	39, // 72: rulego.v1.Admin.GetManagedAgent:output_type -> rulego.v1.GetManagedAgentReply
-	41, // 73: rulego.v1.Admin.CreateManagedAgent:output_type -> rulego.v1.CreateManagedAgentReply
-	43, // 74: rulego.v1.Admin.UpdateManagedAgent:output_type -> rulego.v1.UpdateManagedAgentReply
-	45, // 75: rulego.v1.Admin.DeleteManagedAgent:output_type -> rulego.v1.DeleteManagedAgentReply
-	48, // 76: rulego.v1.Admin.ListSkillPackages:output_type -> rulego.v1.ListSkillPackagesReply
-	48, // [48:77] is the sub-list for method output_type
-	19, // [19:48] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	65, // 19: rulego.v1.GetLlmTokenStatsReply.items:type_name -> rulego.v1.TokenStatItem
+	68, // 20: rulego.v1.ListLlmTokenUsageReply.items:type_name -> rulego.v1.LlmTokenUsageItem
+	0,  // 21: rulego.v1.Admin.ListSkills:input_type -> rulego.v1.ListSkillsRequest
+	3,  // 22: rulego.v1.Admin.UploadSkill:input_type -> rulego.v1.UploadSkillRequest
+	5,  // 23: rulego.v1.Admin.ListMcpConfigs:input_type -> rulego.v1.ListMcpConfigsRequest
+	8,  // 24: rulego.v1.Admin.CreateMcpConfig:input_type -> rulego.v1.CreateMcpConfigRequest
+	9,  // 25: rulego.v1.Admin.UpdateMcpConfig:input_type -> rulego.v1.UpdateMcpConfigRequest
+	11, // 26: rulego.v1.Admin.DeleteMcpConfig:input_type -> rulego.v1.DeleteMcpConfigRequest
+	13, // 27: rulego.v1.Admin.TestMcpConfig:input_type -> rulego.v1.TestMcpConfigRequest
+	49, // 28: rulego.v1.Admin.ListLlmConfigs:input_type -> rulego.v1.ListLlmConfigsRequest
+	54, // 29: rulego.v1.Admin.CreateLlmConfig:input_type -> rulego.v1.CreateLlmConfigRequest
+	55, // 30: rulego.v1.Admin.UpdateLlmConfig:input_type -> rulego.v1.UpdateLlmConfigRequest
+	57, // 31: rulego.v1.Admin.DeleteLlmConfig:input_type -> rulego.v1.DeleteLlmConfigRequest
+	59, // 32: rulego.v1.Admin.CreateLlmModelEntry:input_type -> rulego.v1.CreateLlmModelEntryRequest
+	60, // 33: rulego.v1.Admin.UpdateLlmModelEntry:input_type -> rulego.v1.UpdateLlmModelEntryRequest
+	62, // 34: rulego.v1.Admin.DeleteLlmModelEntry:input_type -> rulego.v1.DeleteLlmModelEntryRequest
+	15, // 35: rulego.v1.Admin.RunTerminal:input_type -> rulego.v1.RunTerminalRequest
+	17, // 36: rulego.v1.Admin.GetLarkCliConfig:input_type -> rulego.v1.GetLarkCliConfigRequest
+	19, // 37: rulego.v1.Admin.SaveLarkCliConfig:input_type -> rulego.v1.SaveLarkCliConfigRequest
+	21, // 38: rulego.v1.Admin.ListWorkspaces:input_type -> rulego.v1.ListWorkspacesRequest
+	25, // 39: rulego.v1.Admin.GetWorkspace:input_type -> rulego.v1.GetWorkspaceRequest
+	27, // 40: rulego.v1.Admin.CreateWorkspace:input_type -> rulego.v1.CreateWorkspaceRequest
+	29, // 41: rulego.v1.Admin.UpdateWorkspace:input_type -> rulego.v1.UpdateWorkspaceRequest
+	31, // 42: rulego.v1.Admin.SyncWorkspace:input_type -> rulego.v1.SyncWorkspaceRequest
+	33, // 43: rulego.v1.Admin.DeleteWorkspace:input_type -> rulego.v1.DeleteWorkspaceRequest
+	35, // 44: rulego.v1.Admin.ListManagedAgents:input_type -> rulego.v1.ListManagedAgentsRequest
+	38, // 45: rulego.v1.Admin.GetManagedAgent:input_type -> rulego.v1.GetManagedAgentRequest
+	40, // 46: rulego.v1.Admin.CreateManagedAgent:input_type -> rulego.v1.CreateManagedAgentRequest
+	42, // 47: rulego.v1.Admin.UpdateManagedAgent:input_type -> rulego.v1.UpdateManagedAgentRequest
+	44, // 48: rulego.v1.Admin.DeleteManagedAgent:input_type -> rulego.v1.DeleteManagedAgentRequest
+	46, // 49: rulego.v1.Admin.ListSkillPackages:input_type -> rulego.v1.ListSkillPackagesRequest
+	64, // 50: rulego.v1.Admin.GetLlmTokenStats:input_type -> rulego.v1.GetLlmTokenStatsRequest
+	67, // 51: rulego.v1.Admin.ListLlmTokenUsage:input_type -> rulego.v1.ListLlmTokenUsageRequest
+	2,  // 52: rulego.v1.Admin.ListSkills:output_type -> rulego.v1.ListSkillsReply
+	4,  // 53: rulego.v1.Admin.UploadSkill:output_type -> rulego.v1.UploadSkillReply
+	7,  // 54: rulego.v1.Admin.ListMcpConfigs:output_type -> rulego.v1.ListMcpConfigsReply
+	6,  // 55: rulego.v1.Admin.CreateMcpConfig:output_type -> rulego.v1.McpConfigItem
+	10, // 56: rulego.v1.Admin.UpdateMcpConfig:output_type -> rulego.v1.UpdateMcpConfigReply
+	12, // 57: rulego.v1.Admin.DeleteMcpConfig:output_type -> rulego.v1.DeleteMcpConfigReply
+	14, // 58: rulego.v1.Admin.TestMcpConfig:output_type -> rulego.v1.TestMcpConfigReply
+	52, // 59: rulego.v1.Admin.ListLlmConfigs:output_type -> rulego.v1.ListLlmConfigsReply
+	51, // 60: rulego.v1.Admin.CreateLlmConfig:output_type -> rulego.v1.LlmConfigItem
+	56, // 61: rulego.v1.Admin.UpdateLlmConfig:output_type -> rulego.v1.UpdateLlmConfigReply
+	58, // 62: rulego.v1.Admin.DeleteLlmConfig:output_type -> rulego.v1.DeleteLlmConfigReply
+	50, // 63: rulego.v1.Admin.CreateLlmModelEntry:output_type -> rulego.v1.LlmModelEntryItem
+	61, // 64: rulego.v1.Admin.UpdateLlmModelEntry:output_type -> rulego.v1.UpdateLlmModelEntryReply
+	63, // 65: rulego.v1.Admin.DeleteLlmModelEntry:output_type -> rulego.v1.DeleteLlmModelEntryReply
+	16, // 66: rulego.v1.Admin.RunTerminal:output_type -> rulego.v1.RunTerminalReply
+	18, // 67: rulego.v1.Admin.GetLarkCliConfig:output_type -> rulego.v1.GetLarkCliConfigReply
+	20, // 68: rulego.v1.Admin.SaveLarkCliConfig:output_type -> rulego.v1.SaveLarkCliConfigReply
+	24, // 69: rulego.v1.Admin.ListWorkspaces:output_type -> rulego.v1.ListWorkspacesReply
+	26, // 70: rulego.v1.Admin.GetWorkspace:output_type -> rulego.v1.GetWorkspaceReply
+	28, // 71: rulego.v1.Admin.CreateWorkspace:output_type -> rulego.v1.CreateWorkspaceReply
+	30, // 72: rulego.v1.Admin.UpdateWorkspace:output_type -> rulego.v1.UpdateWorkspaceReply
+	32, // 73: rulego.v1.Admin.SyncWorkspace:output_type -> rulego.v1.SyncWorkspaceReply
+	34, // 74: rulego.v1.Admin.DeleteWorkspace:output_type -> rulego.v1.DeleteWorkspaceReply
+	37, // 75: rulego.v1.Admin.ListManagedAgents:output_type -> rulego.v1.ListManagedAgentsReply
+	39, // 76: rulego.v1.Admin.GetManagedAgent:output_type -> rulego.v1.GetManagedAgentReply
+	41, // 77: rulego.v1.Admin.CreateManagedAgent:output_type -> rulego.v1.CreateManagedAgentReply
+	43, // 78: rulego.v1.Admin.UpdateManagedAgent:output_type -> rulego.v1.UpdateManagedAgentReply
+	45, // 79: rulego.v1.Admin.DeleteManagedAgent:output_type -> rulego.v1.DeleteManagedAgentReply
+	48, // 80: rulego.v1.Admin.ListSkillPackages:output_type -> rulego.v1.ListSkillPackagesReply
+	66, // 81: rulego.v1.Admin.GetLlmTokenStats:output_type -> rulego.v1.GetLlmTokenStatsReply
+	69, // 82: rulego.v1.Admin.ListLlmTokenUsage:output_type -> rulego.v1.ListLlmTokenUsageReply
+	52, // [52:83] is the sub-list for method output_type
+	21, // [21:52] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_api_rulego_v1_admin_proto_init() }
@@ -4267,7 +4836,7 @@ func file_api_rulego_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_rulego_v1_admin_proto_rawDesc), len(file_api_rulego_v1_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   64,
+			NumMessages:   70,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

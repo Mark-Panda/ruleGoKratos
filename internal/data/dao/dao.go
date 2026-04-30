@@ -32,6 +32,10 @@ func Init(client *gorm.DB) {
 			if err := db.AutoMigrate(&TaskBoard{}, &ServiceManagement{}, &ScheduledTask{}, &ScheduledTaskRun{}); err != nil {
 				log.Printf("dao: migrate task_board/service_management/scheduled_task: %v", err)
 			}
+			// 自动迁移 LLM Token 使用记录表
+			if err := db.AutoMigrate(&LLMTokenUsage{}); err != nil {
+				log.Printf("dao: migrate llm_token_usage: %v", err)
+			}
 		}
 	})
 	_ = db

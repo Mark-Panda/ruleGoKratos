@@ -30,9 +30,11 @@ const OperationAdminDeleteManagedAgent = "/rulego.v1.Admin/DeleteManagedAgent"
 const OperationAdminDeleteMcpConfig = "/rulego.v1.Admin/DeleteMcpConfig"
 const OperationAdminDeleteWorkspace = "/rulego.v1.Admin/DeleteWorkspace"
 const OperationAdminGetLarkCliConfig = "/rulego.v1.Admin/GetLarkCliConfig"
+const OperationAdminGetLlmTokenStats = "/rulego.v1.Admin/GetLlmTokenStats"
 const OperationAdminGetManagedAgent = "/rulego.v1.Admin/GetManagedAgent"
 const OperationAdminGetWorkspace = "/rulego.v1.Admin/GetWorkspace"
 const OperationAdminListLlmConfigs = "/rulego.v1.Admin/ListLlmConfigs"
+const OperationAdminListLlmTokenUsage = "/rulego.v1.Admin/ListLlmTokenUsage"
 const OperationAdminListManagedAgents = "/rulego.v1.Admin/ListManagedAgents"
 const OperationAdminListMcpConfigs = "/rulego.v1.Admin/ListMcpConfigs"
 const OperationAdminListSkillPackages = "/rulego.v1.Admin/ListSkillPackages"
@@ -62,9 +64,12 @@ type AdminHTTPServer interface {
 	DeleteWorkspace(context.Context, *DeleteWorkspaceRequest) (*DeleteWorkspaceReply, error)
 	// GetLarkCliConfig GetLarkCliConfig 读取 lark-cli 配置文件（默认 ~/.lark-cli/config.json）及终端超时配置。
 	GetLarkCliConfig(context.Context, *GetLarkCliConfigRequest) (*GetLarkCliConfigReply, error)
+	// GetLlmTokenStats LLM Token 使用统计
+	GetLlmTokenStats(context.Context, *GetLlmTokenStatsRequest) (*GetLlmTokenStatsReply, error)
 	GetManagedAgent(context.Context, *GetManagedAgentRequest) (*GetManagedAgentReply, error)
 	GetWorkspace(context.Context, *GetWorkspaceRequest) (*GetWorkspaceReply, error)
 	ListLlmConfigs(context.Context, *ListLlmConfigsRequest) (*ListLlmConfigsReply, error)
+	ListLlmTokenUsage(context.Context, *ListLlmTokenUsageRequest) (*ListLlmTokenUsageReply, error)
 	// ListManagedAgents 可编排 Agent 配置管理
 	ListManagedAgents(context.Context, *ListManagedAgentsRequest) (*ListManagedAgentsReply, error)
 	ListMcpConfigs(context.Context, *ListMcpConfigsRequest) (*ListMcpConfigsReply, error)
@@ -118,6 +123,8 @@ func RegisterAdminHTTPServer(s *http.Server, srv AdminHTTPServer) {
 	r.PUT("/api/v1/admin/managed-agents/{id}", _Admin_UpdateManagedAgent0_HTTP_Handler(srv))
 	r.DELETE("/api/v1/admin/managed-agents/{id}", _Admin_DeleteManagedAgent0_HTTP_Handler(srv))
 	r.GET("/api/v1/admin/skill-packages", _Admin_ListSkillPackages0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/llm-token/stats", _Admin_GetLlmTokenStats0_HTTP_Handler(srv))
+	r.GET("/api/v1/admin/llm-token/usage", _Admin_ListLlmTokenUsage0_HTTP_Handler(srv))
 }
 
 func _Admin_ListSkills0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
@@ -758,6 +765,44 @@ func _Admin_ListSkillPackages0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.C
 	}
 }
 
+func _Admin_GetLlmTokenStats0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in GetLlmTokenStatsRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminGetLlmTokenStats)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.GetLlmTokenStats(ctx, req.(*GetLlmTokenStatsRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*GetLlmTokenStatsReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _Admin_ListLlmTokenUsage0_HTTP_Handler(srv AdminHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListLlmTokenUsageRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationAdminListLlmTokenUsage)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListLlmTokenUsage(ctx, req.(*ListLlmTokenUsageRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListLlmTokenUsageReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type AdminHTTPClient interface {
 	CreateLlmConfig(ctx context.Context, req *CreateLlmConfigRequest, opts ...http.CallOption) (rsp *LlmConfigItem, err error)
 	CreateLlmModelEntry(ctx context.Context, req *CreateLlmModelEntryRequest, opts ...http.CallOption) (rsp *LlmModelEntryItem, err error)
@@ -771,9 +816,12 @@ type AdminHTTPClient interface {
 	DeleteWorkspace(ctx context.Context, req *DeleteWorkspaceRequest, opts ...http.CallOption) (rsp *DeleteWorkspaceReply, err error)
 	// GetLarkCliConfig GetLarkCliConfig 读取 lark-cli 配置文件（默认 ~/.lark-cli/config.json）及终端超时配置。
 	GetLarkCliConfig(ctx context.Context, req *GetLarkCliConfigRequest, opts ...http.CallOption) (rsp *GetLarkCliConfigReply, err error)
+	// GetLlmTokenStats LLM Token 使用统计
+	GetLlmTokenStats(ctx context.Context, req *GetLlmTokenStatsRequest, opts ...http.CallOption) (rsp *GetLlmTokenStatsReply, err error)
 	GetManagedAgent(ctx context.Context, req *GetManagedAgentRequest, opts ...http.CallOption) (rsp *GetManagedAgentReply, err error)
 	GetWorkspace(ctx context.Context, req *GetWorkspaceRequest, opts ...http.CallOption) (rsp *GetWorkspaceReply, err error)
 	ListLlmConfigs(ctx context.Context, req *ListLlmConfigsRequest, opts ...http.CallOption) (rsp *ListLlmConfigsReply, err error)
+	ListLlmTokenUsage(ctx context.Context, req *ListLlmTokenUsageRequest, opts ...http.CallOption) (rsp *ListLlmTokenUsageReply, err error)
 	// ListManagedAgents 可编排 Agent 配置管理
 	ListManagedAgents(ctx context.Context, req *ListManagedAgentsRequest, opts ...http.CallOption) (rsp *ListManagedAgentsReply, err error)
 	ListMcpConfigs(ctx context.Context, req *ListMcpConfigsRequest, opts ...http.CallOption) (rsp *ListMcpConfigsReply, err error)
@@ -948,6 +996,20 @@ func (c *AdminHTTPClientImpl) GetLarkCliConfig(ctx context.Context, in *GetLarkC
 	return &out, nil
 }
 
+// GetLlmTokenStats LLM Token 使用统计
+func (c *AdminHTTPClientImpl) GetLlmTokenStats(ctx context.Context, in *GetLlmTokenStatsRequest, opts ...http.CallOption) (*GetLlmTokenStatsReply, error) {
+	var out GetLlmTokenStatsReply
+	pattern := "/api/v1/admin/llm-token/stats"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminGetLlmTokenStats))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *AdminHTTPClientImpl) GetManagedAgent(ctx context.Context, in *GetManagedAgentRequest, opts ...http.CallOption) (*GetManagedAgentReply, error) {
 	var out GetManagedAgentReply
 	pattern := "/api/v1/admin/managed-agents/{id}"
@@ -979,6 +1041,19 @@ func (c *AdminHTTPClientImpl) ListLlmConfigs(ctx context.Context, in *ListLlmCon
 	pattern := "/api/v1/admin/llm-configs"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationAdminListLlmConfigs))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *AdminHTTPClientImpl) ListLlmTokenUsage(ctx context.Context, in *ListLlmTokenUsageRequest, opts ...http.CallOption) (*ListLlmTokenUsageReply, error) {
+	var out ListLlmTokenUsageReply
+	pattern := "/api/v1/admin/llm-token/usage"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationAdminListLlmTokenUsage))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {

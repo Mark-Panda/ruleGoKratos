@@ -201,6 +201,19 @@ service Admin {
       get: "/api/v1/admin/skill-packages"
     };
   }
+
+  // LLM Token 使用统计
+  rpc GetLlmTokenStats (GetLlmTokenStatsRequest) returns (GetLlmTokenStatsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/llm-token/stats"
+    };
+  }
+
+  rpc ListLlmTokenUsage (ListLlmTokenUsageRequest) returns (ListLlmTokenUsageReply) {
+    option (google.api.http) = {
+      get: "/api/v1/admin/llm-token/usage"
+    };
+  }
 }
 
 message ListSkillsRequest {}
@@ -565,3 +578,60 @@ message DeleteLlmModelEntryRequest {
 }
 
 message DeleteLlmModelEntryReply {}
+
+// LLM Token 统计
+message GetLlmTokenStatsRequest {
+  int64 config_id = 1 [json_name = "configId"];
+  int64 model_entry_id = 2 [json_name = "modelEntryId"];
+  string start_date = 3 [json_name = "startDate"];
+  string end_date = 4 [json_name = "endDate"];
+  string group_by = 5 [json_name = "groupBy"]; // day | model
+}
+
+message TokenStatItem {
+  string period = 1;
+  int64 prompt_tokens = 2 [json_name = "promptTokens"];
+  int64 completion_tokens = 3 [json_name = "completionTokens"];
+  int64 total_tokens = 4 [json_name = "totalTokens"];
+  int64 request_count = 5 [json_name = "requestCount"];
+}
+
+message GetLlmTokenStatsReply {
+  repeated TokenStatItem items = 1;
+  int64 total_prompt_tokens = 2 [json_name = "totalPromptTokens"];
+  int64 total_completion_tokens = 3 [json_name = "totalCompletionTokens"];
+  int64 total_tokens = 4 [json_name = "totalTokens"];
+  int64 total_requests = 5 [json_name = "totalRequests"];
+}
+
+message ListLlmTokenUsageRequest {
+  int64 config_id = 1 [json_name = "configId"];
+  int64 model_entry_id = 2 [json_name = "modelEntryId"];
+  string start_date = 3 [json_name = "startDate"];
+  string end_date = 4 [json_name = "endDate"];
+  int32 page = 5;
+  int32 page_size = 6 [json_name = "pageSize"];
+}
+
+message LlmTokenUsageItem {
+  int64 id = 1;
+  int64 config_id = 2 [json_name = "configId"];
+  int64 model_entry_id = 3 [json_name = "modelEntryId"];
+  string session_id = 4 [json_name = "sessionId"];
+  string request_id = 5 [json_name = "requestId"];
+  int64 prompt_tokens = 6 [json_name = "promptTokens"];
+  int64 completion_tokens = 7 [json_name = "completionTokens"];
+  int64 total_tokens = 8 [json_name = "totalTokens"];
+  string model_name = 9 [json_name = "modelName"];
+  string action_type = 10 [json_name = "actionType"];
+  string user_id = 11 [json_name = "userId"];
+  string project_path = 12 [json_name = "projectPath"];
+  string created_at = 13 [json_name = "createdAt"];
+}
+
+message ListLlmTokenUsageReply {
+  repeated LlmTokenUsageItem items = 1;
+  int64 total = 2;
+}
+
+// 远程技能库 (clawhubcn.com)

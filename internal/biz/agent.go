@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"ruleGoKratos/internal/conf"
+	"ruleGoKratos/internal/data/dao"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,8 +52,15 @@ MCP registration (this deployment): MCP entries live in the admin «MCP 配置»
 )
 
 type StreamMessage struct {
-	Content string
-	Done    bool
+	Content   string
+	Done      bool
+	Usage     *TokenUsage
+}
+
+type TokenUsage struct {
+	PromptTokens     int64
+	CompletionTokens int64
+	TotalTokens     int64
 }
 
 type StreamGenerator func(yield func(*StreamMessage, error) bool)
@@ -851,7 +859,31 @@ func (uc *AgentUsecase) executeHarness(req HarnessRequest, ctx context.Context) 
 			if len(resp.ToolCalls) == 0 {
 				uc.harnessLogger.LogHarnessOutput(requestID, assistantAcc.String())
 				uc.persistSessionMemory(workCtx, req, assistantAcc.String())
-				if !yield(&StreamMessage{Done: true}, nil) {
+
+				// 记录 token 使用量
+				var promptTokens, completionTokens, totalTokens int64
+				if resp.ResponseMeta != nil && resp.ResponseMeta.Usage != nil {
+					promptTokens = int64(resp.ResponseMeta.Usage.PromptTokens)
+					completionTokens = int64(resp.ResponseMeta.Usage.CompletionTokens)
+					totalTokens = int64(resp.ResponseMeta.Usage.TotalTokens)
+				}
+				if totalTokens == 0 {
+					var metaInfo string
+					if resp.ResponseMeta != nil && resp.ResponseMeta.Usage != nil {
+						metaInfo = fmt.Sprintf("Usage prompt=%d completion=%d total=%d",
+							resp.ResponseMeta.Usage.PromptTokens,
+							resp.ResponseMeta.Usage.CompletionTokens,
+							resp.ResponseMeta.Usage.TotalTokens)
+					}
+					uc.log.Warnf("token usage is 0, ResponseMeta=%v, %s", resp.ResponseMeta, metaInfo)
+				}
+				uc.recordTokenUsage(req, logModel, promptTokens, completionTokens, totalTokens, requestID)
+
+				if !yield(&StreamMessage{Done: true, Usage: &TokenUsage{
+					PromptTokens:     promptTokens,
+					CompletionTokens: completionTokens,
+					TotalTokens:      totalTokens,
+				}}, nil) {
 					return
 				}
 				return
@@ -1564,4 +1596,32 @@ func buildGitWorktreeModeConstraintPrompt() string {
 		"2. 需要对仓库进行修改时，必须先通过 `git worktree add <路径> <分支或新分支名>` 创建独立的 worktree，在该 worktree 目录中完成所有开发、测试与提交；\n" +
 		"3. 完成工作后，可通过 `git worktree remove <路径>` 清理 worktree；\n" +
 		"4. 严禁绕过此约束直接切换或修改主仓库的 HEAD、index 或工作区文件。"
+}
+
+// recordTokenUsage 记录 LLM token 使用量
+func (uc *AgentUsecase) recordTokenUsage(req HarnessRequest, modelName string, promptTokens, completionTokens, totalTokens int64, requestID string) {
+	if totalTokens == 0 {
+		uc.log.Debugf("skip recording token usage: totalTokens=0, model=%s, requestID=%s", modelName, requestID)
+		return
+	}
+
+	usage := &dao.LLMTokenUsage{
+		ConfigID:     req.LlmConfigID,
+		ModelEntryID: req.LlmModelEntryID,
+		RequestID:    requestID,
+		PromptTokens: promptTokens,
+		CompletionTokens: completionTokens,
+		TotalTokens: totalTokens,
+		ModelName: modelName,
+		ActionType: "chat",
+		UserID: req.UserID,
+		ProjectPath: req.ProjectPath,
+	}
+
+	uc.log.Infof("recording token usage: configID=%d, modelEntryID=%d, model=%s, prompt=%d, completion=%d, total=%d, requestID=%s",
+		req.LlmConfigID, req.LlmModelEntryID, modelName, promptTokens, completionTokens, totalTokens, requestID)
+
+	if err := usage.Create(context.Background()); err != nil {
+		uc.log.Warnf("record token usage failed: %v", err)
+	}
 }
