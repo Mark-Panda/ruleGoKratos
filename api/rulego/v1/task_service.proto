@@ -39,6 +39,9 @@ message TaskBoard {
     google.protobuf.Timestamp deleted_at = 8;  // 任务删除时间
     string handler_user_id = 9;       // 处理用户ID
     string description = 10;          // 任务描述
+    string rule_chain_id = 11;        // 关联的规则链ID
+    int64 parent_id = 12;             // 父任务ID
+    string last_run_id = 13;          // 最近一次规则链执行的记录ID
 }
 
 // 服务状态枚举
@@ -129,6 +132,47 @@ service TaskBoardService {
             description: "软删除指定任务"
         };
     }
+
+    // 执行任务关联的规则链
+    rpc ExecuteTaskRuleChain(ExecuteTaskRuleChainReq) returns (ExecuteTaskRuleChainReply) {
+        option (google.api.http) = {
+            post: "/api/v1/tasks/{id}/execute"
+            body: "*"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "ExecuteTaskRuleChain"
+            tags: "TaskBoard"
+            summary: "执行任务关联的规则链"
+            description: "当任务处于待处理状态且已关联规则链时，触发异步执行，成功后自动更新状态为处理中"
+        };
+    }
+
+    // 创建子任务
+    rpc CreateChildTask(CreateChildTaskReq) returns (CreateChildTaskReply) {
+        option (google.api.http) = {
+            post: "/api/v1/tasks/{parent_id}/children"
+            body: "*"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "CreateChildTask"
+            tags: "TaskBoard"
+            summary: "创建子任务"
+            description: "从已完成或处理失败的任务创建子任务，继承父任务内容并建立关联"
+        };
+    }
+
+    // 查询子任务列表
+    rpc ListChildTasks(ListChildTasksReq) returns (ListChildTasksReply) {
+        option (google.api.http) = {
+            get: "/api/v1/tasks/{parent_id}/children"
+        };
+        option (openapi.v3.operation) = {
+            operation_id: "ListChildTasks"
+            tags: "TaskBoard"
+            summary: "查询子任务列表"
+            description: "查询指定任务的子任务列表"
+        };
+    }
 }
 
 // 服务管理服务
@@ -208,6 +252,7 @@ message CreateTaskReq {
     TaskType type = 3 [(validate.rules).enum.defined_only = true]; // 任务类型
     string handler_user_id = 4; // 处理用户ID
     string description = 5;     // 任务描述
+    string rule_chain_id = 6;   // 关联的规则链ID（可选）
 }
 
 // 创建任务响应
@@ -248,6 +293,8 @@ message UpdateTaskReq {
     TaskStatus status = 4 [(validate.rules).enum.defined_only = true]; // 任务状态
     string handler_user_id = 5;   // 处理用户ID
     string description = 6;       // 任务描述
+    string rule_chain_id = 7;     // 关联的规则链ID（仅待处理状态可修改，非空时设置关联）
+    bool clear_rule_chain_id = 8; // 是否清除规则链关联（仅待处理状态可修改，优先于rule_chain_id）
 }
 
 // 更新任务响应
@@ -263,6 +310,41 @@ message DeleteTaskReq {
 // 删除任务响应
 message DeleteTaskReply {
     bool success = 1; // 是否删除成功
+}
+
+// 执行任务规则链请求
+message ExecuteTaskRuleChainReq {
+    int64 id = 1 [(validate.rules).int64.gt = 0]; // 任务ID，必填
+}
+
+// 执行任务规则链响应
+message ExecuteTaskRuleChainReply {
+    bool success = 1;  // 是否成功触发
+    string message = 2; // 提示信息
+}
+
+// 创建子任务请求
+message CreateChildTaskReq {
+    int64 parent_id = 1 [(validate.rules).int64.gt = 0, json_name = "parent_id"]; // 父任务ID，必填
+    string name_suffix = 2; // 子任务名称后缀，默认"-子任务"
+}
+
+// 创建子任务响应
+message CreateChildTaskReply {
+    TaskBoard task = 1; // 新建的子任务信息
+}
+
+// 查询子任务列表请求
+message ListChildTasksReq {
+    int64 parent_id = 1 [(validate.rules).int64.gt = 0, json_name = "parent_id"]; // 父任务ID，必填
+    int32 page = 2;        // 页码，默认1
+    int32 page_size = 3;   // 每页数量，默认10
+}
+
+// 查询子任务列表响应
+message ListChildTasksReply {
+    repeated TaskBoard tasks = 1; // 子任务列表
+    int64 total = 2;              // 总数量
 }
 
 // 创建服务请求

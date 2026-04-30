@@ -19,19 +19,28 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationTaskBoardServiceCreateChildTask = "/rulego.v1.TaskBoardService/CreateChildTask"
 const OperationTaskBoardServiceCreateTask = "/rulego.v1.TaskBoardService/CreateTask"
 const OperationTaskBoardServiceDeleteTask = "/rulego.v1.TaskBoardService/DeleteTask"
+const OperationTaskBoardServiceExecuteTaskRuleChain = "/rulego.v1.TaskBoardService/ExecuteTaskRuleChain"
 const OperationTaskBoardServiceGetTask = "/rulego.v1.TaskBoardService/GetTask"
+const OperationTaskBoardServiceListChildTasks = "/rulego.v1.TaskBoardService/ListChildTasks"
 const OperationTaskBoardServiceListTasks = "/rulego.v1.TaskBoardService/ListTasks"
 const OperationTaskBoardServiceUpdateTask = "/rulego.v1.TaskBoardService/UpdateTask"
 
 type TaskBoardServiceHTTPServer interface {
+	// CreateChildTask 创建子任务
+	CreateChildTask(context.Context, *CreateChildTaskReq) (*CreateChildTaskReply, error)
 	// CreateTask 创建任务
 	CreateTask(context.Context, *CreateTaskReq) (*CreateTaskReply, error)
 	// DeleteTask 删除任务
 	DeleteTask(context.Context, *DeleteTaskReq) (*DeleteTaskReply, error)
+	// ExecuteTaskRuleChain 执行任务关联的规则链
+	ExecuteTaskRuleChain(context.Context, *ExecuteTaskRuleChainReq) (*ExecuteTaskRuleChainReply, error)
 	// GetTask 获取任务详情
 	GetTask(context.Context, *GetTaskReq) (*GetTaskReply, error)
+	// ListChildTasks 查询子任务列表
+	ListChildTasks(context.Context, *ListChildTasksReq) (*ListChildTasksReply, error)
 	// ListTasks 查询任务列表
 	ListTasks(context.Context, *ListTasksReq) (*ListTasksReply, error)
 	// UpdateTask 更新任务
@@ -45,6 +54,9 @@ func RegisterTaskBoardServiceHTTPServer(s *http.Server, srv TaskBoardServiceHTTP
 	r.GET("/api/v1/tasks", _TaskBoardService_ListTasks0_HTTP_Handler(srv))
 	r.PUT("/api/v1/tasks/{id}", _TaskBoardService_UpdateTask0_HTTP_Handler(srv))
 	r.DELETE("/api/v1/tasks/{id}", _TaskBoardService_DeleteTask0_HTTP_Handler(srv))
+	r.POST("/api/v1/tasks/{id}/execute", _TaskBoardService_ExecuteTaskRuleChain0_HTTP_Handler(srv))
+	r.POST("/api/v1/tasks/{parent_id}/children", _TaskBoardService_CreateChildTask0_HTTP_Handler(srv))
+	r.GET("/api/v1/tasks/{parent_id}/children", _TaskBoardService_ListChildTasks0_HTTP_Handler(srv))
 }
 
 func _TaskBoardService_CreateTask0_HTTP_Handler(srv TaskBoardServiceHTTPServer) func(ctx http.Context) error {
@@ -157,13 +169,91 @@ func _TaskBoardService_DeleteTask0_HTTP_Handler(srv TaskBoardServiceHTTPServer) 
 	}
 }
 
+func _TaskBoardService_ExecuteTaskRuleChain0_HTTP_Handler(srv TaskBoardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ExecuteTaskRuleChainReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationTaskBoardServiceExecuteTaskRuleChain)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ExecuteTaskRuleChain(ctx, req.(*ExecuteTaskRuleChainReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ExecuteTaskRuleChainReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _TaskBoardService_CreateChildTask0_HTTP_Handler(srv TaskBoardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in CreateChildTaskReq
+		if err := ctx.Bind(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationTaskBoardServiceCreateChildTask)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.CreateChildTask(ctx, req.(*CreateChildTaskReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*CreateChildTaskReply)
+		return ctx.Result(200, reply)
+	}
+}
+
+func _TaskBoardService_ListChildTasks0_HTTP_Handler(srv TaskBoardServiceHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ListChildTasksReq
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		if err := ctx.BindVars(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationTaskBoardServiceListChildTasks)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ListChildTasks(ctx, req.(*ListChildTasksReq))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ListChildTasksReply)
+		return ctx.Result(200, reply)
+	}
+}
+
 type TaskBoardServiceHTTPClient interface {
+	// CreateChildTask 创建子任务
+	CreateChildTask(ctx context.Context, req *CreateChildTaskReq, opts ...http.CallOption) (rsp *CreateChildTaskReply, err error)
 	// CreateTask 创建任务
 	CreateTask(ctx context.Context, req *CreateTaskReq, opts ...http.CallOption) (rsp *CreateTaskReply, err error)
 	// DeleteTask 删除任务
 	DeleteTask(ctx context.Context, req *DeleteTaskReq, opts ...http.CallOption) (rsp *DeleteTaskReply, err error)
+	// ExecuteTaskRuleChain 执行任务关联的规则链
+	ExecuteTaskRuleChain(ctx context.Context, req *ExecuteTaskRuleChainReq, opts ...http.CallOption) (rsp *ExecuteTaskRuleChainReply, err error)
 	// GetTask 获取任务详情
 	GetTask(ctx context.Context, req *GetTaskReq, opts ...http.CallOption) (rsp *GetTaskReply, err error)
+	// ListChildTasks 查询子任务列表
+	ListChildTasks(ctx context.Context, req *ListChildTasksReq, opts ...http.CallOption) (rsp *ListChildTasksReply, err error)
 	// ListTasks 查询任务列表
 	ListTasks(ctx context.Context, req *ListTasksReq, opts ...http.CallOption) (rsp *ListTasksReply, err error)
 	// UpdateTask 更新任务
@@ -176,6 +266,20 @@ type TaskBoardServiceHTTPClientImpl struct {
 
 func NewTaskBoardServiceHTTPClient(client *http.Client) TaskBoardServiceHTTPClient {
 	return &TaskBoardServiceHTTPClientImpl{client}
+}
+
+// CreateChildTask 创建子任务
+func (c *TaskBoardServiceHTTPClientImpl) CreateChildTask(ctx context.Context, in *CreateChildTaskReq, opts ...http.CallOption) (*CreateChildTaskReply, error) {
+	var out CreateChildTaskReply
+	pattern := "/api/v1/tasks/{parent_id}/children"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationTaskBoardServiceCreateChildTask))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 // CreateTask 创建任务
@@ -206,12 +310,40 @@ func (c *TaskBoardServiceHTTPClientImpl) DeleteTask(ctx context.Context, in *Del
 	return &out, nil
 }
 
+// ExecuteTaskRuleChain 执行任务关联的规则链
+func (c *TaskBoardServiceHTTPClientImpl) ExecuteTaskRuleChain(ctx context.Context, in *ExecuteTaskRuleChainReq, opts ...http.CallOption) (*ExecuteTaskRuleChainReply, error) {
+	var out ExecuteTaskRuleChainReply
+	pattern := "/api/v1/tasks/{id}/execute"
+	path := binding.EncodeURL(pattern, in, false)
+	opts = append(opts, http.Operation(OperationTaskBoardServiceExecuteTaskRuleChain))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GetTask 获取任务详情
 func (c *TaskBoardServiceHTTPClientImpl) GetTask(ctx context.Context, in *GetTaskReq, opts ...http.CallOption) (*GetTaskReply, error) {
 	var out GetTaskReply
 	pattern := "/api/v1/tasks/{id}"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationTaskBoardServiceGetTask))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListChildTasks 查询子任务列表
+func (c *TaskBoardServiceHTTPClientImpl) ListChildTasks(ctx context.Context, in *ListChildTasksReq, opts ...http.CallOption) (*ListChildTasksReply, error) {
+	var out ListChildTasksReply
+	pattern := "/api/v1/tasks/{parent_id}/children"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationTaskBoardServiceListChildTasks))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
 	if err != nil {

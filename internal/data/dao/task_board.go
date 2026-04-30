@@ -3,6 +3,8 @@ package dao
 import (
 	"context"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type TaskBoard struct {
@@ -16,6 +18,9 @@ type TaskBoard struct {
 	DeletedAt     *time.Time `gorm:"column:deleted_at;index;comment:删除时间"`
 	HandlerUserID string     `gorm:"column:handler_user_id;size:64;comment:处理用户ID"`
 	Description   string     `gorm:"column:description;type:text;comment:任务描述"`
+	RuleChainID   string     `gorm:"column:rule_chain_id;size:64;comment:关联的规则链ID"`
+	ParentID      *int64     `gorm:"column:parent_id;comment:父任务ID"`
+	LastRunID     string     `gorm:"column:last_run_id;size:64;comment:最近一次规则链执行的记录ID"`
 }
 
 func (TaskBoard) TableName() string {
@@ -70,7 +75,31 @@ func (t *TaskBoard) Update(ctx context.Context, id int64, data map[string]interf
 	return db.WithContext(ctx).Model(t).Where("id = ?", id).Updates(data).Error
 }
 
-// Delete 软删除任务
+// Delete 软删除任务，同时清除子任务的父关联（事务保证一致性）
 func (t *TaskBoard) Delete(ctx context.Context, id int64) error {
-	return db.WithContext(ctx).Model(t).Where("id = ?", id).Update("deleted_at", time.Now()).Error
+	now := time.Now()
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(t).Where("id = ?", id).Update("deleted_at", now).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(t).Where("parent_id = ?", id).Update("parent_id", nil).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// ListByParentID 根据父任务ID查询子任务列表
+func (t *TaskBoard) ListByParentID(ctx context.Context, parentID int64, page, pageSize int32) ([]*TaskBoard, int64, error) {
+	var tasks []*TaskBoard
+	var count int64
+	query := db.WithContext(ctx).Model(t).Where("parent_id = ? AND deleted_at IS NULL", parentID)
+	if err := query.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	if err := query.Offset(int(offset)).Limit(int(pageSize)).Order("created_at desc").Find(&tasks).Error; err != nil {
+		return nil, 0, err
+	}
+	return tasks, count, nil
 }

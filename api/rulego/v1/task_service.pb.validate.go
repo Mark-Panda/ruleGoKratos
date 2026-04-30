@@ -158,6 +158,12 @@ func (m *TaskBoard) validate(all bool) error {
 
 	// no validation rules for Description
 
+	// no validation rules for RuleChainId
+
+	// no validation rules for ParentId
+
+	// no validation rules for LastRunId
+
 	if len(errors) > 0 {
 		return TaskBoardMultiError(errors)
 	}
@@ -494,6 +500,8 @@ func (m *CreateTaskReq) validate(all bool) error {
 	// no validation rules for HandlerUserId
 
 	// no validation rules for Description
+
+	// no validation rules for RuleChainId
 
 	if len(errors) > 0 {
 		return CreateTaskReqMultiError(errors)
@@ -1246,6 +1254,10 @@ func (m *UpdateTaskReq) validate(all bool) error {
 
 	// no validation rules for Description
 
+	// no validation rules for RuleChainId
+
+	// no validation rules for ClearRuleChainId
+
 	if len(errors) > 0 {
 		return UpdateTaskReqMultiError(errors)
 	}
@@ -1665,6 +1677,726 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = DeleteTaskReplyValidationError{}
+
+// Validate checks the field values on ExecuteTaskRuleChainReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *ExecuteTaskRuleChainReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ExecuteTaskRuleChainReq with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ExecuteTaskRuleChainReqMultiError, or nil if none found.
+func (m *ExecuteTaskRuleChainReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ExecuteTaskRuleChainReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if m.GetId() <= 0 {
+		err := ExecuteTaskRuleChainReqValidationError{
+			field:  "Id",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		return ExecuteTaskRuleChainReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// ExecuteTaskRuleChainReqMultiError is an error wrapping multiple validation
+// errors returned by ExecuteTaskRuleChainReq.ValidateAll() if the designated
+// constraints aren't met.
+type ExecuteTaskRuleChainReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ExecuteTaskRuleChainReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ExecuteTaskRuleChainReqMultiError) AllErrors() []error { return m }
+
+// ExecuteTaskRuleChainReqValidationError is the validation error returned by
+// ExecuteTaskRuleChainReq.Validate if the designated constraints aren't met.
+type ExecuteTaskRuleChainReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ExecuteTaskRuleChainReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ExecuteTaskRuleChainReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ExecuteTaskRuleChainReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ExecuteTaskRuleChainReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ExecuteTaskRuleChainReqValidationError) ErrorName() string {
+	return "ExecuteTaskRuleChainReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ExecuteTaskRuleChainReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sExecuteTaskRuleChainReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ExecuteTaskRuleChainReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ExecuteTaskRuleChainReqValidationError{}
+
+// Validate checks the field values on ExecuteTaskRuleChainReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *ExecuteTaskRuleChainReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ExecuteTaskRuleChainReply with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ExecuteTaskRuleChainReplyMultiError, or nil if none found.
+func (m *ExecuteTaskRuleChainReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ExecuteTaskRuleChainReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	// no validation rules for Success
+
+	// no validation rules for Message
+
+	if len(errors) > 0 {
+		return ExecuteTaskRuleChainReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// ExecuteTaskRuleChainReplyMultiError is an error wrapping multiple validation
+// errors returned by ExecuteTaskRuleChainReply.ValidateAll() if the
+// designated constraints aren't met.
+type ExecuteTaskRuleChainReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ExecuteTaskRuleChainReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ExecuteTaskRuleChainReplyMultiError) AllErrors() []error { return m }
+
+// ExecuteTaskRuleChainReplyValidationError is the validation error returned by
+// ExecuteTaskRuleChainReply.Validate if the designated constraints aren't met.
+type ExecuteTaskRuleChainReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ExecuteTaskRuleChainReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ExecuteTaskRuleChainReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ExecuteTaskRuleChainReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ExecuteTaskRuleChainReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ExecuteTaskRuleChainReplyValidationError) ErrorName() string {
+	return "ExecuteTaskRuleChainReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ExecuteTaskRuleChainReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sExecuteTaskRuleChainReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ExecuteTaskRuleChainReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ExecuteTaskRuleChainReplyValidationError{}
+
+// Validate checks the field values on CreateChildTaskReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *CreateChildTaskReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on CreateChildTaskReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// CreateChildTaskReqMultiError, or nil if none found.
+func (m *CreateChildTaskReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *CreateChildTaskReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if m.GetParentId() <= 0 {
+		err := CreateChildTaskReqValidationError{
+			field:  "ParentId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	// no validation rules for NameSuffix
+
+	if len(errors) > 0 {
+		return CreateChildTaskReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// CreateChildTaskReqMultiError is an error wrapping multiple validation errors
+// returned by CreateChildTaskReq.ValidateAll() if the designated constraints
+// aren't met.
+type CreateChildTaskReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m CreateChildTaskReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m CreateChildTaskReqMultiError) AllErrors() []error { return m }
+
+// CreateChildTaskReqValidationError is the validation error returned by
+// CreateChildTaskReq.Validate if the designated constraints aren't met.
+type CreateChildTaskReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e CreateChildTaskReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e CreateChildTaskReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e CreateChildTaskReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e CreateChildTaskReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e CreateChildTaskReqValidationError) ErrorName() string {
+	return "CreateChildTaskReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e CreateChildTaskReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sCreateChildTaskReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = CreateChildTaskReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = CreateChildTaskReqValidationError{}
+
+// Validate checks the field values on CreateChildTaskReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *CreateChildTaskReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on CreateChildTaskReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// CreateChildTaskReplyMultiError, or nil if none found.
+func (m *CreateChildTaskReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *CreateChildTaskReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if all {
+		switch v := interface{}(m.GetTask()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, CreateChildTaskReplyValidationError{
+					field:  "Task",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, CreateChildTaskReplyValidationError{
+					field:  "Task",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetTask()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return CreateChildTaskReplyValidationError{
+				field:  "Task",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return CreateChildTaskReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// CreateChildTaskReplyMultiError is an error wrapping multiple validation
+// errors returned by CreateChildTaskReply.ValidateAll() if the designated
+// constraints aren't met.
+type CreateChildTaskReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m CreateChildTaskReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m CreateChildTaskReplyMultiError) AllErrors() []error { return m }
+
+// CreateChildTaskReplyValidationError is the validation error returned by
+// CreateChildTaskReply.Validate if the designated constraints aren't met.
+type CreateChildTaskReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e CreateChildTaskReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e CreateChildTaskReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e CreateChildTaskReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e CreateChildTaskReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e CreateChildTaskReplyValidationError) ErrorName() string {
+	return "CreateChildTaskReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e CreateChildTaskReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sCreateChildTaskReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = CreateChildTaskReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = CreateChildTaskReplyValidationError{}
+
+// Validate checks the field values on ListChildTasksReq with the rules defined
+// in the proto definition for this message. If any rules are violated, the
+// first error encountered is returned, or nil if there are no violations.
+func (m *ListChildTasksReq) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ListChildTasksReq with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ListChildTasksReqMultiError, or nil if none found.
+func (m *ListChildTasksReq) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ListChildTasksReq) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	if m.GetParentId() <= 0 {
+		err := ListChildTasksReqValidationError{
+			field:  "ParentId",
+			reason: "value must be greater than 0",
+		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	// no validation rules for Page
+
+	// no validation rules for PageSize
+
+	if len(errors) > 0 {
+		return ListChildTasksReqMultiError(errors)
+	}
+
+	return nil
+}
+
+// ListChildTasksReqMultiError is an error wrapping multiple validation errors
+// returned by ListChildTasksReq.ValidateAll() if the designated constraints
+// aren't met.
+type ListChildTasksReqMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ListChildTasksReqMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ListChildTasksReqMultiError) AllErrors() []error { return m }
+
+// ListChildTasksReqValidationError is the validation error returned by
+// ListChildTasksReq.Validate if the designated constraints aren't met.
+type ListChildTasksReqValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListChildTasksReqValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListChildTasksReqValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListChildTasksReqValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListChildTasksReqValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListChildTasksReqValidationError) ErrorName() string {
+	return "ListChildTasksReqValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListChildTasksReqValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListChildTasksReq.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListChildTasksReqValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListChildTasksReqValidationError{}
+
+// Validate checks the field values on ListChildTasksReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the first error encountered is returned, or nil if there are no violations.
+func (m *ListChildTasksReply) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ListChildTasksReply with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ListChildTasksReplyMultiError, or nil if none found.
+func (m *ListChildTasksReply) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ListChildTasksReply) validate(all bool) error {
+	if m == nil {
+		return nil
+	}
+
+	var errors []error
+
+	for idx, item := range m.GetTasks() {
+		_, _ = idx, item
+
+		if all {
+			switch v := interface{}(item).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, ListChildTasksReplyValidationError{
+						field:  fmt.Sprintf("Tasks[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, ListChildTasksReplyValidationError{
+						field:  fmt.Sprintf("Tasks[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ListChildTasksReplyValidationError{
+					field:  fmt.Sprintf("Tasks[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	// no validation rules for Total
+
+	if len(errors) > 0 {
+		return ListChildTasksReplyMultiError(errors)
+	}
+
+	return nil
+}
+
+// ListChildTasksReplyMultiError is an error wrapping multiple validation
+// errors returned by ListChildTasksReply.ValidateAll() if the designated
+// constraints aren't met.
+type ListChildTasksReplyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ListChildTasksReplyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ListChildTasksReplyMultiError) AllErrors() []error { return m }
+
+// ListChildTasksReplyValidationError is the validation error returned by
+// ListChildTasksReply.Validate if the designated constraints aren't met.
+type ListChildTasksReplyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListChildTasksReplyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListChildTasksReplyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListChildTasksReplyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListChildTasksReplyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListChildTasksReplyValidationError) ErrorName() string {
+	return "ListChildTasksReplyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListChildTasksReplyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListChildTasksReply.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListChildTasksReplyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListChildTasksReplyValidationError{}
 
 // Validate checks the field values on CreateServiceReq with the rules defined
 // in the proto definition for this message. If any rules are violated, the

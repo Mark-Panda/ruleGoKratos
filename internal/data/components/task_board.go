@@ -32,6 +32,9 @@ type TaskBoardComponent struct {
 	taskTypeTpl      el.Template
 	taskIDTpl        el.Template
 	statusTpl        el.Template
+	ruleChainIDTpl   el.Template
+	parentIDTpl      el.Template
+	clearRuleChainIDTpl el.Template
 	hasVar           bool
 }
 
@@ -52,6 +55,12 @@ type TaskBoardConfiguration struct {
 	TaskID int64 `json:"taskId"`
 	// 状态（用于update）
 	Status int `json:"status"`
+	// 关联的规则链ID
+	RuleChainID string `json:"ruleChainId"`
+	// 父任务ID
+	ParentID int64 `json:"parentId"`
+	// 清除规则链关联
+	ClearRuleChainID bool `json:"clearRuleChainId"`
 	// 替换数据
 	ReplaceData bool `json:"replaceData"`
 }
@@ -87,6 +96,9 @@ func (c *TaskBoardComponent) Init(_ types.Config, configuration types.Configurat
 		&c.taskTypeTpl:      strconv.Itoa(c.Config.TaskType),
 		&c.taskIDTpl:        strconv.FormatInt(c.Config.TaskID, 10),
 		&c.statusTpl:        strconv.Itoa(c.Config.Status),
+		&c.ruleChainIDTpl:   c.Config.RuleChainID,
+		&c.parentIDTpl:      strconv.FormatInt(c.Config.ParentID, 10),
+		&c.clearRuleChainIDTpl: strconv.FormatBool(c.Config.ClearRuleChainID),
 	}
 
 	for tpl, s := range tpls {
@@ -166,24 +178,31 @@ func (c *TaskBoardComponent) doCreate(ctx types.RuleContext, evn map[string]inte
 
 	handlerUserID := strings.TrimSpace(c.handlerUserIDTpl.ExecuteAsString(evn))
 	description := strings.TrimSpace(c.descriptionTpl.ExecuteAsString(evn))
+	ruleChainID := strings.TrimSpace(c.ruleChainIDTpl.ExecuteAsString(evn))
 
-	task, err := usecase.CreateTask(context.Background(), name, priority, taskType, handlerUserID, description)
+	task, err := usecase.CreateTask(context.Background(), name, priority, taskType, handlerUserID, description, ruleChainID)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"success": true,
 		"task": map[string]interface{}{
-			"id":          task.ID,
-			"name":        task.Name,
-			"priority":    task.Priority,
-			"status":      task.Status,
-			"type":        task.Type,
-			"description": task.Description,
-			"created_at":  task.CreatedAt.Format("2006-01-02 15:04:05"),
+			"id":            task.ID,
+			"name":          task.Name,
+			"priority":      task.Priority,
+			"status":        task.Status,
+			"type":          task.Type,
+			"description":   task.Description,
+			"rule_chain_id": task.RuleChainID,
+			"last_run_id":   task.LastRunID,
+			"created_at":    task.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
-	}, nil
+	}
+	if task.ParentID != nil {
+		result["task"].(map[string]interface{})["parent_id"] = *task.ParentID
+	}
+	return result, nil
 }
 
 func (c *TaskBoardComponent) doGet(ctx types.RuleContext, evn map[string]interface{}, usecase *biz.TaskBoardUsecase) (interface{}, error) {
@@ -205,19 +224,25 @@ func (c *TaskBoardComponent) doGet(ctx types.RuleContext, evn map[string]interfa
 		return map[string]interface{}{"success": false, "error": "任务不存在"}, nil
 	}
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"success": true,
 		"task": map[string]interface{}{
-			"id":          task.ID,
-			"name":        task.Name,
-			"priority":    task.Priority,
-			"status":      task.Status,
-			"type":        task.Type,
-			"description": task.Description,
-			"created_at":  task.CreatedAt.Format("2006-01-02 15:04:05"),
-			"updated_at":  task.UpdatedAt.Format("2006-01-02 15:04:05"),
+			"id":            task.ID,
+			"name":          task.Name,
+			"priority":      task.Priority,
+			"status":        task.Status,
+			"type":          task.Type,
+			"description":   task.Description,
+			"rule_chain_id": task.RuleChainID,
+			"last_run_id":   task.LastRunID,
+			"created_at":    task.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updated_at":    task.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
-	}, nil
+	}
+	if task.ParentID != nil {
+		result["task"].(map[string]interface{})["parent_id"] = *task.ParentID
+	}
+	return result, nil
 }
 
 func (c *TaskBoardComponent) doUpdate(ctx types.RuleContext, evn map[string]interface{}, usecase *biz.TaskBoardUsecase) (interface{}, error) {
@@ -262,7 +287,16 @@ func (c *TaskBoardComponent) doUpdate(ctx types.RuleContext, evn map[string]inte
 		description = &desc
 	}
 
-	task, err := usecase.UpdateTask(context.Background(), taskID, name, priority, status, handlerUserID, description)
+	var ruleChainID *string
+	rc := strings.TrimSpace(c.ruleChainIDTpl.ExecuteAsString(evn))
+	if rc != "" {
+		ruleChainID = &rc
+	} else if strings.TrimSpace(c.clearRuleChainIDTpl.ExecuteAsString(evn)) == "true" {
+		empty := ""
+		ruleChainID = &empty
+	}
+
+	task, err := usecase.UpdateTask(context.Background(), taskID, name, priority, status, handlerUserID, description, ruleChainID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -270,13 +304,15 @@ func (c *TaskBoardComponent) doUpdate(ctx types.RuleContext, evn map[string]inte
 	return map[string]interface{}{
 		"success": true,
 		"task": map[string]interface{}{
-			"id":          task.ID,
-			"name":        task.Name,
-			"priority":    task.Priority,
-			"status":      task.Status,
-			"type":        task.Type,
-			"description": task.Description,
-			"updated_at":  task.UpdatedAt.Format("2006-01-02 15:04:05"),
+			"id":            task.ID,
+			"name":          task.Name,
+			"priority":      task.Priority,
+			"status":        task.Status,
+			"type":          task.Type,
+			"description":   task.Description,
+			"rule_chain_id": task.RuleChainID,
+			"last_run_id":   task.LastRunID,
+			"updated_at":    task.UpdatedAt.Format("2006-01-02 15:04:05"),
 		},
 	}, nil
 }

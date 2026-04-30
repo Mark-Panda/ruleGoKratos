@@ -39,7 +39,7 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger) (*kratos.App, func(),
 	config := data.NewRuleConfig()
 	agentUsecase := biz.NewAgentUsecase(logger, bootstrap)
 	taskBoardRepo := data.NewTaskBoardRepo(dataData, logger)
-	taskBoardUsecase := biz.NewTaskBoardUsecase(taskBoardRepo)
+	taskBoardUsecase := biz.NewTaskBoardUsecase(taskBoardRepo, runLogRepo, logger)
 	serviceManagementRepo := data.NewServiceManagementRepo(dataData, logger)
 	serviceManagementUsecase := biz.NewServiceManagementUsecase(serviceManagementRepo)
 	ruleGo, err := data.NewRuleEngine(confData, config, agentUsecase, taskBoardUsecase, serviceManagementUsecase)

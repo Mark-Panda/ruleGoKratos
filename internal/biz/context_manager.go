@@ -65,6 +65,11 @@ func (cm *ContextManager) SetChatModel(m interface{}) {
 	cm.chatModel = m
 }
 
+// GetMemoryStore 获取记忆存储实例
+func (cm *ContextManager) GetMemoryStore() MemoryStore {
+	return cm.memoryStore
+}
+
 // BuildMessages 构建最终的消息列表
 // 应用滑动窗口、摘要、记忆注入策略
 func (cm *ContextManager) BuildMessages(

@@ -36,7 +36,7 @@ func NewTaskBoardService(taskUsecase *biz.TaskBoardUsecase, serviceUsecase *biz.
 
 // CreateTask 创建任务
 func (s *TaskBoardService) CreateTask(ctx context.Context, req *v1.CreateTaskReq) (*v1.CreateTaskReply, error) {
-	task, err := s.taskUsecase.CreateTask(ctx, req.Name, req.Priority, int32(req.Type), req.HandlerUserId, req.Description)
+	task, err := s.taskUsecase.CreateTask(ctx, req.Name, req.Priority, int32(req.Type), req.HandlerUserId, req.Description, req.RuleChainId)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +83,7 @@ func (s *TaskBoardService) UpdateTask(ctx context.Context, req *v1.UpdateTaskReq
 		status        *int32
 		handlerUserID *string
 		description   *string
+		ruleChainID   *string
 	)
 	if req.Name != "" {
 		name = &req.Name
@@ -100,7 +101,13 @@ func (s *TaskBoardService) UpdateTask(ctx context.Context, req *v1.UpdateTaskReq
 	if req.Description != "" {
 		description = &req.Description
 	}
-	task, err := s.taskUsecase.UpdateTask(ctx, req.Id, name, priority, status, handlerUserID, description)
+	if req.ClearRuleChainId {
+		empty := ""
+		ruleChainID = &empty
+	} else if req.RuleChainId != "" {
+		ruleChainID = &req.RuleChainId
+	}
+	task, err := s.taskUsecase.UpdateTask(ctx, req.Id, name, priority, status, handlerUserID, description, ruleChainID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,11 +126,48 @@ func (s *TaskBoardService) DeleteTask(ctx context.Context, req *v1.DeleteTaskReq
 	}, nil
 }
 
+// ExecuteTaskRuleChain 执行任务关联的规则链
+func (s *TaskBoardService) ExecuteTaskRuleChain(ctx context.Context, req *v1.ExecuteTaskRuleChainReq) (*v1.ExecuteTaskRuleChainReply, error) {
+	if err := s.taskUsecase.ExecuteTaskRuleChain(ctx, req.Id); err != nil {
+		return nil, err
+	}
+	return &v1.ExecuteTaskRuleChainReply{
+		Success: true,
+		Message: "规则链执行已触发",
+	}, nil
+}
+
+// CreateChildTask 创建子任务
+func (s *TaskBoardService) CreateChildTask(ctx context.Context, req *v1.CreateChildTaskReq) (*v1.CreateChildTaskReply, error) {
+	task, err := s.taskUsecase.CreateChildTask(ctx, req.ParentId, req.NameSuffix)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.CreateChildTaskReply{
+		Task: convertTaskToPB(task),
+	}, nil
+}
+
+// ListChildTasks 查询子任务列表
+func (s *TaskBoardService) ListChildTasks(ctx context.Context, req *v1.ListChildTasksReq) (*v1.ListChildTasksReply, error) {
+	tasks, total, err := s.taskUsecase.ListChildTasks(ctx, req.ParentId, req.Page, req.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	pbTasks := make([]*v1.TaskBoard, len(tasks))
+	for i, task := range tasks {
+		pbTasks[i] = convertTaskToPB(task)
+	}
+	return &v1.ListChildTasksReply{
+		Tasks: pbTasks,
+		Total: total,
+	}, nil
+}
+
 // ------------------------------ 服务管理接口 ------------------------------
 
 // CreateService 创建服务
 func (s *TaskBoardService) CreateService(ctx context.Context, req *v1.CreateServiceReq) (*v1.CreateServiceReply, error) {
-	// 创建接口兼容按名称保存语义：同名即更新，不存在则新建。
 	service, err := s.serviceUsecase.SaveServiceByName(ctx, req.Name, int32(req.Status), req.VolcLogServiceId, req.GitRepoUrl, req.Description)
 	if err != nil {
 		return nil, err
@@ -224,9 +268,14 @@ func convertTaskToPB(task *entity.TaskBoard) *v1.TaskBoard {
 		UpdatedAt:     timestamppb.New(task.UpdatedAt),
 		HandlerUserId: task.HandlerUserID,
 		Description:   task.Description,
+		RuleChainId:   task.RuleChainID,
+		LastRunId:     task.LastRunID,
 	}
 	if task.DeletedAt != nil {
 		pbTask.DeletedAt = timestamppb.New(*task.DeletedAt)
+	}
+	if task.ParentID != nil {
+		pbTask.ParentId = *task.ParentID
 	}
 	return pbTask
 }

@@ -72,7 +72,14 @@ func (r *taskBoardRepo) Update(ctx context.Context, task *entity.TaskBoard) erro
 		"status":          task.Status,
 		"handler_user_id": task.HandlerUserID,
 		"description":     task.Description,
+		"rule_chain_id":   task.RuleChainID,
+		"last_run_id":     task.LastRunID,
 		"updated_at":      task.UpdatedAt,
+	}
+	if task.ParentID != nil {
+		data["parent_id"] = *task.ParentID
+	} else {
+		data["parent_id"] = nil
 	}
 	t := dao.NewTaskBoard()
 	return t.Update(ctx, task.ID, data)
@@ -82,4 +89,19 @@ func (r *taskBoardRepo) Update(ctx context.Context, task *entity.TaskBoard) erro
 func (r *taskBoardRepo) Delete(ctx context.Context, id int64) error {
 	t := dao.NewTaskBoard()
 	return t.Delete(ctx, id)
+}
+
+// ListByParentID 根据父任务ID查询子任务列表
+func (r *taskBoardRepo) ListByParentID(ctx context.Context, parentID int64, page, pageSize int32) ([]*entity.TaskBoard, int64, error) {
+	t := dao.NewTaskBoard()
+	tasks, count, err := t.ListByParentID(ctx, parentID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	res := make([]*entity.TaskBoard, len(tasks))
+	for i, item := range tasks {
+		res[i] = &entity.TaskBoard{}
+		_ = copier.Copy(res[i], item)
+	}
+	return res, count, nil
 }

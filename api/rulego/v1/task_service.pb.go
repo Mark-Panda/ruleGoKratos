@@ -200,6 +200,9 @@ type TaskBoard struct {
 	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`               // 任务删除时间
 	HandlerUserId string                 `protobuf:"bytes,9,opt,name=handler_user_id,json=handlerUserId,proto3" json:"handler_user_id,omitempty"` // 处理用户ID
 	Description   string                 `protobuf:"bytes,10,opt,name=description,proto3" json:"description,omitempty"`                           // 任务描述
+	RuleChainId   string                 `protobuf:"bytes,11,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`      // 关联的规则链ID
+	ParentId      int64                  `protobuf:"varint,12,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`                // 父任务ID
+	LastRunId     string                 `protobuf:"bytes,13,opt,name=last_run_id,json=lastRunId,proto3" json:"last_run_id,omitempty"`            // 最近一次规则链执行的记录ID
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -300,6 +303,27 @@ func (x *TaskBoard) GetHandlerUserId() string {
 func (x *TaskBoard) GetDescription() string {
 	if x != nil {
 		return x.Description
+	}
+	return ""
+}
+
+func (x *TaskBoard) GetRuleChainId() string {
+	if x != nil {
+		return x.RuleChainId
+	}
+	return ""
+}
+
+func (x *TaskBoard) GetParentId() int64 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *TaskBoard) GetLastRunId() string {
+	if x != nil {
+		return x.LastRunId
 	}
 	return ""
 }
@@ -421,6 +445,7 @@ type CreateTaskReq struct {
 	Type          TaskType               `protobuf:"varint,3,opt,name=type,proto3,enum=rulego.v1.TaskType" json:"type,omitempty"`                 // 任务类型
 	HandlerUserId string                 `protobuf:"bytes,4,opt,name=handler_user_id,json=handlerUserId,proto3" json:"handler_user_id,omitempty"` // 处理用户ID
 	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`                            // 任务描述
+	RuleChainId   string                 `protobuf:"bytes,6,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`       // 关联的规则链ID（可选）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -486,6 +511,13 @@ func (x *CreateTaskReq) GetHandlerUserId() string {
 func (x *CreateTaskReq) GetDescription() string {
 	if x != nil {
 		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateTaskReq) GetRuleChainId() string {
+	if x != nil {
+		return x.RuleChainId
 	}
 	return ""
 }
@@ -757,15 +789,17 @@ func (x *ListTasksReply) GetTotal() int64 {
 
 // 更新任务请求
 type UpdateTaskReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`                                             // 任务ID，必填
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                          // 任务名称
-	Priority      int32                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`                                 // 优先级
-	Status        TaskStatus             `protobuf:"varint,4,opt,name=status,proto3,enum=rulego.v1.TaskStatus" json:"status,omitempty"`           // 任务状态
-	HandlerUserId string                 `protobuf:"bytes,5,opt,name=handler_user_id,json=handlerUserId,proto3" json:"handler_user_id,omitempty"` // 处理用户ID
-	Description   string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`                            // 任务描述
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`                                                         // 任务ID，必填
+	Name             string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                                      // 任务名称
+	Priority         int32                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`                                             // 优先级
+	Status           TaskStatus             `protobuf:"varint,4,opt,name=status,proto3,enum=rulego.v1.TaskStatus" json:"status,omitempty"`                       // 任务状态
+	HandlerUserId    string                 `protobuf:"bytes,5,opt,name=handler_user_id,json=handlerUserId,proto3" json:"handler_user_id,omitempty"`             // 处理用户ID
+	Description      string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`                                        // 任务描述
+	RuleChainId      string                 `protobuf:"bytes,7,opt,name=rule_chain_id,json=ruleChainId,proto3" json:"rule_chain_id,omitempty"`                   // 关联的规则链ID（仅待处理状态可修改，非空时设置关联）
+	ClearRuleChainId bool                   `protobuf:"varint,8,opt,name=clear_rule_chain_id,json=clearRuleChainId,proto3" json:"clear_rule_chain_id,omitempty"` // 是否清除规则链关联（仅待处理状态可修改，优先于rule_chain_id）
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UpdateTaskReq) Reset() {
@@ -838,6 +872,20 @@ func (x *UpdateTaskReq) GetDescription() string {
 		return x.Description
 	}
 	return ""
+}
+
+func (x *UpdateTaskReq) GetRuleChainId() string {
+	if x != nil {
+		return x.RuleChainId
+	}
+	return ""
+}
+
+func (x *UpdateTaskReq) GetClearRuleChainId() bool {
+	if x != nil {
+		return x.ClearRuleChainId
+	}
+	return false
 }
 
 // 更新任务响应
@@ -975,6 +1023,316 @@ func (x *DeleteTaskReply) GetSuccess() bool {
 	return false
 }
 
+// 执行任务规则链请求
+type ExecuteTaskRuleChainReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"` // 任务ID，必填
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecuteTaskRuleChainReq) Reset() {
+	*x = ExecuteTaskRuleChainReq{}
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecuteTaskRuleChainReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecuteTaskRuleChainReq) ProtoMessage() {}
+
+func (x *ExecuteTaskRuleChainReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecuteTaskRuleChainReq.ProtoReflect.Descriptor instead.
+func (*ExecuteTaskRuleChainReq) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ExecuteTaskRuleChainReq) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+// 执行任务规则链响应
+type ExecuteTaskRuleChainReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // 是否成功触发
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`  // 提示信息
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecuteTaskRuleChainReply) Reset() {
+	*x = ExecuteTaskRuleChainReply{}
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecuteTaskRuleChainReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecuteTaskRuleChainReply) ProtoMessage() {}
+
+func (x *ExecuteTaskRuleChainReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecuteTaskRuleChainReply.ProtoReflect.Descriptor instead.
+func (*ExecuteTaskRuleChainReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ExecuteTaskRuleChainReply) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ExecuteTaskRuleChainReply) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// 创建子任务请求
+type CreateChildTaskReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ParentId      int64                  `protobuf:"varint,1,opt,name=parent_id,proto3" json:"parent_id,omitempty"`                    // 父任务ID，必填
+	NameSuffix    string                 `protobuf:"bytes,2,opt,name=name_suffix,json=nameSuffix,proto3" json:"name_suffix,omitempty"` // 子任务名称后缀，默认"-子任务"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateChildTaskReq) Reset() {
+	*x = CreateChildTaskReq{}
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateChildTaskReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateChildTaskReq) ProtoMessage() {}
+
+func (x *CreateChildTaskReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateChildTaskReq.ProtoReflect.Descriptor instead.
+func (*CreateChildTaskReq) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CreateChildTaskReq) GetParentId() int64 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *CreateChildTaskReq) GetNameSuffix() string {
+	if x != nil {
+		return x.NameSuffix
+	}
+	return ""
+}
+
+// 创建子任务响应
+type CreateChildTaskReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Task          *TaskBoard             `protobuf:"bytes,1,opt,name=task,proto3" json:"task,omitempty"` // 新建的子任务信息
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateChildTaskReply) Reset() {
+	*x = CreateChildTaskReply{}
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateChildTaskReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateChildTaskReply) ProtoMessage() {}
+
+func (x *CreateChildTaskReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateChildTaskReply.ProtoReflect.Descriptor instead.
+func (*CreateChildTaskReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CreateChildTaskReply) GetTask() *TaskBoard {
+	if x != nil {
+		return x.Task
+	}
+	return nil
+}
+
+// 查询子任务列表请求
+type ListChildTasksReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ParentId      int64                  `protobuf:"varint,1,opt,name=parent_id,proto3" json:"parent_id,omitempty"`               // 父任务ID，必填
+	Page          int32                  `protobuf:"varint,2,opt,name=page,proto3" json:"page,omitempty"`                         // 页码，默认1
+	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 每页数量，默认10
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChildTasksReq) Reset() {
+	*x = ListChildTasksReq{}
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChildTasksReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChildTasksReq) ProtoMessage() {}
+
+func (x *ListChildTasksReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChildTasksReq.ProtoReflect.Descriptor instead.
+func (*ListChildTasksReq) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListChildTasksReq) GetParentId() int64 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *ListChildTasksReq) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListChildTasksReq) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+// 查询子任务列表响应
+type ListChildTasksReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tasks         []*TaskBoard           `protobuf:"bytes,1,rep,name=tasks,proto3" json:"tasks,omitempty"`  // 子任务列表
+	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"` // 总数量
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChildTasksReply) Reset() {
+	*x = ListChildTasksReply{}
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChildTasksReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChildTasksReply) ProtoMessage() {}
+
+func (x *ListChildTasksReply) ProtoReflect() protoreflect.Message {
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChildTasksReply.ProtoReflect.Descriptor instead.
+func (*ListChildTasksReply) Descriptor() ([]byte, []int) {
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListChildTasksReply) GetTasks() []*TaskBoard {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
+func (x *ListChildTasksReply) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 // 创建服务请求
 type CreateServiceReq struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -989,7 +1347,7 @@ type CreateServiceReq struct {
 
 func (x *CreateServiceReq) Reset() {
 	*x = CreateServiceReq{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[12]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1001,7 +1359,7 @@ func (x *CreateServiceReq) String() string {
 func (*CreateServiceReq) ProtoMessage() {}
 
 func (x *CreateServiceReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[12]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1014,7 +1372,7 @@ func (x *CreateServiceReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateServiceReq.ProtoReflect.Descriptor instead.
 func (*CreateServiceReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{12}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateServiceReq) GetName() string {
@@ -1062,7 +1420,7 @@ type CreateServiceReply struct {
 
 func (x *CreateServiceReply) Reset() {
 	*x = CreateServiceReply{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[13]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1074,7 +1432,7 @@ func (x *CreateServiceReply) String() string {
 func (*CreateServiceReply) ProtoMessage() {}
 
 func (x *CreateServiceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[13]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1087,7 +1445,7 @@ func (x *CreateServiceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateServiceReply.ProtoReflect.Descriptor instead.
 func (*CreateServiceReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{13}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateServiceReply) GetService() *ServiceManagement {
@@ -1107,7 +1465,7 @@ type GetServiceReq struct {
 
 func (x *GetServiceReq) Reset() {
 	*x = GetServiceReq{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[14]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1119,7 +1477,7 @@ func (x *GetServiceReq) String() string {
 func (*GetServiceReq) ProtoMessage() {}
 
 func (x *GetServiceReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[14]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1132,7 +1490,7 @@ func (x *GetServiceReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServiceReq.ProtoReflect.Descriptor instead.
 func (*GetServiceReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{14}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetServiceReq) GetId() int64 {
@@ -1152,7 +1510,7 @@ type GetServiceReply struct {
 
 func (x *GetServiceReply) Reset() {
 	*x = GetServiceReply{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[15]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1164,7 +1522,7 @@ func (x *GetServiceReply) String() string {
 func (*GetServiceReply) ProtoMessage() {}
 
 func (x *GetServiceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[15]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1177,7 +1535,7 @@ func (x *GetServiceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetServiceReply.ProtoReflect.Descriptor instead.
 func (*GetServiceReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{15}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetServiceReply) GetService() *ServiceManagement {
@@ -1199,7 +1557,7 @@ type ListServicesReq struct {
 
 func (x *ListServicesReq) Reset() {
 	*x = ListServicesReq{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[16]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1211,7 +1569,7 @@ func (x *ListServicesReq) String() string {
 func (*ListServicesReq) ProtoMessage() {}
 
 func (x *ListServicesReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[16]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1224,7 +1582,7 @@ func (x *ListServicesReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServicesReq.ProtoReflect.Descriptor instead.
 func (*ListServicesReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{16}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListServicesReq) GetStatus() ServiceStatus {
@@ -1259,7 +1617,7 @@ type ListServicesReply struct {
 
 func (x *ListServicesReply) Reset() {
 	*x = ListServicesReply{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[17]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1271,7 +1629,7 @@ func (x *ListServicesReply) String() string {
 func (*ListServicesReply) ProtoMessage() {}
 
 func (x *ListServicesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[17]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1284,7 +1642,7 @@ func (x *ListServicesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServicesReply.ProtoReflect.Descriptor instead.
 func (*ListServicesReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{17}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListServicesReply) GetServices() []*ServiceManagement {
@@ -1316,7 +1674,7 @@ type UpdateServiceReq struct {
 
 func (x *UpdateServiceReq) Reset() {
 	*x = UpdateServiceReq{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[18]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1328,7 +1686,7 @@ func (x *UpdateServiceReq) String() string {
 func (*UpdateServiceReq) ProtoMessage() {}
 
 func (x *UpdateServiceReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[18]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1341,7 +1699,7 @@ func (x *UpdateServiceReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServiceReq.ProtoReflect.Descriptor instead.
 func (*UpdateServiceReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{18}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *UpdateServiceReq) GetId() int64 {
@@ -1396,7 +1754,7 @@ type UpdateServiceReply struct {
 
 func (x *UpdateServiceReply) Reset() {
 	*x = UpdateServiceReply{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[19]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1408,7 +1766,7 @@ func (x *UpdateServiceReply) String() string {
 func (*UpdateServiceReply) ProtoMessage() {}
 
 func (x *UpdateServiceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[19]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1421,7 +1779,7 @@ func (x *UpdateServiceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServiceReply.ProtoReflect.Descriptor instead.
 func (*UpdateServiceReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{19}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *UpdateServiceReply) GetService() *ServiceManagement {
@@ -1441,7 +1799,7 @@ type DeleteServiceReq struct {
 
 func (x *DeleteServiceReq) Reset() {
 	*x = DeleteServiceReq{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[20]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1453,7 +1811,7 @@ func (x *DeleteServiceReq) String() string {
 func (*DeleteServiceReq) ProtoMessage() {}
 
 func (x *DeleteServiceReq) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[20]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1466,7 +1824,7 @@ func (x *DeleteServiceReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteServiceReq.ProtoReflect.Descriptor instead.
 func (*DeleteServiceReq) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{20}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeleteServiceReq) GetId() int64 {
@@ -1486,7 +1844,7 @@ type DeleteServiceReply struct {
 
 func (x *DeleteServiceReply) Reset() {
 	*x = DeleteServiceReply{}
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[21]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1498,7 +1856,7 @@ func (x *DeleteServiceReply) String() string {
 func (*DeleteServiceReply) ProtoMessage() {}
 
 func (x *DeleteServiceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_api_rulego_v1_task_service_proto_msgTypes[21]
+	mi := &file_api_rulego_v1_task_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1511,7 +1869,7 @@ func (x *DeleteServiceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteServiceReply.ProtoReflect.Descriptor instead.
 func (*DeleteServiceReply) Descriptor() ([]byte, []int) {
-	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{21}
+	return file_api_rulego_v1_task_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DeleteServiceReply) GetSuccess() bool {
@@ -1525,7 +1883,7 @@ var File_api_rulego_v1_task_service_proto protoreflect.FileDescriptor
 
 const file_api_rulego_v1_task_service_proto_rawDesc = "" +
 	"\n" +
-	" api/rulego/v1/task_service.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17validate/validate.proto\x1a\x1copenapi/v3/annotations.proto\"\x9e\x03\n" +
+	" api/rulego/v1/task_service.proto\x12\trulego.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17validate/validate.proto\x1a\x1copenapi/v3/annotations.proto\"\xff\x03\n" +
 	"\tTaskBoard\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -1540,7 +1898,10 @@ const file_api_rulego_v1_task_service_proto_rawDesc = "" +
 	"deleted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12&\n" +
 	"\x0fhandler_user_id\x18\t \x01(\tR\rhandlerUserId\x12 \n" +
 	"\vdescription\x18\n" +
-	" \x01(\tR\vdescription\"\x8d\x03\n" +
+	" \x01(\tR\vdescription\x12\"\n" +
+	"\rrule_chain_id\x18\v \x01(\tR\vruleChainId\x12\x1b\n" +
+	"\tparent_id\x18\f \x01(\x03R\bparentId\x12\x1e\n" +
+	"\vlast_run_id\x18\r \x01(\tR\tlastRunId\"\x8d\x03\n" +
 	"\x11ServiceManagement\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x120\n" +
@@ -1554,13 +1915,14 @@ const file_api_rulego_v1_task_service_proto_rawDesc = "" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x129\n" +
 	"\n" +
 	"deleted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12 \n" +
-	"\vdescription\x18\t \x01(\tR\vdescription\"\xd0\x01\n" +
+	"\vdescription\x18\t \x01(\tR\vdescription\"\xf4\x01\n" +
 	"\rCreateTaskReq\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x04name\x12%\n" +
 	"\bpriority\x18\x02 \x01(\x05B\t\xfaB\x06\x1a\x04\x18c(\x00R\bpriority\x121\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x13.rulego.v1.TaskTypeB\b\xfaB\x05\x82\x01\x02\x10\x01R\x04type\x12&\n" +
 	"\x0fhandler_user_id\x18\x04 \x01(\tR\rhandlerUserId\x12 \n" +
-	"\vdescription\x18\x05 \x01(\tR\vdescription\";\n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\"\n" +
+	"\rrule_chain_id\x18\x06 \x01(\tR\vruleChainId\";\n" +
 	"\x0fCreateTaskReply\x12(\n" +
 	"\x04task\x18\x01 \x01(\v2\x14.rulego.v1.TaskBoardR\x04task\"%\n" +
 	"\n" +
@@ -1576,20 +1938,40 @@ const file_api_rulego_v1_task_service_proto_rawDesc = "" +
 	"\tpage_size\x18\x05 \x01(\x05R\bpageSize\"R\n" +
 	"\x0eListTasksReply\x12*\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x14.rulego.v1.TaskBoardR\x05tasks\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x03R\x05total\"\xe6\x01\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\"\xb9\x02\n" +
 	"\rUpdateTaskReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
 	"\bpriority\x18\x03 \x01(\x05B\t\xfaB\x06\x1a\x04\x18c(\x00R\bpriority\x127\n" +
 	"\x06status\x18\x04 \x01(\x0e2\x15.rulego.v1.TaskStatusB\b\xfaB\x05\x82\x01\x02\x10\x01R\x06status\x12&\n" +
 	"\x0fhandler_user_id\x18\x05 \x01(\tR\rhandlerUserId\x12 \n" +
-	"\vdescription\x18\x06 \x01(\tR\vdescription\";\n" +
+	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\"\n" +
+	"\rrule_chain_id\x18\a \x01(\tR\vruleChainId\x12-\n" +
+	"\x13clear_rule_chain_id\x18\b \x01(\bR\x10clearRuleChainId\";\n" +
 	"\x0fUpdateTaskReply\x12(\n" +
 	"\x04task\x18\x01 \x01(\v2\x14.rulego.v1.TaskBoardR\x04task\"(\n" +
 	"\rDeleteTaskReq\x12\x17\n" +
 	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\"+\n" +
 	"\x0fDeleteTaskReply\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xde\x01\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"2\n" +
+	"\x17ExecuteTaskRuleChainReq\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\x02id\"O\n" +
+	"\x19ExecuteTaskRuleChainReply\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\\\n" +
+	"\x12CreateChildTaskReq\x12%\n" +
+	"\tparent_id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\tparent_id\x12\x1f\n" +
+	"\vname_suffix\x18\x02 \x01(\tR\n" +
+	"nameSuffix\"@\n" +
+	"\x14CreateChildTaskReply\x12(\n" +
+	"\x04task\x18\x01 \x01(\v2\x14.rulego.v1.TaskBoardR\x04task\"k\n" +
+	"\x11ListChildTasksReq\x12%\n" +
+	"\tparent_id\x18\x01 \x01(\x03B\a\xfaB\x04\"\x02 \x00R\tparent_id\x12\x12\n" +
+	"\x04page\x18\x02 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\"W\n" +
+	"\x13ListChildTasksReply\x12*\n" +
+	"\x05tasks\x18\x01 \x03(\v2\x14.rulego.v1.TaskBoardR\x05tasks\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\"\xde\x01\n" +
 	"\x10CreateServiceReq\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xfaB\x04r\x02\x10\x01R\x04name\x12:\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x18.rulego.v1.ServiceStatusB\b\xfaB\x05\x82\x01\x02\x10\x01R\x06status\x12-\n" +
@@ -1640,7 +2022,7 @@ const file_api_rulego_v1_task_service_proto_rawDesc = "" +
 	"\rServiceStatus\x12\x1e\n" +
 	"\x1aSERVICE_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16SERVICE_STATUS_RUNNING\x10\x01\x12\x1a\n" +
-	"\x16SERVICE_STATUS_STOPPED\x10\x022\x93\a\n" +
+	"\x16SERVICE_STATUS_STOPPED\x10\x022\xc4\r\n" +
 	"\x10TaskBoardService\x12\xa4\x01\n" +
 	"\n" +
 	"CreateTask\x12\x18.rulego.v1.CreateTaskReq\x1a\x1a.rulego.v1.CreateTaskReply\"`\xbaGE\n" +
@@ -1657,7 +2039,13 @@ const file_api_rulego_v1_task_service_proto_rawDesc = "" +
 	"\n" +
 	"DeleteTask\x12\x18.rulego.v1.DeleteTaskReq\x1a\x1a.rulego.v1.DeleteTaskReply\"Y\xbaG<\n" +
 	"\tTaskBoard\x12\f删除任务\x1a\x15软删除指定任务*\n" +
-	"DeleteTask\x82\xd3\xe4\x93\x02\x14*\x12/api/v1/tasks/{id}2\xc5\a\n" +
+	"DeleteTask\x82\xd3\xe4\x93\x02\x14*\x12/api/v1/tasks/{id}\x12\xc4\x02\n" +
+	"\x14ExecuteTaskRuleChain\x12\".rulego.v1.ExecuteTaskRuleChainReq\x1a$.rulego.v1.ExecuteTaskRuleChainReply\"\xe1\x01\xbaG\xb8\x01\n" +
+	"\tTaskBoard\x12\x1e执行任务关联的规则链\x1au当任务处于待处理状态且已关联规则链时，触发异步执行，成功后自动更新状态为处理中*\x14ExecuteTaskRuleChain\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/tasks/{id}/execute\x12\x8e\x02\n" +
+	"\x0fCreateChildTask\x12\x1d.rulego.v1.CreateChildTaskReq\x1a\x1f.rulego.v1.CreateChildTaskReply\"\xba\x01\xbaG\x89\x01\n" +
+	"\tTaskBoard\x12\x0f创建子任务\x1aZ从已完成或处理失败的任务创建子任务，继承父任务内容并建立关联*\x0fCreateChildTask\x82\xd3\xe4\x93\x02':\x01*\"\"/api/v1/tasks/{parent_id}/children\x12\xd6\x01\n" +
+	"\x0eListChildTasks\x12\x1c.rulego.v1.ListChildTasksReq\x1a\x1e.rulego.v1.ListChildTasksReply\"\x85\x01\xbaGX\n" +
+	"\tTaskBoard\x12\x15查询子任务列表\x1a$查询指定任务的子任务列表*\x0eListChildTasks\x82\xd3\xe4\x93\x02$\x12\"/api/v1/tasks/{parent_id}/children2\xc5\a\n" +
 	"\x18ServiceManagementService\x12\xbb\x01\n" +
 	"\rCreateService\x12\x1b.rulego.v1.CreateServiceReq\x1a\x1d.rulego.v1.CreateServiceReply\"n\xbaGP\n" +
 	"\x11ServiceManagement\x12\f创建服务\x1a\x1e创建新的服务管理记录*\rCreateService\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/api/v1/services\x12\xbf\x01\n" +
@@ -1685,45 +2073,51 @@ func file_api_rulego_v1_task_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_rulego_v1_task_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_rulego_v1_task_service_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_api_rulego_v1_task_service_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_api_rulego_v1_task_service_proto_goTypes = []any{
-	(TaskStatus)(0),               // 0: rulego.v1.TaskStatus
-	(TaskType)(0),                 // 1: rulego.v1.TaskType
-	(ServiceStatus)(0),            // 2: rulego.v1.ServiceStatus
-	(*TaskBoard)(nil),             // 3: rulego.v1.TaskBoard
-	(*ServiceManagement)(nil),     // 4: rulego.v1.ServiceManagement
-	(*CreateTaskReq)(nil),         // 5: rulego.v1.CreateTaskReq
-	(*CreateTaskReply)(nil),       // 6: rulego.v1.CreateTaskReply
-	(*GetTaskReq)(nil),            // 7: rulego.v1.GetTaskReq
-	(*GetTaskReply)(nil),          // 8: rulego.v1.GetTaskReply
-	(*ListTasksReq)(nil),          // 9: rulego.v1.ListTasksReq
-	(*ListTasksReply)(nil),        // 10: rulego.v1.ListTasksReply
-	(*UpdateTaskReq)(nil),         // 11: rulego.v1.UpdateTaskReq
-	(*UpdateTaskReply)(nil),       // 12: rulego.v1.UpdateTaskReply
-	(*DeleteTaskReq)(nil),         // 13: rulego.v1.DeleteTaskReq
-	(*DeleteTaskReply)(nil),       // 14: rulego.v1.DeleteTaskReply
-	(*CreateServiceReq)(nil),      // 15: rulego.v1.CreateServiceReq
-	(*CreateServiceReply)(nil),    // 16: rulego.v1.CreateServiceReply
-	(*GetServiceReq)(nil),         // 17: rulego.v1.GetServiceReq
-	(*GetServiceReply)(nil),       // 18: rulego.v1.GetServiceReply
-	(*ListServicesReq)(nil),       // 19: rulego.v1.ListServicesReq
-	(*ListServicesReply)(nil),     // 20: rulego.v1.ListServicesReply
-	(*UpdateServiceReq)(nil),      // 21: rulego.v1.UpdateServiceReq
-	(*UpdateServiceReply)(nil),    // 22: rulego.v1.UpdateServiceReply
-	(*DeleteServiceReq)(nil),      // 23: rulego.v1.DeleteServiceReq
-	(*DeleteServiceReply)(nil),    // 24: rulego.v1.DeleteServiceReply
-	(*timestamppb.Timestamp)(nil), // 25: google.protobuf.Timestamp
+	(TaskStatus)(0),                   // 0: rulego.v1.TaskStatus
+	(TaskType)(0),                     // 1: rulego.v1.TaskType
+	(ServiceStatus)(0),                // 2: rulego.v1.ServiceStatus
+	(*TaskBoard)(nil),                 // 3: rulego.v1.TaskBoard
+	(*ServiceManagement)(nil),         // 4: rulego.v1.ServiceManagement
+	(*CreateTaskReq)(nil),             // 5: rulego.v1.CreateTaskReq
+	(*CreateTaskReply)(nil),           // 6: rulego.v1.CreateTaskReply
+	(*GetTaskReq)(nil),                // 7: rulego.v1.GetTaskReq
+	(*GetTaskReply)(nil),              // 8: rulego.v1.GetTaskReply
+	(*ListTasksReq)(nil),              // 9: rulego.v1.ListTasksReq
+	(*ListTasksReply)(nil),            // 10: rulego.v1.ListTasksReply
+	(*UpdateTaskReq)(nil),             // 11: rulego.v1.UpdateTaskReq
+	(*UpdateTaskReply)(nil),           // 12: rulego.v1.UpdateTaskReply
+	(*DeleteTaskReq)(nil),             // 13: rulego.v1.DeleteTaskReq
+	(*DeleteTaskReply)(nil),           // 14: rulego.v1.DeleteTaskReply
+	(*ExecuteTaskRuleChainReq)(nil),   // 15: rulego.v1.ExecuteTaskRuleChainReq
+	(*ExecuteTaskRuleChainReply)(nil), // 16: rulego.v1.ExecuteTaskRuleChainReply
+	(*CreateChildTaskReq)(nil),        // 17: rulego.v1.CreateChildTaskReq
+	(*CreateChildTaskReply)(nil),      // 18: rulego.v1.CreateChildTaskReply
+	(*ListChildTasksReq)(nil),         // 19: rulego.v1.ListChildTasksReq
+	(*ListChildTasksReply)(nil),       // 20: rulego.v1.ListChildTasksReply
+	(*CreateServiceReq)(nil),          // 21: rulego.v1.CreateServiceReq
+	(*CreateServiceReply)(nil),        // 22: rulego.v1.CreateServiceReply
+	(*GetServiceReq)(nil),             // 23: rulego.v1.GetServiceReq
+	(*GetServiceReply)(nil),           // 24: rulego.v1.GetServiceReply
+	(*ListServicesReq)(nil),           // 25: rulego.v1.ListServicesReq
+	(*ListServicesReply)(nil),         // 26: rulego.v1.ListServicesReply
+	(*UpdateServiceReq)(nil),          // 27: rulego.v1.UpdateServiceReq
+	(*UpdateServiceReply)(nil),        // 28: rulego.v1.UpdateServiceReply
+	(*DeleteServiceReq)(nil),          // 29: rulego.v1.DeleteServiceReq
+	(*DeleteServiceReply)(nil),        // 30: rulego.v1.DeleteServiceReply
+	(*timestamppb.Timestamp)(nil),     // 31: google.protobuf.Timestamp
 }
 var file_api_rulego_v1_task_service_proto_depIdxs = []int32{
 	0,  // 0: rulego.v1.TaskBoard.status:type_name -> rulego.v1.TaskStatus
 	1,  // 1: rulego.v1.TaskBoard.type:type_name -> rulego.v1.TaskType
-	25, // 2: rulego.v1.TaskBoard.created_at:type_name -> google.protobuf.Timestamp
-	25, // 3: rulego.v1.TaskBoard.updated_at:type_name -> google.protobuf.Timestamp
-	25, // 4: rulego.v1.TaskBoard.deleted_at:type_name -> google.protobuf.Timestamp
+	31, // 2: rulego.v1.TaskBoard.created_at:type_name -> google.protobuf.Timestamp
+	31, // 3: rulego.v1.TaskBoard.updated_at:type_name -> google.protobuf.Timestamp
+	31, // 4: rulego.v1.TaskBoard.deleted_at:type_name -> google.protobuf.Timestamp
 	2,  // 5: rulego.v1.ServiceManagement.status:type_name -> rulego.v1.ServiceStatus
-	25, // 6: rulego.v1.ServiceManagement.created_at:type_name -> google.protobuf.Timestamp
-	25, // 7: rulego.v1.ServiceManagement.updated_at:type_name -> google.protobuf.Timestamp
-	25, // 8: rulego.v1.ServiceManagement.deleted_at:type_name -> google.protobuf.Timestamp
+	31, // 6: rulego.v1.ServiceManagement.created_at:type_name -> google.protobuf.Timestamp
+	31, // 7: rulego.v1.ServiceManagement.updated_at:type_name -> google.protobuf.Timestamp
+	31, // 8: rulego.v1.ServiceManagement.deleted_at:type_name -> google.protobuf.Timestamp
 	1,  // 9: rulego.v1.CreateTaskReq.type:type_name -> rulego.v1.TaskType
 	3,  // 10: rulego.v1.CreateTaskReply.task:type_name -> rulego.v1.TaskBoard
 	3,  // 11: rulego.v1.GetTaskReply.task:type_name -> rulego.v1.TaskBoard
@@ -1732,38 +2126,46 @@ var file_api_rulego_v1_task_service_proto_depIdxs = []int32{
 	3,  // 14: rulego.v1.ListTasksReply.tasks:type_name -> rulego.v1.TaskBoard
 	0,  // 15: rulego.v1.UpdateTaskReq.status:type_name -> rulego.v1.TaskStatus
 	3,  // 16: rulego.v1.UpdateTaskReply.task:type_name -> rulego.v1.TaskBoard
-	2,  // 17: rulego.v1.CreateServiceReq.status:type_name -> rulego.v1.ServiceStatus
-	4,  // 18: rulego.v1.CreateServiceReply.service:type_name -> rulego.v1.ServiceManagement
-	4,  // 19: rulego.v1.GetServiceReply.service:type_name -> rulego.v1.ServiceManagement
-	2,  // 20: rulego.v1.ListServicesReq.status:type_name -> rulego.v1.ServiceStatus
-	4,  // 21: rulego.v1.ListServicesReply.services:type_name -> rulego.v1.ServiceManagement
-	2,  // 22: rulego.v1.UpdateServiceReq.status:type_name -> rulego.v1.ServiceStatus
-	4,  // 23: rulego.v1.UpdateServiceReply.service:type_name -> rulego.v1.ServiceManagement
-	5,  // 24: rulego.v1.TaskBoardService.CreateTask:input_type -> rulego.v1.CreateTaskReq
-	7,  // 25: rulego.v1.TaskBoardService.GetTask:input_type -> rulego.v1.GetTaskReq
-	9,  // 26: rulego.v1.TaskBoardService.ListTasks:input_type -> rulego.v1.ListTasksReq
-	11, // 27: rulego.v1.TaskBoardService.UpdateTask:input_type -> rulego.v1.UpdateTaskReq
-	13, // 28: rulego.v1.TaskBoardService.DeleteTask:input_type -> rulego.v1.DeleteTaskReq
-	15, // 29: rulego.v1.ServiceManagementService.CreateService:input_type -> rulego.v1.CreateServiceReq
-	17, // 30: rulego.v1.ServiceManagementService.GetService:input_type -> rulego.v1.GetServiceReq
-	19, // 31: rulego.v1.ServiceManagementService.ListServices:input_type -> rulego.v1.ListServicesReq
-	21, // 32: rulego.v1.ServiceManagementService.UpdateService:input_type -> rulego.v1.UpdateServiceReq
-	23, // 33: rulego.v1.ServiceManagementService.DeleteService:input_type -> rulego.v1.DeleteServiceReq
-	6,  // 34: rulego.v1.TaskBoardService.CreateTask:output_type -> rulego.v1.CreateTaskReply
-	8,  // 35: rulego.v1.TaskBoardService.GetTask:output_type -> rulego.v1.GetTaskReply
-	10, // 36: rulego.v1.TaskBoardService.ListTasks:output_type -> rulego.v1.ListTasksReply
-	12, // 37: rulego.v1.TaskBoardService.UpdateTask:output_type -> rulego.v1.UpdateTaskReply
-	14, // 38: rulego.v1.TaskBoardService.DeleteTask:output_type -> rulego.v1.DeleteTaskReply
-	16, // 39: rulego.v1.ServiceManagementService.CreateService:output_type -> rulego.v1.CreateServiceReply
-	18, // 40: rulego.v1.ServiceManagementService.GetService:output_type -> rulego.v1.GetServiceReply
-	20, // 41: rulego.v1.ServiceManagementService.ListServices:output_type -> rulego.v1.ListServicesReply
-	22, // 42: rulego.v1.ServiceManagementService.UpdateService:output_type -> rulego.v1.UpdateServiceReply
-	24, // 43: rulego.v1.ServiceManagementService.DeleteService:output_type -> rulego.v1.DeleteServiceReply
-	34, // [34:44] is the sub-list for method output_type
-	24, // [24:34] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	3,  // 17: rulego.v1.CreateChildTaskReply.task:type_name -> rulego.v1.TaskBoard
+	3,  // 18: rulego.v1.ListChildTasksReply.tasks:type_name -> rulego.v1.TaskBoard
+	2,  // 19: rulego.v1.CreateServiceReq.status:type_name -> rulego.v1.ServiceStatus
+	4,  // 20: rulego.v1.CreateServiceReply.service:type_name -> rulego.v1.ServiceManagement
+	4,  // 21: rulego.v1.GetServiceReply.service:type_name -> rulego.v1.ServiceManagement
+	2,  // 22: rulego.v1.ListServicesReq.status:type_name -> rulego.v1.ServiceStatus
+	4,  // 23: rulego.v1.ListServicesReply.services:type_name -> rulego.v1.ServiceManagement
+	2,  // 24: rulego.v1.UpdateServiceReq.status:type_name -> rulego.v1.ServiceStatus
+	4,  // 25: rulego.v1.UpdateServiceReply.service:type_name -> rulego.v1.ServiceManagement
+	5,  // 26: rulego.v1.TaskBoardService.CreateTask:input_type -> rulego.v1.CreateTaskReq
+	7,  // 27: rulego.v1.TaskBoardService.GetTask:input_type -> rulego.v1.GetTaskReq
+	9,  // 28: rulego.v1.TaskBoardService.ListTasks:input_type -> rulego.v1.ListTasksReq
+	11, // 29: rulego.v1.TaskBoardService.UpdateTask:input_type -> rulego.v1.UpdateTaskReq
+	13, // 30: rulego.v1.TaskBoardService.DeleteTask:input_type -> rulego.v1.DeleteTaskReq
+	15, // 31: rulego.v1.TaskBoardService.ExecuteTaskRuleChain:input_type -> rulego.v1.ExecuteTaskRuleChainReq
+	17, // 32: rulego.v1.TaskBoardService.CreateChildTask:input_type -> rulego.v1.CreateChildTaskReq
+	19, // 33: rulego.v1.TaskBoardService.ListChildTasks:input_type -> rulego.v1.ListChildTasksReq
+	21, // 34: rulego.v1.ServiceManagementService.CreateService:input_type -> rulego.v1.CreateServiceReq
+	23, // 35: rulego.v1.ServiceManagementService.GetService:input_type -> rulego.v1.GetServiceReq
+	25, // 36: rulego.v1.ServiceManagementService.ListServices:input_type -> rulego.v1.ListServicesReq
+	27, // 37: rulego.v1.ServiceManagementService.UpdateService:input_type -> rulego.v1.UpdateServiceReq
+	29, // 38: rulego.v1.ServiceManagementService.DeleteService:input_type -> rulego.v1.DeleteServiceReq
+	6,  // 39: rulego.v1.TaskBoardService.CreateTask:output_type -> rulego.v1.CreateTaskReply
+	8,  // 40: rulego.v1.TaskBoardService.GetTask:output_type -> rulego.v1.GetTaskReply
+	10, // 41: rulego.v1.TaskBoardService.ListTasks:output_type -> rulego.v1.ListTasksReply
+	12, // 42: rulego.v1.TaskBoardService.UpdateTask:output_type -> rulego.v1.UpdateTaskReply
+	14, // 43: rulego.v1.TaskBoardService.DeleteTask:output_type -> rulego.v1.DeleteTaskReply
+	16, // 44: rulego.v1.TaskBoardService.ExecuteTaskRuleChain:output_type -> rulego.v1.ExecuteTaskRuleChainReply
+	18, // 45: rulego.v1.TaskBoardService.CreateChildTask:output_type -> rulego.v1.CreateChildTaskReply
+	20, // 46: rulego.v1.TaskBoardService.ListChildTasks:output_type -> rulego.v1.ListChildTasksReply
+	22, // 47: rulego.v1.ServiceManagementService.CreateService:output_type -> rulego.v1.CreateServiceReply
+	24, // 48: rulego.v1.ServiceManagementService.GetService:output_type -> rulego.v1.GetServiceReply
+	26, // 49: rulego.v1.ServiceManagementService.ListServices:output_type -> rulego.v1.ListServicesReply
+	28, // 50: rulego.v1.ServiceManagementService.UpdateService:output_type -> rulego.v1.UpdateServiceReply
+	30, // 51: rulego.v1.ServiceManagementService.DeleteService:output_type -> rulego.v1.DeleteServiceReply
+	39, // [39:52] is the sub-list for method output_type
+	26, // [26:39] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_api_rulego_v1_task_service_proto_init() }
@@ -1777,7 +2179,7 @@ func file_api_rulego_v1_task_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_rulego_v1_task_service_proto_rawDesc), len(file_api_rulego_v1_task_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   22,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

@@ -11,7 +11,11 @@
       "Bash(go run *)",
       "Bash(go doc *)",
       "Bash(grep -E \"\\\\.proto$|chat\")",
-      "Bash(grep -E \"\\\\.\\(ts|json\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|json\\)$\")",
+      "Bash(make api *)",
+      "Bash(xxd)",
+      "Bash(make proto *)",
+      "Bash(make validate *)"
     ]
   }
 }

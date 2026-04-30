@@ -302,6 +302,14 @@ func (uc *AgentUsecase) ContextManager() *ContextManager {
 	return uc.contextManager
 }
 
+// GetMemoryStore 获取记忆存储实例
+func (uc *AgentUsecase) GetMemoryStore() MemoryStore {
+	if uc.contextManager == nil {
+		return nil
+	}
+	return uc.contextManager.GetMemoryStore()
+}
+
 // SetContextChatModelFunc 设置 ContextManager 用于摘要的 chatModelFunc
 func (uc *AgentUsecase) SetContextChatModelFunc(fn func(ctx context.Context) (model.ToolCallingChatModel, error)) {
 	if uc.contextManager != nil {

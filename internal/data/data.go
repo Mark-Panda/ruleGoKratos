@@ -131,6 +131,11 @@ func NewRuleEngine(c *conf.Data, ruleConfig *types.Config, agentUc *biz.AgentUse
 		return nil, err
 	}
 	pool := rulego.NewRuleGo()
+	// 延迟注入规则引擎实例到 TaskBoardUsecase
+	taskBoardUc.SetRuleEngine(pool, ruleConfig)
+	if memStore := agentUc.GetMemoryStore(); memStore != nil {
+		taskBoardUc.SetMemoryStore(memStore)
+	}
 	// 加载所有规则链
 	for _, item := range ruleChainList {
 		// 更新规则配置状态为禁用

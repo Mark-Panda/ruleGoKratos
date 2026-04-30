@@ -16,6 +16,9 @@ type TaskBoard struct {
 	DeletedAt      *time.Time `gorm:"column:deleted_at;index;comment:删除时间"`
 	HandlerUserID  string     `gorm:"column:handler_user_id;size:64;comment:处理用户ID"`
 	Description    string     `gorm:"column:description;type:text;comment:任务描述"`
+	RuleChainID    string     `gorm:"column:rule_chain_id;size:64;comment:关联的规则链ID"`
+	ParentID       *int64     `gorm:"column:parent_id;comment:父任务ID"`
+	LastRunID      string     `gorm:"column:last_run_id;size:64;comment:最近一次规则链执行的记录ID"`
 }
 
 // TableName 表名

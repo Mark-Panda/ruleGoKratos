@@ -25,6 +25,9 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  executeTaskRuleChain,
+  createChildTask,
+  listChildTasks,
   TaskItem,
   TaskStatus,
   TaskType,
@@ -32,7 +35,15 @@ import {
   taskTypeOptions,
   priorityOptions,
   CreateTaskParams,
+  CreateChildTaskParams,
 } from '../../services/api-task';
+import { getRuleList } from '../../services/api-rules';
+import { requestJSON } from '../../services/http';
+import { fetchRunLogs } from '../../services/test-run-http';
+import { runLogChainDisplay } from '../../utils/run-log-display';
+import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
+import { FlowDocumentJSON } from '../../typings';
+import { Editor } from '../../editor';
 import { priorityTagColor, taskStatusTagColor, taskTypeTagColor } from './section-display';
 
 const VIEW_MODE_KEY = 'task-board-view-mode';
@@ -137,6 +148,57 @@ export const TaskBoardSection: React.FC = () => {
   const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // 规则链列表（用于下拉选择）
+  const [ruleChainOptions, setRuleChainOptions] = useState<{ label: string; value: string }[]>([]);
+  const [ruleChainLoading, setRuleChainLoading] = useState(false);
+
+  // 子任务列表弹窗
+  const [childTasksVisible, setChildTasksVisible] = useState(false);
+  const [childTasks, setChildTasks] = useState<TaskItem[]>([]);
+  const [childTasksTotal, setChildTasksTotal] = useState(0);
+  const [childTasksLoading, setChildTasksLoading] = useState(false);
+  const [childTasksPage, setChildTasksPage] = useState(1);
+
+  // 创建子任务弹窗
+  const [createChildVisible, setCreateChildVisible] = useState(false);
+  const [createChildSuffix, setCreateChildSuffix] = useState('');
+  const [createChildSubmitting, setCreateChildSubmitting] = useState(false);
+
+  // 执行规则链
+  const [executeLoading, setExecuteLoading] = useState(false);
+
+  // 规则链执行日志查看器
+  const [runLogViewerOpen, setRunLogViewerOpen] = useState(false);
+  const [runLogViewerDoc, setRunLogViewerDoc] = useState<FlowDocumentJSON | undefined>();
+  const [runLogViewerLogs, setRunLogViewerLogs] = useState<{ list: any[]; startTs?: number; endTs?: number }>();
+  const [runLogViewerLoading, setRunLogViewerLoading] = useState(false);
+
+  // 详情弹窗数据行
+  const detailRows = useMemo(() => {
+    if (!detailTask) return [];
+    const rows: [string, unknown][] = [
+      ['任务ID', detailTask.id],
+      ['任务名称', detailTask.name],
+      [
+        '状态',
+        taskStatusOptions.find((o) => o.value === detailTask.status)?.label ?? detailTask.status,
+      ],
+      [
+        '类型',
+        taskTypeOptions.find((o) => o.value === detailTask.type)?.label ?? detailTask.type,
+      ],
+      ['优先级', detailTask.priority],
+      ['处理人', detailTask.handler_user_id || '—'],
+      ['关联规则链', detailTask.rule_chain_id || '—'],
+      ['最近执行ID', detailTask.last_run_id || '—'],
+      ['父任务ID', detailTask.parent_id ?? '—'],
+      ['创建时间', detailTask.created_at || '—'],
+      ['更新时间', detailTask.updated_at || '—'],
+      ['描述', detailTask.description || '—'],
+    ];
+    return rows;
+  }, [detailTask]);
+
   // 获取任务列表（表格分页 / 看板大批量）
   const fetchTasks = async (page = 1, size = pageSize) => {
     setLoading(true);
@@ -160,6 +222,30 @@ export const TaskBoardSection: React.FC = () => {
     }
   };
 
+  // 获取规则链列表（用于下拉选择）
+  const fetchRuleChains = async () => {
+    setRuleChainLoading(true);
+    try {
+      const res = await getRuleList({ page: 1, size: 500, disabled: false, root: true });
+      const list = Array.isArray(res.items) ? res.items : [];
+      setRuleChainOptions(
+        list
+          .map((raw: any) => {
+            const chain = raw?.ruleChain ?? raw;
+            const id = String(chain?.id ?? '').trim();
+            if (!id) return null;
+            const name = String(chain?.name ?? '').trim();
+            return { label: name ? `${name}（${id}）` : id, value: id };
+          })
+          .filter((item): item is { label: string; value: string } => item !== null)
+      );
+    } catch (e) {
+      console.error('获取规则链列表失败', e);
+    } finally {
+      setRuleChainLoading(false);
+    }
+  };
+
   useEffect(() => {
     setCurrentPage(1);
     void fetchTasks(1, pageSize);
@@ -172,6 +258,11 @@ export const TaskBoardSection: React.FC = () => {
       // ignore
     }
   }, [viewMode]);
+
+  // 初始化时获取规则链列表
+  useEffect(() => {
+    void fetchRuleChains();
+  }, []);
 
   const tasksByStatus = useMemo(() => {
     const m = new Map<TaskStatus, TaskItem[]>();
@@ -190,6 +281,10 @@ export const TaskBoardSection: React.FC = () => {
     return m;
   }, [tasks]);
 
+  // 是否为只读状态（处理中/已完成/失败时仅描述可编辑）
+  const isReadonlyStatus = (status: TaskStatus): boolean =>
+    status === TaskStatus.PROCESSING || status === TaskStatus.COMPLETED || status === TaskStatus.FAILED;
+
   // 打开新增/编辑弹窗（initValues + key 强制重挂载，避免 Semi Form 忽略受控 value）
   const openModal = (type: 'create' | 'edit', task?: TaskItem) => {
     setModalType(type);
@@ -203,6 +298,7 @@ export const TaskBoardSection: React.FC = () => {
         status: Number(task.status) as TaskStatus,
         handler_user_id: task.handler_user_id ?? '',
         description: task.description ?? '',
+        rule_chain_id: task.rule_chain_id ?? '',
       });
     } else {
       setEditingTask(null);
@@ -212,6 +308,7 @@ export const TaskBoardSection: React.FC = () => {
         type: TaskType.OTHER,
         handler_user_id: '',
         description: '',
+        rule_chain_id: '',
       });
     }
     setFormModalKey((k) => k + 1);
@@ -265,13 +362,24 @@ export const TaskBoardSection: React.FC = () => {
       Toast.warning('请填写必填项');
       return;
     }
-    const payload = {
-      name,
-      priority,
-      type,
-      handler_user_id: String(v.handler_user_id ?? '').trim(),
+    const isPending = editingTask?.status === TaskStatus.PENDING;
+    const readonly = modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status);
+    const ruleChainId = isPending ? String(v.rule_chain_id ?? '').trim() : '';
+    const isClearingRuleChain = isPending && ruleChainId === '' && editingTask?.rule_chain_id;
+    const payload: Record<string, unknown> = {
       description: String(v.description ?? ''),
     };
+    if (!readonly) {
+      payload.name = name;
+      payload.priority = priority;
+      payload.type = type;
+      payload.handler_user_id = String(v.handler_user_id ?? '').trim();
+    }
+    if (isPending && ruleChainId) {
+      payload.rule_chain_id = ruleChainId;
+    } else if (isClearingRuleChain) {
+      payload.clear_rule_chain_id = true;
+    }
     setSubmitting(true);
     try {
       if (modalType === 'create') {
@@ -312,6 +420,146 @@ export const TaskBoardSection: React.FC = () => {
     } catch (e) {
       Toast.error('删除失败');
       console.error(e);
+    }
+  };
+
+  // 执行任务关联的规则链
+  const handleExecuteRuleChain = async (task: TaskItem) => {
+    setExecuteLoading(true);
+    try {
+      const res = await executeTaskRuleChain(task.id);
+      Toast.success(res.message || '规则链执行已触发');
+      void closeDetail();
+      void fetchTasks(viewMode === 'kanban' ? 1 : currentPage, pageSize);
+    } catch (e) {
+      Toast.error('执行规则链失败');
+      console.error(e);
+    } finally {
+      setExecuteLoading(false);
+    }
+  };
+
+  // 打开创建子任务弹窗（先拉取最新任务数据）
+  const handleCreateChildTask = async (task: TaskItem) => {
+    try {
+      const { item } = await getTask(task.id);
+      setDetailTask(item);
+    } catch {
+      setDetailTask(task);
+    }
+    setCreateChildSuffix('');
+    setCreateChildVisible(true);
+  };
+
+  // 确认创建子任务
+  const confirmCreateChildTask = async () => {
+    if (!detailTask) return;
+    setCreateChildSubmitting(true);
+    try {
+      const params: CreateChildTaskParams = {};
+      if (createChildSuffix.trim()) {
+        params.name_suffix = createChildSuffix.trim();
+      }
+      await createChildTask(detailTask.id, params);
+      Toast.success('子任务创建成功');
+      setCreateChildVisible(false);
+      void closeDetail();
+    } catch (e) {
+      Toast.error('创建子任务失败');
+      console.error(e);
+    } finally {
+      setCreateChildSubmitting(false);
+    }
+  };
+
+  // 查看子任务列表
+  const handleViewChildTasks = async (task: TaskItem) => {
+    setChildTasksVisible(true);
+    setChildTasksLoading(true);
+    try {
+      const res = await listChildTasks(task.id, { page: 1, page_size: 20 });
+      setChildTasks(res.items);
+      setChildTasksTotal(res.total);
+      setChildTasksPage(1);
+    } catch (e) {
+      Toast.error('获取子任务列表失败');
+      console.error(e);
+    } finally {
+      setChildTasksLoading(false);
+    }
+  };
+
+  // 加载更多子任务
+  const loadMoreChildTasks = async () => {
+    if (!detailTask || childTasksLoading) return;
+    setChildTasksLoading(true);
+    try {
+      const nextPage = childTasksPage + 1;
+      const res = await listChildTasks(detailTask.id, { page: nextPage, page_size: 20 });
+      setChildTasks((prev) => [...prev, ...res.items]);
+      setChildTasksTotal(res.total);
+      setChildTasksPage(nextPage);
+    } catch (e) {
+      Toast.error('加载更多失败');
+      console.error(e);
+    } finally {
+      setChildTasksLoading(false);
+    }
+  };
+
+  // 查看任务执行日志（处理中/已完成/失败状态）
+  const handleViewRunLog = async (task: TaskItem) => {
+    if (!task.rule_chain_id) {
+      Toast.warning('该任务未关联规则链，无执行日志');
+      return;
+    }
+    setRunLogViewerLoading(true);
+    try {
+      let latest: any;
+
+      // 优先通过 last_run_id 精确查找
+      if (task.last_run_id) {
+        const precise = await fetchRunLogs(task.last_run_id);
+        if (precise) {
+          latest = precise;
+        }
+      }
+
+      // 精确查找失败或无 last_run_id，回退到按 task_id 匹配
+      if (!latest) {
+        const data = await requestJSON<{ items: any[]; total?: number }>('/logs/runs', {
+          params: { chainId: task.rule_chain_id, size: 50, page: 1 },
+        });
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (items.length === 0) {
+          Toast.info('暂无该规则链的执行日志');
+          return;
+        }
+        const taskMatch = items.find((r: any) => {
+          try {
+            const md = typeof r?.metadata === 'string' ? JSON.parse(r.metadata) : r?.metadata;
+            return md?.task_id === String(task.id);
+          } catch { return false; }
+        });
+        latest = taskMatch || items[0];
+      }
+
+      const dslRoot = latest?.ruleChain;
+      const doc = buildDocumentFromRuleChainJSON(
+        dslRoot && typeof dslRoot === 'object' ? dslRoot : ({ ruleChain: {}, metadata: {} } as any)
+      ) as any;
+      setRunLogViewerDoc(doc);
+      setRunLogViewerLogs({
+        list: Array.isArray(latest?.logs) ? latest.logs : [],
+        startTs: latest?.startTs,
+        endTs: latest?.endTs,
+      });
+      setRunLogViewerOpen(true);
+    } catch (e) {
+      Toast.error('获取执行日志失败');
+      console.error(e);
+    } finally {
+      setRunLogViewerLoading(false);
     }
   };
 
@@ -358,6 +606,18 @@ export const TaskBoardSection: React.FC = () => {
       width: 120,
     },
     {
+      title: '规则链ID',
+      dataIndex: 'rule_chain_id',
+      width: 120,
+      render: (val: string) => val ? <Typography.Text size="small" type="tertiary">{val}</Typography.Text> : '—',
+    },
+    {
+      title: '父任务ID',
+      dataIndex: 'parent_id',
+      width: 100,
+      render: (val: number) => val ? String(val) : '—',
+    },
+    {
       title: '创建时间',
       dataIndex: 'created_at',
       width: 180,
@@ -374,9 +634,22 @@ export const TaskBoardSection: React.FC = () => {
     },
     {
       title: '操作',
-      width: 160,
+      width: 240,
       render: (_value: unknown, record: TaskItem) => (
         <Space>
+          {record.status === TaskStatus.PENDING && record.rule_chain_id && (
+            <Popconfirm
+              title="执行规则链"
+              content="确定要触发执行关联的规则链吗？任务状态将变为处理中。"
+              onConfirm={() => void handleExecuteRuleChain(record)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button size="small" theme="borderless" type="warning">
+                执行
+              </Button>
+            </Popconfirm>
+          )}
           <Button
             icon={<IconInfoCircle />}
             size="small"
@@ -393,6 +666,26 @@ export const TaskBoardSection: React.FC = () => {
           >
             编辑
           </Button>
+          {(record.status === TaskStatus.COMPLETED || record.status === TaskStatus.FAILED) && (
+            <Button
+              size="small"
+              theme="borderless"
+              type="secondary"
+              onClick={() => void handleCreateChildTask(record)}
+            >
+              创建子任务
+            </Button>
+          )}
+          {record.rule_chain_id && record.status !== TaskStatus.PENDING && (
+            <Button
+              size="small"
+              theme="borderless"
+              loading={runLogViewerLoading}
+              onClick={() => void handleViewRunLog(record)}
+            >
+              查看日志
+            </Button>
+          )}
           <Popconfirm
             title="确认删除"
             content="确定要删除这个任务吗？删除后不可恢复。"
@@ -673,13 +966,21 @@ export const TaskBoardSection: React.FC = () => {
                                   <Tag size="small" color={pl === 'P0' ? 'red' : 'orange'}>
                                     {pl}
                                   </Tag>
-                                ) : (
-                                  <Typography.Text type="tertiary" size="small">
-                                    暂无
-                                  </Typography.Text>
-                                )}
+                                ) : null}
                               </Space>
                             </div>
+                            {task.rule_chain_id && (
+                              <div style={{ marginBottom: 6 }}>
+                                <Typography.Text type="tertiary" size="small">
+                                  规则链: {task.rule_chain_id}
+                                </Typography.Text>
+                              </div>
+                            )}
+                            {task.parent_id && (
+                              <div style={{ marginBottom: 6 }}>
+                                <Tag size="small" color="blue">子任务</Tag>
+                              </div>
+                            )}
                             <div
                               style={{
                                 marginTop: 10,
@@ -691,6 +992,19 @@ export const TaskBoardSection: React.FC = () => {
                                 flexWrap: 'wrap',
                               }}
                             >
+                              {task.status === TaskStatus.PENDING && task.rule_chain_id && (
+                                <Popconfirm
+                                  title="执行规则链"
+                                  content="确定要触发执行关联的规则链吗？任务状态将变为处理中。"
+                                  onConfirm={() => void handleExecuteRuleChain(task)}
+                                  okText="确定"
+                                  cancelText="取消"
+                                >
+                                  <Button size="small" theme="borderless" type="warning">
+                                    执行
+                                  </Button>
+                                </Popconfirm>
+                              )}
                               <Button
                                 icon={<IconInfoCircle />}
                                 size="small"
@@ -707,6 +1021,26 @@ export const TaskBoardSection: React.FC = () => {
                               >
                                 编辑
                               </Button>
+                              {(task.status === TaskStatus.COMPLETED || task.status === TaskStatus.FAILED) && (
+                                <Button
+                                  size="small"
+                                  theme="borderless"
+                                  type="secondary"
+                                  onClick={() => void handleCreateChildTask(task)}
+                                >
+                                  创建子任务
+                                </Button>
+                              )}
+                              {task.rule_chain_id && task.status !== TaskStatus.PENDING && (
+                                <Button
+                                  size="small"
+                                  theme="borderless"
+                                  loading={runLogViewerLoading}
+                                  onClick={() => void handleViewRunLog(task)}
+                                >
+                                  查看日志
+                                </Button>
+                              )}
                               <Popconfirm
                                 title="确认删除"
                                 content="确定删除该任务？"
@@ -761,6 +1095,7 @@ export const TaskBoardSection: React.FC = () => {
             label="任务名称"
             placeholder="请输入任务名称"
             rules={[{ required: true, message: '请输入任务名称' }]}
+            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
           />
           <Form.Select
             field="priority"
@@ -769,6 +1104,7 @@ export const TaskBoardSection: React.FC = () => {
             style={{ width: '100%' }}
             rules={[{ required: true, message: '请选择优先级' }]}
             optionList={priorityOptions.map((o) => ({ label: o.label, value: o.value }))}
+            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
           />
           {modalType === 'edit' && (
             <Form.Select
@@ -777,6 +1113,7 @@ export const TaskBoardSection: React.FC = () => {
               placeholder="请选择任务状态"
               style={{ width: '100%' }}
               optionList={taskStatusOptions.map((o) => ({ label: o.label, value: o.value }))}
+              disabled
             />
           )}
           <Form.Select
@@ -786,9 +1123,52 @@ export const TaskBoardSection: React.FC = () => {
             style={{ width: '100%' }}
             rules={[{ required: true, message: '请选择任务类型' }]}
             optionList={taskTypeOptions.map((o) => ({ label: o.label, value: o.value }))}
+            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
           />
-          <Form.Input field="handler_user_id" label="处理人ID" placeholder="请输入处理人ID" />
+          <Form.Input
+            field="handler_user_id"
+            label="处理人ID"
+            placeholder="请输入处理人ID"
+            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
+          />
           <Form.TextArea field="description" label="任务描述" placeholder="请输入任务描述" rows={4} />
+          {modalType === 'edit' && editingTask?.status === TaskStatus.PENDING ? (
+            <Form.Select
+              field="rule_chain_id"
+              label="关联规则链"
+              placeholder="请选择关联的规则链"
+              style={{ width: '100%' }}
+              loading={ruleChainLoading}
+              optionList={ruleChainOptions}
+              showClear
+              extraText="不选择则不关联规则链"
+            />
+          ) : modalType === 'edit' ? (
+            <Form.Input
+              label="关联规则链"
+              value={editingTask?.rule_chain_id ?? '—'}
+              disabled
+              style={{ width: '100%' }}
+            />
+          ) : (
+            <Form.Select
+              field="rule_chain_id"
+              label="关联规则链"
+              placeholder="请选择关联的规则链"
+              style={{ width: '100%' }}
+              loading={ruleChainLoading}
+              optionList={ruleChainOptions}
+              showClear
+              extraText="不选择则不关联规则链"
+            />
+          )}
+          {(modalType === 'edit' && editingTask != null && (editingTask.status === TaskStatus.COMPLETED || editingTask.status === TaskStatus.FAILED)) && (
+            <div style={{ marginTop: 8 }}>
+              <Button type="secondary" onClick={() => void handleCreateChildTask(editingTask!)}>
+                创建子任务
+              </Button>
+            </div>
+          )}
         </Form>
       </Modal>
 
@@ -798,34 +1178,42 @@ export const TaskBoardSection: React.FC = () => {
         visible={detailVisible}
         onCancel={closeDetail}
         footer={
-          <Button type="primary" onClick={closeDetail}>
-            关闭
-          </Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            {detailTask?.status === TaskStatus.PENDING && detailTask?.rule_chain_id && (
+              <Button
+                type="warning"
+                onClick={() => void handleExecuteRuleChain(detailTask!)}
+                loading={executeLoading}
+              >
+                执行规则链
+              </Button>
+            )}
+            {(detailTask?.status === TaskStatus.COMPLETED || detailTask?.status === TaskStatus.FAILED) && (
+              <Button type="secondary" onClick={() => void handleCreateChildTask(detailTask!)}>
+                创建子任务
+              </Button>
+            )}
+            {detailTask?.rule_chain_id && detailTask.status !== TaskStatus.PENDING && (
+              <Button type="tertiary" loading={runLogViewerLoading} onClick={() => void handleViewRunLog(detailTask)}>
+                查看执行日志
+              </Button>
+            )}
+            {detailTask && (
+              <Button type="tertiary" onClick={() => void handleViewChildTasks(detailTask!)}>
+                查看子任务
+              </Button>
+            )}
+            <Button type="primary" onClick={closeDetail}>
+              关闭
+            </Button>
+          </div>
         }
-        width={560}
+        width={600}
       >
         <Spin spinning={detailLoading}>
           {detailTask && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {(
-                [
-                  ['任务ID', detailTask.id],
-                  ['任务名称', detailTask.name],
-                  [
-                    '状态',
-                    taskStatusOptions.find((o) => o.value === detailTask.status)?.label ?? detailTask.status,
-                  ],
-                  [
-                    '类型',
-                    taskTypeOptions.find((o) => o.value === detailTask.type)?.label ?? detailTask.type,
-                  ],
-                  ['优先级', detailTask.priority],
-                  ['处理人', detailTask.handler_user_id || '—'],
-                  ['创建时间', detailTask.created_at || '—'],
-                  ['更新时间', detailTask.updated_at || '—'],
-                  ['描述', detailTask.description || '—'],
-                ] as const
-              ).map(([label, val]) => (
+              {detailRows.map(([label, val]) => (
                 <div
                   key={String(label)}
                   style={{
@@ -842,6 +1230,129 @@ export const TaskBoardSection: React.FC = () => {
             </div>
           )}
         </Spin>
+      </Modal>
+
+      {/* 子任务列表弹窗 */}
+      <Modal
+        title="子任务列表"
+        visible={childTasksVisible}
+        onCancel={() => setChildTasksVisible(false)}
+        footer={<Button type="primary" onClick={() => setChildTasksVisible(false)}>关闭</Button>}
+        width={800}
+      >
+        <Spin spinning={childTasksLoading}>
+          {childTasks.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {childTasks.map((child) => (
+                <div
+                  key={child.id}
+                  style={{
+                    border: '1px solid var(--semi-border-color)',
+                    borderRadius: 8,
+                    padding: '12px 16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div>
+                    <Typography.Text strong>{child.name}</Typography.Text>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                      <Tag size="small" color={taskStatusTagColor(child.status)}>
+                        {taskStatusOptions.find((o) => o.value === child.status)?.label ?? '未知'}
+                      </Tag>
+                      {child.rule_chain_id && (
+                        <Typography.Text type="tertiary" size="small">
+                          规则链: {child.rule_chain_id}
+                        </Typography.Text>
+                      )}
+                    </div>
+                  </div>
+                  <Space>
+                    <Button
+                      size="small"
+                      theme="borderless"
+                      onClick={() => {
+                        setChildTasksVisible(false);
+                        void openDetail(child);
+                      }}
+                    >
+                      详情
+                    </Button>
+                  </Space>
+                </div>
+              ))}
+              {childTasksTotal > childTasks.length && (
+                <Button style={{ alignSelf: 'center', marginTop: 8 }} onClick={() => void loadMoreChildTasks()}>
+                  加载更多 ({childTasks.length}/{childTasksTotal})
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Typography.Text type="tertiary">暂无子任务</Typography.Text>
+          )}
+        </Spin>
+      </Modal>
+
+      {/* 创建子任务弹窗 */}
+      <Modal
+        title="创建子任务"
+        visible={createChildVisible}
+        onCancel={() => setCreateChildVisible(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button onClick={() => setCreateChildVisible(false)}>取消</Button>
+            <Button type="primary" onClick={() => void confirmCreateChildTask()} loading={createChildSubmitting}>
+              创建
+            </Button>
+          </div>
+        }
+        width={480}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {detailTask && (
+            <Typography.Text>
+              父任务: <strong>{detailTask.name}</strong>（将继承所有内容）
+            </Typography.Text>
+          )}
+          <Input
+            prefix="子任务名称后缀"
+            placeholder="默认为 '-子任务'"
+            value={createChildSuffix}
+            onChange={(val) => setCreateChildSuffix(val)}
+          />
+          <Typography.Text type="tertiary" size="small">
+            说明：子任务将继承父任务的名称、优先级、类型、描述、规则链关联等全部内容
+          </Typography.Text>
+        </div>
+      </Modal>
+
+      {/* 规则链执行日志查看器 */}
+      <Modal
+        visible={runLogViewerOpen}
+        title="执行日志查看"
+        onCancel={() => setRunLogViewerOpen(false)}
+        footer={null}
+        width="98vw"
+        centered
+        style={{ maxWidth: '100vw' }}
+        bodyStyle={{
+          height: 'calc(100vh - 96px)',
+          maxHeight: 'calc(100vh - 96px)',
+          padding: 8,
+          overflow: 'hidden',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div style={{ height: '100%', width: '100%', minHeight: 0 }}>
+          <Editor
+            initialDoc={runLogViewerDoc}
+            showTopToolbar={true}
+            readonly={true}
+            initialLogs={runLogViewerLogs}
+            openRunPanel={false}
+          />
+        </div>
       </Modal>
     </div>
   );

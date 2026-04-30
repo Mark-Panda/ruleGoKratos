@@ -24,6 +24,9 @@ export interface TaskItem {
   updated_at: string;
   handler_user_id: string;
   description: string;
+  rule_chain_id?: string;
+  parent_id?: number;
+  last_run_id?: string;
 }
 
 export interface ListTasksParams {
@@ -99,6 +102,8 @@ function normalizeTaskFromApi(raw: Record<string, unknown> | null | undefined): 
     '';
   const created = r.created_at ?? r.createdAt;
   const updated = r.updated_at ?? r.updatedAt;
+  const parentIdRaw = r.parent_id ?? r.parentId;
+  const parentIdNum = typeof parentIdRaw === 'number' ? parentIdRaw : (typeof parentIdRaw === 'string' && parentIdRaw !== '' ? Number(parentIdRaw) : undefined);
   return {
     id: Number(r.id),
     name: String(r.name ?? ''),
@@ -109,6 +114,9 @@ function normalizeTaskFromApi(raw: Record<string, unknown> | null | undefined): 
     updated_at: formatTaskTimestamp(updated),
     handler_user_id: handler,
     description: String(r.description ?? ''),
+    rule_chain_id: typeof r.rule_chain_id === 'string' ? r.rule_chain_id : typeof r.ruleChainId === 'string' ? r.ruleChainId : undefined,
+    parent_id: parentIdNum != null && Number.isFinite(parentIdNum) ? parentIdNum : undefined,
+    last_run_id: typeof r.last_run_id === 'string' ? r.last_run_id : typeof r.lastRunId === 'string' ? r.lastRunId : undefined,
   };
 }
 
@@ -139,6 +147,7 @@ export interface CreateTaskParams {
   type: TaskType;
   handler_user_id: string;
   description: string;
+  rule_chain_id?: string;
 }
 
 export interface UpdateTaskParams {
@@ -147,6 +156,17 @@ export interface UpdateTaskParams {
   status?: TaskStatus;
   handler_user_id?: string;
   description?: string;
+  rule_chain_id?: string;
+  clear_rule_chain_id?: boolean;
+}
+
+export interface CreateChildTaskParams {
+  name_suffix?: string;
+}
+
+export interface ListChildTasksParams {
+  page?: number;
+  page_size?: number;
 }
 
 // 获取任务列表
@@ -179,6 +199,30 @@ export const updateTask = async (id: number, params: UpdateTaskParams): Promise<
 // 删除任务
 export const deleteTask = (id: number): Promise<{ success: boolean }> =>
   requestJSON(`/tasks/${id}`, { method: 'DELETE' });
+
+// 执行任务关联的规则链
+export const executeTaskRuleChain = (id: number): Promise<{ success: boolean; message: string }> =>
+  requestJSON(`/tasks/${id}/execute`, { method: 'POST', body: {} });
+
+// 创建子任务
+export const createChildTask = async (parentId: number, params?: CreateChildTaskParams): Promise<{ item: TaskItem }> => {
+  const raw = await requestJSON<Record<string, unknown>>(`/tasks/${parentId}/children`, {
+    method: 'POST',
+    body: params ?? {},
+  });
+  const t = (raw.task ?? raw.item) as Record<string, unknown> | undefined;
+  return { item: normalizeTaskFromApi(t) };
+};
+
+// 查询子任务列表
+export const listChildTasks = async (parentId: number, params?: ListChildTasksParams): Promise<{ items: TaskItem[]; total: number }> => {
+  const raw = await requestJSON<Record<string, unknown>>(`/tasks/${parentId}/children`, { params });
+  const list = (raw.tasks ?? raw.items) as unknown[] | undefined;
+  return {
+    items: (Array.isArray(list) ? list : []).map((row) => normalizeTaskFromApi(row as Record<string, unknown>)),
+    total: Number(raw.total ?? 0),
+  };
+};
 
 export const taskStatusOptions = [
   { value: TaskStatus.PENDING, label: '待处理', color: 'orange' },

@@ -19,11 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TaskBoardService_CreateTask_FullMethodName = "/rulego.v1.TaskBoardService/CreateTask"
-	TaskBoardService_GetTask_FullMethodName    = "/rulego.v1.TaskBoardService/GetTask"
-	TaskBoardService_ListTasks_FullMethodName  = "/rulego.v1.TaskBoardService/ListTasks"
-	TaskBoardService_UpdateTask_FullMethodName = "/rulego.v1.TaskBoardService/UpdateTask"
-	TaskBoardService_DeleteTask_FullMethodName = "/rulego.v1.TaskBoardService/DeleteTask"
+	TaskBoardService_CreateTask_FullMethodName           = "/rulego.v1.TaskBoardService/CreateTask"
+	TaskBoardService_GetTask_FullMethodName              = "/rulego.v1.TaskBoardService/GetTask"
+	TaskBoardService_ListTasks_FullMethodName            = "/rulego.v1.TaskBoardService/ListTasks"
+	TaskBoardService_UpdateTask_FullMethodName           = "/rulego.v1.TaskBoardService/UpdateTask"
+	TaskBoardService_DeleteTask_FullMethodName           = "/rulego.v1.TaskBoardService/DeleteTask"
+	TaskBoardService_ExecuteTaskRuleChain_FullMethodName = "/rulego.v1.TaskBoardService/ExecuteTaskRuleChain"
+	TaskBoardService_CreateChildTask_FullMethodName      = "/rulego.v1.TaskBoardService/CreateChildTask"
+	TaskBoardService_ListChildTasks_FullMethodName       = "/rulego.v1.TaskBoardService/ListChildTasks"
 )
 
 // TaskBoardServiceClient is the client API for TaskBoardService service.
@@ -42,6 +45,12 @@ type TaskBoardServiceClient interface {
 	UpdateTask(ctx context.Context, in *UpdateTaskReq, opts ...grpc.CallOption) (*UpdateTaskReply, error)
 	// 删除任务
 	DeleteTask(ctx context.Context, in *DeleteTaskReq, opts ...grpc.CallOption) (*DeleteTaskReply, error)
+	// 执行任务关联的规则链
+	ExecuteTaskRuleChain(ctx context.Context, in *ExecuteTaskRuleChainReq, opts ...grpc.CallOption) (*ExecuteTaskRuleChainReply, error)
+	// 创建子任务
+	CreateChildTask(ctx context.Context, in *CreateChildTaskReq, opts ...grpc.CallOption) (*CreateChildTaskReply, error)
+	// 查询子任务列表
+	ListChildTasks(ctx context.Context, in *ListChildTasksReq, opts ...grpc.CallOption) (*ListChildTasksReply, error)
 }
 
 type taskBoardServiceClient struct {
@@ -102,6 +111,36 @@ func (c *taskBoardServiceClient) DeleteTask(ctx context.Context, in *DeleteTaskR
 	return out, nil
 }
 
+func (c *taskBoardServiceClient) ExecuteTaskRuleChain(ctx context.Context, in *ExecuteTaskRuleChainReq, opts ...grpc.CallOption) (*ExecuteTaskRuleChainReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecuteTaskRuleChainReply)
+	err := c.cc.Invoke(ctx, TaskBoardService_ExecuteTaskRuleChain_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *taskBoardServiceClient) CreateChildTask(ctx context.Context, in *CreateChildTaskReq, opts ...grpc.CallOption) (*CreateChildTaskReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateChildTaskReply)
+	err := c.cc.Invoke(ctx, TaskBoardService_CreateChildTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *taskBoardServiceClient) ListChildTasks(ctx context.Context, in *ListChildTasksReq, opts ...grpc.CallOption) (*ListChildTasksReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChildTasksReply)
+	err := c.cc.Invoke(ctx, TaskBoardService_ListChildTasks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TaskBoardServiceServer is the server API for TaskBoardService service.
 // All implementations must embed UnimplementedTaskBoardServiceServer
 // for forward compatibility.
@@ -118,6 +157,12 @@ type TaskBoardServiceServer interface {
 	UpdateTask(context.Context, *UpdateTaskReq) (*UpdateTaskReply, error)
 	// 删除任务
 	DeleteTask(context.Context, *DeleteTaskReq) (*DeleteTaskReply, error)
+	// 执行任务关联的规则链
+	ExecuteTaskRuleChain(context.Context, *ExecuteTaskRuleChainReq) (*ExecuteTaskRuleChainReply, error)
+	// 创建子任务
+	CreateChildTask(context.Context, *CreateChildTaskReq) (*CreateChildTaskReply, error)
+	// 查询子任务列表
+	ListChildTasks(context.Context, *ListChildTasksReq) (*ListChildTasksReply, error)
 	mustEmbedUnimplementedTaskBoardServiceServer()
 }
 
@@ -142,6 +187,15 @@ func (UnimplementedTaskBoardServiceServer) UpdateTask(context.Context, *UpdateTa
 }
 func (UnimplementedTaskBoardServiceServer) DeleteTask(context.Context, *DeleteTaskReq) (*DeleteTaskReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTask not implemented")
+}
+func (UnimplementedTaskBoardServiceServer) ExecuteTaskRuleChain(context.Context, *ExecuteTaskRuleChainReq) (*ExecuteTaskRuleChainReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecuteTaskRuleChain not implemented")
+}
+func (UnimplementedTaskBoardServiceServer) CreateChildTask(context.Context, *CreateChildTaskReq) (*CreateChildTaskReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateChildTask not implemented")
+}
+func (UnimplementedTaskBoardServiceServer) ListChildTasks(context.Context, *ListChildTasksReq) (*ListChildTasksReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListChildTasks not implemented")
 }
 func (UnimplementedTaskBoardServiceServer) mustEmbedUnimplementedTaskBoardServiceServer() {}
 func (UnimplementedTaskBoardServiceServer) testEmbeddedByValue()                          {}
@@ -254,6 +308,60 @@ func _TaskBoardService_DeleteTask_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TaskBoardService_ExecuteTaskRuleChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteTaskRuleChainReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskBoardServiceServer).ExecuteTaskRuleChain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TaskBoardService_ExecuteTaskRuleChain_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskBoardServiceServer).ExecuteTaskRuleChain(ctx, req.(*ExecuteTaskRuleChainReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TaskBoardService_CreateChildTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateChildTaskReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskBoardServiceServer).CreateChildTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TaskBoardService_CreateChildTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskBoardServiceServer).CreateChildTask(ctx, req.(*CreateChildTaskReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TaskBoardService_ListChildTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChildTasksReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskBoardServiceServer).ListChildTasks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TaskBoardService_ListChildTasks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskBoardServiceServer).ListChildTasks(ctx, req.(*ListChildTasksReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TaskBoardService_ServiceDesc is the grpc.ServiceDesc for TaskBoardService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -280,6 +388,18 @@ var TaskBoardService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteTask",
 			Handler:    _TaskBoardService_DeleteTask_Handler,
+		},
+		{
+			MethodName: "ExecuteTaskRuleChain",
+			Handler:    _TaskBoardService_ExecuteTaskRuleChain_Handler,
+		},
+		{
+			MethodName: "CreateChildTask",
+			Handler:    _TaskBoardService_CreateChildTask_Handler,
+		},
+		{
+			MethodName: "ListChildTasks",
+			Handler:    _TaskBoardService_ListChildTasks_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

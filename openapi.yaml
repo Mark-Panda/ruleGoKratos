@@ -1686,6 +1686,90 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/rulego.v1.DeleteTaskReply'
+    /api/v1/tasks/{id}/execute:
+        post:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 执行任务关联的规则链
+            description: 当任务处于待处理状态且已关联规则链时，触发异步执行，成功后自动更新状态为处理中
+            operationId: ExecuteTaskRuleChain
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.ExecuteTaskRuleChainReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ExecuteTaskRuleChainReply'
+    /api/v1/tasks/{parent_id}/children:
+        get:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 查询子任务列表
+            description: 查询指定任务的子任务列表
+            operationId: ListChildTasks
+            parameters:
+                - name: parent_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageSize
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.ListChildTasksReply'
+        post:
+            tags:
+                - TaskBoardService
+                - TaskBoard
+            summary: 创建子任务
+            description: 从已完成或处理失败的任务创建子任务，继承父任务内容并建立关联
+            operationId: CreateChildTask
+            parameters:
+                - name: parent_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/rulego.v1.CreateChildTaskReq'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/rulego.v1.CreateChildTaskReply'
 components:
     schemas:
         google.protobuf.ListValue:
@@ -2058,6 +2142,20 @@ components:
                     type: string
                 updatedAt:
                     type: string
+        rulego.v1.CreateChildTaskReply:
+            type: object
+            properties:
+                task:
+                    $ref: '#/components/schemas/rulego.v1.TaskBoard'
+            description: 创建子任务响应
+        rulego.v1.CreateChildTaskReq:
+            type: object
+            properties:
+                parent_id:
+                    type: string
+                nameSuffix:
+                    type: string
+            description: 创建子任务请求
         rulego.v1.CreateComponentUseRuleReply:
             type: object
             properties: {}
@@ -2236,6 +2334,8 @@ components:
                     type: string
                 description:
                     type: string
+                ruleChainId:
+                    type: string
             description: 创建任务请求
         rulego.v1.CreateWorkspaceReply:
             type: object
@@ -2336,6 +2436,20 @@ components:
             properties:
                 data:
                     type: object
+        rulego.v1.ExecuteTaskRuleChainReply:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                message:
+                    type: string
+            description: 执行任务规则链响应
+        rulego.v1.ExecuteTaskRuleChainReq:
+            type: object
+            properties:
+                id:
+                    type: string
+            description: 执行任务规则链请求
         rulego.v1.GenerateRuleChainSkillReply:
             type: object
             properties:
@@ -2441,6 +2555,16 @@ components:
             properties:
                 item:
                     $ref: '#/components/schemas/rulego.v1.WorkspaceItem'
+        rulego.v1.ListChildTasksReply:
+            type: object
+            properties:
+                tasks:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/rulego.v1.TaskBoard'
+                total:
+                    type: string
+            description: 查询子任务列表响应
         rulego.v1.ListComponentUseRuleReply:
             type: object
             properties:
@@ -2890,6 +3014,12 @@ components:
                     type: string
                 description:
                     type: string
+                ruleChainId:
+                    type: string
+                parentId:
+                    type: string
+                lastRunId:
+                    type: string
             description: 任务看板实体
         rulego.v1.TestMcpConfigReply:
             type: object
@@ -3130,6 +3260,10 @@ components:
                     type: string
                 description:
                     type: string
+                ruleChainId:
+                    type: string
+                clearRuleChainId:
+                    type: boolean
             description: 更新任务请求
         rulego.v1.UpdateWorkspaceReply:
             type: object
