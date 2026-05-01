@@ -28,6 +28,7 @@ import {
   saveStoredManagedAgentId,
 } from '../../utils/managed-agent-storage';
 import { renderOverviewChatMarkdown } from '../../utils/overview-chat-markdown';
+import { ChatFilePreview } from '../../components/chat-file-preview';
 
 const STORAGE_MODEL_KEY = 'flowgram-overview-chat-model-v1';
 const STORAGE_CHAT_STORE_KEY = 'flowgram-overview-chat-store-v1';
@@ -235,6 +236,7 @@ export const OverviewChatSection: React.FC = () => {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [previewFilePath, setPreviewFilePath] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const stopByUserRef = useRef(false);
   const lastRequestBySessionRef = useRef<RetryPayloadStore>(initialRetryStore);
@@ -1157,6 +1159,16 @@ export const OverviewChatSection: React.FC = () => {
             0%, 80%, 100% { transform: translateY(0); opacity: .35; }
             40% { transform: translateY(-2px); opacity: 1; }
           }
+          .overview-chat-file-link {
+            color: #1664ff;
+            cursor: pointer;
+            border-bottom: 1px dashed rgba(22,100,255,0.45);
+            text-decoration: none;
+          }
+          .overview-chat-file-link:hover {
+            color: #0a4fd4;
+            border-bottom-style: solid;
+          }
         `}</style>
             <div style={{ width: '100%', boxSizing: 'border-box' }}>
               {messages.length === 0 ? (
@@ -1221,15 +1233,26 @@ export const OverviewChatSection: React.FC = () => {
                             style={MD_SURFACE_STYLE}
                             onClick={async (evt) => {
                               const target = evt.target as HTMLElement | null;
+                              // Code-copy button
                               const btn = target?.closest?.(
                                 '[data-copy-code]'
                               ) as HTMLElement | null;
-                              if (!btn) return;
-                              const encoded = btn.getAttribute('data-copy-code') || '';
-                              const code = decodeURIComponent(encoded);
-                              const ok = await copyToClipboard(code);
-                              if (ok) Toast.success({ content: '代码已复制' });
-                              else Toast.error({ content: '代码复制失败' });
+                              if (btn) {
+                                const encoded = btn.getAttribute('data-copy-code') || '';
+                                const code = decodeURIComponent(encoded);
+                                const ok = await copyToClipboard(code);
+                                if (ok) Toast.success({ content: '代码已复制' });
+                                else Toast.error({ content: '代码复制失败' });
+                                return;
+                              }
+                              // File-path link
+                              const fileLink = target?.closest?.('.overview-chat-file-link') as HTMLElement | null;
+                              if (fileLink) {
+                                evt.preventDefault();
+                                const fp = fileLink.getAttribute('data-file-path');
+                                if (fp) setPreviewFilePath(fp);
+                                return;
+                              }
                             }}
                             dangerouslySetInnerHTML={{ __html: html || '<p></p>' }}
                           />
@@ -1392,6 +1415,25 @@ export const OverviewChatSection: React.FC = () => {
             </div>
           </div>
         </div>
+        {/* 右侧：文件预览 */}
+        {previewFilePath && (
+          <aside
+            style={{
+              width: 440,
+              flexShrink: 0,
+              background: '#fff',
+              borderLeft: '1px solid rgba(6,7,9,0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <ChatFilePreview
+              filePath={previewFilePath}
+              onClose={() => setPreviewFilePath(null)}
+            />
+          </aside>
+        )}
       </div>
     </div>
   );

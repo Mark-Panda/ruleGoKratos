@@ -334,3 +334,11 @@ export async function streamChat(
     throw normalizeStreamError(err);
   }
 }
+
+/** 构建聊天工作区文件服务 URL，用于预览/下载 */
+export function buildChatFileUrl(filePath: string, download?: boolean): string {
+  const origin = getApiOrigin();
+  const params = new URLSearchParams({ path: filePath });
+  if (download) params.set('download', 'true');
+  return `${origin}/api/v1/chat/workspace/file?${params.toString()}`;
+}

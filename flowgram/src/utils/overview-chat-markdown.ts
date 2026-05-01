@@ -66,7 +66,7 @@ const allowedTags = Array.from(
 
 const allowedAttributes: IOptions['allowedAttributes'] = {
   ...sanitizeHtml.defaults.allowedAttributes,
-  a: ['href', 'name', 'target', 'rel'],
+  a: ['href', 'name', 'target', 'rel', 'class', 'data-file-path'],
   img: ['src', 'alt', 'title'],
   div: ['class'],
   span: ['class'],
@@ -77,10 +77,19 @@ const allowedAttributes: IOptions['allowedAttributes'] = {
   td: ['class'],
 };
 
+/** 匹配消息中绝对路径的文件引用（以 / 开头，含常见文件扩展名） */
+const FILE_PATH_RE = /(^|[\s(（，。、"'`\[一-鿿>])(\/(?:[a-zA-Z0-9_\-\.]+\/)+[a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]{1,10})/g;
+
+/** 将消息中的绝对文件路径转换为可点击链接 */
+function linkifyFilePaths(html: string): string {
+  return html.replace(FILE_PATH_RE, '$1<a class="overview-chat-file-link" data-file-path="$2" href="#" title="点击预览文件">$2</a>');
+}
+
 export function renderOverviewChatMarkdown(raw: string): string {
   try {
     const parsed = String(marked.parse(raw || ''));
-    return sanitizeHtml(parsed, {
+    const linked = linkifyFilePaths(parsed);
+    return sanitizeHtml(linked, {
       allowedTags,
       allowedAttributes,
       allowedSchemes: ['http', 'https', 'mailto'],

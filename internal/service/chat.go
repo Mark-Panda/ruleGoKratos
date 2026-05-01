@@ -4,8 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"mime"
 	nethttp "net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	v1 "ruleGoKratos/api/rulego/v1"
 	"ruleGoKratos/internal/biz"
 	"strings"
@@ -173,10 +178,11 @@ func (s *ChatService) ChatStream(req *v1.ChatStreamReq, stream v1.Chat_ChatStrea
 	return nil
 }
 
-// RegisterChatHTTPRoute 注册 POST /api/v1/chat/stream（SSE，与 proto 注解一致）。
+// RegisterChatHTTPRoute 注册聊天相关 HTTP 路由。
 func RegisterChatHTTPRoute(s *khttp.Server, chat *ChatService) {
 	r := s.Route("/")
 	r.POST("/api/v1/chat/stream", chat.chatStreamHTTP)
+	r.GET("/api/v1/chat/workspace/file", chat.serveChatWorkspaceFile)
 }
 
 func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
@@ -291,4 +297,150 @@ func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
 		return cerr
 	}
 	return nil
+}
+
+const maxChatFileServeBytes = 4 * 1024 * 1024 // 4 MiB
+
+// serveChatWorkspaceFile 读取并返回工作区中的文件，支持二进制文件（图片/SVG 等）。
+// GET /api/v1/chat/workspace/file?path=<absPath>&download=true
+func (s *ChatService) serveChatWorkspaceFile(ctx khttp.Context) error {
+	filePath := strings.TrimSpace(ctx.Request().URL.Query().Get("path"))
+	if filePath == "" {
+		ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+		_, _ = ctx.Response().Write([]byte(`{"error":"path is required"}`))
+		return nil
+	}
+
+	if !filepath.IsAbs(filePath) {
+		ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+		_, _ = ctx.Response().Write([]byte(`{"error":"path must be absolute"}`))
+		return nil
+	}
+	absPath := filepath.Clean(filePath)
+
+	// 验证路径在工作区根目录内，防止路径穿越
+	rootAbs, err := s.agent.ResolveAgentWorkspaceRoot()
+	if err != nil {
+		ctx.Response().WriteHeader(nethttp.StatusInternalServerError)
+		_, _ = ctx.Response().Write([]byte(`{"error":"failed to resolve workspace root"}`))
+		return nil
+	}
+	rootAbs = filepath.Clean(rootAbs)
+	rel, relErr := filepath.Rel(rootAbs, absPath)
+	if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		ctx.Response().WriteHeader(nethttp.StatusForbidden)
+		_, _ = ctx.Response().Write([]byte(`{"error":"path is outside workspace root"}`))
+		return nil
+	}
+
+	st, statErr := os.Stat(absPath)
+	if statErr != nil {
+		if os.IsNotExist(statErr) {
+			ctx.Response().WriteHeader(nethttp.StatusNotFound)
+			_, _ = ctx.Response().Write([]byte(`{"error":"file not found"}`))
+			return nil
+		}
+		ctx.Response().WriteHeader(nethttp.StatusInternalServerError)
+		b, _ := json.Marshal(map[string]string{"error": statErr.Error()})
+		_, _ = ctx.Response().Write(b)
+		return nil
+	}
+	if st.IsDir() {
+		ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+		_, _ = ctx.Response().Write([]byte(`{"error":"path is a directory, not a file"}`))
+		return nil
+	}
+	if st.Size() > maxChatFileServeBytes {
+		ctx.Response().WriteHeader(nethttp.StatusBadRequest)
+		_, _ = ctx.Response().Write([]byte(`{"error":"file too large (exceeds 4 MiB)"}`))
+		return nil
+	}
+
+	data, readErr := os.ReadFile(absPath)
+	if readErr != nil {
+		ctx.Response().WriteHeader(nethttp.StatusInternalServerError)
+		b, _ := json.Marshal(map[string]string{"error": readErr.Error()})
+		_, _ = ctx.Response().Write(b)
+		return nil
+	}
+
+	contentType := detectFileContentType(absPath, data)
+	w := ctx.Response()
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.Header().Set("Cache-Control", "private, max-age=60")
+
+	isDownload := strings.EqualFold(ctx.Request().URL.Query().Get("download"), "true")
+	baseName := filepath.Base(absPath)
+	if isDownload {
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, baseName))
+	} else {
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, baseName))
+	}
+
+	_, _ = w.Write(data)
+	return nil
+}
+
+// detectFileContentType 根据扩展名和内容检测文件的 Content-Type。
+// 扩展名优先级高于 http.DetectContentType，因为 Go 内置嗅探对 SVG 等类型判断不准确。
+func detectFileContentType(absPath string, data []byte) string {
+	ext := strings.ToLower(filepath.Ext(absPath))
+
+	switch ext {
+	case ".svg":
+		return "image/svg+xml"
+	case ".html", ".htm":
+		return "text/html; charset=utf-8"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".js", ".mjs":
+		return "text/javascript; charset=utf-8"
+	case ".json":
+		return "application/json; charset=utf-8"
+	case ".xml":
+		return "text/xml; charset=utf-8"
+	case ".yaml", ".yml":
+		return "text/yaml; charset=utf-8"
+	case ".md", ".markdown":
+		return "text/markdown; charset=utf-8"
+	case ".txt":
+		return "text/plain; charset=utf-8"
+	case ".csv":
+		return "text/csv; charset=utf-8"
+	case ".pdf":
+		return "application/pdf"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	case ".webp":
+		return "image/webp"
+	case ".bmp":
+		return "image/bmp"
+	case ".ico":
+		return "image/x-icon"
+	case ".mp4":
+		return "video/mp4"
+	case ".webm":
+		return "video/webm"
+	case ".mp3":
+		return "audio/mpeg"
+	case ".wav":
+		return "audio/wav"
+	}
+
+	if len(data) > 0 {
+		if detected := nethttp.DetectContentType(data); detected != "application/octet-stream" {
+			return detected
+		}
+	}
+
+	if m := mime.TypeByExtension(ext); m != "" {
+		return m
+	}
+
+	return "application/octet-stream"
 }
