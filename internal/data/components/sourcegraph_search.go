@@ -21,12 +21,12 @@ import (
 )
 
 func init() {
-	_ = rulego.Registry.Register(&ApiRouteTracerSourcegraphComponent{})
+	_ = rulego.Registry.Register(&SourcegraphSearchComponent{})
 }
 
-// ApiRouteTracerSourcegraphComponent 根据搜索路径组装 Sourcegraph 查询串并执行搜索，返回结果 JSON
-type ApiRouteTracerSourcegraphComponent struct {
-	Config ApiRouteTracerSourcegraphConfiguration
+// SourcegraphSearchComponent 根据搜索路径组装 Sourcegraph 查询串并执行搜索，返回结果 JSON
+type SourcegraphSearchComponent struct {
+	Config SourcegraphSearchConfiguration
 
 	endpointTpl           el.Template
 	accessTokenTpl        el.Template
@@ -40,7 +40,7 @@ type ApiRouteTracerSourcegraphComponent struct {
 	defaultPatternsTpl    el.Template
 }
 
-type ApiRouteTracerSourcegraphConfiguration struct {
+type SourcegraphSearchConfiguration struct {
 	// Sourcegraph 服务地址，例如 "https://sourcegraph.example.com"
 	Endpoint string `json:"endpoint"`
 
@@ -80,8 +80,8 @@ type ApiRouteTracerSourcegraphConfiguration struct {
 	DefaultPatterns string `json:"defaultPatterns"`
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) New() types.Node {
-	return &ApiRouteTracerSourcegraphComponent{Config: ApiRouteTracerSourcegraphConfiguration{
+func (c *SourcegraphSearchComponent) New() types.Node {
+	return &SourcegraphSearchComponent{Config: SourcegraphSearchConfiguration{
 		TimeoutSec:         30,
 		ContextGlobal:      "true",
 		DisplayLimit:       "1500",
@@ -89,18 +89,18 @@ func (c *ApiRouteTracerSourcegraphComponent) New() types.Node {
 	}}
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) Type() string {
-	return "x/apiRouteTracerSourcegraph"
+func (c *SourcegraphSearchComponent) Type() string {
+	return "x/sourcegraphSearch"
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) Def() types.ComponentForm {
+func (c *SourcegraphSearchComponent) Def() types.ComponentForm {
 	return types.ComponentForm{
-		Label: "apiRouteTracerSourcegraph",
+		Label: "sourcegraphSearch",
 		Desc:  "根据搜索路径组装 Sourcegraph 查询并执行搜索，返回结果 JSON",
 	}
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) Init(_ types.Config, configuration types.Configuration) error {
+func (c *SourcegraphSearchComponent) Init(_ types.Config, configuration types.Configuration) error {
 	if err := maps.Map2Struct(configuration, &c.Config); err != nil {
 		return err
 	}
@@ -141,12 +141,12 @@ func (c *ApiRouteTracerSourcegraphComponent) Init(_ types.Config, configuration 
 	return nil
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
+func (c *SourcegraphSearchComponent) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	env := base.NodeUtils.GetEvnAndMetadata(ctx, msg)
 
 	endpoint := strings.TrimRight(strings.TrimSpace(c.endpointTpl.ExecuteAsString(env)), "/")
 	if endpoint == "" {
-		ctx.TellFailure(msg, errors.New("apiRouteTracerSourcegraph: 渲染后 endpoint 为空"))
+		ctx.TellFailure(msg, errors.New("sourcegraphSearch: 渲染后 endpoint 为空"))
 		return
 	}
 	accessToken := strings.TrimSpace(c.accessTokenTpl.ExecuteAsString(env))
@@ -162,14 +162,14 @@ func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg ty
 		patterns = splitDefaultPatternsLines(c.defaultPatternsTpl.ExecuteAsString(env))
 	}
 	if len(patterns) == 0 {
-		ctx.TellFailure(msg, errors.New("apiRouteTracerSourcegraph: 无搜索路径，请在消息 data 传入 JSON/文本，或配置 defaultPatterns"))
+		ctx.TellFailure(msg, errors.New("sourcegraphSearch: 无搜索路径，请在消息 data 传入 JSON/文本，或配置 defaultPatterns"))
 		return
 	}
 
 	scope := strings.ToLower(strings.TrimSpace(c.repoScopeTpl.ExecuteAsString(env)))
 	repoFE := strings.TrimSpace(c.repoFrontendTpl.ExecuteAsString(env))
 	repoBE := strings.TrimSpace(c.repoBackendTpl.ExecuteAsString(env))
-	repoFilter := repoFilterForTracerScope(scope, repoFE, repoBE)
+	repoFilter := repoFilterForScope(scope, repoFE, repoBE)
 
 	var contextToken string
 	if parseTruthyTemplate(c.contextGlobalTpl.ExecuteAsString(env)) {
@@ -178,7 +178,7 @@ func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg ty
 	typeFilter := strings.TrimSpace(c.typeFilterTpl.ExecuteAsString(env))
 
 	displayLimit := parseDisplayLimitTemplate(c.displayLimitTpl.ExecuteAsString(env), 1500)
-	parts := tracerSourcegraphQueryParts{
+	parts := sourcegraphQueryParts{
 		ContextGlobal: contextToken,
 		TypeFilter:    typeFilter,
 		RepoFilter:    repoFilter,
@@ -187,20 +187,20 @@ func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg ty
 
 	queries := make([]string, 0, len(patterns))
 	for _, p := range patterns {
-		q := buildTracerSourcegraphQuery(patternType, p, parts)
+		q := buildSourcegraphQuery(patternType, p, parts)
 		if q != "" {
 			queries = append(queries, q)
 		}
 	}
 	if len(queries) == 0 {
-		ctx.TellFailure(msg, errors.New("apiRouteTracerSourcegraph: 未能生成查询串"))
+		ctx.TellFailure(msg, errors.New("sourcegraphSearch: 未能生成查询串"))
 		return
 	}
 
 	// --- 搜索 ---
 	gqlURL, err := url.JoinPath(endpoint, ".api", "graphql")
 	if err != nil {
-		ctx.TellFailure(msg, fmt.Errorf("apiRouteTracerSourcegraph: 拼接 GraphQL URL 失败: %w", err))
+		ctx.TellFailure(msg, fmt.Errorf("sourcegraphSearch: 拼接 GraphQL URL 失败: %w", err))
 		return
 	}
 
@@ -208,7 +208,7 @@ func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg ty
 	for _, q := range queries {
 		data, err := executeSourcegraphSearchQuery(gqlURL, accessToken, q, c.Config.TimeoutSec)
 		if err != nil {
-			ctx.TellFailure(msg, fmt.Errorf("apiRouteTracerSourcegraph: query %q 执行失败: %w", q, err))
+			ctx.TellFailure(msg, fmt.Errorf("sourcegraphSearch: query %q 执行失败: %w", q, err))
 			return
 		}
 		results = append(results, data)
@@ -248,8 +248,8 @@ func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg ty
 	ctx.TellSuccess(out)
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) Destroy() {
-	c.Config = ApiRouteTracerSourcegraphConfiguration{}
+func (c *SourcegraphSearchComponent) Destroy() {
+	c.Config = SourcegraphSearchConfiguration{}
 	c.endpointTpl = nil
 	c.accessTokenTpl = nil
 	c.repoScopeTpl = nil
@@ -262,7 +262,7 @@ func (c *ApiRouteTracerSourcegraphComponent) Destroy() {
 	c.defaultPatternsTpl = nil
 }
 
-func (c *ApiRouteTracerSourcegraphComponent) Close() error { return nil }
+func (c *SourcegraphSearchComponent) Close() error { return nil }
 
 type sourcegraphSearchResponse struct {
 	Data   json.RawMessage   `json:"data"`
@@ -284,7 +284,7 @@ type sourcegraphPreprocessPatterns struct {
 	Patterns    []string `json:"patterns"`
 }
 
-type tracerSourcegraphQueryParts struct {
+type sourcegraphQueryParts struct {
 	ContextGlobal string
 	TypeFilter    string
 	RepoFilter    string
@@ -367,7 +367,7 @@ func splitDefaultPatternsLines(s string) []string {
 	return out
 }
 
-func buildTracerSourcegraphQuery(patternType, pattern string, p tracerSourcegraphQueryParts) string {
+func buildSourcegraphQuery(patternType, pattern string, p sourcegraphQueryParts) string {
 	pattern = strings.TrimSpace(pattern)
 	if pattern == "" {
 		return ""
@@ -398,7 +398,7 @@ func buildTracerSourcegraphQuery(patternType, pattern string, p tracerSourcegrap
 	return s
 }
 
-func repoFilterForTracerScope(scope, repoFrontend, repoBackend string) string {
+func repoFilterForScope(scope, repoFrontend, repoBackend string) string {
 	switch strings.ToLower(strings.TrimSpace(scope)) {
 	case "frontend":
 		rf := strings.TrimSpace(repoFrontend)

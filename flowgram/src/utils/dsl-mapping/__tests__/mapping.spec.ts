@@ -10,7 +10,7 @@ import {
   feishuWebhookMappingSpec,
   feishuCliAuthMappingSpec,
   workspaceSyncMappingSpec,
-  apiRouteTracerSourcegraphMappingSpec,
+  sourcegraphSearchMappingSpec,
   dbClientMappingSpec,
   flowMappingSpec,
   jsFilterMappingSpec,
@@ -1136,7 +1136,7 @@ describe('remaining node specs round-trip', () => {
           },
         },
       },
-      apiRouteTracerSourcegraphMappingSpec
+      sourcegraphSearchMappingSpec
     );
     expect(tracerCfg).toMatchObject({
       endpoint: 'https://sourcegraph.example.com',
@@ -1149,7 +1149,7 @@ describe('remaining node specs round-trip', () => {
     });
     const tracerIv = mapDslToNodeInputsValues(
       tracerCfg as Record<string, unknown>,
-      apiRouteTracerSourcegraphMappingSpec
+      sourcegraphSearchMappingSpec
     );
     expect(tracerIv.endpoint?.content).toBe('https://sourcegraph.example.com');
     expect(tracerIv.repoScope?.content).toBe('backend');
@@ -1878,17 +1878,17 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     expect((node as any)?.data?.inputsValues?.replaceData?.content).toBe(true);
   });
 
-  it('x/apiRouteTracerSourcegraph：文档→RuleChain→文档 round-trip 保持 configuration', () => {
-    const chainId = 'chain-api-route-tracer-sourcegraph-rt';
+  it('x/sourcegraphSearch：文档→RuleChain→文档 round-trip 保持 configuration', () => {
+    const chainId = 'chain-sourcegraph-search-rt';
     const doc = {
       toJSON: () => ({
         id: chainId,
-        name: 'ApiRouteTracerSourcegraphRT',
+        name: 'SourcegraphSearchRT',
         nodes: [
           { id: 'st', type: 'start', meta: { position: { x: 0, y: 0 } }, data: { title: 'S' } },
           {
             id: 'tracer',
-            type: 'x/apiRouteTracerSourcegraph',
+            type: 'x/sourcegraphSearch',
             meta: { position: { x: 220, y: 0 } },
             data: {
               title: 'Tracer',
@@ -1914,7 +1914,7 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     const json = buildRuleChainJSONFromDocument(doc, { id: chainId });
     const parsed = JSON.parse(json) as any;
     const meta = parsed.metadata.nodes.find((n: any) => n.id === 'tracer');
-    expect(meta?.type).toBe('x/apiRouteTracerSourcegraph');
+    expect(meta?.type).toBe('x/sourcegraphSearch');
     expect(meta.configuration).toMatchObject({
       endpoint: 'https://sourcegraph.example.com',
       accessToken: '${metadata.sg_token}',

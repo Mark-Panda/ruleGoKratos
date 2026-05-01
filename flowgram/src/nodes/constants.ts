@@ -56,7 +56,9 @@ export enum WorkflowNodeType {
   /** 工作区仓库同步（与「工作区管理」同步仓库一致） */
   WorkspaceSync = 'x/workspaceSync',
   /** Sourcegraph 搜索节点（构建查询并执行搜索） */
-  ApiRouteTracerSourcegraph = 'x/apiRouteTracerSourcegraph',
+  SourcegraphSearch = 'x/sourcegraphSearch',
+  /** Sourcegraph Token 校验节点 */
+  SourcegraphTokenVerify = 'x/sourcegraphTokenVerify',
   FileWrite = 'x/fileWrite',
   FileDelete = 'x/fileDelete',
   FileList = 'x/fileList',

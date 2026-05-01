@@ -58,7 +58,8 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   [WorkflowNodeType.ServiceManagement]: '服务管理',
   [WorkflowNodeType.JsonExtract]: 'JSON 提取',
   [WorkflowNodeType.WorkspaceSync]: '工作区刷新',
-  [WorkflowNodeType.ApiRouteTracerSourcegraph]: 'API路由追踪',
+  [WorkflowNodeType.SourcegraphSearch]: 'SourceGraph搜索',
+  [WorkflowNodeType.SourcegraphTokenVerify]: 'SourceGraph Token校验',
 
   // 辅助节点
   [WorkflowNodeType.LogString]: '日志输出',

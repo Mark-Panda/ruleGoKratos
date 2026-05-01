@@ -633,8 +633,8 @@ export const workspaceSyncMappingSpec: NodeMappingSpec = {
   ],
 };
 
-export const apiRouteTracerSourcegraphMappingSpec: NodeMappingSpec = {
-  nodeType: 'x/apiRouteTracerSourcegraph',
+export const sourcegraphSearchMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/sourcegraphSearch',
   fields: [
     { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'template', defaultValue: '' },
     { inputKey: 'accessToken', dslKey: 'accessToken', valueType: 'template', defaultValue: '' },
@@ -662,6 +662,15 @@ export const apiRouteTracerSourcegraphMappingSpec: NodeMappingSpec = {
       valueType: 'template',
       defaultValue: '',
     },
+  ],
+};
+
+export const sourcegraphTokenVerifyMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/sourcegraphTokenVerify',
+  fields: [
+    { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'template', defaultValue: '' },
+    { inputKey: 'accessToken', dslKey: 'accessToken', valueType: 'template', defaultValue: '' },
+    { inputKey: 'timeoutSec', dslKey: 'timeoutSec', valueType: 'number', defaultValue: 15 },
   ],
 };
 
@@ -720,7 +729,8 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'x/feishuWebhook': feishuWebhookMappingSpec,
   'x/feishuCliAuth': feishuCliAuthMappingSpec,
   'x/workspaceSync': workspaceSyncMappingSpec,
-  'x/apiRouteTracerSourcegraph': apiRouteTracerSourcegraphMappingSpec,
+  'x/sourcegraphSearch': sourcegraphSearchMappingSpec,
+  'x/sourcegraphTokenVerify': sourcegraphTokenVerifyMappingSpec,
 };
 
 export function getNodeMappingSpec(nodeType: string): NodeMappingSpec | undefined {

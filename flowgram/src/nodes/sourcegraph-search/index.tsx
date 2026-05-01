@@ -6,8 +6,8 @@ import { formMeta } from './form-meta';
 
 let index = 0;
 
-export const ApiRouteTracerSourcegraphNodeRegistry: FlowNodeRegistry = {
-  type: WorkflowNodeType.ApiRouteTracerSourcegraph,
+export const SourcegraphSearchNodeRegistry: FlowNodeRegistry = {
+  type: WorkflowNodeType.SourcegraphSearch,
   info: {
     icon: iconApi,
     description:
@@ -32,7 +32,7 @@ export const ApiRouteTracerSourcegraphNodeRegistry: FlowNodeRegistry = {
   onAdd() {
     return {
       id: `${alphaNanoid(16)}`,
-      type: WorkflowNodeType.ApiRouteTracerSourcegraph,
+      type: WorkflowNodeType.SourcegraphSearch,
       data: {
         title: `Sourcegraph搜索_${++index}`,
         positionType: 'middle',

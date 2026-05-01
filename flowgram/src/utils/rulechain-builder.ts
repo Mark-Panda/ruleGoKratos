@@ -422,7 +422,7 @@ function buildRuleChainMetaNodes(
     case 'x/fileDelete':
     case 'x/fileList':
     case 'x/jsonExtract':
-    case 'x/apiRouteTracerSourcegraph':
+    case 'x/sourcegraphSearch':
     case 'ci/gitClone':
     case 'ci/gitCommit':
     case 'ci/gitPush':
@@ -1485,9 +1485,9 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
           } as any;
           break;
         }
-        case 'x/apiRouteTracerSourcegraph': {
+        case 'x/sourcegraphSearch': {
           const cfg = n.configuration ?? {};
-          const specTracer = getNodeMappingSpec('x/apiRouteTracerSourcegraph');
+          const specTracer = getNodeMappingSpec('x/sourcegraphSearch');
           const ivMapTracer = specTracer
             ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specTracer)
             : ({} as InputsValuesMap);

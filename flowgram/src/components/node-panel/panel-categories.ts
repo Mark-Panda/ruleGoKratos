@@ -68,7 +68,7 @@ const SERVICE_CALLS = new Set([
   'x/cursorAcp',
   'x/cursorCliAuth',
   'x/feishuCliAuth',
-  'x/apiRouteTracerSourcegraph',
+  'x/sourcegraphSearch',
 ]);
 
 /** 数据存储与检索：数据库、缓存、搜索引擎 */
