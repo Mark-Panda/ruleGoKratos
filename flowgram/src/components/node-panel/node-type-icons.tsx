@@ -93,6 +93,8 @@ function getNodeIconColor(type: string): string {
       return NODE_COLOR_PALETTE.external[1];
     case WorkflowNodeType.ServiceManagement:
       return NODE_COLOR_PALETTE.product[0];
+    case WorkflowNodeType.ApiRouteTracerSourcegraph:
+      return NODE_COLOR_PALETTE.external[0];
     case WorkflowNodeType.AgentHarness:
       return NODE_COLOR_PALETTE.external[2];
     case WorkflowNodeType.Code:
@@ -204,6 +206,8 @@ function getIconByNodeType(type: string, options?: NodeIconOptions): JSX.Element
       return <ApiApp {...iconCommonProps} />;
     case WorkflowNodeType.ServiceManagement:
       return <SettingConfig {...iconCommonProps} />;
+    case WorkflowNodeType.ApiRouteTracerSourcegraph:
+      return <Router {...iconCommonProps} />;
     case WorkflowNodeType.AgentHarness:
       return <RobotOne {...iconCommonProps} />;
     case WorkflowNodeType.Code:

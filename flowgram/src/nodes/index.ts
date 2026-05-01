@@ -49,6 +49,7 @@ import { ServiceManagementNodeRegistry } from './service-management';
 import { JsonExtractNodeRegistry } from './jsonExtract';
 import { FeishuCliAuthNodeRegistry } from './feishuCliAuth';
 import { WorkspaceSyncNodeRegistry } from './workspace-sync';
+import { ApiRouteTracerSourcegraphNodeRegistry } from './api-route-tracer-sourcegraph';
 export { WorkflowNodeType } from './constants';
 export { NODE_TYPE_NAMES, getNodeTypeName, getNodeDisplayName } from './node-type-names';
 
@@ -96,6 +97,7 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   CronNodeRegistry,
   JsonExtractNodeRegistry,
   WorkspaceSyncNodeRegistry,
+  ApiRouteTracerSourcegraphNodeRegistry,
   TaskBoardNodeRegistry,
   ServiceManagementNodeRegistry,
   FlowSubChainNodeRegistry,
