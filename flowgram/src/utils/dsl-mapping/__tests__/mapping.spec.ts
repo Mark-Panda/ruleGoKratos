@@ -1126,11 +1126,10 @@ describe('remaining node specs round-trip', () => {
       {
         data: {
           inputsValues: {
-            action: { content: 'queryBuild' },
+            endpoint: { content: 'https://sourcegraph.example.com' },
             repoScope: { content: 'backend' },
             contextGlobal: { content: true },
             typeFilter: { content: 'lang:go' },
-            includeForked: { content: false },
             displayLimit: { content: 800 },
             defaultPatternType: { content: 'regexp' },
             defaultPatterns: { content: 'router\\.GET\\(' },
@@ -1140,11 +1139,10 @@ describe('remaining node specs round-trip', () => {
       apiRouteTracerSourcegraphMappingSpec
     );
     expect(tracerCfg).toMatchObject({
-      action: 'queryBuild',
+      endpoint: 'https://sourcegraph.example.com',
       repoScope: 'backend',
       contextGlobal: true,
       typeFilter: 'lang:go',
-      includeForked: false,
       displayLimit: 800,
       defaultPatternType: 'regexp',
       defaultPatterns: 'router\\.GET\\(',
@@ -1153,7 +1151,7 @@ describe('remaining node specs round-trip', () => {
       tracerCfg as Record<string, unknown>,
       apiRouteTracerSourcegraphMappingSpec
     );
-    expect(tracerIv.action?.content).toBe('queryBuild');
+    expect(tracerIv.endpoint?.content).toBe('https://sourcegraph.example.com');
     expect(tracerIv.repoScope?.content).toBe('backend');
     expect(tracerIv.contextGlobal?.content).toBe(true);
     expect(tracerIv.defaultPatternType?.content).toBe('regexp');
@@ -1896,19 +1894,16 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
               title: 'Tracer',
               positionType: 'middle',
               inputsValues: {
-                action: { type: 'constant', content: 'search' },
                 endpoint: { type: 'template', content: 'https://sourcegraph.example.com' },
                 accessToken: { type: 'template', content: '${metadata.sg_token}' },
                 timeoutSec: { type: 'constant', content: 45 },
-                defaultSearchQuery: { type: 'template', content: 'repo:backend/.* lang:go route' },
                 repoScope: { type: 'constant', content: 'backend' },
                 contextGlobal: { type: 'constant', content: true },
-                includeForked: { type: 'constant', content: false },
                 displayLimit: { type: 'constant', content: 1200 },
                 defaultPatternType: { type: 'constant', content: 'literal' },
                 defaultPatterns: { type: 'template', content: 'internal/transport/http' },
               },
-              inputs: { type: 'object', required: ['action'], properties: {} },
+              inputs: { type: 'object', required: ['endpoint'], properties: {} },
             },
           },
         ],
@@ -1921,14 +1916,11 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
     const meta = parsed.metadata.nodes.find((n: any) => n.id === 'tracer');
     expect(meta?.type).toBe('x/apiRouteTracerSourcegraph');
     expect(meta.configuration).toMatchObject({
-      action: 'search',
       endpoint: 'https://sourcegraph.example.com',
       accessToken: '${metadata.sg_token}',
       timeoutSec: 45,
-      defaultSearchQuery: 'repo:backend/.* lang:go route',
       repoScope: 'backend',
       contextGlobal: true,
-      includeForked: false,
       displayLimit: 1200,
       defaultPatternType: 'literal',
       defaultPatterns: 'internal/transport/http',
@@ -1936,7 +1928,6 @@ describe('structure nodes: rulechain round-trip (for, then endpoint/schedule)', 
 
     const back = buildDocumentFromRuleChainJSON(parsed);
     const node = back.nodes.find((n: any) => n.id === 'tracer');
-    expect((node as any)?.data?.inputsValues?.action?.content).toBe('search');
     expect((node as any)?.data?.inputsValues?.endpoint?.content).toBe(
       'https://sourcegraph.example.com'
     );

@@ -1492,87 +1492,75 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specTracer)
             : ({} as InputsValuesMap);
           base.data = {
-            title: n.name ?? 'API路由追踪',
+            title: n.name ?? 'Sourcegraph 搜索',
             positionType: 'middle',
             inputs: {
               type: 'object',
-              required: ['action'],
+              required: ['endpoint'],
               properties: {
-                action: {
-                  type: 'string',
-                  enum: ['gitPrepare', 'queryBuild', 'search'],
-                  default: { type: 'constant', content: 'queryBuild' } as any,
-                  extra: {
-                    label: '动作',
-                    formComponent: 'enum-select',
-                    options: [
-                      { label: 'gitPrepare：准备仓库', value: 'gitPrepare' },
-                      { label: 'queryBuild：构建查询', value: 'queryBuild' },
-                      { label: 'search：执行搜索', value: 'search' },
-                    ],
-                  },
-                },
-                gitlabUrl: {
-                  type: 'string',
-                  extra: { label: 'GitLab URL（gitPrepare）', formComponent: 'prompt-editor' },
-                },
-                workDir: {
-                  type: 'string',
-                  extra: { label: '工作目录（gitPrepare）', formComponent: 'prompt-editor' },
-                },
                 endpoint: {
                   type: 'string',
-                  extra: { label: 'Sourcegraph Endpoint（search）', formComponent: 'prompt-editor' },
+                  extra: { label: '请求地址', formComponent: 'prompt-editor', description: '例如 https://sourcegraph.example.com' },
                 },
                 accessToken: {
                   type: 'string',
-                  extra: { label: 'Access Token（search）', formComponent: 'prompt-editor' },
+                  extra: { label: 'Access Token', formComponent: 'prompt-editor', description: 'Sourcegraph API 访问令牌' },
                 },
-                timeoutSec: { type: 'number', extra: { label: '超时（秒）' } },
-                defaultSearchQuery: {
-                  type: 'string',
-                  extra: { label: '默认查询（search）', formComponent: 'prompt-editor' },
-                },
+                timeoutSec: { type: 'number', extra: { label: '超时（秒）', description: '默认 30' } },
                 repoScope: {
                   type: 'string',
                   enum: ['', 'frontend', 'backend'],
                   default: { type: 'constant', content: '' } as any,
-                  extra: { label: '仓库范围（queryBuild）', formComponent: 'enum-select' },
+                  extra: {
+                    label: '仓库范围',
+                    formComponent: 'enum-select',
+                    options: [
+                      { label: '不限制', value: '' },
+                      { label: '仅前端仓库', value: 'frontend' },
+                      { label: '仅后端仓库', value: 'backend' },
+                    ],
+                  },
                 },
                 repoFrontend: {
                   type: 'string',
-                  extra: { label: '前端 repo 过滤（queryBuild）', formComponent: 'prompt-editor' },
+                  extra: { label: '前端仓库正则', formComponent: 'prompt-editor', description: 'repoScope=frontend 时生效，默认 teacher/fe/.*|frontend/.*' },
                 },
                 repoBackend: {
                   type: 'string',
-                  extra: { label: '后端 repo 过滤（queryBuild）', formComponent: 'prompt-editor' },
+                  extra: { label: '后端仓库正则', formComponent: 'prompt-editor', description: 'repoScope=backend 时生效，默认 teacher/backend/.*|backend/.*' },
                 },
                 contextGlobal: {
                   type: 'boolean',
-                  extra: { label: '追加 context:global（queryBuild）' },
+                  extra: { label: '搜索全部仓库', description: '添加 context:global 条件，默认开启' },
                 },
                 typeFilter: {
                   type: 'string',
-                  extra: { label: '类型过滤（queryBuild）', formComponent: 'prompt-editor' },
+                  extra: { label: '文件类型过滤', formComponent: 'prompt-editor', description: '例如 lang:Go 或 file:\\.go$' },
                 },
-                includeForked: { type: 'boolean', extra: { label: '包含 fork（queryBuild）' } },
-                displayLimit: { type: 'number', extra: { label: '数量上限（queryBuild）' } },
+                displayLimit: { type: 'number', extra: { label: '结果数量上限', description: '默认 1500' } },
                 defaultPatternType: {
                   type: 'string',
                   enum: ['literal', 'regexp'],
                   default: { type: 'constant', content: 'literal' } as any,
-                  extra: { label: '默认 pattern 类型（queryBuild）', formComponent: 'enum-select' },
+                  extra: {
+                    label: '匹配模式',
+                    formComponent: 'enum-select',
+                    options: [
+                      { label: '精确匹配（literal）', value: 'literal' },
+                      { label: '正则匹配（regexp）', value: 'regexp' },
+                    ],
+                  },
                 },
                 defaultPatterns: {
                   type: 'string',
-                  extra: { label: '默认 patterns（queryBuild）', formComponent: 'prompt-editor' },
+                  extra: { label: '默认搜索路径', formComponent: 'prompt-editor', description: '换行分隔，例如 /api/user/list\\n/api/order/detail' },
                 },
               },
             },
             inputsValues: specTracer
               ? inputsValuesMapToFlowData(ivMapTracer, specTracer)
               : {
-                  action: { type: 'constant', content: String((cfg as any).action ?? 'queryBuild') },
+                  endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
                 },
           };
           break;

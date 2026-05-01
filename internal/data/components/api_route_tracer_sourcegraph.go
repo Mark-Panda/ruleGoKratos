@@ -9,13 +9,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/rulego/rulego"
 	"github.com/rulego/rulego/api/types"
@@ -28,62 +24,66 @@ func init() {
 	_ = rulego.Registry.Register(&ApiRouteTracerSourcegraphComponent{})
 }
 
-// ApiRouteTracerSourcegraphComponent 将 api-route-tracer 相关能力整合为一个组件：
-// - gitPrepare: 克隆或拉取仓库
-// - queryBuild: 组装 Sourcegraph 查询串
-// - search: 调用 Sourcegraph GraphQL 搜索
+// ApiRouteTracerSourcegraphComponent 根据搜索路径组装 Sourcegraph 查询串并执行搜索，返回结果 JSON
 type ApiRouteTracerSourcegraphComponent struct {
 	Config ApiRouteTracerSourcegraphConfiguration
 
-	actionTpl             el.Template
-	gitlabURLTpl          el.Template
-	workDirTpl            el.Template
 	endpointTpl           el.Template
 	accessTokenTpl        el.Template
-	defaultSearchQueryTpl el.Template
 	repoScopeTpl          el.Template
 	repoFrontendTpl       el.Template
 	repoBackendTpl        el.Template
 	contextGlobalTpl      el.Template
 	typeFilterTpl         el.Template
-	includeForkedTpl      el.Template
 	displayLimitTpl       el.Template
 	defaultPatternTypeTpl el.Template
 	defaultPatternsTpl    el.Template
 }
 
 type ApiRouteTracerSourcegraphConfiguration struct {
-	// 执行动作: gitPrepare | queryBuild | search
-	Action string `json:"action"`
+	// Sourcegraph 服务地址，例如 "https://sourcegraph.example.com"
+	Endpoint string `json:"endpoint"`
 
-	// gitPrepare 参数
-	GitlabURL string `json:"gitlabUrl"`
-	WorkDir   string `json:"workDir"`
+	// Sourcegraph API 访问令牌，用于请求头 Authorization: token xxx
+	AccessToken string `json:"accessToken"`
 
-	// search 参数
-	Endpoint           string `json:"endpoint"`
-	AccessToken        string `json:"accessToken"`
-	TimeoutSec         int    `json:"timeoutSec"`
-	DefaultSearchQuery string `json:"defaultSearchQuery"`
+	// HTTP 请求超时秒数，默认 30
+	TimeoutSec int `json:"timeoutSec"`
 
-	// queryBuild 参数
-	RepoScope          string `json:"repoScope"`
-	RepoFrontend       string `json:"repoFrontend"`
-	RepoBackend        string `json:"repoBackend"`
-	ContextGlobal      string `json:"contextGlobal"`
-	TypeFilter         string `json:"typeFilter"`
-	IncludeForked      string `json:"includeForked"`
-	DisplayLimit       string `json:"displayLimit"`
+	// 仓库范围过滤，可选值:
+	//   - "frontend": 仅搜索前端仓库，使用 repoFrontend 配置的正则
+	//   - "backend":  仅搜索后端仓库，使用 repoBackend 配置的正则
+	//   - 其他:       不限制仓库范围
+	RepoScope string `json:"repoScope"`
+
+	// 前端仓库正则，当 repoScope=frontend 时生效，默认 "teacher/fe/.*|frontend/.*"
+	RepoFrontend string `json:"repoFrontend"`
+
+	// 后端仓库正则，当 repoScope=backend 时生效，默认 "teacher/backend/.*|backend/.*"
+	RepoBackend string `json:"repoBackend"`
+
+	// 是否添加 "context:global" 查询条件，搜索所有仓库而非仅当前实例，"true"/"1"/"yes"/"on" 为真，默认 "true"
+	ContextGlobal string `json:"contextGlobal"`
+
+	// 文件类型过滤条件，直接拼接到查询串中，例如 "lang:Go" 或 "file:\.go$"
+	TypeFilter string `json:"typeFilter"`
+
+	// 搜索结果返回数量上限，对应查询串 "count:N"，默认 "1500"
+	DisplayLimit string `json:"displayLimit"`
+
+	// 默认匹配模式，可选值:
+	//   - "literal": 精确匹配（默认）
+	//   - "regexp":  正则匹配，添加 "patternType:regexp"
 	DefaultPatternType string `json:"defaultPatternType"`
-	DefaultPatterns    string `json:"defaultPatterns"`
+
+	// 默认搜索路径，换行分隔，当消息 data 未提供 patterns 时使用，例如 "/api/user/list\n/api/order/detail"
+	DefaultPatterns string `json:"defaultPatterns"`
 }
 
 func (c *ApiRouteTracerSourcegraphComponent) New() types.Node {
 	return &ApiRouteTracerSourcegraphComponent{Config: ApiRouteTracerSourcegraphConfiguration{
-		Action:             "queryBuild",
 		TimeoutSec:         30,
 		ContextGlobal:      "true",
-		IncludeForked:      "true",
 		DisplayLimit:       "1500",
 		DefaultPatternType: "literal",
 	}}
@@ -96,7 +96,7 @@ func (c *ApiRouteTracerSourcegraphComponent) Type() string {
 func (c *ApiRouteTracerSourcegraphComponent) Def() types.ComponentForm {
 	return types.ComponentForm{
 		Label: "apiRouteTracerSourcegraph",
-		Desc:  "整合 gitPrepare/queryBuild/search 的 API 路由追踪组件",
+		Desc:  "根据搜索路径组装 Sourcegraph 查询并执行搜索，返回结果 JSON",
 	}
 }
 
@@ -105,17 +105,11 @@ func (c *ApiRouteTracerSourcegraphComponent) Init(_ types.Config, configuration 
 		return err
 	}
 
-	if strings.TrimSpace(c.Config.Action) == "" {
-		c.Config.Action = "queryBuild"
-	}
 	if c.Config.TimeoutSec <= 0 {
 		c.Config.TimeoutSec = 30
 	}
 	if strings.TrimSpace(c.Config.ContextGlobal) == "" {
 		c.Config.ContextGlobal = "true"
-	}
-	if strings.TrimSpace(c.Config.IncludeForked) == "" {
-		c.Config.IncludeForked = "true"
 	}
 	if strings.TrimSpace(c.Config.DisplayLimit) == "" {
 		c.Config.DisplayLimit = "1500"
@@ -125,18 +119,13 @@ func (c *ApiRouteTracerSourcegraphComponent) Init(_ types.Config, configuration 
 	}
 
 	tpls := map[*el.Template]string{
-		&c.actionTpl:             c.Config.Action,
-		&c.gitlabURLTpl:          c.Config.GitlabURL,
-		&c.workDirTpl:            c.Config.WorkDir,
 		&c.endpointTpl:           c.Config.Endpoint,
 		&c.accessTokenTpl:        c.Config.AccessToken,
-		&c.defaultSearchQueryTpl: c.Config.DefaultSearchQuery,
 		&c.repoScopeTpl:          c.Config.RepoScope,
 		&c.repoFrontendTpl:       c.Config.RepoFrontend,
 		&c.repoBackendTpl:        c.Config.RepoBackend,
 		&c.contextGlobalTpl:      c.Config.ContextGlobal,
 		&c.typeFilterTpl:         c.Config.TypeFilter,
-		&c.includeForkedTpl:      c.Config.IncludeForked,
 		&c.displayLimitTpl:       c.Config.DisplayLimit,
 		&c.defaultPatternTypeTpl: c.Config.DefaultPatternType,
 		&c.defaultPatternsTpl:    c.Config.DefaultPatterns,
@@ -154,100 +143,15 @@ func (c *ApiRouteTracerSourcegraphComponent) Init(_ types.Config, configuration 
 
 func (c *ApiRouteTracerSourcegraphComponent) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	env := base.NodeUtils.GetEvnAndMetadata(ctx, msg)
-	action := strings.ToLower(strings.TrimSpace(c.actionTpl.ExecuteAsString(env)))
-	if action == "" {
-		action = "querybuild"
-	}
 
-	switch action {
-	case "gitprepare":
-		c.handleGitPrepare(ctx, msg, env)
-	case "querybuild":
-		c.handleQueryBuild(ctx, msg, env)
-	case "search":
-		c.handleSearch(ctx, msg, env)
-	default:
-		ctx.TellFailure(msg, fmt.Errorf("apiRouteTracerSourcegraph: 不支持的 action: %s", action))
-	}
-}
-
-func (c *ApiRouteTracerSourcegraphComponent) handleGitPrepare(ctx types.RuleContext, msg types.RuleMsg, env map[string]interface{}) {
-	gitURL := strings.TrimSpace(c.gitlabURLTpl.ExecuteAsString(env))
-	if gitURL == "" {
-		ctx.TellFailure(msg, errors.New("gitPrepare: 渲染后 gitlabUrl 为空"))
+	endpoint := strings.TrimRight(strings.TrimSpace(c.endpointTpl.ExecuteAsString(env)), "/")
+	if endpoint == "" {
+		ctx.TellFailure(msg, errors.New("apiRouteTracerSourcegraph: 渲染后 endpoint 为空"))
 		return
 	}
-	workDir := strings.TrimSpace(c.workDirTpl.ExecuteAsString(env))
-	workDir = expandUserPath(workDir)
-	workDir = filepath.Clean(workDir)
-	if workDir == "" || workDir == "." {
-		ctx.TellFailure(msg, errors.New("gitPrepare: 渲染后 workDir 为空"))
-		return
-	}
+	accessToken := strings.TrimSpace(c.accessTokenTpl.ExecuteAsString(env))
 
-	repoBase, err := gitRepoDirNameFromURL(gitURL)
-	if err != nil {
-		ctx.TellFailure(msg, fmt.Errorf("gitPrepare: 从 URL 解析仓库目录名失败: %w", err))
-		return
-	}
-	name, ok := sanitizeServiceDirName(repoBase)
-	if !ok {
-		ctx.TellFailure(msg, fmt.Errorf("gitPrepare: 仓库目录名非法 %q（仅允许字母、数字、.-_）", repoBase))
-		return
-	}
-	servicePath := filepath.Join(workDir, name)
-
-	if err := os.MkdirAll(workDir, 0o755); err != nil {
-		ctx.TellFailure(msg, fmt.Errorf("gitPrepare: 创建工作目录失败: %w", err))
-		return
-	}
-
-	gitEnv := append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
-	cloneURL := fmt.Sprintf("https://%s.git", gitURL)
-
-	st, err := os.Stat(servicePath)
-	if err == nil {
-		if !st.IsDir() {
-			ctx.TellFailure(msg, fmt.Errorf("gitPrepare: %q 已存在且不是目录", servicePath))
-			return
-		}
-		if _, err := os.Stat(filepath.Join(servicePath, ".git")); err != nil {
-			ctx.TellFailure(msg, fmt.Errorf("gitPrepare: %q 已存在但不是 git 仓库（缺少 .git）", servicePath))
-			return
-		}
-		if err := runGitCommand(gitEnv, servicePath, "pull"); err != nil {
-			ctx.TellFailure(msg, fmt.Errorf("gitPrepare: git pull 失败: %w", err))
-			return
-		}
-	} else if os.IsNotExist(err) {
-		if err := runGitCommand(gitEnv, workDir, "clone", cloneURL); err != nil {
-			ctx.TellFailure(msg, fmt.Errorf("gitPrepare: git clone 失败: %w", err))
-			return
-		}
-	} else {
-		ctx.TellFailure(msg, fmt.Errorf("gitPrepare: 检查目录失败: %w", err))
-		return
-	}
-
-	out := msg.Copy()
-	if out.Metadata == nil {
-		out.Metadata = types.NewMetadata()
-	}
-	mergeTraceMetadata(msg, out)
-	out.Metadata.PutValue("api_route_tracer_service_path", servicePath)
-	out.Metadata.PutValue("api_route_tracer_project_type", "")
-	out.Metadata.PutValue("api_route_tracer_service_name", name)
-
-	summary, _ := json.Marshal(map[string]string{
-		"servicePath": servicePath,
-		"serviceName": name,
-		"gitlabUrl":   cloneURL,
-	})
-	out.SetData(string(summary))
-	ctx.TellSuccess(out)
-}
-
-func (c *ApiRouteTracerSourcegraphComponent) handleQueryBuild(ctx types.RuleContext, msg types.RuleMsg, env map[string]interface{}) {
+	// --- 构建 ---
 	patternType, patterns, fromMsg := parseQueryBuildData(msg.GetData())
 	if !fromMsg {
 		pt := strings.ToLower(strings.TrimSpace(c.defaultPatternTypeTpl.ExecuteAsString(env)))
@@ -258,7 +162,7 @@ func (c *ApiRouteTracerSourcegraphComponent) handleQueryBuild(ctx types.RuleCont
 		patterns = splitDefaultPatternsLines(c.defaultPatternsTpl.ExecuteAsString(env))
 	}
 	if len(patterns) == 0 {
-		ctx.TellFailure(msg, errors.New("queryBuild: 无搜索路径，请在消息 data 传入 JSON/文本，或配置 defaultPatterns"))
+		ctx.TellFailure(msg, errors.New("apiRouteTracerSourcegraph: 无搜索路径，请在消息 data 传入 JSON/文本，或配置 defaultPatterns"))
 		return
 	}
 
@@ -273,17 +177,11 @@ func (c *ApiRouteTracerSourcegraphComponent) handleQueryBuild(ctx types.RuleCont
 	}
 	typeFilter := strings.TrimSpace(c.typeFilterTpl.ExecuteAsString(env))
 
-	var forkFilter string
-	if parseTruthyTemplate(c.includeForkedTpl.ExecuteAsString(env)) {
-		forkFilter = "fork:yes"
-	}
-
 	displayLimit := parseDisplayLimitTemplate(c.displayLimitTpl.ExecuteAsString(env), 1500)
 	parts := tracerSourcegraphQueryParts{
 		ContextGlobal: contextToken,
 		TypeFilter:    typeFilter,
 		RepoFilter:    repoFilter,
-		ForkFilter:    forkFilter,
 		DisplayLimit:  displayLimit,
 	}
 
@@ -295,10 +193,28 @@ func (c *ApiRouteTracerSourcegraphComponent) handleQueryBuild(ctx types.RuleCont
 		}
 	}
 	if len(queries) == 0 {
-		ctx.TellFailure(msg, errors.New("queryBuild: 未能生成查询串"))
+		ctx.TellFailure(msg, errors.New("apiRouteTracerSourcegraph: 未能生成查询串"))
 		return
 	}
 
+	// --- 搜索 ---
+	gqlURL, err := url.JoinPath(endpoint, ".api", "graphql")
+	if err != nil {
+		ctx.TellFailure(msg, fmt.Errorf("apiRouteTracerSourcegraph: 拼接 GraphQL URL 失败: %w", err))
+		return
+	}
+
+	results := make([]json.RawMessage, 0, len(queries))
+	for _, q := range queries {
+		data, err := executeSourcegraphSearchQuery(gqlURL, accessToken, q, c.Config.TimeoutSec)
+		if err != nil {
+			ctx.TellFailure(msg, fmt.Errorf("apiRouteTracerSourcegraph: query %q 执行失败: %w", q, err))
+			return
+		}
+		results = append(results, data)
+	}
+
+	// --- 输出 ---
 	out := msg.Copy()
 	if out.Metadata == nil {
 		out.Metadata = types.NewMetadata()
@@ -310,52 +226,8 @@ func (c *ApiRouteTracerSourcegraphComponent) handleQueryBuild(ctx types.RuleCont
 	qb, _ := json.Marshal(queries)
 	out.Metadata.PutValue("sourcegraph_built_queries", string(qb))
 	out.Metadata.PutValue("sourcegraph_query_repo_scope", scope)
-
-	payload, _ := json.Marshal(map[string]interface{}{
-		"query":   first,
-		"queries": queries,
-	})
-	out.SetData(string(payload))
-	ctx.TellSuccess(out)
-}
-
-func (c *ApiRouteTracerSourcegraphComponent) handleSearch(ctx types.RuleContext, msg types.RuleMsg, env map[string]interface{}) {
-	endpoint := strings.TrimRight(strings.TrimSpace(c.endpointTpl.ExecuteAsString(env)), "/")
-	if endpoint == "" {
-		ctx.TellFailure(msg, errors.New("search: 渲染后 endpoint 为空"))
-		return
-	}
-	accessToken := strings.TrimSpace(c.accessTokenTpl.ExecuteAsString(env))
-	defaultQuery := strings.TrimSpace(c.defaultSearchQueryTpl.ExecuteAsString(env))
-	queries := resolveSourcegraphQueries(msg.GetData(), defaultQuery)
-	if len(queries) == 0 {
-		ctx.TellFailure(msg, errors.New("search: 搜索词为空，请传入 query/queries 或配置 defaultSearchQuery"))
-		return
-	}
-
-	gqlURL, err := url.JoinPath(endpoint, ".api", "graphql")
-	if err != nil {
-		ctx.TellFailure(msg, fmt.Errorf("search: 拼接 GraphQL URL 失败: %w", err))
-		return
-	}
-
-	results := make([]json.RawMessage, 0, len(queries))
-	for _, q := range queries {
-		data, err := executeSourcegraphSearchQuery(gqlURL, accessToken, q, c.Config.TimeoutSec)
-		if err != nil {
-			ctx.TellFailure(msg, fmt.Errorf("search: query %q 执行失败: %w", q, err))
-			return
-		}
-		results = append(results, data)
-	}
-
-	out := msg.Copy()
-	if out.Metadata == nil {
-		out.Metadata = types.NewMetadata()
-	}
-	out.Metadata.PutValue("sourcegraph_search_query", queries[0])
+	out.Metadata.PutValue("sourcegraph_search_query", first)
 	if len(queries) > 1 {
-		qb, _ := json.Marshal(queries)
 		out.Metadata.PutValue("sourcegraph_search_queries", string(qb))
 	} else {
 		out.Metadata.PutValue("sourcegraph_search_queries", "")
@@ -378,29 +250,19 @@ func (c *ApiRouteTracerSourcegraphComponent) handleSearch(ctx types.RuleContext,
 
 func (c *ApiRouteTracerSourcegraphComponent) Destroy() {
 	c.Config = ApiRouteTracerSourcegraphConfiguration{}
-	c.actionTpl = nil
-	c.gitlabURLTpl = nil
-	c.workDirTpl = nil
 	c.endpointTpl = nil
 	c.accessTokenTpl = nil
-	c.defaultSearchQueryTpl = nil
 	c.repoScopeTpl = nil
 	c.repoFrontendTpl = nil
 	c.repoBackendTpl = nil
 	c.contextGlobalTpl = nil
 	c.typeFilterTpl = nil
-	c.includeForkedTpl = nil
 	c.displayLimitTpl = nil
 	c.defaultPatternTypeTpl = nil
 	c.defaultPatternsTpl = nil
 }
 
 func (c *ApiRouteTracerSourcegraphComponent) Close() error { return nil }
-
-type sourcegraphSearchRequest struct {
-	Query   string   `json:"query"`
-	Queries []string `json:"queries"`
-}
 
 type sourcegraphSearchResponse struct {
 	Data   json.RawMessage   `json:"data"`
@@ -426,7 +288,6 @@ type tracerSourcegraphQueryParts struct {
 	ContextGlobal string
 	TypeFilter    string
 	RepoFilter    string
-	ForkFilter    string
 	DisplayLimit  int
 }
 
@@ -529,9 +390,6 @@ func buildTracerSourcegraphQuery(patternType, pattern string, p tracerSourcegrap
 	if rf := strings.TrimSpace(p.RepoFilter); rf != "" {
 		segs = append(segs, rf)
 	}
-	if ff := strings.TrimSpace(p.ForkFilter); ff != "" {
-		segs = append(segs, ff)
-	}
 	s := strings.TrimSpace(strings.Join(segs, " "))
 	s = strings.Join(strings.Fields(s), " ")
 	if p.DisplayLimit > 0 {
@@ -574,36 +432,6 @@ func parseDisplayLimitTemplate(s string, fallback int) int {
 		return fallback
 	}
 	return n
-}
-
-func resolveSourcegraphQueries(data string, defaultQ string) []string {
-	data = strings.TrimSpace(data)
-	if data == "" {
-		if q := strings.TrimSpace(defaultQ); q != "" {
-			return []string{q}
-		}
-		return nil
-	}
-	var wrap sourcegraphSearchRequest
-	if err := json.Unmarshal([]byte(data), &wrap); err == nil {
-		out := make([]string, 0, len(wrap.Queries)+1)
-		for _, q := range wrap.Queries {
-			if s := strings.TrimSpace(q); s != "" {
-				out = append(out, s)
-			}
-		}
-		if len(out) > 0 {
-			return out
-		}
-		if q := strings.TrimSpace(wrap.Query); q != "" {
-			return []string{q}
-		}
-		if q := strings.TrimSpace(defaultQ); q != "" {
-			return []string{q}
-		}
-		return nil
-	}
-	return []string{data}
 }
 
 func executeSourcegraphSearchQuery(gqlURL, accessToken, query string, timeoutSec int) (json.RawMessage, error) {
@@ -657,7 +485,7 @@ func executeSourcegraphSearchQuery(gqlURL, accessToken, query string, timeoutSec
 
 func mergeSourcegraphSearchResults(queries []string, results []json.RawMessage) ([]byte, error) {
 	if len(queries) == 0 || len(results) == 0 || len(queries) != len(results) {
-		return nil, errors.New("search: 批量结果聚合失败，queries 与 results 数量不匹配")
+		return nil, errors.New("批量结果聚合失败，queries 与 results 数量不匹配")
 	}
 	perQuery := make([]map[string]interface{}, 0, len(queries))
 	mergedResults := make([]json.RawMessage, 0)
@@ -667,7 +495,7 @@ func mergeSourcegraphSearchResults(queries []string, results []json.RawMessage) 
 	for i, raw := range results {
 		var data sourcegraphSearchData
 		if err := json.Unmarshal(raw, &data); err != nil {
-			return nil, fmt.Errorf("search: 解析第 %d 条结果失败: %w", i+1, err)
+			return nil, fmt.Errorf("解析第 %d 条结果失败: %w", i+1, err)
 		}
 		perQuery = append(perQuery, map[string]interface{}{
 			"query": queries[i],
@@ -703,102 +531,6 @@ func truncateForTracerLog(s string, max int) string {
 		return s
 	}
 	return s[:max] + "..."
-}
-
-func expandUserPath(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return s
-	}
-	if s == "~" {
-		h, err := os.UserHomeDir()
-		if err == nil && h != "" {
-			return h
-		}
-		return s
-	}
-	if strings.HasPrefix(s, "~/") {
-		h, err := os.UserHomeDir()
-		if err == nil && h != "" {
-			return filepath.Join(h, strings.TrimPrefix(s, "~/"))
-		}
-	}
-	return s
-}
-
-func gitRepoDirNameFromURL(raw string) (string, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return "", errors.New("url 为空")
-	}
-	switch {
-	case strings.HasPrefix(raw, "ssh://"):
-		u, err := url.Parse(raw)
-		if err != nil {
-			return "", err
-		}
-		path := strings.TrimSuffix(strings.Trim(u.Path, "/"), ".git")
-		if path == "" {
-			return "", errors.New("ssh:// URL 路径为空")
-		}
-		parts := strings.Split(path, "/")
-		return parts[len(parts)-1], nil
-	case strings.Contains(raw, "://"):
-		u, err := url.Parse(raw)
-		if err != nil {
-			return "", err
-		}
-		path := strings.TrimSuffix(strings.Trim(u.Path, "/"), ".git")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[len(parts)-1] == "" {
-			return "", errors.New("无法从 URL 路径得到仓库名")
-		}
-		return parts[len(parts)-1], nil
-	case strings.HasPrefix(raw, "git@"):
-		colon := strings.Index(raw, ":")
-		if colon < 0 {
-			return "", errors.New("SCP 形式 git URL 中缺少 ':'")
-		}
-		path := strings.TrimSuffix(strings.Trim(raw[colon+1:], "/"), ".git")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[len(parts)-1] == "" {
-			return "", errors.New("无法从 SCP 形式 URL 得到仓库名")
-		}
-		return parts[len(parts)-1], nil
-	default:
-		path := strings.TrimSuffix(strings.Trim(raw, "/"), ".git")
-		parts := strings.Split(path, "/")
-		if len(parts) == 0 || parts[len(parts)-1] == "" {
-			return "", errors.New("无法解析为非空仓库名")
-		}
-		return parts[len(parts)-1], nil
-	}
-}
-
-func sanitizeServiceDirName(s string) (string, bool) {
-	s = strings.TrimSpace(s)
-	if s == "" || len(s) > 128 {
-		return "", false
-	}
-	for _, r := range s {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.' {
-			continue
-		}
-		return "", false
-	}
-	return s, true
-}
-
-func runGitCommand(env []string, dir string, args ...string) error {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	cmd.Env = env
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git %v: %w: %s", args, err, strings.TrimSpace(stderr.String()))
-	}
-	return nil
 }
 
 func mergeTraceMetadata(from, to types.RuleMsg) {

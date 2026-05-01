@@ -636,23 +636,9 @@ export const workspaceSyncMappingSpec: NodeMappingSpec = {
 export const apiRouteTracerSourcegraphMappingSpec: NodeMappingSpec = {
   nodeType: 'x/apiRouteTracerSourcegraph',
   fields: [
-    {
-      inputKey: 'action',
-      dslKey: 'action',
-      valueType: 'constant',
-      defaultValue: 'queryBuild',
-    },
-    { inputKey: 'gitlabUrl', dslKey: 'gitlabUrl', valueType: 'template', defaultValue: '' },
-    { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
     { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'template', defaultValue: '' },
     { inputKey: 'accessToken', dslKey: 'accessToken', valueType: 'template', defaultValue: '' },
     { inputKey: 'timeoutSec', dslKey: 'timeoutSec', valueType: 'number', defaultValue: 30 },
-    {
-      inputKey: 'defaultSearchQuery',
-      dslKey: 'defaultSearchQuery',
-      valueType: 'template',
-      defaultValue: '',
-    },
     { inputKey: 'repoScope', dslKey: 'repoScope', valueType: 'constant', defaultValue: '' },
     { inputKey: 'repoFrontend', dslKey: 'repoFrontend', valueType: 'template', defaultValue: '' },
     { inputKey: 'repoBackend', dslKey: 'repoBackend', valueType: 'template', defaultValue: '' },
@@ -663,12 +649,6 @@ export const apiRouteTracerSourcegraphMappingSpec: NodeMappingSpec = {
       defaultValue: true,
     },
     { inputKey: 'typeFilter', dslKey: 'typeFilter', valueType: 'template', defaultValue: '' },
-    {
-      inputKey: 'includeForked',
-      dslKey: 'includeForked',
-      valueType: 'boolean',
-      defaultValue: true,
-    },
     { inputKey: 'displayLimit', dslKey: 'displayLimit', valueType: 'number', defaultValue: 1500 },
     {
       inputKey: 'defaultPatternType',

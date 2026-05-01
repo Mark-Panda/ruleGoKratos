@@ -55,7 +55,7 @@ export enum WorkflowNodeType {
   JsonExtract = 'x/jsonExtract',
   /** 工作区仓库同步（与「工作区管理」同步仓库一致） */
   WorkspaceSync = 'x/workspaceSync',
-  /** API 路由追踪一体节点（gitPrepare/queryBuild/search） */
+  /** Sourcegraph 搜索节点（构建查询并执行搜索） */
   ApiRouteTracerSourcegraph = 'x/apiRouteTracerSourcegraph',
   FileWrite = 'x/fileWrite',
   FileDelete = 'x/fileDelete',
