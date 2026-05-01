@@ -420,7 +420,7 @@ func TestBuildMessagesShouldUseDefaultSystemPrompt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildMessages failed: %v", err)
 	}
-	if len(msgs) == 0 || msgs[0].Content != defaultSystemPrompt {
+	if len(msgs) == 0 || msgs[0].Content != DefaultSystemPrompt {
 		t.Fatalf("expected default system prompt, got: %#v", msgs)
 	}
 }
