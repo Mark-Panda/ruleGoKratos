@@ -50,7 +50,7 @@ export const SourcegraphTokenVerifyNodeRegistry: FlowNodeRegistry = {
               extra: {
                 label: '请求地址',
                 formComponent: 'prompt-editor',
-                description: '例如 https://sourcegraph.yc345.tv',
+                description: '例如 https://sourcegraph.xxxx.tv',
               },
             },
             accessToken: {

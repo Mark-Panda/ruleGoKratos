@@ -51,6 +51,7 @@ import { FeishuCliAuthNodeRegistry } from './feishuCliAuth';
 import { WorkspaceSyncNodeRegistry } from './workspace-sync';
 import { SourcegraphSearchNodeRegistry } from './sourcegraph-search';
 import { SourcegraphTokenVerifyNodeRegistry } from './sourcegraph-token-verify';
+import { SourcegraphTokenCreateNodeRegistry } from './sourcegraph-token-create';
 export { WorkflowNodeType } from './constants';
 export { NODE_TYPE_NAMES, getNodeTypeName, getNodeDisplayName } from './node-type-names';
 
@@ -100,6 +101,7 @@ export const nodeRegistries: FlowNodeRegistry[] = [
   WorkspaceSyncNodeRegistry,
   SourcegraphSearchNodeRegistry,
   SourcegraphTokenVerifyNodeRegistry,
+  SourcegraphTokenCreateNodeRegistry,
   TaskBoardNodeRegistry,
   ServiceManagementNodeRegistry,
   FlowSubChainNodeRegistry,

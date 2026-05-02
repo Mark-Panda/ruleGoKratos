@@ -423,6 +423,8 @@ function buildRuleChainMetaNodes(
     case 'x/fileList':
     case 'x/jsonExtract':
     case 'x/sourcegraphSearch':
+    case 'x/sourcegraphTokenVerify':
+    case 'x/sourcegraphTokenCreate':
     case 'ci/gitClone':
     case 'ci/gitCommit':
     case 'ci/gitPush':
@@ -1563,6 +1565,108 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                   endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
                 },
           };
+          break;
+        }
+        case 'x/sourcegraphTokenVerify': {
+          const cfg = n.configuration ?? {};
+          const specTv = getNodeMappingSpec('x/sourcegraphTokenVerify');
+          const ivMapTv = specTv
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specTv)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'SG Token 校验',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['endpoint', 'accessToken'],
+              properties: {
+                endpoint: {
+                  type: 'string',
+                  extra: { label: '请求地址', formComponent: 'prompt-editor', description: '例如 https://sourcegraph.xxxx.tv' },
+                },
+                accessToken: {
+                  type: 'string',
+                  extra: { label: 'Access Token', formComponent: 'prompt-editor', description: 'Sourcegraph API 访问令牌' },
+                },
+                timeoutSec: { type: 'number', extra: { label: '超时（秒）', description: '默认 15' } },
+              },
+            },
+            inputsValues: specTv
+              ? inputsValuesMapToFlowData(ivMapTv, specTv)
+              : {
+                  endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
+                  accessToken: { type: 'template', content: String((cfg as any).accessToken ?? '') },
+                  timeoutSec: { type: 'constant', content: Number((cfg as any).timeoutSec ?? 15) },
+                },
+          } as any;
+          break;
+        }
+        case 'x/sourcegraphTokenCreate': {
+          const cfg = n.configuration ?? {};
+          const specTc = getNodeMappingSpec('x/sourcegraphTokenCreate');
+          const ivMapTc = specTc
+            ? mapDslToNodeInputsValues(cfg as Record<string, unknown>, specTc)
+            : ({} as InputsValuesMap);
+          base.data = {
+            title: n.name ?? 'SG Token 创建',
+            positionType: 'middle',
+            inputs: {
+              type: 'object',
+              required: ['endpoint', 'ldapUsername', 'ldapPassword'],
+              properties: {
+                endpoint: {
+                  type: 'string',
+                  extra: { label: '请求地址', formComponent: 'prompt-editor', description: '例如 https://sourcegraph.xxxx.tv' },
+                },
+                ldapUsername: {
+                  type: 'string',
+                  extra: { label: 'LDAP 用户名', formComponent: 'prompt-editor', description: 'GitLab LDAP 用户名' },
+                },
+                ldapPassword: {
+                  type: 'string',
+                  extra: { label: 'LDAP 密码', formComponent: 'prompt-editor', description: 'GitLab LDAP 密码' },
+                },
+                gitlabHost: {
+                  type: 'string',
+                  extra: { label: 'GitLab 主机', formComponent: 'prompt-editor', description: '默认 gitlab.xxx.tv' },
+                },
+                note: {
+                  type: 'string',
+                  extra: { label: 'Token 备注', formComponent: 'prompt-editor', description: 'Token 名称/备注，默认 cli-token' },
+                },
+                expiresAt: {
+                  type: 'string',
+                  extra: { label: '过期时间', formComponent: 'prompt-editor', description: 'ISO 8601 格式，如 2029-05-01T00:00:00Z；空则永不过期' },
+                },
+                scope: {
+                  type: 'string',
+                  enum: ['', 'USER', 'SITE_ADMIN'],
+                  default: { type: 'constant', content: '' } as any,
+                  extra: {
+                    label: '权限范围',
+                    formComponent: 'enum-select',
+                    options: [
+                      { label: '默认', value: '' },
+                      { label: 'USER', value: 'USER' },
+                      { label: 'SITE_ADMIN', value: 'SITE_ADMIN' },
+                    ],
+                  },
+                },
+                headless: {
+                  type: 'string',
+                  extra: { label: 'Headless 模式', formComponent: 'prompt-editor', description: '默认 true' },
+                },
+                timeoutMs: { type: 'number', extra: { label: '超时（毫秒）', description: '默认 60000' } },
+              },
+            },
+            inputsValues: specTc
+              ? inputsValuesMapToFlowData(ivMapTc, specTc)
+              : {
+                  endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
+                  ldapUsername: { type: 'template', content: String((cfg as any).ldapUsername ?? '') },
+                  ldapPassword: { type: 'template', content: String((cfg as any).ldapPassword ?? '') },
+                },
+          } as any;
           break;
         }
         case 'restApiCall': {

@@ -674,6 +674,21 @@ export const sourcegraphTokenVerifyMappingSpec: NodeMappingSpec = {
   ],
 };
 
+export const sourcegraphTokenCreateMappingSpec: NodeMappingSpec = {
+  nodeType: 'x/sourcegraphTokenCreate',
+  fields: [
+    { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'template', defaultValue: '' },
+    { inputKey: 'ldapUsername', dslKey: 'ldapUsername', valueType: 'template', defaultValue: '' },
+    { inputKey: 'ldapPassword', dslKey: 'ldapPassword', valueType: 'template', defaultValue: '' },
+    { inputKey: 'gitlabHost', dslKey: 'gitlabHost', valueType: 'constant', defaultValue: 'gitlab.xxx.tv' },
+    { inputKey: 'note', dslKey: 'note', valueType: 'template', defaultValue: 'cli-token' },
+    { inputKey: 'expiresAt', dslKey: 'expiresAt', valueType: 'template', defaultValue: '' },
+    { inputKey: 'scope', dslKey: 'scope', valueType: 'constant', defaultValue: '' },
+    { inputKey: 'headless', dslKey: 'headless', valueType: 'constant', defaultValue: 'true' },
+    { inputKey: 'timeoutMs', dslKey: 'timeoutMs', valueType: 'number', defaultValue: 60000 },
+  ],
+};
+
 export const cursorAcpMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorAcp',
   fields: [
@@ -731,6 +746,7 @@ const SPEC_BY_TYPE: Record<string, NodeMappingSpec> = {
   'x/workspaceSync': workspaceSyncMappingSpec,
   'x/sourcegraphSearch': sourcegraphSearchMappingSpec,
   'x/sourcegraphTokenVerify': sourcegraphTokenVerifyMappingSpec,
+  'x/sourcegraphTokenCreate': sourcegraphTokenCreateMappingSpec,
 };
 
 export function getNodeMappingSpec(nodeType: string): NodeMappingSpec | undefined {

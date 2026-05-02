@@ -59,6 +59,8 @@ export enum WorkflowNodeType {
   SourcegraphSearch = 'x/sourcegraphSearch',
   /** Sourcegraph Token 校验节点 */
   SourcegraphTokenVerify = 'x/sourcegraphTokenVerify',
+  /** Sourcegraph Token 创建节点 */
+  SourcegraphTokenCreate = 'x/sourcegraphTokenCreate',
   FileWrite = 'x/fileWrite',
   FileDelete = 'x/fileDelete',
   FileList = 'x/fileList',

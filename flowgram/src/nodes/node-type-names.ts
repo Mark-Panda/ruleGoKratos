@@ -60,6 +60,7 @@ export const NODE_TYPE_NAMES: Record<string, string> = {
   [WorkflowNodeType.WorkspaceSync]: '工作区刷新',
   [WorkflowNodeType.SourcegraphSearch]: 'SourceGraph搜索',
   [WorkflowNodeType.SourcegraphTokenVerify]: 'SourceGraph Token校验',
+  [WorkflowNodeType.SourcegraphTokenCreate]: 'SourceGraph Token创建',
 
   // 辅助节点
   [WorkflowNodeType.LogString]: '日志输出',

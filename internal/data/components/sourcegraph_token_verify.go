@@ -33,7 +33,7 @@ type SourcegraphTokenVerifyComponent struct {
 }
 
 type SourcegraphTokenVerifyConfiguration struct {
-	// Sourcegraph 服务地址，例如 "https://sourcegraph.yc345.tv"
+	// Sourcegraph 服务地址，例如 "https://sourcegraph.xxxx.tv"
 	Endpoint string `json:"endpoint"`
 
 	// Sourcegraph API 访问令牌

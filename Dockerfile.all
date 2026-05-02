@@ -79,6 +79,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/ \
     && apt-get autoremove -y && apt-get autoclean -y
 
+# Feishu CLI: copy Node runtime + global npm modules from lark-cli-installer
+COPY --from=lark-cli-installer /usr/local /usr/local
+
+# Playwright: install Chromium browser + system dependencies for sourcegraphTokenCreate component
+# PLAYWRIGHT_DOWNLOAD_HOST: 使用淘宝镜像加速（Azure CDN 国内不可达）
+ENV PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
+RUN npx -y playwright@1.57.0 install --with-deps chromium
+
 # uv: Python 包/项目管理器（https://github.com/astral-sh/uv），安装到 ~/.local/bin
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -91,8 +99,6 @@ ENV PATH="/root/.local/bin:/usr/local/bin:${PATH}"
 COPY deploy/docker-cursor-overlay/.cursor /root/.cursor/
 # ~/.ssh 改为运行时通过 docker-compose 自动挂载到 /root/.ssh（避免手动预同步）
 
-# Feishu CLI: copy Node runtime + global npm modules from lark-cli-installer
-COPY --from=lark-cli-installer /usr/local /usr/local
 # Cursor Agent: 符号链接在 ~/.local/bin/agent，实体在 ~/.local/share/cursor-agent/
 COPY --from=cursor-installer /root/.local /root/.local
 COPY --from=cursor-installer /usr/local /usr/local
