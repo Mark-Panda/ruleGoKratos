@@ -20,9 +20,9 @@ import {
   WorkflowNodeEntity,
   WorkflowNodeJSON,
 } from '@flowgram.ai/free-layout-editor';
+import { Toast } from '@douyinfe/semi-ui';
 
 import './index.less';
-import { Toast } from '@douyinfe/semi-ui';
 
 import { panelBuildLine } from '../../utils/panel-build-line';
 import { WorkflowNodeType } from '../../nodes/constants';

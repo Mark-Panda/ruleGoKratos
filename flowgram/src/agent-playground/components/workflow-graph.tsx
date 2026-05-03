@@ -255,7 +255,8 @@ const ArrowConnector: React.FC = () => (
       style={{
         width: 2,
         height: 16,
-        background: 'linear-gradient(to bottom, var(--semi-color-border), var(--semi-color-tertiary))',
+        background:
+          'linear-gradient(to bottom, var(--semi-color-border), var(--semi-color-tertiary))',
         borderRadius: 1,
       }}
     />

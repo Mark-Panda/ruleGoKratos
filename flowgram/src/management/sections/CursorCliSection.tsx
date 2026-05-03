@@ -151,11 +151,7 @@ function UrlActions({ urls }: { urls: string[] }) {
                   用户码：{code}
                 </Tag>
               )}
-              <Button
-                size="small"
-                icon={<IconCopy />}
-                onClick={() => void copyToClipboard(href)}
-              >
+              <Button size="small" icon={<IconCopy />} onClick={() => void copyToClipboard(href)}>
                 复制
               </Button>
             </div>
@@ -195,7 +191,8 @@ function TerminalLogPanel({
 }) {
   return (
     <div ref={logWrapRef} style={TERMINAL_STYLE}>
-      {fullLog || (busy ? '⏳ 正在连接终端，等待输出…' : '等待命令输出… 请先点击「开始 agent login」')}
+      {fullLog ||
+        (busy ? '⏳ 正在连接终端，等待输出…' : '等待命令输出… 请先点击「开始 agent login」')}
     </div>
   );
 }
@@ -203,8 +200,7 @@ function TerminalLogPanel({
 /* ───── 常量 ───── */
 
 const LOGIN_CMD = 'NO_OPEN_BROWSER=1 agent login';
-const RE_LOGIN_SUCCESS =
-  /Login successful|Logged in as\b|Authentication tokens stored securely/i;
+const RE_LOGIN_SUCCESS = /Login successful|Logged in as\b|Authentication tokens stored securely/i;
 const RE_LOGIN_FAILED = /Login failed or timed out/i;
 
 /* ───── 主组件 ───── */
@@ -411,7 +407,15 @@ export const CursorCliSection: React.FC = () => {
     <div style={PAGE_PAD}>
       {/* 页面标题 & 状态概览 */}
       <Card style={CARD_STYLE} bodyStyle={{ padding: '16px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
@@ -440,7 +444,9 @@ export const CursorCliSection: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <StatusDot color={configured ? 'var(--semi-color-success)' : 'var(--semi-color-warning)'} />
+            <StatusDot
+              color={configured ? 'var(--semi-color-success)' : 'var(--semi-color-warning)'}
+            />
             <Tag color={configured ? 'green' : 'orange'} size="small">
               {configured ? '已登录' : '未登录'}
             </Tag>
@@ -462,13 +468,17 @@ export const CursorCliSection: React.FC = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <StatusDot color="var(--semi-color-success)" />
-                <Typography.Text strong style={{ fontSize: 14 }}>已登录</Typography.Text>
+                <Typography.Text strong style={{ fontSize: 14 }}>
+                  已登录
+                </Typography.Text>
               </div>
             </div>
             <div style={{ padding: '16px 20px' }}>
               {loggedInAccount && (
                 <InfoRow label="账号">
-                  <Typography.Text strong style={{ fontSize: 14 }}>{loggedInAccount}</Typography.Text>
+                  <Typography.Text strong style={{ fontSize: 14 }}>
+                    {loggedInAccount}
+                  </Typography.Text>
                 </InfoRow>
               )}
               <InfoRow label="状态输出">
@@ -525,10 +535,12 @@ export const CursorCliSection: React.FC = () => {
             description={
               <div style={{ lineHeight: 1.65 }}>
                 <div>
-                  更换账号请先在环境执行 <Typography.Text code>agent logout</Typography.Text>，再刷新本页按未登录流程操作。
+                  更换账号请先在环境执行 <Typography.Text code>agent logout</Typography.Text>
+                  ，再刷新本页按未登录流程操作。
                 </div>
                 <div style={{ marginTop: 6 }}>
-                  Docker 持久化：可将宿主机 <Typography.Text code>~/.cursor</Typography.Text> 挂载到容器同路径。
+                  Docker 持久化：可将宿主机 <Typography.Text code>~/.cursor</Typography.Text>{' '}
+                  挂载到容器同路径。
                 </div>
               </div>
             }
@@ -675,16 +687,16 @@ export const CursorCliSection: React.FC = () => {
             </div>
             <div style={{ padding: '14px 20px' }}>
               {lastCommandLabel && (
-                <Typography.Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+                <Typography.Text
+                  type="tertiary"
+                  size="small"
+                  style={{ display: 'block', marginBottom: 8 }}
+                >
                   {lastCommandLabel}
                 </Typography.Text>
               )}
               <UrlActions urls={extractedUrls} />
-              <TerminalLogPanel
-                fullLog={fullLog}
-                busy={busyLogin}
-                logWrapRef={logWrapRef}
-              />
+              <TerminalLogPanel fullLog={fullLog} busy={busyLogin} logWrapRef={logWrapRef} />
             </div>
           </Card>
 
@@ -718,16 +730,21 @@ export const CursorCliSection: React.FC = () => {
             description={
               <div style={{ lineHeight: 1.65 }}>
                 <div>
-                  非交互命令超时见配置项 <Typography.Text code>agent.terminal_exec_timeout</Typography.Text>；
-                  本页 <Typography.Text code>agent login</Typography.Text> 走交互式终端，一般不受该上限约束。
+                  非交互命令超时见配置项{' '}
+                  <Typography.Text code>agent.terminal_exec_timeout</Typography.Text>； 本页{' '}
+                  <Typography.Text code>agent login</Typography.Text>{' '}
+                  走交互式终端，一般不受该上限约束。
                 </div>
                 <div style={{ marginTop: 6 }}>
-                  若长时间无输出，请确认 Nginx 对 <Typography.Text code>/api/v1/admin/terminal/ws</Typography.Text>{' '}
-                  已配置 <Typography.Text code>Upgrade: websocket</Typography.Text>，且 <Typography.Text code>PATH</Typography.Text>{' '}
-                  含 <Typography.Text code>agent</Typography.Text>。
+                  若长时间无输出，请确认 Nginx 对{' '}
+                  <Typography.Text code>/api/v1/admin/terminal/ws</Typography.Text> 已配置{' '}
+                  <Typography.Text code>Upgrade: websocket</Typography.Text>，且{' '}
+                  <Typography.Text code>PATH</Typography.Text> 含{' '}
+                  <Typography.Text code>agent</Typography.Text>。
                 </div>
                 <div style={{ marginTop: 6 }}>
-                  持久化：可将宿主机 <Typography.Text code>~/.cursor</Typography.Text> 挂载到容器内同路径。
+                  持久化：可将宿主机 <Typography.Text code>~/.cursor</Typography.Text>{' '}
+                  挂载到容器内同路径。
                 </div>
               </div>
             }

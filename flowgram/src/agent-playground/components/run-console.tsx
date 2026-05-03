@@ -47,14 +47,54 @@ const STATUS_CONFIG: Record<
   RuntimeViewModel['run']['status'],
   { color: 'blue' | 'green' | 'red' | 'orange' | 'grey'; border: string; bg: string; label: string }
 > = {
-  idle: { color: 'grey', border: 'var(--semi-color-border)', bg: 'var(--semi-color-fill-0)', label: '空闲' },
-  pending: { color: 'blue', border: 'rgba(22, 100, 255, 0.35)', bg: 'var(--semi-color-primary-light-default)', label: '排队中' },
-  ready: { color: 'blue', border: 'rgba(22, 100, 255, 0.35)', bg: 'var(--semi-color-primary-light-default)', label: '就绪' },
-  running: { color: 'blue', border: 'rgba(22, 100, 255, 0.35)', bg: 'var(--semi-color-primary-light-default)', label: '运行中' },
-  waiting_recovery: { color: 'orange', border: 'var(--semi-color-warning)', bg: 'var(--semi-color-warning-light-default)', label: '等待恢复' },
-  completed: { color: 'green', border: 'var(--semi-color-success)', bg: 'var(--semi-color-success-light-default)', label: '已完成' },
-  failed: { color: 'red', border: 'var(--semi-color-danger)', bg: 'var(--semi-color-danger-light-default)', label: '失败' },
-  cancelled: { color: 'grey', border: 'var(--semi-color-border)', bg: 'var(--semi-color-fill-0)', label: '已取消' },
+  idle: {
+    color: 'grey',
+    border: 'var(--semi-color-border)',
+    bg: 'var(--semi-color-fill-0)',
+    label: '空闲',
+  },
+  pending: {
+    color: 'blue',
+    border: 'rgba(22, 100, 255, 0.35)',
+    bg: 'var(--semi-color-primary-light-default)',
+    label: '排队中',
+  },
+  ready: {
+    color: 'blue',
+    border: 'rgba(22, 100, 255, 0.35)',
+    bg: 'var(--semi-color-primary-light-default)',
+    label: '就绪',
+  },
+  running: {
+    color: 'blue',
+    border: 'rgba(22, 100, 255, 0.35)',
+    bg: 'var(--semi-color-primary-light-default)',
+    label: '运行中',
+  },
+  waiting_recovery: {
+    color: 'orange',
+    border: 'var(--semi-color-warning)',
+    bg: 'var(--semi-color-warning-light-default)',
+    label: '等待恢复',
+  },
+  completed: {
+    color: 'green',
+    border: 'var(--semi-color-success)',
+    bg: 'var(--semi-color-success-light-default)',
+    label: '已完成',
+  },
+  failed: {
+    color: 'red',
+    border: 'var(--semi-color-danger)',
+    bg: 'var(--semi-color-danger-light-default)',
+    label: '失败',
+  },
+  cancelled: {
+    color: 'grey',
+    border: 'var(--semi-color-border)',
+    bg: 'var(--semi-color-fill-0)',
+    label: '已取消',
+  },
 };
 
 export const RunConsole: React.FC<RunConsoleProps> = ({
@@ -262,7 +302,8 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                 width: 72,
                 height: 72,
                 borderRadius: 20,
-                background: 'linear-gradient(135deg, var(--semi-color-primary-light-default), var(--semi-color-fill-0))',
+                background:
+                  'linear-gradient(135deg, var(--semi-color-primary-light-default), var(--semi-color-fill-0))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

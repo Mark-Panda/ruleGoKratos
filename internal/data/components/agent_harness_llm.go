@@ -14,7 +14,7 @@ import (
 	"github.com/rulego/rulego"
 	"github.com/rulego/rulego/api/types"
 	"github.com/rulego/rulego/components/base"
-	"github.com/rulego/rulego/utils/str"
+	"github.com/rulego/rulego/utils/el"
 )
 
 // ruleGoAgentUsecase 由应用启动时 wire.Invoke 注入，供规则链节点调用 Agent Harness。
@@ -33,9 +33,9 @@ func init() {
 type AgentHarnessLLM struct {
 	Config AgentHarnessLLMConfig
 
-	modelTpl  str.Template
-	systemTpl str.Template
-	userTpl   str.Template
+	modelTpl  el.Template
+	systemTpl el.Template
+	userTpl   el.Template
 	hasVar    bool
 }
 
@@ -101,23 +101,25 @@ func (x *AgentHarnessLLM) Init(_ types.Config, configuration types.Configuration
 	}
 
 	x.hasVar = false
-	track := func(t str.Template) {
-		if !t.IsNotVar() {
+	mustTpl := func(s string) el.Template {
+		t, err := el.NewTemplate(s)
+		if err != nil {
+			return nil
+		}
+		if t.HasVar() {
 			x.hasVar = true
 		}
+		return t
 	}
-	x.modelTpl = str.NewTemplate(x.Config.Model)
-	track(x.modelTpl)
-	x.systemTpl = str.NewTemplate(x.Config.SystemPrompt)
-	track(x.systemTpl)
-	x.userTpl = str.NewTemplate(x.Config.UserPrompt)
-	track(x.userTpl)
+	x.modelTpl = mustTpl(x.Config.Model)
+	x.systemTpl = mustTpl(x.Config.SystemPrompt)
+	x.userTpl = mustTpl(x.Config.UserPrompt)
 	return nil
 }
 
 func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 	if ruleGoAgentUsecase == nil {
-		ctx.TellFailure(msg, errors.New("Agent harness 未注入，请检查服务启动是否调用 WireRuleGoAgent"))
+		ctx.TellFailure(msg, errors.New("Agent harness 未注入，请检查服务启动是否调用 WireRuleGoAgent")) //lint:ignore ST1005 "Chinese error message"
 		return
 	}
 	var env map[string]interface{}
@@ -127,9 +129,9 @@ func (x *AgentHarnessLLM) OnMsg(ctx types.RuleContext, msg types.RuleMsg) {
 		env = map[string]interface{}{}
 	}
 
-	modelName := x.modelTpl.Execute(env)
-	systemPrompt := x.systemTpl.Execute(env)
-	userPrompt := x.userTpl.Execute(env)
+	modelName := x.modelTpl.ExecuteAsString(env)
+	systemPrompt := x.systemTpl.ExecuteAsString(env)
+	userPrompt := x.userTpl.ExecuteAsString(env)
 	workspaceID := strings.TrimSpace(x.Config.WorkspaceID)
 	if wp := buildWorkspacePromptForComponent(workspaceID); wp != "" {
 		if strings.TrimSpace(systemPrompt) == "" {

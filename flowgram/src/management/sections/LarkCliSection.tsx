@@ -165,8 +165,8 @@ function StepIndicator({ current }: { current: string }) {
                   background: done
                     ? 'var(--semi-color-success)'
                     : active
-                      ? 'var(--semi-color-primary)'
-                      : 'var(--semi-color-fill-1)',
+                    ? 'var(--semi-color-primary)'
+                    : 'var(--semi-color-fill-1)',
                   color: done || active ? '#fff' : 'var(--semi-color-text-2)',
                   transition: 'all 0.25s',
                 }}
@@ -180,8 +180,8 @@ function StepIndicator({ current }: { current: string }) {
                     color: done
                       ? 'var(--semi-color-success)'
                       : active
-                        ? 'var(--semi-color-primary)'
-                        : 'var(--semi-color-text-2)',
+                      ? 'var(--semi-color-primary)'
+                      : 'var(--semi-color-text-2)',
                     fontSize: 13,
                   }}
                 >
@@ -202,9 +202,7 @@ function StepIndicator({ current }: { current: string }) {
                   flex: '0 0 32px',
                   height: 2,
                   background:
-                    done || active
-                      ? 'var(--semi-color-primary)'
-                      : 'var(--semi-color-fill-1)',
+                    done || active ? 'var(--semi-color-primary)' : 'var(--semi-color-fill-1)',
                   borderRadius: 1,
                   margin: '0 12px',
                   alignSelf: 'center',
@@ -272,11 +270,7 @@ function UrlActions({ urls }: { urls: string[] }) {
                   用户码：{code}
                 </Tag>
               )}
-              <Button
-                size="small"
-                icon={<IconCopy />}
-                onClick={() => void copyToClipboard(href)}
-              >
+              <Button size="small" icon={<IconCopy />} onClick={() => void copyToClipboard(href)}>
                 复制
               </Button>
             </div>
@@ -320,7 +314,8 @@ function TerminalLogPanel({
 }) {
   return (
     <div ref={logWrapRef} style={TERMINAL_STYLE}>
-      {fullLog || (busy ? '⏳ 正在连接终端，等待输出…' : '等待命令输出… 请先点击「开始自动交互式配置」')}
+      {fullLog ||
+        (busy ? '⏳ 正在连接终端，等待输出…' : '等待命令输出… 请先点击「开始自动交互式配置」')}
     </div>
   );
 }
@@ -529,7 +524,15 @@ export const LarkCliSection: React.FC = () => {
     <div style={PAGE_PAD}>
       {/* 页面标题 & 状态概览 */}
       <Card style={CARD_STYLE} bodyStyle={{ padding: '16px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
@@ -558,7 +561,9 @@ export const LarkCliSection: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <StatusDot color={configured ? 'var(--semi-color-success)' : 'var(--semi-color-warning)'} />
+            <StatusDot
+              color={configured ? 'var(--semi-color-success)' : 'var(--semi-color-warning)'}
+            />
             <Tag color={configured ? 'green' : 'orange'} size="small">
               {configured ? '已授权' : '未授权'}
             </Tag>
@@ -579,7 +584,9 @@ export const LarkCliSection: React.FC = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <StatusDot color="var(--semi-color-success)" />
-              <Typography.Text strong style={{ fontSize: 14 }}>令牌有效</Typography.Text>
+              <Typography.Text strong style={{ fontSize: 14 }}>
+                令牌有效
+              </Typography.Text>
             </div>
           </div>
           <div style={{ padding: '16px 20px' }}>
@@ -644,8 +651,8 @@ export const LarkCliSection: React.FC = () => {
                 autoSetupStage === 'config'
                   ? '步骤 1/2：应用配置中'
                   : autoSetupStage === 'auth'
-                    ? '步骤 2/2：等待授权'
-                    : '处理中'
+                  ? '步骤 2/2：等待授权'
+                  : '处理中'
               }
               description={
                 autoSetupStage === 'config'
@@ -748,7 +755,11 @@ export const LarkCliSection: React.FC = () => {
         </div>
         <div style={{ padding: '14px 20px' }}>
           {lastCommandLabel && (
-            <Typography.Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 8 }}>
+            <Typography.Text
+              type="tertiary"
+              size="small"
+              style={{ display: 'block', marginBottom: 8 }}
+            >
               {lastCommandLabel}
             </Typography.Text>
           )}
@@ -793,13 +804,16 @@ export const LarkCliSection: React.FC = () => {
         description={
           <div style={{ lineHeight: 1.65 }}>
             <div>
-              <strong>步骤 1</strong> 会实时打印终端字符二维码与配置链接；链接也可在下方日志区的「检测到授权链接」面板中一键复制。
+              <strong>步骤 1</strong>{' '}
+              会实时打印终端字符二维码与配置链接；链接也可在下方日志区的「检测到授权链接」面板中一键复制。
             </div>
             <div style={{ marginTop: 6 }}>
               <strong>步骤 2</strong> 会输出授权链接并等待扫码；完成授权后自动检测成功。
             </div>
             <div style={{ marginTop: 6 }}>
-              服务端单次命令超时由 <Typography.Text code>agent.terminal_exec_timeout</Typography.Text> 控制；如授权耗时较长可适当调大。
+              服务端单次命令超时由{' '}
+              <Typography.Text code>agent.terminal_exec_timeout</Typography.Text>{' '}
+              控制；如授权耗时较长可适当调大。
             </div>
           </div>
         }

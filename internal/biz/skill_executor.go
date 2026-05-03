@@ -98,6 +98,8 @@ func (e *FileSkillExecutor) Dirs() []string {
 	return result
 }
 
+var _ = isSkillFile
+
 // isSkillFile 判断文件是否属于可加载的技能文件类型。
 func isSkillFile(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))

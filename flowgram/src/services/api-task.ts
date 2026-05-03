@@ -96,14 +96,16 @@ function parseTaskPriority(raw: unknown): number {
 /** 将 protobuf / Kratos 返回的任务行规范为表格用的 TaskItem */
 function normalizeTaskFromApi(raw: Record<string, unknown> | null | undefined): TaskItem {
   const r = raw ?? {};
-  const handler =
-    (r.handler_user_id as string) ??
-    (r.handlerUserId as string) ??
-    '';
+  const handler = (r.handler_user_id as string) ?? (r.handlerUserId as string) ?? '';
   const created = r.created_at ?? r.createdAt;
   const updated = r.updated_at ?? r.updatedAt;
   const parentIdRaw = r.parent_id ?? r.parentId;
-  const parentIdNum = typeof parentIdRaw === 'number' ? parentIdRaw : (typeof parentIdRaw === 'string' && parentIdRaw !== '' ? Number(parentIdRaw) : undefined);
+  const parentIdNum =
+    typeof parentIdRaw === 'number'
+      ? parentIdRaw
+      : typeof parentIdRaw === 'string' && parentIdRaw !== ''
+      ? Number(parentIdRaw)
+      : undefined;
   return {
     id: Number(r.id),
     name: String(r.name ?? ''),
@@ -114,9 +116,19 @@ function normalizeTaskFromApi(raw: Record<string, unknown> | null | undefined): 
     updated_at: formatTaskTimestamp(updated),
     handler_user_id: handler,
     description: String(r.description ?? ''),
-    rule_chain_id: typeof r.rule_chain_id === 'string' ? r.rule_chain_id : typeof r.ruleChainId === 'string' ? r.ruleChainId : undefined,
+    rule_chain_id:
+      typeof r.rule_chain_id === 'string'
+        ? r.rule_chain_id
+        : typeof r.ruleChainId === 'string'
+        ? r.ruleChainId
+        : undefined,
     parent_id: parentIdNum != null && Number.isFinite(parentIdNum) ? parentIdNum : undefined,
-    last_run_id: typeof r.last_run_id === 'string' ? r.last_run_id : typeof r.lastRunId === 'string' ? r.lastRunId : undefined,
+    last_run_id:
+      typeof r.last_run_id === 'string'
+        ? r.last_run_id
+        : typeof r.lastRunId === 'string'
+        ? r.lastRunId
+        : undefined,
   };
 }
 
@@ -184,14 +196,23 @@ export const getTask = async (id: number): Promise<{ item: TaskItem }> => {
 
 // 创建任务（CreateTaskReply.task）
 export const createTask = async (params: CreateTaskParams): Promise<{ item: TaskItem }> => {
-  const raw = await requestJSON<Record<string, unknown>>('/tasks', { method: 'POST', body: params });
+  const raw = await requestJSON<Record<string, unknown>>('/tasks', {
+    method: 'POST',
+    body: params,
+  });
   const t = (raw.task ?? raw.item) as Record<string, unknown> | undefined;
   return { item: normalizeTaskFromApi(t) };
 };
 
 // 更新任务（UpdateTaskReply.task）
-export const updateTask = async (id: number, params: UpdateTaskParams): Promise<{ item: TaskItem }> => {
-  const raw = await requestJSON<Record<string, unknown>>(`/tasks/${id}`, { method: 'PUT', body: params });
+export const updateTask = async (
+  id: number,
+  params: UpdateTaskParams
+): Promise<{ item: TaskItem }> => {
+  const raw = await requestJSON<Record<string, unknown>>(`/tasks/${id}`, {
+    method: 'PUT',
+    body: params,
+  });
   const t = (raw.task ?? raw.item) as Record<string, unknown> | undefined;
   return { item: normalizeTaskFromApi(t) };
 };
@@ -205,7 +226,10 @@ export const executeTaskRuleChain = (id: number): Promise<{ success: boolean; me
   requestJSON(`/tasks/${id}/execute`, { method: 'POST', body: {} });
 
 // 创建子任务
-export const createChildTask = async (parentId: number, params?: CreateChildTaskParams): Promise<{ item: TaskItem }> => {
+export const createChildTask = async (
+  parentId: number,
+  params?: CreateChildTaskParams
+): Promise<{ item: TaskItem }> => {
   const raw = await requestJSON<Record<string, unknown>>(`/tasks/${parentId}/children`, {
     method: 'POST',
     body: params ?? {},
@@ -215,11 +239,16 @@ export const createChildTask = async (parentId: number, params?: CreateChildTask
 };
 
 // 查询子任务列表
-export const listChildTasks = async (parentId: number, params?: ListChildTasksParams): Promise<{ items: TaskItem[]; total: number }> => {
+export const listChildTasks = async (
+  parentId: number,
+  params?: ListChildTasksParams
+): Promise<{ items: TaskItem[]; total: number }> => {
   const raw = await requestJSON<Record<string, unknown>>(`/tasks/${parentId}/children`, { params });
   const list = (raw.tasks ?? raw.items) as unknown[] | undefined;
   return {
-    items: (Array.isArray(list) ? list : []).map((row) => normalizeTaskFromApi(row as Record<string, unknown>)),
+    items: (Array.isArray(list) ? list : []).map((row) =>
+      normalizeTaskFromApi(row as Record<string, unknown>)
+    ),
     total: Number(raw.total ?? 0),
   };
 };

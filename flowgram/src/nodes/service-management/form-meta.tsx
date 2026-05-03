@@ -31,7 +31,9 @@ function isServicePropertyVisible(action: ServiceAction, key: string): boolean {
 const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
   <Field name="inputsValues.action">
     {({ field }) => {
-      const action = parseServiceAction((field.value as { content?: unknown } | undefined)?.content);
+      const action = parseServiceAction(
+        (field.value as { content?: unknown } | undefined)?.content
+      );
       return (
         <>
           <FormHeader />

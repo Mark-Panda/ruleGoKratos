@@ -26,6 +26,8 @@ func packageIDFromRelNoExt(relNoExt string) string {
 	return relNoExt
 }
 
+var _ = isSkillFileExt
+
 func isSkillFileExt(ext string) bool {
 	switch strings.ToLower(ext) {
 	case ".md", ".txt", ".yaml", ".yml", ".json":

@@ -77,7 +77,7 @@ func assertHostResolvesToPublicIP(ctx context.Context, host string) error {
 }
 
 func trimURLTail(s string) string {
-	return strings.TrimRight(s, ".,;:!?)）】。、，；：！？【】]'\"")
+	return strings.TrimRight(s, ".,;:!?)]】。、，；：！？【'\"")
 }
 
 func collectMessageHTTPSURLs(msg string) []string {

@@ -6,9 +6,9 @@
 import { WorkflowNodeType, OutPutPortType } from '../constants';
 import { alphaNanoid } from '../../utils';
 import { FlowNodeRegistry } from '../../typings';
+import { serviceStatusOptions, ServiceStatus } from '../../services/api-service';
 import iconApi from '../../assets/icon_api.svg';
 import { formMeta } from './form-meta';
-import { serviceStatusOptions, ServiceStatus } from '../../services/api-service';
 
 let index = 0;
 const SERVICE_STATUS_VALUES = serviceStatusOptions.map((o) => o.value);
@@ -22,8 +22,7 @@ export const ServiceManagementNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.ServiceManagement,
   info: {
     icon: iconApi,
-    description:
-      '服务管理：创建、查询、更新、删除服务目录中的服务。',
+    description: '服务管理：创建、查询、更新、删除服务目录中的服务。',
   },
   meta: {
     defaultPorts: [

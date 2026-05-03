@@ -253,7 +253,7 @@ func normalizeWorkspaceID(id string) (string, error) {
 	for _, ch := range id {
 		ok := (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.'
 		if !ok {
-			return "", errors.New("id 仅支持字母、数字、-、_、.")
+			return "", errors.New("id 仅支持字母、数字、-、_、.") //lint:ignore ST1005 "Chinese error message"
 		}
 	}
 	return id, nil

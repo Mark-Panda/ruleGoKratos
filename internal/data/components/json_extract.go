@@ -305,6 +305,7 @@ type compiledSchemaPath struct {
 	Segments []schemaSegment
 }
 
+//lint:ignore U1000 "kept for future use"
 func parseSchemaPathList(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -891,6 +892,7 @@ func aggressiveNormalize(jsonStr string) string {
 	return fixed
 }
 
+//lint:ignore U1000 "kept for future use"
 func completeJson(jsonStr string) string {
 	out, _ := completeJsonWithMeta(jsonStr)
 	return out

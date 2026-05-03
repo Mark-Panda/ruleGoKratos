@@ -85,7 +85,9 @@ export const TracePanel: React.FC<TracePanelProps> = ({
             &gt;_
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Text strong style={{ fontSize: 14 }}>Runtime Context</Text>
+            <Text strong style={{ fontSize: 14 }}>
+              Runtime Context
+            </Text>
             <Tag
               size="small"
               color={
@@ -240,7 +242,10 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                       transition: 'background 0.15s ease',
                     }}
                   >
-                    <Text type="tertiary" style={{ fontSize: 10, minWidth: 64, flexShrink: 0, paddingTop: 1 }}>
+                    <Text
+                      type="tertiary"
+                      style={{ fontSize: 10, minWidth: 64, flexShrink: 0, paddingTop: 1 }}
+                    >
                       {formatTime(event.timestamp)}
                     </Text>
                     <span style={{ fontSize: 14, flexShrink: 0, lineHeight: '18px' }}>
@@ -330,8 +335,14 @@ export const TracePanel: React.FC<TracePanelProps> = ({
                 >
                   <Space wrap style={{ marginBottom: 8 }}>
                     <Text strong>{node.name}</Text>
-                    <Tag size="small" style={{ borderRadius: 4 }}>{node.kind}</Tag>
-                    <Tag size="small" color={node.artifacts.length ? 'green' : 'grey'} style={{ borderRadius: 4 }}>
+                    <Tag size="small" style={{ borderRadius: 4 }}>
+                      {node.kind}
+                    </Tag>
+                    <Tag
+                      size="small"
+                      color={node.artifacts.length ? 'green' : 'grey'}
+                      style={{ borderRadius: 4 }}
+                    >
                       产物 {node.artifacts.length}
                     </Tag>
                   </Space>

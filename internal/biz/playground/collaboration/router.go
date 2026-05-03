@@ -93,6 +93,8 @@ func (h *RouterExpertHandler) findAgentDef(agentID string) *entity.AgentDefiniti
 	return nil
 }
 
+var _ = (*RouterExpertHandler).executeAgent
+
 // executeAgent 执行 Agent 任务
 func (h *RouterExpertHandler) executeAgent(ctx context.Context, agent *entity.AgentInstance, input string, trace TraceEmitter, runID string) (string, error) {
 	trace.Thinking(runID, agent.Definition.ID, "分析任务...")

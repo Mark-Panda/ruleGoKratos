@@ -107,7 +107,17 @@ function summarizeJsonObject(o: Record<string, unknown>, max: number): string {
   const keys = Object.keys(o);
   if (keys.length === 0) return '{}';
   // 如果有 success/message/error 等业务字段，优先展示
-  const priorityKeys = ['success', 'message', 'error', 'msg', 'task', 'service', 'tasks', 'services', 'data'];
+  const priorityKeys = [
+    'success',
+    'message',
+    'error',
+    'msg',
+    'task',
+    'service',
+    'tasks',
+    'services',
+    'data',
+  ];
   const picked: string[] = [];
   for (const pk of priorityKeys) {
     if (pk in o) {

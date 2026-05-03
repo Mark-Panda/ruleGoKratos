@@ -57,10 +57,10 @@ import {
 import { applyRecoveryActionAndRefresh } from '../utils/recovery-actions';
 import { WorkflowGraph } from '../components/workflow-graph';
 import { TracePanel } from '../components/trace-panel';
+import { RunWorkspacePanel } from '../components/run-workspace-panel';
 import { RunConsole, PreviousRunSnapshot } from '../components/run-console';
 import { ModeSelector } from '../components/mode-selector';
 import { AgentManager } from '../components/agent-manager';
-import { RunWorkspacePanel } from '../components/run-workspace-panel';
 import { getApiOrigin } from '../../services/http';
 import {
   AgentDefinition,
@@ -1251,7 +1251,9 @@ export const AgentPlaygroundPage: React.FC = () => {
       title: '协作模式',
       dataIndex: 'mode',
       render: (mode: CollaborationMode) => (
-        <Tag color="blue" style={{ borderRadius: 6 }}>{MODE_NAME_MAP[mode] || mode}</Tag>
+        <Tag color="blue" style={{ borderRadius: 6 }}>
+          {MODE_NAME_MAP[mode] || mode}
+        </Tag>
       ),
     },
     {
@@ -1272,9 +1274,13 @@ export const AgentPlaygroundPage: React.FC = () => {
       dataIndex: 'enableFinalizer',
       render: (enabled: boolean) =>
         enabled ? (
-          <Tag color="green" style={{ borderRadius: 6 }}>ON</Tag>
+          <Tag color="green" style={{ borderRadius: 6 }}>
+            ON
+          </Tag>
         ) : (
-          <Tag color="grey" style={{ borderRadius: 6 }}>OFF</Tag>
+          <Tag color="grey" style={{ borderRadius: 6 }}>
+            OFF
+          </Tag>
         ),
       width: 80,
     },
@@ -1428,7 +1434,8 @@ export const AgentPlaygroundPage: React.FC = () => {
               width: 40,
               height: 40,
               borderRadius: 12,
-              background: 'linear-gradient(135deg, var(--semi-color-primary), var(--semi-color-primary-light-default))',
+              background:
+                'linear-gradient(135deg, var(--semi-color-primary), var(--semi-color-primary-light-default))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1609,7 +1616,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                             width: 44,
                             height: 44,
                             borderRadius: 12,
-                            background: 'linear-gradient(135deg, rgba(22, 100, 255, 0.10), rgba(22, 100, 255, 0.04))',
+                            background:
+                              'linear-gradient(135deg, rgba(22, 100, 255, 0.10), rgba(22, 100, 255, 0.04))',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -1619,7 +1627,14 @@ export const AgentPlaygroundPage: React.FC = () => {
                         >
                           🤖
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: 8,
+                            marginBottom: 4,
+                          }}
+                        >
                           <Text strong style={{ fontSize: 28, lineHeight: 1 }}>
                             {totalAgents}
                           </Text>
@@ -1627,13 +1642,19 @@ export const AgentPlaygroundPage: React.FC = () => {
                             个 Agent
                           </Text>
                         </div>
-                        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 12 }}>
+                        <Text
+                          type="tertiary"
+                          size="small"
+                          style={{ display: 'block', marginBottom: 12 }}
+                        >
                           已启用 {enabledAgents} 个 · default 池
                         </Text>
                         <Divider margin="12px" />
                         <Space wrap>
                           {(defaultAgentPool?.agents || []).slice(0, 6).map((a, i) => (
-                            <Tag key={`${a.id}-${i}`} style={{ borderRadius: 6 }}>{a.name}</Tag>
+                            <Tag key={`${a.id}-${i}`} style={{ borderRadius: 6 }}>
+                              {a.name}
+                            </Tag>
                           ))}
                           {totalAgents === 0 ? (
                             <Text type="tertiary" size="small">
@@ -1641,11 +1662,16 @@ export const AgentPlaygroundPage: React.FC = () => {
                             </Text>
                           ) : null}
                         </Space>
-                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div
+                          style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
                           <Text type="primary" size="small" style={{ cursor: 'pointer' }}>
                             管理智能体
                           </Text>
-                          <IconArrowRight size="small" style={{ color: 'var(--semi-color-primary)' }} />
+                          <IconArrowRight
+                            size="small"
+                            style={{ color: 'var(--semi-color-primary)' }}
+                          />
                         </div>
                       </Card>
                     </div>
@@ -1673,7 +1699,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                             width: 44,
                             height: 44,
                             borderRadius: 12,
-                            background: 'linear-gradient(135deg, rgba(19, 194, 194, 0.10), rgba(19, 194, 194, 0.04))',
+                            background:
+                              'linear-gradient(135deg, rgba(19, 194, 194, 0.10), rgba(19, 194, 194, 0.04))',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -1683,7 +1710,14 @@ export const AgentPlaygroundPage: React.FC = () => {
                         >
                           📋
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: 8,
+                            marginBottom: 4,
+                          }}
+                        >
                           <Text strong style={{ fontSize: 28, lineHeight: 1 }}>
                             {schemes.length}
                           </Text>
@@ -1691,14 +1725,20 @@ export const AgentPlaygroundPage: React.FC = () => {
                             个方案
                           </Text>
                         </div>
-                        <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 12 }}>
+                        <Text
+                          type="tertiary"
+                          size="small"
+                          style={{ display: 'block', marginBottom: 12 }}
+                        >
                           已就绪协作编排
                         </Text>
                         <Divider margin="12px" />
                         <Space vertical align="start">
                           {schemes.slice(0, 5).map((s) => (
                             <Space key={s.id}>
-                              <Tag color="blue" style={{ borderRadius: 6 }}>{MODE_NAME_MAP[s.mode]}</Tag>
+                              <Tag color="blue" style={{ borderRadius: 6 }}>
+                                {MODE_NAME_MAP[s.mode]}
+                              </Tag>
                               <span
                                 title={s.name}
                                 style={{
@@ -1720,11 +1760,16 @@ export const AgentPlaygroundPage: React.FC = () => {
                             </Text>
                           ) : null}
                         </Space>
-                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div
+                          style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
                           <Text type="primary" size="small" style={{ cursor: 'pointer' }}>
                             管理方案
                           </Text>
-                          <IconArrowRight size="small" style={{ color: 'var(--semi-color-primary)' }} />
+                          <IconArrowRight
+                            size="small"
+                            style={{ color: 'var(--semi-color-primary)' }}
+                          />
                         </div>
                       </Card>
                     </div>
@@ -1739,7 +1784,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                           width: 44,
                           height: 44,
                           borderRadius: 12,
-                          background: 'linear-gradient(135deg, rgba(250, 173, 20, 0.10), rgba(250, 173, 20, 0.04))',
+                          background:
+                            'linear-gradient(135deg, rgba(250, 173, 20, 0.10), rgba(250, 173, 20, 0.04))',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1781,7 +1827,11 @@ export const AgentPlaygroundPage: React.FC = () => {
                   }}
                   bodyStyle={{ padding: '16px 20px' }}
                 >
-                  <Text type="tertiary" size="small" style={{ display: 'block', marginBottom: 12, fontWeight: 500 }}>
+                  <Text
+                    type="tertiary"
+                    size="small"
+                    style={{ display: 'block', marginBottom: 12, fontWeight: 500 }}
+                  >
                     快捷操作
                   </Text>
                   <Space wrap spacing="loose">
@@ -1831,7 +1881,8 @@ export const AgentPlaygroundPage: React.FC = () => {
                           width: 32,
                           height: 32,
                           borderRadius: 8,
-                          background: 'linear-gradient(135deg, rgba(19, 194, 194, 0.10), rgba(19, 194, 194, 0.04))',
+                          background:
+                            'linear-gradient(135deg, rgba(19, 194, 194, 0.10), rgba(19, 194, 194, 0.04))',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1840,7 +1891,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                       >
                         📋
                       </div>
-                      <Text strong style={{ fontSize: 14 }}>协作方案</Text>
+                      <Text strong style={{ fontSize: 14 }}>
+                        协作方案
+                      </Text>
                     </div>
                   }
                   headerExtraContent={
@@ -1891,7 +1944,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                           >
                             🌐
                           </div>
-                          <Text strong style={{ fontSize: 14 }}>显示设置</Text>
+                          <Text strong style={{ fontSize: 14 }}>
+                            显示设置
+                          </Text>
                         </div>
                       }
                     >
@@ -1920,7 +1975,11 @@ export const AgentPlaygroundPage: React.FC = () => {
                               English
                             </Button>
                           </ButtonGroup>
-                          <Text type="tertiary" size="small" style={{ display: 'block', marginTop: 6 }}>
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', marginTop: 6 }}
+                          >
                             控制标签页名称及常用文案的语言
                           </Text>
                         </div>
@@ -1946,15 +2005,21 @@ export const AgentPlaygroundPage: React.FC = () => {
                           >
                             🔧
                           </div>
-                          <Text strong style={{ fontSize: 14 }}>运行设置</Text>
+                          <Text strong style={{ fontSize: 14 }}>
+                            运行设置
+                          </Text>
                         </div>
                       }
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                         <div>
-                          <Text type="tertiary" size="small" style={{ display: 'block', lineHeight: 1.65 }}>
-                            默认模型、超时与 Trace 采样等将后续在此集中配置；
-                            Agent 与模型绑定请使用后台「托管 Agent」相关页面。
+                          <Text
+                            type="tertiary"
+                            size="small"
+                            style={{ display: 'block', lineHeight: 1.65 }}
+                          >
+                            默认模型、超时与 Trace 采样等将后续在此集中配置； Agent
+                            与模型绑定请使用后台「托管 Agent」相关页面。
                           </Text>
                         </div>
                         <div
@@ -2016,7 +2081,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                         </Text>
                         <Select
                           placeholder={
-                            schemes.length ? '请选择要运行的方案' : '暂无方案，请先到「协作编排」新建'
+                            schemes.length
+                              ? '请选择要运行的方案'
+                              : '暂无方案，请先到「协作编排」新建'
                           }
                           style={{ width: '100%' }}
                           value={selectedScheme?.id}
@@ -2031,7 +2098,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                               <Space>
                                 <Badge dot type={s.enabled ? 'success' : 'danger'} />
                                 <span>{s.name}</span>
-                                <Tag size="small" style={{ borderRadius: 4 }}>{MODE_NAME_MAP[s.mode]}</Tag>
+                                <Tag size="small" style={{ borderRadius: 4 }}>
+                                  {MODE_NAME_MAP[s.mode]}
+                                </Tag>
                               </Space>
                             </Select.Option>
                           ))}
@@ -2055,7 +2124,9 @@ export const AgentPlaygroundPage: React.FC = () => {
                             </Text>
                             <Space wrap>
                               {(selectedScheme.bindAgents || []).map((a, i) => (
-                                <Tag key={i} style={{ borderRadius: 6 }}>{a.role || a.agentId}</Tag>
+                                <Tag key={i} style={{ borderRadius: 6 }}>
+                                  {a.role || a.agentId}
+                                </Tag>
                               ))}
                             </Space>
                           </>
@@ -2088,7 +2159,12 @@ export const AgentPlaygroundPage: React.FC = () => {
                       </div>
 
                       <div
-                        style={{ flex: 1, overflow: 'auto', padding: '0 16px 12px', minHeight: 200 }}
+                        style={{
+                          flex: 1,
+                          overflow: 'auto',
+                          padding: '0 16px 12px',
+                          minHeight: 200,
+                        }}
                       >
                         {selectedScheme ? (
                           <WorkflowGraph

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { TaskStatus, TaskType } from '../../services/api-task';
+import { ServiceStatus } from '../../services/api-service';
 import {
   priorityTagColor,
   serviceStatusTagColor,
   taskStatusTagColor,
   taskTypeTagColor,
 } from './section-display';
-import { ServiceStatus } from '../../services/api-service';
-import { TaskStatus, TaskType } from '../../services/api-task';
 
 describe('section-display helpers', () => {
   it('maps service status to Semi tag colors', () => {

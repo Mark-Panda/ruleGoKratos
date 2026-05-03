@@ -31,6 +31,12 @@ func (h *PeerHandoffHandler) Name() string {
 	return "peer_handoff"
 }
 
+var _ = (*PeerHandoffHandler).findAgentDef
+var _ = (*PeerHandoffHandler).findEntryAgent
+var _ = (*PeerHandoffHandler).findNextAgent
+var _ = (*PeerHandoffHandler).executeAgent
+var _ = (*PeerHandoffHandler).generateNextTaskDesc
+
 // findAgentDef 根据 ID 查找 Agent 定义
 func (h *PeerHandoffHandler) findAgentDef(agentID string) *entity.AgentDefinition {
 	for _, agent := range h.pool.Agents {

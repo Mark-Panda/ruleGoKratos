@@ -20,9 +20,7 @@ function isPropertyVisible(repoScope: RepoScope, key: string): boolean {
 const renderForm = (_props: FormRenderProps<FlowNodeJSON>) => (
   <Field name="inputsValues.repoScope">
     {({ field }) => {
-      const repoScope = parseRepoScope(
-        (field.value as { content?: unknown } | undefined)?.content
-      );
+      const repoScope = parseRepoScope((field.value as { content?: unknown } | undefined)?.content);
       return (
         <>
           <FormHeader />

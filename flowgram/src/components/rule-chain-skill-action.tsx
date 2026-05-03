@@ -2,19 +2,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button, Modal, Select, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 
-import {
-  generateRuleChainSkill,
-  getRuleChainSkillStatus,
-  type RuleChainSkillStatusReply,
-} from '../services/api-agent';
-import { listEnabledManagedAgents } from '../services/api-managed-agents';
-import { loadStoredManagedAgentId, saveStoredManagedAgentId } from '../utils/managed-agent-storage';
+import { getRuleChainSkillPresentation } from '../utils/rule-chain-skill-ui';
 import {
   resolveManagedAgentSelection,
   shouldTreatStatusErrorAsMissing,
   type ManagedAgentOption,
 } from '../utils/rule-chain-skill-action-helpers';
-import { getRuleChainSkillPresentation } from '../utils/rule-chain-skill-ui';
+import { loadStoredManagedAgentId, saveStoredManagedAgentId } from '../utils/managed-agent-storage';
+import { listEnabledManagedAgents } from '../services/api-managed-agents';
+import {
+  generateRuleChainSkill,
+  getRuleChainSkillStatus,
+  type RuleChainSkillStatusReply,
+} from '../services/api-agent';
 
 export interface RuleChainSkillActionProps {
   ruleChainId: string;

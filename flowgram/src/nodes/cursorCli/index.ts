@@ -60,7 +60,15 @@ export const CursorCliNodeRegistry: FlowNodeRegistry = {
         },
         inputs: {
           type: 'object',
-          required: ['agentPath', 'workspacePath', 'force', 'args', 'log', 'replaceData', 'timeoutMs'],
+          required: [
+            'agentPath',
+            'workspacePath',
+            'force',
+            'args',
+            'log',
+            'replaceData',
+            'timeoutMs',
+          ],
           properties: {
             agentPath: {
               type: 'string',

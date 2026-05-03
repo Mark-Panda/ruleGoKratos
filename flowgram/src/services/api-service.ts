@@ -59,8 +59,7 @@ function formatServiceTimestamp(v: unknown): string {
 /** 将 protobuf 返回的服务行规范为表格用 ServiceItem */
 function normalizeServiceFromApi(raw: Record<string, unknown> | null | undefined): ServiceItem {
   const r = raw ?? {};
-  const volc =
-    (r.volc_log_service_id as string) ?? (r.volcLogServiceId as string) ?? '';
+  const volc = (r.volc_log_service_id as string) ?? (r.volcLogServiceId as string) ?? '';
   const git = (r.git_repo_url as string) ?? (r.gitRepoUrl as string) ?? '';
   const created = r.created_at ?? r.createdAt;
   const updated = r.updated_at ?? r.updatedAt;
@@ -118,8 +117,13 @@ export const getService = async (id: number): Promise<{ item: ServiceItem }> => 
 };
 
 // 按名称保存服务（CreateServiceReply.service；同名更新，不存在新建）
-export const saveServiceByName = async (params: SaveServiceParams): Promise<{ item: ServiceItem }> => {
-  const raw = await requestJSON<Record<string, unknown>>('/services', { method: 'POST', body: params });
+export const saveServiceByName = async (
+  params: SaveServiceParams
+): Promise<{ item: ServiceItem }> => {
+  const raw = await requestJSON<Record<string, unknown>>('/services', {
+    method: 'POST',
+    body: params,
+  });
   const s = (raw.service ?? raw.item) as Record<string, unknown> | undefined;
   return { item: normalizeServiceFromApi(s) };
 };
@@ -133,7 +137,10 @@ export const updateService = async (
   id: number,
   params: UpdateServiceParams
 ): Promise<{ item: ServiceItem }> => {
-  const raw = await requestJSON<Record<string, unknown>>(`/services/${id}`, { method: 'PUT', body: params });
+  const raw = await requestJSON<Record<string, unknown>>(`/services/${id}`, {
+    method: 'PUT',
+    body: params,
+  });
   const s = (raw.service ?? raw.item) as Record<string, unknown> | undefined;
   return { item: normalizeServiceFromApi(s) };
 };

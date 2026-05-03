@@ -46,21 +46,19 @@ function normalizeManagedAgentItem(raw: Record<string, unknown>): ManagedAgentIt
   const mcpIdsRaw = raw.mcpIds ?? raw.mcp_ids;
   const mcpIds = Array.isArray(mcpIdsRaw) ? mcpIdsRaw.map((id) => Number(id)) : [];
   const skillPkgRaw = raw.skillPackageIds ?? raw.skill_package_ids;
-  const skillPackageIds = Array.isArray(skillPkgRaw)
-    ? skillPkgRaw.map((s) => String(s))
-    : [];
+  const skillPackageIds = Array.isArray(skillPkgRaw) ? skillPkgRaw.map((s) => String(s)) : [];
   const created =
     raw.createdAt != null
       ? String(raw.createdAt)
       : raw.created_at != null
-        ? String(raw.created_at)
-        : undefined;
+      ? String(raw.created_at)
+      : undefined;
   const updated =
     raw.updatedAt != null
       ? String(raw.updatedAt)
       : raw.updated_at != null
-        ? String(raw.updated_at)
-        : undefined;
+      ? String(raw.updated_at)
+      : undefined;
   return {
     id: Number(raw.id ?? 0),
     name: String(raw.name ?? ''),

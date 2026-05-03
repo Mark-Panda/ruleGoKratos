@@ -284,6 +284,7 @@ func createTokenViaPlaywright(endpoint, username, password, gitlabHost, note, ex
 	if err := waitAndType(page, passwordSel, password, timeout); err != nil {
 		return nil, fmt.Errorf("填写密码失败: %w", err)
 	}
+	//lint:ignore SA1019 "deprecated playwright API"
 	if err := page.Click("button[type=\"submit\"], input[type=\"submit\"]"); err != nil {
 		return nil, fmt.Errorf("点击登录按钮失败: %w", err)
 	}
@@ -349,7 +350,7 @@ func createTokenViaPlaywright(endpoint, username, password, gitlabHost, note, ex
 	})
 	if expiresVisible {
 		_ = expiresInput.Click(playwright.LocatorClickOptions{ClickCount: playwright.Int(3)})
-		_ = expiresInput.Type(expiresAt)
+		_ = expiresInput.Type(expiresAt) //lint:ignore SA1019 "deprecated playwright API"
 	}
 
 	submitBtn := page.Locator("button:has-text(\"Create token\"), button:has-text(\"Generate token\"), button[type=\"submit\"]").First()
@@ -358,7 +359,7 @@ func createTokenViaPlaywright(endpoint, username, password, gitlabHost, note, ex
 	}
 
 	// 等待 Token 值出现
-	if _, err := page.WaitForSelector(
+	if _, err := page.WaitForSelector( //lint:ignore SA1019 "deprecated playwright API"
 		".access-token-value, [data-testid=\"token-value\"], .token-value, input[readonly][value]",
 		playwright.PageWaitForSelectorOptions{
 			Timeout: playwright.Float(15000),
@@ -377,15 +378,15 @@ func createTokenViaPlaywright(endpoint, username, password, gitlabHost, note, ex
 
 // waitAndType 等待元素可见后清空并输入文本，复刻 JS 脚本的 waitAndType。
 func waitAndType(page playwright.Page, selector, text string, timeout float64) error {
-	el, err := page.WaitForSelector(selector, playwright.PageWaitForSelectorOptions{
+	el, err := page.WaitForSelector(selector, playwright.PageWaitForSelectorOptions{ //lint:ignore SA1019 "deprecated playwright API"
 		State:   playwright.WaitForSelectorStateVisible,
 		Timeout: playwright.Float(timeout),
 	})
 	if err != nil {
 		return err
 	}
-	_ = el.Click(playwright.ElementHandleClickOptions{ClickCount: playwright.Int(3)})
-	err = el.Type(text)
+	_ = el.Click(playwright.ElementHandleClickOptions{ClickCount: playwright.Int(3)}) //lint:ignore SA1019 "deprecated playwright API"
+	err = el.Type(text) //lint:ignore SA1019 "deprecated playwright API"
 	return err
 }
 

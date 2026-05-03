@@ -38,9 +38,7 @@ export const NodeStatusGroup: FC<NodeStatusGroupProps> = ({
     }
     try {
       const text =
-        typeof data === 'string'
-          ? data
-          : JSON.stringify(data, null, 2) ?? String(data ?? '');
+        typeof data === 'string' ? data : JSON.stringify(data, null, 2) ?? String(data ?? '');
       await navigator.clipboard.writeText(text);
       Toast.success({ content: `已复制${title}`, duration: 2 });
     } catch {

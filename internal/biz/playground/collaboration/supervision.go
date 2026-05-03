@@ -34,6 +34,12 @@ func (h *SupervisionHandler) Execute(ctx context.Context, runID string, input st
 	return nil, fmt.Errorf("%w: %s", ErrLegacyExecuteDeprecated, h.Name())
 }
 
+var _ = workerTask{}
+var _ = (*SupervisionHandler).allocateWorkers
+var _ = (*SupervisionHandler).findAgentByRole
+var _ = (*SupervisionHandler).findAgentDef
+var _ = (*SupervisionHandler).executeWorker
+
 type workerTask struct {
 	agentID  string
 	nodeID   string

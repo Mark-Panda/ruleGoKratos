@@ -80,27 +80,13 @@ const DATA_STORAGE = new Set([
 ]);
 
 /** 文件操作：文件读写 */
-const FILE_OPS = new Set([
-  'x/fileRead',
-  'x/fileWrite',
-  'x/fileDelete',
-  'x/fileList',
-]);
+const FILE_OPS = new Set(['x/fileRead', 'x/fileWrite', 'x/fileDelete', 'x/fileList']);
 
 /** 命令与开发：命令执行、Git 操作 */
-const COMMAND_DEV = new Set([
-  'exec',
-  'ci/gitClone',
-  'ci/gitCommit',
-  'ci/gitPush',
-]);
+const COMMAND_DEV = new Set(['exec', 'ci/gitClone', 'ci/gitCommit', 'ci/gitPush']);
 
 /** 项目管理：任务看板、服务管理、工作区 */
-const PROJECT_MGMT = new Set([
-  'x/taskBoard',
-  'x/serviceManagement',
-  'x/workspaceSync',
-]);
+const PROJECT_MGMT = new Set(['x/taskBoard', 'x/serviceManagement', 'x/workspaceSync']);
 
 /** 辅助与调试：注释、日志、分组容器 */
 const UTILITIES = new Set(['comment', 'log', 'group']);

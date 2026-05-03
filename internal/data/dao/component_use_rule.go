@@ -47,8 +47,8 @@ func (c *ComponentUseRule) FindList(ctx context.Context, where map[string]interf
 	var componentUseRules []ComponentUseRule
 	var count int64
 	db := db.WithContext(ctx).Model(c).Where(where)
-	err := db.Count(&count).Error
-	err = db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&componentUseRules).Error
+	_ = db.Count(&count).Error
+	err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&componentUseRules).Error
 	if err != nil {
 		return nil, 0, err
 	}

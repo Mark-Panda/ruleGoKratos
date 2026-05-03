@@ -10,8 +10,7 @@ export const SourcegraphTokenCreateNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.SourcegraphTokenCreate,
   info: {
     icon: iconApi,
-    description:
-      '通过 LDAP 凭证登录 Sourcegraph 并创建 Access Token；无需已有 Token。',
+    description: '通过 LDAP 凭证登录 Sourcegraph 并创建 Access Token；无需已有 Token。',
   },
   meta: {
     panelCategory: 'service-calls',

@@ -93,7 +93,9 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Radio value={mode}>
-                    <Text strong style={{ fontSize: 14 }}>{MODE_NAME_MAP[mode]}</Text>
+                    <Text strong style={{ fontSize: 14 }}>
+                      {MODE_NAME_MAP[mode]}
+                    </Text>
                   </Radio>
                 </div>
               </div>

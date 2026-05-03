@@ -3,6 +3,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 
+import { Button, Spin, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
 import {
   IconChevronDown,
   IconChevronRight,
@@ -12,7 +13,6 @@ import {
   IconRefresh,
   IconTerminal,
 } from '@douyinfe/semi-icons';
-import { Button, Spin, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
 
 import { listRunWorkspaceFiles, WorkspaceFileItem } from '../../services/api-playground';
 
@@ -37,7 +37,11 @@ function extColor(ext: string): string {
   return '#595959';
 }
 
-export const RunFileTree: React.FC<RunFileTreeProps> = ({ runId, onFileSelect, onOpenTerminal }) => {
+export const RunFileTree: React.FC<RunFileTreeProps> = ({
+  runId,
+  onFileSelect,
+  onOpenTerminal,
+}) => {
   const [rootItems, setRootItems] = useState<WorkspaceFileItem[]>([]);
   const [dirContents, setDirContents] = useState<Map<string, WorkspaceFileItem[]>>(new Map());
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -125,7 +129,11 @@ export const RunFileTree: React.FC<RunFileTreeProps> = ({ runId, onFileSelect, o
     [runId, fetchRoot]
   );
 
-  const renderTree = (items: WorkspaceFileItem[], depth: number, pathPrefix: string): React.ReactNode =>
+  const renderTree = (
+    items: WorkspaceFileItem[],
+    depth: number,
+    pathPrefix: string
+  ): React.ReactNode =>
     items.map((item) => {
       if (item.type === 'file') {
         const filePath = pathPrefix ? `${pathPrefix}/${item.name}` : item.name;
@@ -196,7 +204,13 @@ export const RunFileTree: React.FC<RunFileTreeProps> = ({ runId, onFileSelect, o
           >
             <span
               onClick={() => toggleDir(dirPath)}
-              style={{ display: 'flex', alignItems: 'center', color: '#9ca3af', flexShrink: 0, fontSize: 12 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                color: '#9ca3af',
+                flexShrink: 0,
+                fontSize: 12,
+              }}
             >
               {isLoading ? (
                 <Spin size="small" />
@@ -215,7 +229,9 @@ export const RunFileTree: React.FC<RunFileTreeProps> = ({ runId, onFileSelect, o
               ) : (
                 <IconFolder size="small" style={{ color: '#faad14', flexShrink: 0 }} />
               )}
-              <Typography.Text style={{ fontSize: 12, color: '#374151' }}>{item.name}</Typography.Text>
+              <Typography.Text style={{ fontSize: 12, color: '#374151' }}>
+                {item.name}
+              </Typography.Text>
             </span>
             <Tooltip content="在此目录打开终端">
               <Button

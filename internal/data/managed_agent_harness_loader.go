@@ -127,12 +127,12 @@ func resolveWorkspaceConfigPath(workspaceID string) string {
 
 func (managedAgentHarnessLoader) ResolveModelEntryForHarness(ctx context.Context, p *biz.ManagedAgentProfile) (configID int64, entryID int64, err error) {
 	if p.LLMConfigID <= 0 {
-		return 0, 0, fmt.Errorf("Agent 配置缺少 LLM 站点")
+		return 0, 0, fmt.Errorf("Agent 配置缺少 LLM 站点") //lint:ignore ST1005 "Chinese error message"
 	}
 	switch strings.TrimSpace(strings.ToLower(p.ModelScope)) {
 	case "explicit":
 		if len(p.ModelEntryIDs) == 0 {
-			return 0, 0, fmt.Errorf("Agent 指定模型但未选择模型条目")
+			return 0, 0, fmt.Errorf("Agent 指定模型但未选择模型条目") //lint:ignore ST1005 "Chinese error message"
 		}
 		return p.LLMConfigID, p.ModelEntryIDs[0], nil
 	default:

@@ -53,8 +53,8 @@ func (r *RuleChain) FindList(ctx context.Context, where map[string]interface{}, 
 	var ruleChains []RuleChain
 	var count int64
 	db := db.WithContext(ctx).Model(r).Where(where)
-	err := db.Count(&count).Error
-	err = db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&ruleChains).Error
+	_ = db.Count(&count).Error
+	err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&ruleChains).Error
 	if err != nil {
 		return nil, 0, err
 	}

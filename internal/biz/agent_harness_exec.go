@@ -78,6 +78,7 @@ func mcpPairKey(server, tool string) string {
 	return server + "\x00" + tool
 }
 
+//lint:ignore U1000 "kept for future use"
 func mcpAllowSet(keys []string) map[string]struct{} {
 	m := make(map[string]struct{})
 	for _, k := range keys {
@@ -89,6 +90,7 @@ func mcpAllowSet(keys []string) map[string]struct{} {
 	return m
 }
 
+//lint:ignore U1000 "kept for future use"
 func normalizeMcpAllowKey(raw string) (string, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -103,11 +105,7 @@ func normalizeMcpAllowKey(raw string) (string, bool) {
 		}
 		return mcpPairKey(server, tool), true
 	}
-	parsed := ParseMcpAllowlist(raw)
-	if len(parsed) != 1 {
-		return "", false
-	}
-	return parsed[0], true
+	return mcpPairKey(raw, "*"), true
 }
 
 // NormalizeSkillAllowlistInput 解析 DSL / 配置中的 Skill 白名单：逗号分隔字符串或字符串数组。

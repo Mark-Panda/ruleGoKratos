@@ -47,7 +47,8 @@ function WorkspaceSyncPicker() {
         工作区
       </Typography.Text>
       <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 10 }}>
-        从「工作区管理」列表选择；运行时将同步该工作区下全部 Git 仓库（与页面上的「同步仓库」一致）。
+        从「工作区管理」列表选择；运行时将同步该工作区下全部 Git
+        仓库（与页面上的「同步仓库」一致）。
       </Typography.Paragraph>
       {loading ? (
         <Spin size="small" />

@@ -6,9 +6,9 @@ import React, { useState, useCallback } from 'react';
 import { Card, Tabs, Typography } from '@douyinfe/semi-ui';
 import { IconFile, IconTerminal } from '@douyinfe/semi-icons';
 
-import { RunFileTree } from './run-file-tree';
-import { RunFileViewer } from './run-file-viewer';
 import { RunTerminalPanel } from './run-terminal-panel';
+import { RunFileViewer } from './run-file-viewer';
+import { RunFileTree } from './run-file-tree';
 
 interface RunWorkspacePanelProps {
   runId: string;
@@ -61,7 +61,8 @@ export const RunWorkspacePanel: React.FC<RunWorkspacePanelProps> = ({ runId, wor
               width: 32,
               height: 32,
               borderRadius: 8,
-              background: 'linear-gradient(135deg, rgba(22, 100, 255, 0.10), rgba(22, 100, 255, 0.04))',
+              background:
+                'linear-gradient(135deg, rgba(22, 100, 255, 0.10), rgba(22, 100, 255, 0.04))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -74,7 +75,12 @@ export const RunWorkspacePanel: React.FC<RunWorkspacePanelProps> = ({ runId, wor
             <Typography.Text strong style={{ fontSize: 14 }}>
               工作区文件
             </Typography.Text>
-            <Typography.Text type="tertiary" size="small" ellipsis={{ showTooltip: true }} style={{ maxWidth: 400 }}>
+            <Typography.Text
+              type="tertiary"
+              size="small"
+              ellipsis={{ showTooltip: true }}
+              style={{ maxWidth: 400 }}
+            >
               {workspacePath}
             </Typography.Text>
           </div>
@@ -110,7 +116,11 @@ export const RunWorkspacePanel: React.FC<RunWorkspacePanelProps> = ({ runId, wor
     >
       {activeSubTab === 'files' ? (
         <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 12, padding: 12 }}>
-          <RunFileTree runId={runId} onFileSelect={handleFileSelect} onOpenTerminal={handleOpenTerminal} />
+          <RunFileTree
+            runId={runId}
+            onFileSelect={handleFileSelect}
+            onOpenTerminal={handleOpenTerminal}
+          />
           <RunFileViewer
             runId={runId}
             filePath={selectedFile?.path ?? null}

@@ -167,7 +167,9 @@ export function buildRuleChainConfigurationWithFlowgram(
       ? ({ ...base[RULE_CHAIN_FLOWGRAM_CONFIG_KEY] } as Record<string, unknown>)
       : {};
   const existingSkill =
-    existingFlowgram.skill && typeof existingFlowgram.skill === 'object' && !Array.isArray(existingFlowgram.skill)
+    existingFlowgram.skill &&
+    typeof existingFlowgram.skill === 'object' &&
+    !Array.isArray(existingFlowgram.skill)
       ? ({ ...(existingFlowgram.skill as Record<string, unknown>) } as Record<string, unknown>)
       : {};
   const io = paramsJsonStringsToIOArrays(

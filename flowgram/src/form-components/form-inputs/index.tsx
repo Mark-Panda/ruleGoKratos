@@ -2,6 +2,7 @@
  * Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
  * SPDX-License-Identifier: MIT
  */
+/* eslint-disable import/order */
 
 import { Field } from '@flowgram.ai/free-layout-editor';
 import {
@@ -23,12 +24,14 @@ import {
 } from '../../utils/canvas-node-preview';
 import { JsonSchema } from '../../typings';
 import { useEffectiveReadonly, useIsSidebar, useNodeRenderContext } from '../../hooks';
-import { WhileDoTargetSelect } from './while-do-target';
-import { SqlTemplateEditor } from './sql-template-editor';
-import { RuleSelect } from './rule-select';
-import { NodeIdSelect } from './node-id-select';
-import { NodeIdMultiSelect } from './node-id-multi-select';
 import { CronEditor } from './cron-editor';
+import { EnumSelect } from './enum-select';
+import { NodeIdMultiSelect } from './node-id-multi-select';
+import { NodeIdSelect } from './node-id-select';
+import { RuleSelect } from './rule-select';
+import { SqlTemplateEditor } from './sql-template-editor';
+import { WhileDoTargetSelect } from './while-do-target';
+import { ArrayEditor } from './array-editor';
 
 export type FormInputsProps = {
   /** 返回 true 的字段才会渲染；未设置则渲染全部 */
@@ -562,5 +565,3 @@ export function FormInputs(props?: FormInputsProps) {
     </Field>
   );
 }
-import { EnumSelect } from './enum-select';
-import { ArrayEditor } from './array-editor';

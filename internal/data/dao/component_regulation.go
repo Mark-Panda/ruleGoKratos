@@ -49,8 +49,8 @@ func (c *ComponentRegulation) FindList(ctx context.Context, where map[string]int
 	var componentRegulations []ComponentRegulation
 	var count int64
 	db := db.WithContext(ctx).Model(c).Where(where)
-	err := db.Count(&count).Error
-	err = db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&componentRegulations).Error
+	_ = db.Count(&count).Error
+	err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&componentRegulations).Error
 	if err != nil {
 		return nil, 0, err
 	}

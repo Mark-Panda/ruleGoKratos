@@ -10,8 +10,7 @@ export const SourcegraphSearchNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.SourcegraphSearch,
   info: {
     icon: iconApi,
-    description:
-      'Sourcegraph 搜索：根据搜索路径组装查询并执行搜索，返回结果 JSON。',
+    description: 'Sourcegraph 搜索：根据搜索路径组装查询并执行搜索，返回结果 JSON。',
   },
   meta: {
     panelCategory: 'service-calls',

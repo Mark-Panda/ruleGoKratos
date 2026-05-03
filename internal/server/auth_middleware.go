@@ -25,18 +25,18 @@ const (
 )
 
 // setIdentityContextValues 同时写入 typed key 与 string key，便于跨包读取。
-func setIdentityContextValues(ctx context.Context, userID, projectPath, sessionID string) context.Context {
+func setIdentityContextValues(ctx context.Context, userID, projectPath, sessionID string) context.Context { 
 	if userID != "" {
 		ctx = context.WithValue(ctx, userIDKey, userID)
-		ctx = context.WithValue(ctx, userIDHeaderKey, userID)
+		ctx = context.WithValue(ctx, userIDHeaderKey, userID) //lint:ignore SA1029 "cross-package compatibility"
 	}
 	if projectPath != "" {
 		ctx = context.WithValue(ctx, projectPathKey, projectPath)
-		ctx = context.WithValue(ctx, projectPathHeaderKey, projectPath)
+		ctx = context.WithValue(ctx, projectPathHeaderKey, projectPath) //lint:ignore SA1029 "cross-package compatibility"
 	}
 	if sessionID != "" {
 		ctx = context.WithValue(ctx, sessionIDKey, sessionID)
-		ctx = context.WithValue(ctx, sessionIDHeaderKey, sessionID)
+		ctx = context.WithValue(ctx, sessionIDHeaderKey, sessionID) //lint:ignore SA1029 "cross-package compatibility"
 	}
 	return ctx
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
+import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import {
   Table,
   Button,
@@ -16,9 +17,12 @@ import {
   Radio,
   Spin,
 } from '@douyinfe/semi-ui';
-import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import { IconPlus, IconEdit, IconDelete, IconUser, IconInfoCircle } from '@douyinfe/semi-icons';
 
+import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
+import { FlowDocumentJSON } from '../../typings';
+import { fetchRunLogs } from '../../services/test-run-http';
+import { requestJSON } from '../../services/http';
 import {
   listTasks,
   getTask,
@@ -38,10 +42,6 @@ import {
   CreateChildTaskParams,
 } from '../../services/api-task';
 import { getRuleList } from '../../services/api-rules';
-import { requestJSON } from '../../services/http';
-import { fetchRunLogs } from '../../services/test-run-http';
-import { buildDocumentFromRuleChainJSON } from '../../utils/rulechain-builder';
-import { FlowDocumentJSON } from '../../typings';
 import { Editor } from '../../editor';
 import { priorityTagColor, taskStatusTagColor, taskTypeTagColor } from './section-display';
 
@@ -170,7 +170,11 @@ export const TaskBoardSection: React.FC = () => {
   // 规则链执行日志查看器
   const [runLogViewerOpen, setRunLogViewerOpen] = useState(false);
   const [runLogViewerDoc, setRunLogViewerDoc] = useState<FlowDocumentJSON | undefined>();
-  const [runLogViewerLogs, setRunLogViewerLogs] = useState<{ list: any[]; startTs?: number; endTs?: number }>();
+  const [runLogViewerLogs, setRunLogViewerLogs] = useState<{
+    list: any[];
+    startTs?: number;
+    endTs?: number;
+  }>();
   const [runLogViewerLoading, setRunLogViewerLoading] = useState(false);
 
   // 详情弹窗数据行
@@ -183,16 +187,15 @@ export const TaskBoardSection: React.FC = () => {
         '状态',
         taskStatusOptions.find((o) => o.value === detailTask.status)?.label ?? detailTask.status,
       ],
-      [
-        '类型',
-        taskTypeOptions.find((o) => o.value === detailTask.type)?.label ?? detailTask.type,
-      ],
+      ['类型', taskTypeOptions.find((o) => o.value === detailTask.type)?.label ?? detailTask.type],
       ['优先级', detailTask.priority],
       ['处理人', detailTask.handler_user_id || '—'],
       [
         '关联规则链',
         detailTask.rule_chain_id
-          ? `${ruleChainNameMap[detailTask.rule_chain_id] || detailTask.rule_chain_id}（${detailTask.rule_chain_id}）`
+          ? `${ruleChainNameMap[detailTask.rule_chain_id] || detailTask.rule_chain_id}（${
+              detailTask.rule_chain_id
+            }）`
           : '—',
       ],
       ['最近执行ID', detailTask.last_run_id || '—'],
@@ -308,7 +311,9 @@ export const TaskBoardSection: React.FC = () => {
 
   // 是否为只读状态（处理中/已完成/失败时仅描述可编辑）
   const isReadonlyStatus = (status: TaskStatus): boolean =>
-    status === TaskStatus.PROCESSING || status === TaskStatus.COMPLETED || status === TaskStatus.FAILED;
+    status === TaskStatus.PROCESSING ||
+    status === TaskStatus.COMPLETED ||
+    status === TaskStatus.FAILED;
 
   // 打开新增/编辑弹窗（initValues + key 强制重挂载，避免 Semi Form 忽略受控 value）
   const openModal = (type: 'create' | 'edit', task?: TaskItem) => {
@@ -388,7 +393,8 @@ export const TaskBoardSection: React.FC = () => {
       return;
     }
     const isPending = editingTask?.status === TaskStatus.PENDING;
-    const readonly = modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status);
+    const readonly =
+      modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status);
     const ruleChainId = isPending ? String(v.rule_chain_id ?? '').trim() : '';
     const isClearingRuleChain = isPending && ruleChainId === '' && editingTask?.rule_chain_id;
     const payload: Record<string, unknown> = {
@@ -564,7 +570,9 @@ export const TaskBoardSection: React.FC = () => {
           try {
             const md = typeof r?.metadata === 'string' ? JSON.parse(r.metadata) : r?.metadata;
             return md?.task_id === String(task.id);
-          } catch { return false; }
+          } catch {
+            return false;
+          }
         });
         latest = taskMatch || items[0];
       }
@@ -634,17 +642,20 @@ export const TaskBoardSection: React.FC = () => {
       title: '规则链',
       dataIndex: 'rule_chain_id',
       width: 180,
-      render: (val: string) => val ? (
-        <Typography.Text size="small" type="tertiary" ellipsis={{ showTooltip: true }}>
-          {ruleChainNameMap[val] || val}
-        </Typography.Text>
-      ) : '—',
+      render: (val: string) =>
+        val ? (
+          <Typography.Text size="small" type="tertiary" ellipsis={{ showTooltip: true }}>
+            {ruleChainNameMap[val] || val}
+          </Typography.Text>
+        ) : (
+          '—'
+        ),
     },
     {
       title: '父任务ID',
       dataIndex: 'parent_id',
       width: 100,
-      render: (val: number) => val ? String(val) : '—',
+      render: (val: number) => (val ? String(val) : '—'),
     },
     {
       title: '创建时间',
@@ -863,7 +874,9 @@ export const TaskBoardSection: React.FC = () => {
             <div style={{ marginBottom: 8 }}>
               <Typography.Text type="tertiary" size="small">
                 看板模式下列表最多加载 {KANBAN_PAGE_SIZE} 条；变更状态请在卡片上点「编辑」。
-                {total > tasks.length ? `（当前 ${tasks.length} / 共 ${total} 条）` : `（共 ${total} 条）`}
+                {total > tasks.length
+                  ? `（当前 ${tasks.length} / 共 ${total} 条）`
+                  : `（共 ${total} 条）`}
               </Typography.Text>
             </div>
             <div
@@ -878,11 +891,12 @@ export const TaskBoardSection: React.FC = () => {
             >
               {KANBAN_COLUMNS.map((col) => {
                 const list = tasksByStatus.get(col.status) ?? [];
-                const colFlex = maxTaskCount > 0 && list.length / maxTaskCount > 0.3
-                  ? '1.5 1 300px'
-                  : maxTaskCount > 0 && list.length / maxTaskCount > 0.1
-                  ? '1.2 1 260px'
-                  : '1 1 240px';
+                const colFlex =
+                  maxTaskCount > 0 && list.length / maxTaskCount > 0.3
+                    ? '1.5 1 300px'
+                    : maxTaskCount > 0 && list.length / maxTaskCount > 0.1
+                    ? '1.2 1 260px'
+                    : '1 1 240px';
                 return (
                   <div
                     key={col.status}
@@ -955,7 +969,14 @@ export const TaskBoardSection: React.FC = () => {
                             }}
                           >
                             {/* 任务名称行 */}
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 8,
+                                marginBottom: 8,
+                              }}
+                            >
                               <span
                                 style={{
                                   width: 8,
@@ -979,7 +1000,9 @@ export const TaskBoardSection: React.FC = () => {
                               </Typography.Text>
                             </div>
                             {/* 标签行 */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                            <div
+                              style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}
+                            >
                               {typeOpt && (
                                 <Tag size="small" color={taskTypeTagColor(task.type)}>
                                   {typeOpt.label}
@@ -991,21 +1014,42 @@ export const TaskBoardSection: React.FC = () => {
                                 </Tag>
                               ) : null}
                               {task.parent_id && (
-                                <Tag size="small" color="blue">子任务</Tag>
+                                <Tag size="small" color="blue">
+                                  子任务
+                                </Tag>
                               )}
                               {task.rule_chain_id && (
                                 <Tag
                                   size="small"
                                   color="violet"
-                                  style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                  style={{
+                                    maxWidth: 160,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
                                 >
                                   {ruleChainNameMap[task.rule_chain_id] || task.rule_chain_id}
                                 </Tag>
                               )}
                             </div>
                             {/* 底部信息栏 */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--semi-color-text-2)', fontSize: 12 }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  color: 'var(--semi-color-text-2)',
+                                  fontSize: 12,
+                                }}
+                              >
                                 <IconUser style={{ opacity: 0.6 }} />
                                 <Typography.Text size="small" type="tertiary">
                                   {task.handler_user_id?.trim() || '—'}
@@ -1044,16 +1088,23 @@ export const TaskBoardSection: React.FC = () => {
                                 icon={<IconEdit />}
                                 size="small"
                                 theme="borderless"
-                                onClick={(e) => { e.stopPropagation(); openModal('edit', task); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openModal('edit', task);
+                                }}
                               >
                                 编辑
                               </Button>
-                              {(task.status === TaskStatus.COMPLETED || task.status === TaskStatus.FAILED) && (
+                              {(task.status === TaskStatus.COMPLETED ||
+                                task.status === TaskStatus.FAILED) && (
                                 <Button
                                   size="small"
                                   theme="borderless"
                                   type="secondary"
-                                  onClick={(e) => { e.stopPropagation(); void handleCreateChildTask(task); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleCreateChildTask(task);
+                                  }}
                                 >
                                   子任务
                                 </Button>
@@ -1063,7 +1114,10 @@ export const TaskBoardSection: React.FC = () => {
                                   size="small"
                                   theme="borderless"
                                   loading={runLogViewerLoading}
-                                  onClick={(e) => { e.stopPropagation(); void handleViewRunLog(task); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleViewRunLog(task);
+                                  }}
                                 >
                                   日志
                                 </Button>
@@ -1073,9 +1127,17 @@ export const TaskBoardSection: React.FC = () => {
                                 content="确定删除该任务？"
                                 okText="确定"
                                 cancelText="取消"
-                                onConfirm={(e) => { e?.stopPropagation(); handleDelete(task.id); }}
+                                onConfirm={(e) => {
+                                  e?.stopPropagation();
+                                  handleDelete(task.id);
+                                }}
                               >
-                                <Button icon={<IconDelete />} size="small" theme="borderless" type="danger">
+                                <Button
+                                  icon={<IconDelete />}
+                                  size="small"
+                                  theme="borderless"
+                                  type="danger"
+                                >
                                   删除
                                 </Button>
                               </Popconfirm>
@@ -1122,7 +1184,9 @@ export const TaskBoardSection: React.FC = () => {
             label="任务名称"
             placeholder="请输入任务名称"
             rules={[{ required: true, message: '请输入任务名称' }]}
-            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
+            disabled={
+              modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)
+            }
           />
           <Form.Select
             field="priority"
@@ -1131,7 +1195,9 @@ export const TaskBoardSection: React.FC = () => {
             style={{ width: '100%' }}
             rules={[{ required: true, message: '请选择优先级' }]}
             optionList={priorityOptions.map((o) => ({ label: o.label, value: o.value }))}
-            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
+            disabled={
+              modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)
+            }
           />
           {modalType === 'edit' && (
             <Form.Select
@@ -1150,15 +1216,24 @@ export const TaskBoardSection: React.FC = () => {
             style={{ width: '100%' }}
             rules={[{ required: true, message: '请选择任务类型' }]}
             optionList={taskTypeOptions.map((o) => ({ label: o.label, value: o.value }))}
-            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
+            disabled={
+              modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)
+            }
           />
           <Form.Input
             field="handler_user_id"
             label="处理人ID"
             placeholder="请输入处理人ID"
-            disabled={modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)}
+            disabled={
+              modalType === 'edit' && editingTask != null && isReadonlyStatus(editingTask.status)
+            }
           />
-          <Form.TextArea field="description" label="任务描述" placeholder="请输入任务描述" rows={4} />
+          <Form.TextArea
+            field="description"
+            label="任务描述"
+            placeholder="请输入任务描述"
+            rows={4}
+          />
           {modalType === 'edit' && editingTask?.status === TaskStatus.PENDING ? (
             <Form.Select
               field="rule_chain_id"
@@ -1189,13 +1264,16 @@ export const TaskBoardSection: React.FC = () => {
               extraText="不选择则不关联规则链"
             />
           )}
-          {(modalType === 'edit' && editingTask != null && (editingTask.status === TaskStatus.COMPLETED || editingTask.status === TaskStatus.FAILED)) && (
-            <div style={{ marginTop: 8 }}>
-              <Button type="secondary" onClick={() => void handleCreateChildTask(editingTask!)}>
-                创建子任务
-              </Button>
-            </div>
-          )}
+          {modalType === 'edit' &&
+            editingTask != null &&
+            (editingTask.status === TaskStatus.COMPLETED ||
+              editingTask.status === TaskStatus.FAILED) && (
+              <div style={{ marginTop: 8 }}>
+                <Button type="secondary" onClick={() => void handleCreateChildTask(editingTask!)}>
+                  创建子任务
+                </Button>
+              </div>
+            )}
         </Form>
       </Modal>
 
@@ -1215,13 +1293,18 @@ export const TaskBoardSection: React.FC = () => {
                 执行规则链
               </Button>
             )}
-            {(detailTask?.status === TaskStatus.COMPLETED || detailTask?.status === TaskStatus.FAILED) && (
+            {(detailTask?.status === TaskStatus.COMPLETED ||
+              detailTask?.status === TaskStatus.FAILED) && (
               <Button type="secondary" onClick={() => void handleCreateChildTask(detailTask!)}>
                 创建子任务
               </Button>
             )}
             {detailTask?.rule_chain_id && detailTask.status !== TaskStatus.PENDING && (
-              <Button type="tertiary" loading={runLogViewerLoading} onClick={() => void handleViewRunLog(detailTask)}>
+              <Button
+                type="tertiary"
+                loading={runLogViewerLoading}
+                onClick={() => void handleViewRunLog(detailTask)}
+              >
                 查看执行日志
               </Button>
             )}
@@ -1251,7 +1334,9 @@ export const TaskBoardSection: React.FC = () => {
                   }}
                 >
                   <Typography.Text type="tertiary">{label}</Typography.Text>
-                  <Typography.Text style={{ wordBreak: 'break-word' }}>{String(val)}</Typography.Text>
+                  <Typography.Text style={{ wordBreak: 'break-word' }}>
+                    {String(val)}
+                  </Typography.Text>
                 </div>
               ))}
             </div>
@@ -1264,7 +1349,11 @@ export const TaskBoardSection: React.FC = () => {
         title="子任务列表"
         visible={childTasksVisible}
         onCancel={() => setChildTasksVisible(false)}
-        footer={<Button type="primary" onClick={() => setChildTasksVisible(false)}>关闭</Button>}
+        footer={
+          <Button type="primary" onClick={() => setChildTasksVisible(false)}>
+            关闭
+          </Button>
+        }
         width={800}
       >
         <Spin spinning={childTasksLoading}>
@@ -1310,7 +1399,10 @@ export const TaskBoardSection: React.FC = () => {
                 </div>
               ))}
               {childTasksTotal > childTasks.length && (
-                <Button style={{ alignSelf: 'center', marginTop: 8 }} onClick={() => void loadMoreChildTasks()}>
+                <Button
+                  style={{ alignSelf: 'center', marginTop: 8 }}
+                  onClick={() => void loadMoreChildTasks()}
+                >
                   加载更多 ({childTasks.length}/{childTasksTotal})
                 </Button>
               )}
@@ -1329,7 +1421,11 @@ export const TaskBoardSection: React.FC = () => {
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <Button onClick={() => setCreateChildVisible(false)}>取消</Button>
-            <Button type="primary" onClick={() => void confirmCreateChildTask()} loading={createChildSubmitting}>
+            <Button
+              type="primary"
+              onClick={() => void confirmCreateChildTask()}
+              loading={createChildSubmitting}
+            >
               创建
             </Button>
           </div>

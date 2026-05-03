@@ -156,7 +156,7 @@ func TestContextManager_SimpleSummarize(t *testing.T) {
 
 	// Simple summarize should contain the count info
 	if !contains(summary, "4") && !contains(summary, "对话") {
-		// The simple summarize includes message count
+		t.Errorf("expected summary to contain 4 or 对话, got %q", summary)
 	}
 }
 

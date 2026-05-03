@@ -10,8 +10,7 @@ export const SourcegraphTokenVerifyNodeRegistry: FlowNodeRegistry = {
   type: WorkflowNodeType.SourcegraphTokenVerify,
   info: {
     icon: iconApi,
-    description:
-      '校验 SourceGraph API Token 有效性；有效走 Success，无效走 Failure。',
+    description: '校验 SourceGraph API Token 有效性；有效走 Success，无效走 Failure。',
   },
   meta: {
     panelCategory: 'service-calls',

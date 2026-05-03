@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 
-import { IconClose, IconDownload, IconFile, IconEyeOpened } from '@douyinfe/semi-icons';
 import { Button, Spin, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconClose, IconDownload, IconFile, IconEyeOpened } from '@douyinfe/semi-icons';
 
 import { buildChatFileUrl } from '../services/api-chat';
 
@@ -14,10 +14,41 @@ type FileCategory = 'image' | 'html' | 'text' | 'pdf' | 'binary';
 
 const IMAGE_EXTS = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'avif'];
 const TEXT_EXTS = [
-  'txt', 'md', 'json', 'yaml', 'yml', 'csv', 'ts', 'tsx', 'js', 'jsx',
-  'go', 'py', 'rs', 'java', 'kt', 'sql', 'xml', 'css', 'less', 'scss',
-  'sh', 'bash', 'env', 'proto', 'toml', 'ini', 'conf', 'log', 'dart',
-  'rb', 'php', 'c', 'cpp', 'h', 'hpp',
+  'txt',
+  'md',
+  'json',
+  'yaml',
+  'yml',
+  'csv',
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'go',
+  'py',
+  'rs',
+  'java',
+  'kt',
+  'sql',
+  'xml',
+  'css',
+  'less',
+  'scss',
+  'sh',
+  'bash',
+  'env',
+  'proto',
+  'toml',
+  'ini',
+  'conf',
+  'log',
+  'dart',
+  'rb',
+  'php',
+  'c',
+  'cpp',
+  'h',
+  'hpp',
 ];
 
 function classifyFile(filePath: string): FileCategory {
@@ -133,17 +164,20 @@ export const ChatFilePreview: React.FC<ChatFilePreviewProps> = ({ filePath, onCl
     };
 
     loadFile();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [filePath, category]);
 
   // Cleanup on unmount
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (prevObjectUrlRef.current) {
         URL.revokeObjectURL(prevObjectUrlRef.current);
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   const handleDownload = () => {
     const url = buildChatFileUrl(filePath, true);
@@ -165,17 +199,27 @@ export const ChatFilePreview: React.FC<ChatFilePreviewProps> = ({ filePath, onCl
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff' }}>
-      {/* Toolbar */}
-      <div style={{
-        padding: '8px 12px',
-        borderBottom: '1px solid rgba(28,31,35,0.06)',
+    <div
+      style={{
+        flex: 1,
         display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        background: 'rgba(28,31,35,0.02)',
-        flexShrink: 0,
-      }}>
+        flexDirection: 'column',
+        minHeight: 0,
+        background: '#fff',
+      }}
+    >
+      {/* Toolbar */}
+      <div
+        style={{
+          padding: '8px 12px',
+          borderBottom: '1px solid rgba(28,31,35,0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'rgba(28,31,35,0.02)',
+          flexShrink: 0,
+        }}
+      >
         <IconFile size="small" style={{ color: extColor(ext), flexShrink: 0 }} />
         <Typography.Text
           ellipsis={{ showTooltip: true }}
@@ -203,59 +247,124 @@ export const ChatFilePreview: React.FC<ChatFilePreviewProps> = ({ filePath, onCl
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+        }}
+      >
         {loading && (
-          <div style={{
-            position: 'absolute', inset: 0, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(255,255,255,0.75)', zIndex: 2,
-          }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(255,255,255,0.75)',
+              zIndex: 2,
+            }}
+          >
             <Spin spinning />
           </div>
         )}
         {error ? (
           <div style={{ padding: '16px 20px' }}>
-            <Typography.Text type="danger" size="small">{error}</Typography.Text>
+            <Typography.Text type="danger" size="small">
+              {error}
+            </Typography.Text>
           </div>
         ) : category === 'image' && objectUrl ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflow: 'auto' }}>
-            <img src={objectUrl} alt={fileName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-          </div>
-        ) : category === 'html' && textContent !== null ? isPreview ? (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-            <iframe
-              srcDoc={textContent}
-              style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
-              title="HTML Preview"
-              sandbox="allow-scripts allow-same-origin"
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 12,
+              overflow: 'auto',
+            }}
+          >
+            <img
+              src={objectUrl}
+              alt={fileName}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           </div>
-        ) : (
-          <pre style={{
-            margin: 0, padding: '12px 16px', height: '100%', overflow: 'auto',
-            fontFamily: '"JetBrains Mono","Fira Code",monospace', fontSize: 13,
-            lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            background: 'transparent', color: '#1c1f23', tabSize: 2,
-          }}>
-            {textContent}
-          </pre>
+        ) : category === 'html' && textContent !== null ? (
+          isPreview ? (
+            <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+              <iframe
+                srcDoc={textContent}
+                style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                title="HTML Preview"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </div>
+          ) : (
+            <pre
+              style={{
+                margin: 0,
+                padding: '12px 16px',
+                height: '100%',
+                overflow: 'auto',
+                fontFamily: '"JetBrains Mono","Fira Code",monospace',
+                fontSize: 13,
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                background: 'transparent',
+                color: '#1c1f23',
+                tabSize: 2,
+              }}
+            >
+              {textContent}
+            </pre>
+          )
         ) : category === 'pdf' && objectUrl ? (
-          <iframe src={objectUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF Preview" />
+          <iframe
+            src={objectUrl}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            title="PDF Preview"
+          />
         ) : textContent !== null ? (
-          <pre style={{
-            margin: 0, padding: '12px 16px', height: '100%', overflow: 'auto',
-            fontFamily: '"JetBrains Mono","Fira Code",monospace', fontSize: 13,
-            lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            background: 'transparent', color: '#1c1f23', tabSize: 2,
-          }}>
+          <pre
+            style={{
+              margin: 0,
+              padding: '12px 16px',
+              height: '100%',
+              overflow: 'auto',
+              fontFamily: '"JetBrains Mono","Fira Code",monospace',
+              fontSize: 13,
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              background: 'transparent',
+              color: '#1c1f23',
+              tabSize: 2,
+            }}
+          >
             {textContent}
           </pre>
         ) : objectUrl ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+            }}
+          >
             <div style={{ textAlign: 'center' }}>
               <Typography.Text type="tertiary">此文件类型不支持预览</Typography.Text>
               <br />
-              <Button style={{ marginTop: 8 }} onClick={handleDownload}>下载文件</Button>
+              <Button style={{ marginTop: 8 }} onClick={handleDownload}>
+                下载文件
+              </Button>
             </div>
           </div>
         ) : null}

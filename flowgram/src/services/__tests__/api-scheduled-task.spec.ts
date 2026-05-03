@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { requestJSON } from '../http';
 import {
   createScheduledTask,
   deleteScheduledTask,
@@ -10,7 +11,6 @@ import {
   listScheduledTasks,
   updateScheduledTask,
 } from '../api-scheduled-task';
-import { requestJSON } from '../http';
 
 vi.mock('../http', () => ({
   requestJSON: vi.fn(),
@@ -81,7 +81,10 @@ describe('scheduled task api service', () => {
 
     await expect(updateScheduledTask(7, payload)).resolves.toBe(reply);
 
-    expect(requestJSON).toHaveBeenCalledWith('/scheduled-tasks/7', { method: 'PUT', body: payload });
+    expect(requestJSON).toHaveBeenCalledWith('/scheduled-tasks/7', {
+      method: 'PUT',
+      body: payload,
+    });
   });
 
   it('deletes scheduled task by id', async () => {
@@ -99,7 +102,10 @@ describe('scheduled task api service', () => {
 
     await expect(enableScheduledTask(7)).resolves.toBe(reply);
 
-    expect(requestJSON).toHaveBeenCalledWith('/scheduled-tasks/7/enable', { method: 'POST', body: {} });
+    expect(requestJSON).toHaveBeenCalledWith('/scheduled-tasks/7/enable', {
+      method: 'POST',
+      body: {},
+    });
   });
 
   it('disables scheduled task by id', async () => {
@@ -108,7 +114,10 @@ describe('scheduled task api service', () => {
 
     await expect(disableScheduledTask(7)).resolves.toBe(reply);
 
-    expect(requestJSON).toHaveBeenCalledWith('/scheduled-tasks/7/disable', { method: 'POST', body: {} });
+    expect(requestJSON).toHaveBeenCalledWith('/scheduled-tasks/7/disable', {
+      method: 'POST',
+      body: {},
+    });
   });
 
   it('lists scheduled task runs with query params', async () => {

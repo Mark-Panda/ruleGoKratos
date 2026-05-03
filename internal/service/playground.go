@@ -638,6 +638,7 @@ func (s *PlaygroundService) getRunEvents(ctx khttp.Context) error {
 	})
 }
 
+//lint:ignore U1000 "kept for future use"
 type traceRunResp struct {
 	ID          string            `json:"id"`
 	RunID       string            `json:"runId"`
@@ -711,6 +712,7 @@ type traceEventResp struct {
 	Metadata  map[string]string `json:"metadata"`
 }
 
+//lint:ignore U1000 "kept for future use"
 func (s *PlaygroundService) runToResp(run *entity.TraceRun) *traceRunResp {
 	events := make([]*traceEventResp, 0, len(run.Events))
 	for _, e := range run.Events {

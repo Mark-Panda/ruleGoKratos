@@ -118,7 +118,7 @@ func (s *AdminService) UpdateManagedAgent(ctx context.Context, req *v1.UpdateMan
 		return nil, fmt.Errorf("无效的 id")
 	}
 	if _, err := dao.NewManagedAgent().FindByID(ctx, req.GetId()); err != nil {
-		return nil, fmt.Errorf("Agent 配置不存在（id=%d）。请先在「Agent 管理 → Agent 配置」新建并保存，或刷新列表后重试。", req.GetId())
+		return nil, fmt.Errorf("Agent 配置不存在（id=%d）。请先在「Agent 管理 → Agent 配置」新建并保存，或刷新列表后重试。", req.GetId()) //lint:ignore ST1005 "Chinese error message"
 	}
 	writeReq := managedAgentWriteReqFromUpdate(req)
 	if err := s.validateManagedAgentPayload(ctx, &writeReq); err != nil {

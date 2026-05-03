@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import {
   Table,
   Button,
@@ -14,7 +15,6 @@ import {
   Typography,
   Spin,
 } from '@douyinfe/semi-ui';
-import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import { IconPlus, IconEdit, IconDelete, IconInfoCircle } from '@douyinfe/semi-icons';
 
 import {
@@ -320,7 +320,9 @@ export const ServiceManagementSection: React.FC = () => {
               onChange={(val) =>
                 setFilters({
                   ...filters,
-                  status: (val === '' || val == null ? undefined : val) as ServiceStatus | undefined,
+                  status: (val === '' || val == null ? undefined : val) as
+                    | ServiceStatus
+                    | undefined,
                 })
               }
               placeholder="全部状态"
@@ -395,9 +397,18 @@ export const ServiceManagementSection: React.FC = () => {
             rules={[{ required: true, message: '请选择服务状态' }]}
             optionList={serviceStatusOptions.map((o) => ({ label: o.label, value: o.value }))}
           />
-          <Form.Input field="volc_log_service_id" label="火山日志服务ID" placeholder="请输入火山日志服务ID" />
+          <Form.Input
+            field="volc_log_service_id"
+            label="火山日志服务ID"
+            placeholder="请输入火山日志服务ID"
+          />
           <Form.Input field="git_repo_url" label="Git仓库地址" placeholder="请输入Git仓库地址" />
-          <Form.TextArea field="description" label="服务描述" placeholder="请输入服务描述" rows={4} />
+          <Form.TextArea
+            field="description"
+            label="服务描述"
+            placeholder="请输入服务描述"
+            rows={4}
+          />
         </Form>
       </Modal>
 
@@ -428,7 +439,11 @@ export const ServiceManagementSection: React.FC = () => {
                   [
                     'Git 仓库',
                     detailService.git_repo_url ? (
-                      <a href={detailService.git_repo_url} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={detailService.git_repo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         {detailService.git_repo_url}
                       </a>
                     ) : (

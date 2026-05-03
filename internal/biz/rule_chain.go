@@ -55,9 +55,9 @@ const ruleChainSkillCreatorName = "skill-creator-0.1.0"
 
 // userIDContextKey 和 projectPathContextKey 与 auth middleware 保持一致
 const (
-	userIDContextKey      = "x-user-id"
-	projectPathContextKey = "x-project-path"
-	sessionIDContextKey   = "x-session-id"
+	userIDContextKey        = "x-user-id"
+	projectPathContextKey   = "x-project-path"
+	sessionIDContextKey     = "x-session-id"
 )
 
 func extractUserIDFromContext(ctx context.Context) string {
@@ -910,7 +910,9 @@ func (s *RuleChainUsecase) UpsertRuleChain(ctx context.Context, in *v1.UpsertRul
 		}
 		additionalInfoStr := string(additionalInfo)
 		reg.AdditionalInfo = &additionalInfoStr
-		err = s.ruleChainRepo.CreateRuleChain(ctx, reg)
+		if createErr := s.ruleChainRepo.CreateRuleChain(ctx, reg); createErr != nil {
+			return nil, createErr
+		}
 	}
 
 	if err != nil {

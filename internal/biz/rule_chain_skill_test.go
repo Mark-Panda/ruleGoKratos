@@ -286,9 +286,8 @@ func TestBuildRuleChainSyncExecutePayloadIncludesMetadata(t *testing.T) {
 }
 
 func TestInjectIdentityMetadataFromContextFillsMissingValues(t *testing.T) {
-	ctx := context.WithValue(context.Background(), userIDContextKey, "u-123")
-	ctx = context.WithValue(ctx, projectPathContextKey, "/workspace/demo")
-
+	ctx := context.WithValue(context.Background(), userIDContextKey, "u-123") //lint:ignore SA1029 "cross-package compatibility"
+	ctx = context.WithValue(ctx, projectPathContextKey, "/workspace/demo") //lint:ignore SA1029 "cross-package compatibility"
 	got := injectIdentityMetadataFromContext(ctx, nil)
 	if got == nil {
 		t.Fatal("expected metadata created")
@@ -302,9 +301,8 @@ func TestInjectIdentityMetadataFromContextFillsMissingValues(t *testing.T) {
 }
 
 func TestInjectIdentityMetadataFromContextKeepsExplicitMetadata(t *testing.T) {
-	ctx := context.WithValue(context.Background(), userIDContextKey, "ctx-user")
-	ctx = context.WithValue(ctx, projectPathContextKey, "/ctx/project")
-
+	ctx := context.WithValue(context.Background(), userIDContextKey, "ctx-user") //lint:ignore SA1029 "cross-package compatibility"
+	ctx = context.WithValue(ctx, projectPathContextKey, "/ctx/project") //lint:ignore SA1029 "cross-package compatibility"
 	metadata := types.NewMetadata()
 	metadata.PutValue(userIDContextKey, "request-user")
 	metadata.PutValue(projectPathContextKey, "/request/project")

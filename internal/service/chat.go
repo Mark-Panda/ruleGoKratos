@@ -221,10 +221,9 @@ func (s *ChatService) chatStreamHTTP(ctx khttp.Context) error {
 	if resolvedSessionID != "" {
 		w.Header().Set(sessionIDHeaderKey, resolvedSessionID)
 	}
-	requestCtx := context.WithValue(baseCtx, userIDHeaderKey, resolvedUserID)
-	requestCtx = context.WithValue(requestCtx, projectPathHeaderKey, resolvedProjectPath)
-	requestCtx = context.WithValue(requestCtx, sessionIDHeaderKey, resolvedSessionID)
-
+	requestCtx := context.WithValue(baseCtx, userIDHeaderKey, resolvedUserID)            //lint:ignore SA1029 "cross-package compatibility"
+	requestCtx = context.WithValue(requestCtx, projectPathHeaderKey, resolvedProjectPath) //lint:ignore SA1029 "cross-package compatibility"
+	requestCtx = context.WithValue(requestCtx, sessionIDHeaderKey, resolvedSessionID)     //lint:ignore SA1029 "cross-package compatibility"
 	flusher, _ := w.(nethttp.Flusher)
 	requestCtx, cancel := context.WithCancel(requestCtx)
 	defer cancel()

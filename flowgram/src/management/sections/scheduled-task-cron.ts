@@ -153,7 +153,9 @@ export function buildScheduleConfigFromFormValues(values: ScheduledTaskFormValue
   }
 }
 
-export function buildScheduledTaskPayload(values: ScheduledTaskFormValues): ScheduledTaskPayloadLike {
+export function buildScheduledTaskPayload(
+  values: ScheduledTaskFormValues
+): ScheduledTaskPayloadLike {
   const config = buildScheduleConfigFromFormValues(values);
   const payload: ScheduledTaskPayloadLike = {
     name: String(values.name ?? '').trim(),
@@ -181,14 +183,22 @@ export function parseScheduleConfig(scheduleConfig: string): Record<string, unkn
   }
 }
 
-export function normalizeScheduledTaskRunStatus(
-  status: unknown
-): NormalizedScheduledTaskRunStatus {
-  const normalized = String(status ?? '').trim().toUpperCase();
-  if (normalized === '1' || normalized === 'SUCCESS' || normalized === 'SCHEDULED_TASK_RUN_STATUS_SUCCESS') {
+export function normalizeScheduledTaskRunStatus(status: unknown): NormalizedScheduledTaskRunStatus {
+  const normalized = String(status ?? '')
+    .trim()
+    .toUpperCase();
+  if (
+    normalized === '1' ||
+    normalized === 'SUCCESS' ||
+    normalized === 'SCHEDULED_TASK_RUN_STATUS_SUCCESS'
+  ) {
     return 'success';
   }
-  if (normalized === '2' || normalized === 'FAILED' || normalized === 'SCHEDULED_TASK_RUN_STATUS_FAILED') {
+  if (
+    normalized === '2' ||
+    normalized === 'FAILED' ||
+    normalized === 'SCHEDULED_TASK_RUN_STATUS_FAILED'
+  ) {
     return 'failed';
   }
   return 'unknown';
@@ -201,7 +211,9 @@ export function describeScheduledTaskRunStatus(status: unknown): string {
   return '—';
 }
 
-export function getScheduledTaskFormInitValues(task?: ScheduledTaskLike | null): ScheduledTaskFormValues {
+export function getScheduledTaskFormInitValues(
+  task?: ScheduledTaskLike | null
+): ScheduledTaskFormValues {
   if (!task) {
     return {
       name: '',
@@ -221,9 +233,7 @@ export function getScheduledTaskFormInitValues(task?: ScheduledTaskLike | null):
   const scheduleType = toScheduleType(task.scheduleType);
   const config = parseScheduleConfig(task.scheduleConfig);
   const cronExpr =
-    scheduleType === 'advanced'
-      ? String(config.cronExpr ?? task.cronExpr ?? '').trim()
-      : '';
+    scheduleType === 'advanced' ? String(config.cronExpr ?? task.cronExpr ?? '').trim() : '';
   return {
     name: task.name ?? '',
     description: task.description ?? '',
@@ -269,7 +279,10 @@ export function describeSchedule(
       return `每周${dayNames[day] ?? '?'} ${formatTime(config.hour, config.minute)} 执行`;
     }
     case 'monthly':
-      return `每月 ${String(config.dayOfMonth ?? '?')} 日 ${formatTime(config.hour, config.minute)} 执行`;
+      return `每月 ${String(config.dayOfMonth ?? '?')} 日 ${formatTime(
+        config.hour,
+        config.minute
+      )} 执行`;
     case 'advanced':
       return cronExpr.trim();
     default: {

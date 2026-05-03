@@ -28,7 +28,9 @@ describe('buildCronExpr', () => {
   });
 
   it('builds cron for monthly schedule', () => {
-    expect(buildCronExpr({ type: 'monthly', dayOfMonth: 20, hour: 23, minute: 45 })).toBe('45 23 20 * *');
+    expect(buildCronExpr({ type: 'monthly', dayOfMonth: 20, hour: 23, minute: 45 })).toBe(
+      '45 23 20 * *'
+    );
   });
 
   it('uses advanced cron directly', () => {
@@ -56,15 +58,21 @@ describe('buildCronExpr', () => {
   });
 
   it('throws when dayOfWeek is invalid', () => {
-    expect(() => buildCronExpr({ type: 'weekly', dayOfWeek: 8, hour: 0, minute: 0 })).toThrow(/dayOfWeek/);
+    expect(() => buildCronExpr({ type: 'weekly', dayOfWeek: 8, hour: 0, minute: 0 })).toThrow(
+      /dayOfWeek/
+    );
   });
 
   it('throws when dayOfWeek is 7', () => {
-    expect(() => buildCronExpr({ type: 'weekly', dayOfWeek: 7, hour: 0, minute: 0 })).toThrow(/dayOfWeek/);
+    expect(() => buildCronExpr({ type: 'weekly', dayOfWeek: 7, hour: 0, minute: 0 })).toThrow(
+      /dayOfWeek/
+    );
   });
 
   it('throws when dayOfMonth is invalid', () => {
-    expect(() => buildCronExpr({ type: 'monthly', dayOfMonth: 32, hour: 0, minute: 0 })).toThrow(/dayOfMonth/);
+    expect(() => buildCronExpr({ type: 'monthly', dayOfMonth: 32, hour: 0, minute: 0 })).toThrow(
+      /dayOfMonth/
+    );
   });
 });
 
@@ -80,7 +88,9 @@ describe('parseScheduleConfig', () => {
 
 describe('describeSchedule', () => {
   it('describes every N minutes schedule in Chinese', () => {
-    expect(describeSchedule('every_minutes', '{"minutes":15}', '*/15 * * * *')).toBe('每 15 分钟执行');
+    expect(describeSchedule('every_minutes', '{"minutes":15}', '*/15 * * * *')).toBe(
+      '每 15 分钟执行'
+    );
   });
 
   it('describes every N hours schedule in Chinese', () => {
@@ -92,11 +102,15 @@ describe('describeSchedule', () => {
   });
 
   it('describes weekly schedule in Chinese', () => {
-    expect(describeSchedule('weekly', '{"dayOfWeek":1,"hour":8,"minute":5}', '5 8 * * 1')).toBe('每周一 08:05 执行');
+    expect(describeSchedule('weekly', '{"dayOfWeek":1,"hour":8,"minute":5}', '5 8 * * 1')).toBe(
+      '每周一 08:05 执行'
+    );
   });
 
   it('describes monthly schedule in Chinese', () => {
-    expect(describeSchedule('monthly', '{"dayOfMonth":20,"hour":23,"minute":45}', '45 23 20 * *')).toBe('每月 20 日 23:45 执行');
+    expect(
+      describeSchedule('monthly', '{"dayOfMonth":20,"hour":23,"minute":45}', '45 23 20 * *')
+    ).toBe('每月 20 日 23:45 执行');
   });
 
   it('returns cron expression for advanced schedule', () => {
@@ -203,7 +217,9 @@ describe('normalizeScheduledTaskRunStatus', () => {
   });
 
   it('keeps unknown statuses distinguishable', () => {
-    expect(normalizeScheduledTaskRunStatus('SCHEDULED_TASK_RUN_STATUS_UNSPECIFIED')).toBe('unknown');
+    expect(normalizeScheduledTaskRunStatus('SCHEDULED_TASK_RUN_STATUS_UNSPECIFIED')).toBe(
+      'unknown'
+    );
     expect(normalizeScheduledTaskRunStatus(undefined)).toBe('unknown');
   });
 });

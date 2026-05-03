@@ -15,6 +15,7 @@ import (
 func newTestAgentPoolRepo() *playgrounddata.AgentPoolRepo {
 	return playgrounddata.NewAgentPoolRepo()
 }
+var _ = newTestAgentPoolRepo
 
 func waitRunTerminal(ctx context.Context, t *testing.T, svc *WorkflowService, runID string) *entity.TraceRun {
 	t.Helper()
@@ -270,13 +271,11 @@ func TestWorkflowService_ListSchemes(t *testing.T) {
 	agentPoolSvc.CreateDefaultAgentPool(ctx)
 
 	// 创建多个方案
-	schemes := make([]*entity.CollaborationScheme, 0, 3)
 	for i := 0; i < 3; i++ {
-		s, err := svc.CreateScheme(ctx, "测试方案", "测试", entity.ModeRouterExpert, nil)
+		_, err := svc.CreateScheme(ctx, "测试方案", "测试", entity.ModeRouterExpert, nil)
 		if err != nil {
 			t.Fatalf("CreateScheme failed: %v", err)
 		}
-		schemes = append(schemes, s)
 	}
 
 	// 列出方案

@@ -71,26 +71,23 @@ export interface ListScheduledTaskRunsReply {
   total: number | string;
 }
 
-const taskPath = (id: number | string): string => `/scheduled-tasks/${encodeURIComponent(String(id))}`;
+const taskPath = (id: number | string): string =>
+  `/scheduled-tasks/${encodeURIComponent(String(id))}`;
 
 export const listScheduledTasks = (
   params: ListScheduledTasksParams = {}
-): Promise<ListScheduledTasksReply> =>
-  requestJSON('/scheduled-tasks', { method: 'GET', params });
+): Promise<ListScheduledTasksReply> => requestJSON('/scheduled-tasks', { method: 'GET', params });
 
 export const getScheduledTask = (id: number): Promise<ScheduledTaskReply> =>
   requestJSON(taskPath(id), { method: 'GET' });
 
-export const createScheduledTask = (
-  payload: ScheduledTaskPayload
-): Promise<ScheduledTaskReply> =>
+export const createScheduledTask = (payload: ScheduledTaskPayload): Promise<ScheduledTaskReply> =>
   requestJSON('/scheduled-tasks', { method: 'POST', body: payload });
 
 export const updateScheduledTask = (
   id: number | string,
   payload: UpdateScheduledTaskPayload
-): Promise<ScheduledTaskReply> =>
-  requestJSON(taskPath(id), { method: 'PUT', body: payload });
+): Promise<ScheduledTaskReply> => requestJSON(taskPath(id), { method: 'PUT', body: payload });
 
 export const deleteScheduledTask = (id: number | string): Promise<{ success?: boolean }> =>
   requestJSON(taskPath(id), { method: 'DELETE' });

@@ -41,7 +41,7 @@ describe('resolveManagedAgentSelection', () => {
       shouldClearStoredId: false,
     });
   });
- 
+
   it('does not treat generic 404 as skill missing', () => {
     expect(shouldTreatStatusErrorAsMissing(new Error('HTTP 404: {"error":"not found"}'))).toBe(
       false

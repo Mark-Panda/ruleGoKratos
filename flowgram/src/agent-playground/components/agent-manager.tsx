@@ -260,7 +260,8 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: 'linear-gradient(135deg, rgba(22, 100, 255, 0.08), rgba(19, 194, 194, 0.08))',
+                background:
+                  'linear-gradient(135deg, rgba(22, 100, 255, 0.08), rgba(19, 194, 194, 0.08))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -270,8 +271,12 @@ export const AgentManager: React.FC<AgentManagerProps> = ({ pools, onPoolsChange
               🤖
             </div>
             <div>
-              <Text strong style={{ fontSize: 14, display: 'block' }}>默认 Agent 池</Text>
-              <Text type="tertiary" size="small">id=default</Text>
+              <Text strong style={{ fontSize: 14, display: 'block' }}>
+                默认 Agent 池
+              </Text>
+              <Text type="tertiary" size="small">
+                id=default
+              </Text>
             </div>
           </div>
         }

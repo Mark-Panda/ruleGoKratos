@@ -34,10 +34,7 @@ import {
   type ManagedAgentItem,
   type ManagedAgentPayload,
 } from '../../services/api-managed-agents';
-import {
-  listLlmConfigs,
-  type LlmConfigItem,
-} from '../../services/api-agent';
+import { listLlmConfigs, type LlmConfigItem } from '../../services/api-agent';
 
 const { Text, Title } = Typography;
 

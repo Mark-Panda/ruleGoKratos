@@ -249,17 +249,23 @@ export const LlmTokenStatsSection: React.FC = () => {
                 <Select.Option value="day">按天</Select.Option>
                 <Select.Option value="model">按模型</Select.Option>
               </Select>
-              <Button icon={<IconRefresh />} onClick={() => {
-                setDateRange(null);
-                setGroupBy('day');
-                setPage(1);
-              }}>
+              <Button
+                icon={<IconRefresh />}
+                onClick={() => {
+                  setDateRange(null);
+                  setGroupBy('day');
+                  setPage(1);
+                }}
+              >
                 重置
               </Button>
-              <Button icon={<IconRefresh />} onClick={() => {
-                fetchStats();
-                fetchUsageList();
-              }}>
+              <Button
+                icon={<IconRefresh />}
+                onClick={() => {
+                  fetchStats();
+                  fetchUsageList();
+                }}
+              >
                 刷新
               </Button>
             </Space>

@@ -3,8 +3,8 @@
  */
 import React, { useEffect, useState } from 'react';
 
-import { IconFile, IconCopy, IconTerminal, IconEyeOpened } from '@douyinfe/semi-icons';
 import { Button, Spin, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconFile, IconCopy, IconTerminal, IconEyeOpened } from '@douyinfe/semi-icons';
 
 import { readRunWorkspaceFile } from '../../services/api-playground';
 
@@ -31,7 +31,12 @@ function extColor(ext: string): string {
   return '#595959';
 }
 
-export const RunFileViewer: React.FC<RunFileViewerProps> = ({ runId, filePath, fileName, onOpenTerminal }) => {
+export const RunFileViewer: React.FC<RunFileViewerProps> = ({
+  runId,
+  filePath,
+  fileName,
+  onOpenTerminal,
+}) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +90,18 @@ export const RunFileViewer: React.FC<RunFileViewerProps> = ({ runId, filePath, f
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff', borderRadius: 8, border: '1px solid rgba(28,31,35,0.08)', overflow: 'hidden' }}>
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        background: '#fff',
+        borderRadius: 8,
+        border: '1px solid rgba(28,31,35,0.08)',
+        overflow: 'hidden',
+      }}
+    >
       {/* 顶部工具栏 */}
       <div
         style={{
@@ -98,7 +114,10 @@ export const RunFileViewer: React.FC<RunFileViewerProps> = ({ runId, filePath, f
         }}
       >
         <IconFile size="small" style={{ color: extColor(ext), flexShrink: 0 }} />
-        <Typography.Text style={{ flex: 1, fontSize: 13, fontFamily: 'monospace' }} ellipsis={{ showTooltip: true }}>
+        <Typography.Text
+          style={{ flex: 1, fontSize: 13, fontFamily: 'monospace' }}
+          ellipsis={{ showTooltip: true }}
+        >
           {filePath}
         </Typography.Text>
         <Button
@@ -141,7 +160,15 @@ export const RunFileViewer: React.FC<RunFileViewerProps> = ({ runId, filePath, f
       </div>
 
       {/* 内容区 */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+        }}
+      >
         {loading && (
           <div
             style={{

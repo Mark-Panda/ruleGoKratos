@@ -51,3 +51,4 @@ mcp
 flowData/
 skills/shadow-gateway-route-feasibility
 skills/sourcegraph-api-tracer-full
+node_modules/

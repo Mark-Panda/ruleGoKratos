@@ -416,9 +416,7 @@ export const jsonExtractMappingSpec: NodeMappingSpec = {
       source: pick(iv.source) ?? '',
     } as Record<string, unknown>;
   },
-  fields: [
-    { inputKey: 'source', dslKey: 'source', valueType: 'template', defaultValue: '' },
-  ],
+  fields: [{ inputKey: 'source', dslKey: 'source', valueType: 'template', defaultValue: '' }],
 };
 
 export const gitCloneMappingSpec: NodeMappingSpec = {
@@ -537,7 +535,12 @@ export const cursorCliAuthMappingSpec: NodeMappingSpec = {
   nodeType: 'x/cursorCliAuth',
   fields: [
     { inputKey: 'agentPath', dslKey: 'agentPath', valueType: 'constant', defaultValue: 'agent' },
-    { inputKey: 'workspacePath', dslKey: 'workspacePath', valueType: 'template', defaultValue: '$HOME' },
+    {
+      inputKey: 'workspacePath',
+      dslKey: 'workspacePath',
+      valueType: 'template',
+      defaultValue: '$HOME',
+    },
     { inputKey: 'worktree', dslKey: 'worktree', valueType: 'boolean', defaultValue: false },
     { inputKey: 'force', dslKey: 'force', valueType: 'boolean', defaultValue: true },
     { inputKey: 'workDir', dslKey: 'workDir', valueType: 'template', defaultValue: '' },
@@ -680,7 +683,12 @@ export const sourcegraphTokenCreateMappingSpec: NodeMappingSpec = {
     { inputKey: 'endpoint', dslKey: 'endpoint', valueType: 'template', defaultValue: '' },
     { inputKey: 'ldapUsername', dslKey: 'ldapUsername', valueType: 'template', defaultValue: '' },
     { inputKey: 'ldapPassword', dslKey: 'ldapPassword', valueType: 'template', defaultValue: '' },
-    { inputKey: 'gitlabHost', dslKey: 'gitlabHost', valueType: 'constant', defaultValue: 'gitlab.xxx.tv' },
+    {
+      inputKey: 'gitlabHost',
+      dslKey: 'gitlabHost',
+      valueType: 'constant',
+      defaultValue: 'gitlab.xxx.tv',
+    },
     { inputKey: 'note', dslKey: 'note', valueType: 'template', defaultValue: 'cli-token' },
     { inputKey: 'expiresAt', dslKey: 'expiresAt', valueType: 'template', defaultValue: '' },
     { inputKey: 'scope', dslKey: 'scope', valueType: 'constant', defaultValue: '' },

@@ -1,5 +1,8 @@
 package collaboration
 
+var _ = stringSliceContains
+var _ = truncate
+
 func stringSliceContains(slice []string, s string) bool {
 	for _, x := range slice {
 		if x == s {

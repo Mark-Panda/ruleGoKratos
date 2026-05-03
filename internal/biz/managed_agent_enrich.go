@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+
+//lint:ignore U1000 "kept for future use"
 func mergeAllowlist(base, extra []string) []string {
 	seen := make(map[string]struct{}, len(base)+len(extra))
 	out := make([]string, 0, len(base)+len(extra))
@@ -51,7 +53,7 @@ func (uc *AgentUsecase) enrichHarnessWithManagedAgent(ctx context.Context, req H
 		return req, nil
 	}
 	if uc.managedAgentLoader == nil {
-		return req, errors.New("Managed Agent 加载器未注入")
+		return req, errors.New("Managed Agent 加载器未注入") //lint:ignore ST1005 "Chinese error message"
 	}
 	p, err := uc.managedAgentLoader.Load(ctx, req.ManagedAgentID)
 	if err != nil {

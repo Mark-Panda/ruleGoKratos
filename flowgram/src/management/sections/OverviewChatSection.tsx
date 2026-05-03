@@ -13,6 +13,12 @@ import {
 } from '@douyinfe/semi-ui';
 import { IconCopy, IconPlus, IconUpload } from '@douyinfe/semi-icons';
 
+import { renderOverviewChatMarkdown } from '../../utils/overview-chat-markdown';
+import {
+  loadStoredManagedAgentId,
+  saveStoredManagedAgentId,
+} from '../../utils/managed-agent-storage';
+import { patchSessionById } from '../../utils/chat-session-store';
 import { listManagedAgents } from '../../services/api-managed-agents';
 import {
   buildChatAttachmentsFromFiles,
@@ -22,12 +28,6 @@ import {
   type ChatStreamPayload,
 } from '../../services/api-chat';
 import { listLlmConfigs, type LlmConfigItem } from '../../services/api-agent';
-import { patchSessionById } from '../../utils/chat-session-store';
-import {
-  loadStoredManagedAgentId,
-  saveStoredManagedAgentId,
-} from '../../utils/managed-agent-storage';
-import { renderOverviewChatMarkdown } from '../../utils/overview-chat-markdown';
 import { ChatFilePreview } from '../../components/chat-file-preview';
 
 const STORAGE_MODEL_KEY = 'flowgram-overview-chat-model-v1';
@@ -559,7 +559,9 @@ export const OverviewChatSection: React.FC = () => {
                   const merged = (assistantBuf || '').trim();
                   next[next.length - 1] = {
                     role: 'assistant',
-                    content: merged ? `${merged}\n\n> ⚠️ 工具执行失败：${err}` : `> ⚠️ 执行失败：${err}`,
+                    content: merged
+                      ? `${merged}\n\n> ⚠️ 工具执行失败：${err}`
+                      : `> ⚠️ 执行失败：${err}`,
                   };
                 }
                 return { ...s, messages: next };
@@ -754,7 +756,9 @@ export const OverviewChatSection: React.FC = () => {
                   const merged = (assistantBuf || '').trim();
                   next[next.length - 1] = {
                     role: 'assistant',
-                    content: merged ? `${merged}\n\n> ⚠️ 工具执行失败：${err}` : `> ⚠️ 执行失败：${err}`,
+                    content: merged
+                      ? `${merged}\n\n> ⚠️ 工具执行失败：${err}`
+                      : `> ⚠️ 执行失败：${err}`,
                   };
                 }
                 return { ...s, messages: next };
@@ -1180,7 +1184,8 @@ export const OverviewChatSection: React.FC = () => {
                   {messages.map((m, i) => {
                     const isLastAssistantStreaming =
                       streaming && i === messages.length - 1 && m.role === 'assistant';
-                    const html = m.content.trim() !== '' ? renderOverviewChatMarkdown(m.content) : '';
+                    const html =
+                      m.content.trim() !== '' ? renderOverviewChatMarkdown(m.content) : '';
                     const bubbleKey = `${store.activeId}-${i}`;
                     const isUser = m.role === 'user';
                     return (
@@ -1246,7 +1251,9 @@ export const OverviewChatSection: React.FC = () => {
                                 return;
                               }
                               // File-path link
-                              const fileLink = target?.closest?.('.overview-chat-file-link') as HTMLElement | null;
+                              const fileLink = target?.closest?.(
+                                '.overview-chat-file-link'
+                              ) as HTMLElement | null;
                               if (fileLink) {
                                 evt.preventDefault();
                                 const fp = fileLink.getAttribute('data-file-path');
@@ -1428,10 +1435,7 @@ export const OverviewChatSection: React.FC = () => {
               overflow: 'hidden',
             }}
           >
-            <ChatFilePreview
-              filePath={previewFilePath}
-              onClose={() => setPreviewFilePath(null)}
-            />
+            <ChatFilePreview filePath={previewFilePath} onClose={() => setPreviewFilePath(null)} />
           </aside>
         )}
       </div>

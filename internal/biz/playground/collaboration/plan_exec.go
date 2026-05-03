@@ -36,6 +36,16 @@ func (h *PlanExecHandler) Execute(ctx context.Context, runID string, input strin
 	return nil, fmt.Errorf("%w: %s", ErrLegacyExecuteDeprecated, h.Name())
 }
 
+var _ = subTask{}
+var _ = (*PlanExecHandler).resolvePlannerAgent
+var _ = (*PlanExecHandler).planSubTasks
+var _ = (*PlanExecHandler).findAgentByRole
+var _ = (*PlanExecHandler).findAgentDef
+var _ = (*PlanExecHandler).executeTask
+var _ = truncateStepPreview
+var _ = (*PlanExecHandler).emitPlanSummary
+var _ = (*PlanExecHandler).emitStepOutput
+
 type subTask struct {
 	agentID string
 	nodeID  string

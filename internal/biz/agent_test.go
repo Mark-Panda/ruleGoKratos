@@ -487,6 +487,7 @@ func TestComposeMessagesShouldEmbedAttachmentsIntoLastUserMessage(t *testing.T) 
 }
 
 // fakeToolCallingModelWithCalls simulates a model that returns tool calls and then a final response.
+//lint:ignore U1000 "kept for future use"
 type fakeToolCallingModelWithCalls struct {
 	calls     []schema.ToolCall
 	finalResp string

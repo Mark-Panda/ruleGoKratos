@@ -19,6 +19,8 @@ export function patchSessionById<T extends SessionStoreSession>(
   if (!sessionId) return prev;
   return {
     ...prev,
-    sessions: prev.sessions.map((session) => (session.id === sessionId ? recipe(session) : session)),
+    sessions: prev.sessions.map((session) =>
+      session.id === sessionId ? recipe(session) : session
+    ),
   };
 }

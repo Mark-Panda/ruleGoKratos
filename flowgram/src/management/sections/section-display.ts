@@ -1,7 +1,7 @@
 import type { TagColor } from '@douyinfe/semi-ui/lib/es/tag';
 
-import { ServiceStatus } from '../../services/api-service';
 import { TaskStatus, TaskType } from '../../services/api-task';
+import { ServiceStatus } from '../../services/api-service';
 
 export function serviceStatusTagColor(status: ServiceStatus): TagColor {
   switch (status) {

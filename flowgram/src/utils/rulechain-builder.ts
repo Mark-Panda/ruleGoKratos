@@ -75,7 +75,9 @@ interface RouterDsl {
 }
 
 function pickTargetPortIDForConnectionType(connType: unknown): string | undefined {
-  const t = String(connType ?? '').trim().toLowerCase();
+  const t = String(connType ?? '')
+    .trim()
+    .toLowerCase();
   if (t === 'failure' || t === 'false' || t === 'else') return 'input_top';
   return undefined;
 }
@@ -1099,7 +1101,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             inputsValues: specCcAuth
               ? inputsValuesMapToFlowData(ivMapCcAuth, specCcAuth)
               : {
-                  agentPath: { type: 'constant', content: String((cfg as any).agentPath ?? 'agent') },
+                  agentPath: {
+                    type: 'constant',
+                    content: String((cfg as any).agentPath ?? 'agent'),
+                  },
                   workspacePath: {
                     type: 'template',
                     content: String((cfg as any).workspacePath ?? '$HOME'),
@@ -1444,7 +1449,10 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
             inputsValues: specFsAuth
               ? inputsValuesMapToFlowData(ivMapFsAuth, specFsAuth)
               : {
-                  cliPath: { type: 'constant', content: String((cfg as any).cliPath ?? 'lark-cli') },
+                  cliPath: {
+                    type: 'constant',
+                    content: String((cfg as any).cliPath ?? 'lark-cli'),
+                  },
                   args: {
                     type: 'constant',
                     content: Array.isArray((cfg as any).args)
@@ -1502,13 +1510,24 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               properties: {
                 endpoint: {
                   type: 'string',
-                  extra: { label: '请求地址', formComponent: 'prompt-editor', description: '例如 https://sourcegraph.example.com' },
+                  extra: {
+                    label: '请求地址',
+                    formComponent: 'prompt-editor',
+                    description: '例如 https://sourcegraph.example.com',
+                  },
                 },
                 accessToken: {
                   type: 'string',
-                  extra: { label: 'Access Token', formComponent: 'prompt-editor', description: 'Sourcegraph API 访问令牌' },
+                  extra: {
+                    label: 'Access Token',
+                    formComponent: 'prompt-editor',
+                    description: 'Sourcegraph API 访问令牌',
+                  },
                 },
-                timeoutSec: { type: 'number', extra: { label: '超时（秒）', description: '默认 30' } },
+                timeoutSec: {
+                  type: 'number',
+                  extra: { label: '超时（秒）', description: '默认 30' },
+                },
                 repoScope: {
                   type: 'string',
                   enum: ['', 'frontend', 'backend'],
@@ -1525,21 +1544,39 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 },
                 repoFrontend: {
                   type: 'string',
-                  extra: { label: '前端仓库正则', formComponent: 'prompt-editor', description: 'repoScope=frontend 时生效，默认 teacher/fe/.*|frontend/.*' },
+                  extra: {
+                    label: '前端仓库正则',
+                    formComponent: 'prompt-editor',
+                    description: 'repoScope=frontend 时生效，默认 teacher/fe/.*|frontend/.*',
+                  },
                 },
                 repoBackend: {
                   type: 'string',
-                  extra: { label: '后端仓库正则', formComponent: 'prompt-editor', description: 'repoScope=backend 时生效，默认 teacher/backend/.*|backend/.*' },
+                  extra: {
+                    label: '后端仓库正则',
+                    formComponent: 'prompt-editor',
+                    description: 'repoScope=backend 时生效，默认 teacher/backend/.*|backend/.*',
+                  },
                 },
                 contextGlobal: {
                   type: 'boolean',
-                  extra: { label: '搜索全部仓库', description: '添加 context:global 条件，默认开启' },
+                  extra: {
+                    label: '搜索全部仓库',
+                    description: '添加 context:global 条件，默认开启',
+                  },
                 },
                 typeFilter: {
                   type: 'string',
-                  extra: { label: '文件类型过滤', formComponent: 'prompt-editor', description: '例如 lang:Go 或 file:\\.go$' },
+                  extra: {
+                    label: '文件类型过滤',
+                    formComponent: 'prompt-editor',
+                    description: '例如 lang:Go 或 file:\\.go$',
+                  },
                 },
-                displayLimit: { type: 'number', extra: { label: '结果数量上限', description: '默认 1500' } },
+                displayLimit: {
+                  type: 'number',
+                  extra: { label: '结果数量上限', description: '默认 1500' },
+                },
                 defaultPatternType: {
                   type: 'string',
                   enum: ['literal', 'regexp'],
@@ -1555,7 +1592,11 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 },
                 defaultPatterns: {
                   type: 'string',
-                  extra: { label: '默认搜索路径', formComponent: 'prompt-editor', description: '换行分隔，例如 /api/user/list\\n/api/order/detail' },
+                  extra: {
+                    label: '默认搜索路径',
+                    formComponent: 'prompt-editor',
+                    description: '换行分隔，例如 /api/user/list\\n/api/order/detail',
+                  },
                 },
               },
             },
@@ -1582,20 +1623,34 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               properties: {
                 endpoint: {
                   type: 'string',
-                  extra: { label: '请求地址', formComponent: 'prompt-editor', description: '例如 https://sourcegraph.xxxx.tv' },
+                  extra: {
+                    label: '请求地址',
+                    formComponent: 'prompt-editor',
+                    description: '例如 https://sourcegraph.xxxx.tv',
+                  },
                 },
                 accessToken: {
                   type: 'string',
-                  extra: { label: 'Access Token', formComponent: 'prompt-editor', description: 'Sourcegraph API 访问令牌' },
+                  extra: {
+                    label: 'Access Token',
+                    formComponent: 'prompt-editor',
+                    description: 'Sourcegraph API 访问令牌',
+                  },
                 },
-                timeoutSec: { type: 'number', extra: { label: '超时（秒）', description: '默认 15' } },
+                timeoutSec: {
+                  type: 'number',
+                  extra: { label: '超时（秒）', description: '默认 15' },
+                },
               },
             },
             inputsValues: specTv
               ? inputsValuesMapToFlowData(ivMapTv, specTv)
               : {
                   endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
-                  accessToken: { type: 'template', content: String((cfg as any).accessToken ?? '') },
+                  accessToken: {
+                    type: 'template',
+                    content: String((cfg as any).accessToken ?? ''),
+                  },
                   timeoutSec: { type: 'constant', content: Number((cfg as any).timeoutSec ?? 15) },
                 },
           } as any;
@@ -1616,27 +1671,51 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
               properties: {
                 endpoint: {
                   type: 'string',
-                  extra: { label: '请求地址', formComponent: 'prompt-editor', description: '例如 https://sourcegraph.xxxx.tv' },
+                  extra: {
+                    label: '请求地址',
+                    formComponent: 'prompt-editor',
+                    description: '例如 https://sourcegraph.xxxx.tv',
+                  },
                 },
                 ldapUsername: {
                   type: 'string',
-                  extra: { label: 'LDAP 用户名', formComponent: 'prompt-editor', description: 'GitLab LDAP 用户名' },
+                  extra: {
+                    label: 'LDAP 用户名',
+                    formComponent: 'prompt-editor',
+                    description: 'GitLab LDAP 用户名',
+                  },
                 },
                 ldapPassword: {
                   type: 'string',
-                  extra: { label: 'LDAP 密码', formComponent: 'prompt-editor', description: 'GitLab LDAP 密码' },
+                  extra: {
+                    label: 'LDAP 密码',
+                    formComponent: 'prompt-editor',
+                    description: 'GitLab LDAP 密码',
+                  },
                 },
                 gitlabHost: {
                   type: 'string',
-                  extra: { label: 'GitLab 主机', formComponent: 'prompt-editor', description: '默认 gitlab.xxx.tv' },
+                  extra: {
+                    label: 'GitLab 主机',
+                    formComponent: 'prompt-editor',
+                    description: '默认 gitlab.xxx.tv',
+                  },
                 },
                 note: {
                   type: 'string',
-                  extra: { label: 'Token 备注', formComponent: 'prompt-editor', description: 'Token 名称/备注，默认 cli-token' },
+                  extra: {
+                    label: 'Token 备注',
+                    formComponent: 'prompt-editor',
+                    description: 'Token 名称/备注，默认 cli-token',
+                  },
                 },
                 expiresAt: {
                   type: 'string',
-                  extra: { label: '过期时间', formComponent: 'prompt-editor', description: 'ISO 8601 格式，如 2029-05-01T00:00:00Z；空则永不过期' },
+                  extra: {
+                    label: '过期时间',
+                    formComponent: 'prompt-editor',
+                    description: 'ISO 8601 格式，如 2029-05-01T00:00:00Z；空则永不过期',
+                  },
                 },
                 scope: {
                   type: 'string',
@@ -1654,17 +1733,30 @@ export function buildDocumentFromRuleChainJSON(raw: string | RuleChainRC): FlowD
                 },
                 headless: {
                   type: 'string',
-                  extra: { label: 'Headless 模式', formComponent: 'prompt-editor', description: '默认 true' },
+                  extra: {
+                    label: 'Headless 模式',
+                    formComponent: 'prompt-editor',
+                    description: '默认 true',
+                  },
                 },
-                timeoutMs: { type: 'number', extra: { label: '超时（毫秒）', description: '默认 60000' } },
+                timeoutMs: {
+                  type: 'number',
+                  extra: { label: '超时（毫秒）', description: '默认 60000' },
+                },
               },
             },
             inputsValues: specTc
               ? inputsValuesMapToFlowData(ivMapTc, specTc)
               : {
                   endpoint: { type: 'template', content: String((cfg as any).endpoint ?? '') },
-                  ldapUsername: { type: 'template', content: String((cfg as any).ldapUsername ?? '') },
-                  ldapPassword: { type: 'template', content: String((cfg as any).ldapPassword ?? '') },
+                  ldapUsername: {
+                    type: 'template',
+                    content: String((cfg as any).ldapUsername ?? ''),
+                  },
+                  ldapPassword: {
+                    type: 'template',
+                    content: String((cfg as any).ldapPassword ?? ''),
+                  },
                 },
           } as any;
           break;

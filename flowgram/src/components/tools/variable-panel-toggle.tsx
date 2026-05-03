@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { DataAll } from '@icon-park/react';
 import { useClientContext } from '@flowgram.ai/free-layout-editor';
 import { Tooltip, Button } from '@douyinfe/semi-ui';
-import { DataAll } from '@icon-park/react';
 
 export function VariablePanelToggle() {
   const { playground } = useClientContext();

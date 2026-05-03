@@ -364,6 +364,8 @@ func (s *WorkflowService) ensureRuntimeConfigured() error {
 	return nil
 }
 
+var _ = (*WorkflowService).isRuntimeEnabledMode
+
 func (s *WorkflowService) isRuntimeEnabledMode(mode entity.CollaborationMode) bool {
 	if s == nil {
 		return false

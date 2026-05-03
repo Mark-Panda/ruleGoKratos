@@ -5,6 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 
+import { DataAll, GraphicDesign, Histogram, SettingConfig } from '@icon-park/react';
 import {
   Button,
   Input,
@@ -19,7 +20,6 @@ import {
   Spin,
   Modal,
 } from '@douyinfe/semi-ui';
-import { DataAll, GraphicDesign, Histogram, SettingConfig } from '@icon-park/react';
 
 import { runLogChainDisplay, runLogTableRowKey } from '../utils/run-log-display';
 import { buildDocumentFromRuleChainJSON } from '../utils/rulechain-builder';
@@ -34,9 +34,9 @@ import { requestJSON } from '../services/http';
 import { createRuleBase, getRuleDetail } from '../services/api-rules';
 import { WorkflowNodeType } from '../nodes';
 import { Editor } from '../editor';
-import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
-import { RuleChainSkillAction } from '../components/rule-chain-skill-action';
 import { RULE_CHAIN_DEPLOY_STATUS_EVENT } from '../constants/deploy-status-event';
+import { RuleChainSkillAction } from '../components/rule-chain-skill-action';
+import { RuleChainRequestParamsEditor } from '../components/rule-chain-request-params-editor';
 
 const menuIconProps = {
   theme: 'outline' as const,
@@ -327,7 +327,9 @@ export const RuleDetail: React.FC<{
               padding: '2px 10px',
               borderRadius: 999,
               background: deployed ? 'rgba(82,196,26,0.10)' : 'rgba(245,34,45,0.10)',
-              border: deployed ? '1px solid rgba(82,196,26,0.35)' : '1px solid rgba(245,34,45,0.35)',
+              border: deployed
+                ? '1px solid rgba(82,196,26,0.35)'
+                : '1px solid rgba(245,34,45,0.35)',
             }}
           >
             <span
@@ -376,7 +378,11 @@ export const RuleDetail: React.FC<{
               <Nav
                 mode="vertical"
                 items={[
-                  { itemKey: 'basic', text: '基础信息', icon: <SettingConfig {...menuIconProps} /> },
+                  {
+                    itemKey: 'basic',
+                    text: '基础信息',
+                    icon: <SettingConfig {...menuIconProps} />,
+                  },
                   { itemKey: 'vars', text: '变量', icon: <DataAll {...menuIconProps} /> },
                   { itemKey: 'logs', text: '运行日志', icon: <Histogram {...menuIconProps} /> },
                   {
@@ -440,7 +446,10 @@ export const RuleDetail: React.FC<{
                           try {
                             const json = await getRuleDetail(String(data?.ruleChain?.id ?? ''));
                             const rc = json?.ruleChain || {};
-                            const cfg = ((rc as any)?.configuration || {}) as Record<string, unknown>;
+                            const cfg = ((rc as any)?.configuration || {}) as Record<
+                              string,
+                              unknown
+                            >;
                             setConfigurationSnapshot({ ...cfg });
                             const fg = parseRuleChainFlowgramFromConfiguration(cfg);
                             setFlowgramSkillDirName(fg.skillDirName);

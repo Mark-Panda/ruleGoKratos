@@ -5,6 +5,7 @@
 
 import { createElement } from 'react';
 
+import { DataAll } from '@icon-park/react';
 import {
   ASTFactory,
   definePluginCreator,
@@ -13,7 +14,7 @@ import {
   WorkflowDocument,
 } from '@flowgram.ai/free-layout-editor';
 import { IJsonSchema, JsonSchemaUtils } from '@flowgram.ai/form-materials';
-import { DataAll } from '@icon-park/react';
+
 import { VariablePanelLayer } from './variable-panel-layer';
 
 const fetchMockVariableFromRemote = async () => {

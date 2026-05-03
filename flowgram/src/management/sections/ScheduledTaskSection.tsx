@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import {
   Button,
   Card,
@@ -16,7 +17,6 @@ import {
   Toast,
   Typography,
 } from '@douyinfe/semi-ui';
-import type { FormApi } from '@douyinfe/semi-ui/lib/es/form/interface';
 import {
   IconDelete,
   IconEdit,
@@ -26,6 +26,11 @@ import {
   IconPlus,
 } from '@douyinfe/semi-icons';
 
+import {
+  parseRuleChainParamsJson,
+  buildRuleChainParamsPreviewValue,
+} from '../../utils/rule-chain-request-params';
+import { parseRuleChainFlowgramFromConfiguration } from '../../utils/rule-chain-flowgram-dsl';
 import {
   createScheduledTask,
   deleteScheduledTask,
@@ -38,6 +43,7 @@ import {
   updateScheduledTask,
 } from '../../services/api-scheduled-task';
 import { getRuleList, getRuleDetail } from '../../services/api-rules';
+import { JsonValueEditor } from '../../components/testrun/json-value-editor';
 import {
   buildScheduledTaskPayload,
   describeScheduledTaskRunStatus,
@@ -46,12 +52,6 @@ import {
   normalizeScheduledTaskRunStatus,
   ScheduleType,
 } from './scheduled-task-cron';
-import { parseRuleChainFlowgramFromConfiguration } from '../../utils/rule-chain-flowgram-dsl';
-import {
-  parseRuleChainParamsJson,
-  buildRuleChainParamsPreviewValue,
-} from '../../utils/rule-chain-request-params';
-import { JsonValueEditor } from '../../components/testrun/json-value-editor';
 
 type ModalType = 'create' | 'edit';
 
@@ -378,7 +378,10 @@ export const ScheduledTaskSection: React.FC = () => {
     try {
       await deleteScheduledTask(task.id);
       Toast.success('删除成功');
-      void fetchTasks(currentPage === 1 ? 1 : tasks.length === 1 ? currentPage - 1 : currentPage, pageSize);
+      void fetchTasks(
+        currentPage === 1 ? 1 : tasks.length === 1 ? currentPage - 1 : currentPage,
+        pageSize
+      );
     } catch (e) {
       Toast.error('删除失败');
       console.error(e);
@@ -392,29 +395,20 @@ export const ScheduledTaskSection: React.FC = () => {
     setHistoryLoading(true);
     try {
       const res = await listScheduledTaskRuns(task.id, { page, pageSize: size });
-      if (
-        requestId !== historyRequestIdRef.current ||
-        activeHistoryTaskIdRef.current !== taskId
-      ) {
+      if (requestId !== historyRequestIdRef.current || activeHistoryTaskIdRef.current !== taskId) {
         return;
       }
       setHistoryRuns(Array.isArray(res.runs) ? res.runs : []);
       setHistoryTotal(asTotal(res.total));
       setHistoryPage(page);
     } catch (e) {
-      if (
-        requestId !== historyRequestIdRef.current ||
-        activeHistoryTaskIdRef.current !== taskId
-      ) {
+      if (requestId !== historyRequestIdRef.current || activeHistoryTaskIdRef.current !== taskId) {
         return;
       }
       Toast.error('获取执行历史失败');
       console.error(e);
     } finally {
-      if (
-        requestId === historyRequestIdRef.current &&
-        activeHistoryTaskIdRef.current === taskId
-      ) {
+      if (requestId === historyRequestIdRef.current && activeHistoryTaskIdRef.current === taskId) {
         setHistoryLoading(false);
       }
     }
@@ -470,11 +464,23 @@ export const ScheduledTaskSection: React.FC = () => {
   const renderScheduleFields = () => {
     if (activeScheduleType === 'every_minutes') {
       return (
-        <Form.Input field="minutes" label="分钟间隔" placeholder="1-59" rules={[{ required: true }]} />
+        <Form.Input
+          field="minutes"
+          label="分钟间隔"
+          placeholder="1-59"
+          rules={[{ required: true }]}
+        />
       );
     }
     if (activeScheduleType === 'every_hours') {
-      return <Form.Input field="hours" label="小时间隔" placeholder="1-23" rules={[{ required: true }]} />;
+      return (
+        <Form.Input
+          field="hours"
+          label="小时间隔"
+          placeholder="1-23"
+          rules={[{ required: true }]}
+        />
+      );
     }
     if (activeScheduleType === 'weekly') {
       return (
@@ -494,7 +500,12 @@ export const ScheduledTaskSection: React.FC = () => {
     if (activeScheduleType === 'monthly') {
       return (
         <>
-          <Form.Input field="dayOfMonth" label="日期" placeholder="1-31" rules={[{ required: true }]} />
+          <Form.Input
+            field="dayOfMonth"
+            label="日期"
+            placeholder="1-31"
+            rules={[{ required: true }]}
+          />
           <Form.Input field="hour" label="小时" placeholder="0-23" rules={[{ required: true }]} />
           <Form.Input field="minute" label="分钟" placeholder="0-59" rules={[{ required: true }]} />
         </>
@@ -535,7 +546,11 @@ export const ScheduledTaskSection: React.FC = () => {
       title: '执行周期描述',
       width: 220,
       render: (_: unknown, record: ScheduledTask) =>
-        describeSchedule(record.scheduleType as ScheduleType, record.scheduleConfig, record.cronExpr),
+        describeSchedule(
+          record.scheduleType as ScheduleType,
+          record.scheduleConfig,
+          record.cronExpr
+        ),
     },
     {
       title: '启停状态',
@@ -554,7 +569,9 @@ export const ScheduledTaskSection: React.FC = () => {
       title: '最近结果',
       dataIndex: 'lastStatus',
       width: 110,
-      render: (status: unknown) => <Tag color={runStatusColor(status)}>{runStatusLabel(status)}</Tag>,
+      render: (status: unknown) => (
+        <Tag color={runStatusColor(status)}>{runStatusLabel(status)}</Tag>
+      ),
     },
     {
       title: '最近错误',
@@ -575,7 +592,12 @@ export const ScheduledTaskSection: React.FC = () => {
       width: 270,
       render: (_: unknown, record: ScheduledTask) => (
         <Space spacing={4} wrap>
-          <Button icon={<IconEdit />} size="small" theme="borderless" onClick={() => openModal('edit', record)}>
+          <Button
+            icon={<IconEdit />}
+            size="small"
+            theme="borderless"
+            onClick={() => openModal('edit', record)}
+          >
             编辑
           </Button>
           <Button
@@ -586,7 +608,12 @@ export const ScheduledTaskSection: React.FC = () => {
           >
             {record.disabled ? '开启' : '关闭'}
           </Button>
-          <Button icon={<IconHistory />} size="small" theme="borderless" onClick={() => openHistory(record)}>
+          <Button
+            icon={<IconHistory />}
+            size="small"
+            theme="borderless"
+            onClick={() => openHistory(record)}
+          >
             历史
           </Button>
           <Popconfirm
@@ -616,7 +643,9 @@ export const ScheduledTaskSection: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       width: 100,
-      render: (status: unknown) => <Tag color={runStatusColor(status)}>{runStatusLabel(status)}</Tag>,
+      render: (status: unknown) => (
+        <Tag color={runStatusColor(status)}>{runStatusLabel(status)}</Tag>
+      ),
     },
     {
       title: '规则链 ID',
@@ -791,7 +820,12 @@ export const ScheduledTaskSection: React.FC = () => {
             onChange={(val) => setActiveScheduleType(val as ScheduleType)}
           />
           {renderScheduleFields()}
-          <Form.TextArea field="description" label="任务描述" placeholder="请输入任务描述" rows={3} />
+          <Form.TextArea
+            field="description"
+            label="任务描述"
+            placeholder="请输入任务描述"
+            rows={3}
+          />
         </Form>
 
         {selectedRuleChainId && (
@@ -801,7 +835,8 @@ export const ScheduledTaskSection: React.FC = () => {
                 工作流入参
               </Typography.Title>
               <Typography.Paragraph type="tertiary" size="small" style={{ marginBottom: 0 }}>
-                根据规则链 configuration.flowgram.io 中配置的入参自动生成，可修改。触发时将合并到执行 payload 中。
+                根据规则链 configuration.flowgram.io
+                中配置的入参自动生成，可修改。触发时将合并到执行 payload 中。
               </Typography.Paragraph>
               <div>
                 <Typography.Text size="small" style={{ display: 'block', marginBottom: 8 }}>

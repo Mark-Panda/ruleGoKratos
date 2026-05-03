@@ -83,6 +83,8 @@ func (l *HarnessLogger) LogSandboxDecision(requestID, toolName string, allowed b
 	l.log.Infof("harness sandbox request_id=%s tool=%s allowed=%t reason=%s", requestID, toolName, allowed, reason)
 }
 
+
+//lint:ignore U1000 "kept for future use"
 func formatErrorCode(code, detail string) error {
 	return fmt.Errorf("%s: %s", code, detail)
 }

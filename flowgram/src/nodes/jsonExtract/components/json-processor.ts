@@ -157,10 +157,7 @@ export function parseJsonWithFixes(text: string, mode: string = 'auto'): JsonExt
 /**
  * 主处理函数
  */
-export function processJsonExtract(
-  source: string,
-  mode: string = 'auto'
-): JsonExtractResult {
+export function processJsonExtract(source: string, mode: string = 'auto'): JsonExtractResult {
   if (!source || source.trim() === '') {
     return {
       success: false,
